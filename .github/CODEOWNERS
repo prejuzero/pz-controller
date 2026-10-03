@@ -1,0 +1,20 @@
+# Revisores obrigatórios (CLAUDE.md, seção 15).
+# Substitua os times abaixo pelos times reais da organização no GitHub.
+# Nas áreas de alto risco, a proteção da branch main exige 2 aprovações.
+
+*                          @prejuzero/engenharia
+
+# Áreas de alto risco
+/packages/motor-prazos/    @prejuzero/engenharia @prejuzero/curadoria-juridica
+/modules/calendario/       @prejuzero/engenharia @prejuzero/curadoria-juridica
+/modules/prazos/           @prejuzero/engenharia @prejuzero/curadoria-juridica
+/modules/auditoria/        @prejuzero/engenharia
+/modules/identidade/       @prejuzero/engenharia
+/modules/ciencia/          @prejuzero/engenharia
+/packages/db/              @prejuzero/engenharia
+
+# Regras do projeto
+/CLAUDE.md                 @prejuzero/engenharia
+/AGENTS.md                 @prejuzero/engenharia
+/docs/adr/                 @prejuzero/engenharia
+/.github/                  @prejuzero/engenharia
