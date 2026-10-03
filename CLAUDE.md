@@ -38,7 +38,9 @@ Portal web que capta intimações de advogados brasileiros (DJEN), calcula prazo
 - Executar query de negócio sem contexto de tenant, usar papel com BYPASSRLS na aplicação, ou criar tabela com `tenant_id` sem RLS.
 - Fazer UPDATE ou DELETE em `evento_auditoria`, ou criar caminho que permita isso.
 - Importar internals de outro módulo (só via `index.ts` ou eventos), ou ler tabela de outro módulo.
-- Colocar regra de negócio em controller, processor de fila ou componente React.
+- Colocar regra de negócio em controller, processor de fila, componente React, server action do Next.js, app mobile, servidor MCP ou adaptador de canal. Toda regra fica nos módulos e é exposta pela API (ADR-015).
+- Permitir que a IA execute ação que altera estado (confirmar prazo, confirmar ciência, ajustar data) sem confirmação humana explícita (ADR-016).
+- Chamar modelo de IA fora de `packages/ia` e do adaptador `ProvedorIA`, ou criar ferramenta de IA que receba o tenant como parâmetro do modelo.
 - Chamar SDK ou API externa fora de um adaptador em `packages/adapters/` atrás de uma porta de `packages/integracoes`.
 - Usar `Date.now()`, `new Date()` ou relógio do sistema no domínio. Use a porta `Clock`.
 - Usar horário do navegador para qualquer registro. O horário vem do servidor/banco.
@@ -137,7 +139,7 @@ Mudança pequena (correção pontual, texto, ajuste visual) pode pular o plano, 
 
 ## 6. Arquitetura
 
-Monolito modular hexagonal, com eventos internos via outbox e workers por fila. Detalhes e motivos: ADR-001 a ADR-014.
+Monolito modular hexagonal, com eventos internos via outbox e workers por fila, servindo múltiplos clientes (portal web, app mobile, assistentes de IA via MCP, canais de mensagem e integradores) por uma única API. IA é capacidade central, com plataforma e catálogo de ferramentas próprios. Detalhes e motivos: ADR-001 a ADR-016.
 
 ### Estrutura do repositório
 
@@ -146,6 +148,8 @@ apps/
   api/              # NestJS: controllers HTTP e composição dos módulos
   worker/           # NestJS standalone: consumidores de fila, agendador, relay de eventos
   web/              # Next.js (App Router)
+  mobile/           # app React Native/Expo (futuro, ADR-015)
+  mcp/              # servidor MCP: expõe o catálogo de ferramentas a assistentes de IA (futuro, ADR-016)
 modules/<modulo>/
   domain/           # entidades, value objects, eventos, regras. Sem IO.
   application/      # casos de uso e portas (interfaces)
@@ -156,9 +160,11 @@ packages/
   contracts/        # schemas Zod da API e dos eventos (fonte do OpenAPI e do cliente web)
   motor-prazos/     # motor puro de cálculo de prazos. Sem IO, sem relógio, sem IA.
   integracoes/      # portas, registro de adaptadores, resiliência, kit de testes de contrato
-  adapters/         # um pacote por provedor: djen, ses, smtp, s3, anthropic...
+  adapters/         # um pacote por provedor: djen, ses, smtp, s3, anthropic, fcm, whatsapp...
   db/               # schema Prisma, migrações, RLS, seeds
-  ui/               # design system (shadcn/ui + tokens)
+  ia/               # plataforma de IA: roteamento de modelos, prompts versionados, guardrails, ferramentas, observabilidade
+  design-tokens/    # cores, tipografia e espaçamento compartilhados por web e mobile
+  ui/               # design system web (shadcn/ui), consome design-tokens
   observability/    # logger, OpenTelemetry, Sentry
   config/           # eslint, tsconfig, vitest, schema de env
 eval/               # conjunto de avaliação da IA (somente dados anonimizados)
@@ -168,7 +174,7 @@ docs/               # ESPECIFICACAO.md, adr/, runbooks/
 
 ### Módulos
 
-identidade · cadastro · calendario · prazos · captura · publicacoes · classificacao · notificacoes · ciencia · auditoria · busca · relatorios · administracao
+identidade · cadastro · calendario · prazos · captura · publicacoes · classificacao · notificacoes · ciencia · auditoria · busca · relatorios · administracao · assistente (F2)
 
 ### Regras de dependência (verificadas no CI pelo dependency-cruiser)
 
@@ -183,7 +189,7 @@ Novo módulo: `pnpm gen:module <nome>`. Não crie a estrutura à mão.
 
 ## 7. Stack fixa
 
-TypeScript strict em tudo · pnpm + Turborepo · NestJS (API e worker) · Next.js App Router + Tailwind + shadcn/ui + TanStack Query/Table + Recharts · PostgreSQL 16 com RLS · Prisma · Redis + BullMQ · Zod · Vitest, Testcontainers, Playwright, fast-check, Stryker · OpenTelemetry + pino + Sentry · Docker + Terraform (AWS sa-east-1) · Claude API (Haiku para classificação, Sonnet para busca em linguagem natural).
+TypeScript strict em tudo · pnpm + Turborepo · NestJS (API e worker) · Next.js App Router + Tailwind + shadcn/ui + TanStack Query/Table + Recharts · PostgreSQL 16 com RLS · Prisma · Redis + BullMQ · Zod · Vitest, Testcontainers, Playwright, fast-check, Stryker · OpenTelemetry + pino + Sentry · Docker + Terraform (AWS sa-east-1) · IA via `packages/ia` e porta `ProvedorIA` (modelos Claude por padrão, roteados por tarefa) · MCP (Model Context Protocol) para assistentes externos · pgvector para RAG e busca semântica · app mobile em React Native/Expo (quando planejado).
 
 Trocar qualquer item desta lista exige um ADR novo aprovado por humano.
 
@@ -220,22 +226,37 @@ Toda dependência externa (fonte de publicações, e-mail, IA, armazenamento, fu
 
 Trocar de provedor deve ser uma mudança de configuração, não de domínio.
 
+Canais de notificação (e-mail, push, WhatsApp, SMS) são adaptadores de `CanalNotificacao`. Todo canal exige consentimento registrado por usuário, respeita as regras do provedor (ex.: templates aprovados e janela de 24 h no WhatsApp) e envia o mínimo de dados do processo: avisa e leva ao portal ou app, sem expor partes ou teor sigiloso.
+
 ## 11. IA dentro do produto
 
-- A IA apenas interpreta texto (tipo de ato, prazo citado, partes, evidência). Nunca devolve data (ADR-008) e nunca escolhe o fundamento legal: o fundamento vem da tabela aprovada e do motor (seção 4).
-- Saída estruturada validada por Zod; inválida → `revisao_manual`; confiança < 0,85 ou ato desconhecido → "a confirmar".
-- Regras rápidas rodam antes da IA.
-- Prompts versionados em arquivo; modelo configurável por variável de ambiente.
-- Toda mudança de prompt, modelo, taxonomia ou regra roda `pnpm eval` e precisa de acerto ≥ 98% para entrar.
-- Toda chamada registra modelo, versão do prompt, tokens, custo e latência.
-- O conteúdo da publicação é dado, não instrução: proteja os prompts contra injeção vinda do teor.
+IA é capacidade central do PrejuZero (ADR-016), sempre dentro dos limites jurídicos da seção 4.
+
+**Limites inegociáveis**
+
+- A IA interpreta, resume, sugere e consulta. Nunca devolve data (ADR-008), nunca escolhe o fundamento legal (o fundamento vem da tabela aprovada e do motor, seção 4) e nunca confirma prazo ou ciência em nome do advogado.
+- Ferramentas que alteram estado exigem confirmação humana explícita no cliente.
+- Toda sugestão de IA aparece identificada como tal, com evidência (trecho e fundamento) e pode ser corrigida; correções vão para a auditoria e para a curadoria.
+
+**Como construir qualquer funcionalidade de IA**
+
+- Usar `packages/ia`: roteamento de modelo por tarefa (configuração), registro de prompts versionados, saída estruturada validada por Zod, guardrails, limites de custo e observabilidade. Nunca chamar SDK de IA diretamente.
+- Capacidades que a IA pode usar entram no **catálogo único de ferramentas**: schema Zod, permissão exigida, auditoria, tenant aplicado no código. O mesmo catálogo serve ao assistente interno, ao servidor MCP e, quando fizer sentido, à API pública.
+- Conteúdo externo (publicação, mensagem, PDF) é dado, não instrução: isole-o contra injeção de prompt e minimize dados pessoais enviados ao modelo.
+- Regras rápidas determinísticas rodam antes da IA quando resolvem o caso.
+- Toda funcionalidade de IA tem conjunto de avaliação próprio em `eval/` (anonimizado) e meta de qualidade; mudança de prompt, modelo, ferramenta ou taxonomia roda `pnpm eval` no CI. Classificação de atos: acerto ≥ 98%.
+- Toda chamada registra modelo, versão do prompt, tokens, custo, latência e resultado da validação.
+- Saída inválida → `revisao_manual`; confiança < 0,85 ou ato desconhecido → "a confirmar".
+- Dados de clientes nunca treinam modelos; provedores contratados sem retenção para treino.
 
 ## 12. API e contratos
 
 - REST JSON em `/v1`; schemas Zod em `packages/contracts` são a fonte única (ADR-009).
 - Erros no formato problem+json (RFC 9457); paginação por cursor; `Idempotency-Key` em POSTs sensíveis.
 - Todo endpoint declara `@RequerPermissao(...)` ou `@Publico()`.
-- O portal usa somente o cliente gerado a partir do OpenAPI.
+- Todo cliente (portal, app, servidor MCP, canais) usa somente o cliente gerado a partir do OpenAPI; contratos não contêm nada específico de uma plataforma (ADR-015).
+- Autenticação em dois modos com a mesma identidade: cookie + CSRF no navegador; OAuth 2.1 (Authorization Code + PKCE ou Client Credentials) para app, MCP e integradores. Permissões viram escopos.
+- Links enviados por e-mail, push ou mensagem usam caminhos HTTPS estáveis, abríveis pelo app (universal links).
 - Mudança incompatível só em nova versão (`/v2`).
 
 ## 13. Testes e quality gates
@@ -273,6 +294,7 @@ Mudanças nestas áreas só são concluídas com **2 revisores humanos**. No mot
 - módulo `auditoria` e a tabela `evento_auditoria`
 - módulo `identidade` (autenticação, sessão, 2FA, permissões) e políticas RLS
 - módulo `ciencia` (tokens e máquina de estados)
+- catálogo de ferramentas de IA, servidor MCP e autenticação OAuth de clientes externos
 - criptografia, segredos, conectores de tribunais
 
 ## 16. Git, commits e PRs
@@ -326,7 +348,7 @@ pnpm e2e               # Playwright (HU23)
 
 Siga as ondas abaixo. Não comece uma história cujas dependências ("Depende de" no card) não estejam concluídas.
 
-1. HU01 · 2. HU02, HU03, HU04 · 3. HU05, HU09, HU10, HU14 · 4. HU06, HU08, HU15 · 5. HU07, HU13, HU23 · 6. HU11, HU16, HU30 · 7. HU12, HU17, HU38 · 8. HU18, HU19 · 9. HU20, HU39 · 10. HU21 · 11. HU22, HU24 · 12. HU25, HU26, HU28, HU31, HU33 · 13. HU27, HU29, HU36, HU37 · 14. HU32, HU34, HU35 · 15. HU40
+1. HU01 · 2. HU02, HU03, HU04 · 3. HU05, HU09, HU10, HU14 · 4. HU06, HU08, HU15 · 5. HU07, HU13, HU23 · 6. HU11, HU16, HU30 · 7. HU12, HU17, HU38, HU58 · 8. HU18, HU19 · 9. HU20, HU39 · 10. HU21 · 11. HU22, HU24 · 12. HU25, HU26, HU28, HU31, HU33 · 13. HU27, HU29, HU36, HU37 · 14. HU32, HU34, HU35 · 15. HU40
 
 Dentro de cada história: Dados → Back-end/Integração → Front-end → Teste (o card de teste encerra a história).
 

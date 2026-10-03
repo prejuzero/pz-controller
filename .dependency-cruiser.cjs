@@ -3,7 +3,7 @@
 
 /** Bibliotecas de infraestrutura que só podem aparecer em `infra/` e `packages/adapters/`. */
 const SDKS_DE_INFRA =
-  '^(@prisma/client|prisma|@aws-sdk/.+|@anthropic-ai/.+|ioredis|bullmq|nodemailer|pg|undici|axios|@nestjs/.+)$';
+  '^(@prisma/client|prisma|@aws-sdk/.+|@anthropic-ai/.+|openai|@google/genai|firebase-admin|ioredis|bullmq|nodemailer|pg|undici|axios|@nestjs/.+)$';
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
@@ -40,7 +40,7 @@ module.exports = {
       from: {
         path: [
           '^modules/[^/]+/(domain|application)/',
-          '^packages/(kernel|motor-prazos|contracts)/',
+          '^packages/(kernel|motor-prazos|contracts|ia|design-tokens)/',
         ],
       },
       to: { path: `node_modules/${SDKS_DE_INFRA.slice(1, -1)}/` },
