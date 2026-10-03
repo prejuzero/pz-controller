@@ -7,6 +7,7 @@ PrejuZero: portal que capta as intimações de advogados brasileiros, calcula pr
 - [CLAUDE.md](CLAUDE.md): regras obrigatórias do projeto, para pessoas e agentes de IA
 - [docs/ESPECIFICACAO.md](docs/ESPECIFICACAO.md): especificação funcional
 - [docs/adr](docs/adr/README.md): decisões de arquitetura
+- [docs/arquitetura/mobile.md](docs/arquitetura/mobile.md): arquitetura do app mobile (pós go-live)
 - [docs/padroes-engenharia.md](docs/padroes-engenharia.md): testes, quality gates e Definição de Pronto
 - [CONTRIBUTING.md](CONTRIBUTING.md): como rodar e contribuir
 
