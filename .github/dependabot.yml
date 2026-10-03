@@ -1,13 +1,25 @@
+# Atualizações automáticas de dependências. Todo PR do Dependabot passa pelo CI
+# e só pode ser mergeado com o CI verde (CLAUDE.md, seção 16).
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
+    # Período de maturação antes de propor uma versão nova (segurança da cadeia de suprimentos).
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 10
     groups:
       ferramentas-de-desenvolvimento:
         dependency-type: development
+    ignore:
+      # typescript-eslint suporta TypeScript < 6.1 (peerDependency). Liberar quando ampliar.
+      - dependency-name: typescript
+        versions: ['>=6.1.0']
+      # Os tipos do Node acompanham a versão de Node em uso (.nvmrc = 24).
+      - dependency-name: '@types/node'
+        versions: ['>=25.0.0']
     commit-message:
       prefix: chore
       include: scope
@@ -16,5 +28,7 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: ci
