@@ -41,7 +41,7 @@ Espelho da página "Padrões de engenharia" do Notion. Em conflito, vale o [CLAU
 | Conventional Commits                                             | `ci.yml` › commits                           |
 | Segredos (gitleaks)                                              | `ci.yml` › segredos                          |
 | Vulnerabilidades em dependências (`pnpm audit`, severidade alta) | `ci.yml` › dependencias                      |
-| SAST (CodeQL, security-extended)                                 | `codeql.yml`                                 |
+| SAST (Semgrep: default, OWASP Top 10, segredos)                  | `ci.yml` › sast                              |
 | Quebra de OpenAPI, migrações, Trivy, avaliação de IA             | entram nas histórias HU04, HU05, HU02 e HU22 |
 
 ## Definição de Preparado (DoR)

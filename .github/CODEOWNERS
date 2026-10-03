@@ -1,20 +1,20 @@
 # Revisores obrigatórios (CLAUDE.md, seção 15).
-# Substitua os times abaixo pelos times reais da organização no GitHub.
-# Nas áreas de alto risco, a proteção da branch main exige 2 aprovações.
+# O repositório está na conta pessoal @prejuzero (sem times). Ao migrar para uma
+# organização, troque pelos times (ex.: @org/engenharia e @org/curadoria-juridica).
 
-*                          @prejuzero/engenharia
+*                          @prejuzero
 
-# Áreas de alto risco
-/packages/motor-prazos/    @prejuzero/engenharia @prejuzero/curadoria-juridica
-/modules/calendario/       @prejuzero/engenharia @prejuzero/curadoria-juridica
-/modules/prazos/           @prejuzero/engenharia @prejuzero/curadoria-juridica
-/modules/auditoria/        @prejuzero/engenharia
-/modules/identidade/       @prejuzero/engenharia
-/modules/ciencia/          @prejuzero/engenharia
-/packages/db/              @prejuzero/engenharia
+# Áreas de alto risco (exigem 2 revisores humanos; motor, prazos e calendário também o curador)
+/packages/motor-prazos/    @prejuzero
+/modules/calendario/       @prejuzero
+/modules/prazos/           @prejuzero
+/modules/auditoria/        @prejuzero
+/modules/identidade/       @prejuzero
+/modules/ciencia/          @prejuzero
+/packages/db/              @prejuzero
 
 # Regras do projeto
-/CLAUDE.md                 @prejuzero/engenharia
-/AGENTS.md                 @prejuzero/engenharia
-/docs/adr/                 @prejuzero/engenharia
-/.github/                  @prejuzero/engenharia
+/CLAUDE.md                 @prejuzero
+/AGENTS.md                 @prejuzero
+/docs/adr/                 @prejuzero
+/.github/                  @prejuzero

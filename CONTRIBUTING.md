@@ -38,14 +38,23 @@ Os hooks locais rodam ESLint e Prettier nos arquivos alterados (pre-commit) e va
 | `pnpm build`                        | Build de todos os pacotes                                    |
 | `pnpm format` / `pnpm format:check` | Prettier                                                     |
 
-## Configuração do repositório no GitHub (uma vez, por um administrador)
+## Configuração do repositório no GitHub
 
-Estas regras não podem ser versionadas e precisam ser ativadas em **Settings** do repositório:
+O repositório está na conta pessoal `prejuzero`, privado, no plano gratuito. Nessa combinação:
 
-1. **Times:** criar `@prejuzero/engenharia` e `@prejuzero/curadoria-juridica` (ou ajustar o [CODEOWNERS](.github/CODEOWNERS) para os times reais).
-2. **Branch protection** em `main` (Settings › Branches ou Rulesets):
-   - Exigir pull request antes do merge, com **2 aprovações** e **revisão de code owners**.
-   - Exigir que os status checks passem: todos os jobs de `CI` e `CodeQL`.
-   - Exigir branch atualizada antes do merge; bloquear force push e exclusão.
-   - Permitir apenas squash merge.
-3. **Code security:** ativar Dependabot alerts, Dependabot security updates, secret scanning e push protection.
+- **Proteção da branch `main` e rulesets não estão disponíveis.** O GitHub não impede o merge com o CI vermelho. Regra do projeto até mudar o plano: **nenhum PR é mergeado sem todos os checks verdes**, inclusive os do Dependabot.
+- **Code scanning (CodeQL) não está disponível.** A análise estática de segurança roda com o Semgrep, dentro do CI (job `sast`).
+- **Não há times.** O CODEOWNERS aponta para `@prejuzero`.
+
+Para ter os gates realmente bloqueantes, escolha uma opção:
+
+1. **GitHub Pro** na conta pessoal: libera proteção de branch em repositório privado.
+2. **Organização no plano Team**: libera proteção de branch, times no CODEOWNERS e revisores obrigatórios.
+
+Depois, em **Settings › Branches** (ou Rulesets) para `main`:
+
+- Exigir pull request antes do merge, com revisão de code owners (2 aprovações quando houver mais de um revisor).
+- Exigir os status checks de todos os jobs do workflow `CI`.
+- Exigir branch atualizada; bloquear force push e exclusão; permitir apenas squash merge.
+
+Já ativo: exclusão automática da branch após o merge.

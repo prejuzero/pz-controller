@@ -6,3 +6,9 @@ packages:
 allowBuilds:
   unrs-resolver: false
 savePrefix: ''
+# Segurança da cadeia de suprimentos
+# Só instala versões publicadas há pelo menos 24 h. Meta: 10080 (7 dias, igual ao cooldown do
+# Dependabot) a partir de 2026-10-10, quando as versões fixadas na HU01 completam 7 dias.
+minimumReleaseAge: 1440 # nosemgrep: package_managers.pnpm.pnpm-missing-minimum-release-age.pnpm-minimum-release-age
+trustPolicy: no-downgrade # recusa versão com nível de confiança menor que o já instalado
+blockExoticSubdeps: true # subdependências só do registro, nunca de git ou URL
