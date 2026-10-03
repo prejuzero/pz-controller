@@ -1,0 +1,30 @@
+# Dependências
+node_modules/
+
+# Builds e caches
+dist/
+build/
+.next/
+.turbo/
+coverage/
+*.tsbuildinfo
+
+# Configuração local de ferramentas de IA (cada pessoa configura a sua)
+.mcp.json
+
+# Ambiente (nunca commitar segredos)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Sistema e editores
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json

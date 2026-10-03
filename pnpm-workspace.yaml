@@ -1,0 +1,8 @@
+packages:
+  - apps/*
+  - modules/*
+  - packages/*
+  - packages/adapters/*
+allowBuilds:
+  unrs-resolver: false
+savePrefix: ''

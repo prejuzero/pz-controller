@@ -1,0 +1,32 @@
+{
+  "name": "@pz/config",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Configurações compartilhadas: TypeScript, ESLint e Vitest.",
+  "type": "module",
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./eslint": "./src/eslint.js",
+    "./vitest": "./src/vitest.ts"
+  },
+  "scripts": {
+    "lint": "eslint --max-warnings=0 .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@eslint-community/eslint-plugin-eslint-comments": "4.8.1",
+    "@eslint/js": "10.0.1",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-import-x": "4.17.1",
+    "globals": "17.13.0",
+    "typescript-eslint": "8.71.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "@vitest/coverage-v8": "5.0.3",
+    "eslint": "10.12.0",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}

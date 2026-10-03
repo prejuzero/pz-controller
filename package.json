@@ -1,0 +1,45 @@
+{
+  "name": "pz-controller",
+  "private": true,
+  "description": "PrejuZero: captura de intimações, cálculo de prazos processuais e trilha de ciência.",
+  "type": "module",
+  "packageManager": "pnpm@12.8.1",
+  "engines": {
+    "node": ">=24.0.0 <25",
+    "pnpm": ">=12"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "lint": "turbo run lint && pnpm lint:raiz && pnpm depcruise",
+    "lint:raiz": "eslint --max-warnings=0 \"*.{js,mjs,cjs,ts}\"",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:int": "turbo run test:int",
+    "depcruise": "depcruise apps modules packages --config .dependency-cruiser.cjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,mjs,cjs}": [
+      "eslint --max-warnings=0 --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml,css}": [
+      "prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "@commitlint/cli": "21.2.3",
+    "@commitlint/config-conventional": "21.2.3",
+    "@pz/config": "workspace:*",
+    "dependency-cruiser": "18.5.0",
+    "eslint": "10.12.0",
+    "husky": "9.1.7",
+    "lint-staged": "17.6.0",
+    "prettier": "3.9.9",
+    "turbo": "2.11.7",
+    "typescript": "6.0.3"
+  }
+}
