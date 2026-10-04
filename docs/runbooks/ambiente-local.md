@@ -37,4 +37,4 @@ Extensões criadas no Postgres: `pg_trgm`, `unaccent` e `pg_partman` (schema `pa
 
 - **Porta ocupada:** defina outra porta no `.env` (ex.: `POSTGRES_PORT=5433`) e ajuste a URL correspondente.
 - **Dados corrompidos ou migração quebrada em desenvolvimento:** `pnpm infra:reset`.
-- **Bucket não criado:** veja o log do serviço `armazenamento-init` com `pnpm infra:logs`.
+- **Bucket não criado:** rode de novo `docker compose -f infra/docker/compose.yml run --rm armazenamento-init` (é idempotente).
