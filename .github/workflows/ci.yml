@@ -178,3 +178,38 @@ jobs:
         run: ./trivy config --exit-code 1 --ignorefile .trivyignore.yaml infra/
       - name: hadolint (Dockerfiles)
         run: ./hadolint infra/docker/node-app.Dockerfile infra/docker/postgres/Dockerfile
+
+  ambiente-local:
+    name: Ambiente local (docker compose)
+    runs-on: ubuntu-latest
+    env:
+      COMPOSE: docker compose -f infra/docker/compose.yml
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Subir infraestrutura e criar buckets
+        run: |
+          ${COMPOSE} up -d --build --wait
+          ${COMPOSE} run --rm armazenamento-init
+      - name: Verificar extensões do PostgreSQL
+        run: |
+          extensoes=$(${COMPOSE} exec -T postgres psql -U pz_dev -d prejuzero -tAc \
+            "select string_agg(extname, ',' order by extname) from pg_extension")
+          echo "extensões: ${extensoes}"
+          for ext in pg_partman pg_trgm unaccent; do
+            echo "${extensoes}" | tr ',' '\n' | grep -qx "${ext}"
+          done
+      - name: Verificar buckets e object lock (idempotência incluída)
+        run: |
+          ${COMPOSE} run --rm armazenamento-init
+          ${COMPOSE} run --rm --entrypoint aws armazenamento-init \
+            --endpoint-url http://armazenamento:9000 s3api get-object-lock-configuration --bucket pz-auditoria-worm
+      - name: Verificar Redis e Mailpit
+        run: |
+          ${COMPOSE} exec -T redis redis-cli ping | grep -q PONG
+          curl -fsS http://127.0.0.1:8025/readyz
+      - name: Logs em caso de falha
+        if: failure()
+        run: ${COMPOSE} logs
+      - name: Derrubar
+        if: always()
+        run: ${COMPOSE} --profile init down -v
