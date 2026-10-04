@@ -142,3 +142,39 @@ jobs:
           semgrep scan --error --metrics=off
           --config p/default --config p/owasp-top-ten --config p/secrets
           --exclude node_modules
+
+  infra:
+    name: Infraestrutura (Terraform, Trivy e hadolint)
+    runs-on: ubuntu-latest
+    env:
+      TRIVY_VERSION: 0.75.0
+      HADOLINT_VERSION: 2.15.1
+      HADOLINT_SHA256: c7187db94eeeeca956519a6af171adc31453941a1e777961f6e680f697c8c507
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.16.5
+          terraform_wrapper: false
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive infra/terraform
+      - name: Terraform validate (sem backend e sem credenciais)
+        run: |
+          for raiz in infra/terraform/ambientes/staging infra/terraform/ambientes/producao infra/terraform/bootstrap; do
+            terraform -chdir="$raiz" init -backend=false -input=false -lockfile=readonly
+            terraform -chdir="$raiz" validate
+          done
+      - name: Instalar Trivy e hadolint (com verificação de checksum)
+        run: |
+          base="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}"
+          curl -fsSLO "${base}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          curl -fsSLO "${base}/trivy_${TRIVY_VERSION}_checksums.txt"
+          grep " trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz\$" "trivy_${TRIVY_VERSION}_checksums.txt" | sha256sum --check -
+          tar -xzf "trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" trivy
+          curl -fsSLo hadolint "https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION}/hadolint-linux-x86_64"
+          echo "${HADOLINT_SHA256}  hadolint" | sha256sum --check -
+          chmod +x hadolint
+      - name: Trivy (configuração de infraestrutura)
+        run: ./trivy config --exit-code 1 --ignorefile .trivyignore.yaml infra/
+      - name: hadolint (Dockerfiles)
+        run: ./hadolint infra/docker/node-app.Dockerfile infra/docker/postgres/Dockerfile

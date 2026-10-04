@@ -1,0 +1,17 @@
+# Contexto de build enxuto e sem segredos (HU02)
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/coverage
+.git
+.github
+.husky
+.env
+.env.*
+!.env.example
+.mcp.json
+infra/terraform
+docs
+eval
+*.log

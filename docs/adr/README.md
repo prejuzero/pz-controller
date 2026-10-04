@@ -20,3 +20,4 @@ Formato MADR simplificado. ADR aceito não é editado: para mudar uma decisão, 
 | [ADR-014](0014-publicacoes-deduplicadas.md)         | Publicações deduplicadas globalmente                                             | Aceito |
 | [ADR-015](0015-multiplos-clientes-e-plataformas.md) | Múltiplos clientes e plataformas (web, mobile, assistentes de IA e integradores) | Aceito |
 | [ADR-016](0016-ia-como-capacidade-central.md)       | IA como capacidade central da plataforma                                         | Aceito |
+| [ADR-017](0017-armazenamento-local-rustfs.md)       | Armazenamento S3-compatível local: RustFS no lugar do MinIO                      | Aceito |

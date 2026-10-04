@@ -1,0 +1,6 @@
+# Copie para backend.hcl (não versionado) e preencha com o bucket criado em infra/terraform/bootstrap.
+bucket       = "pz-terraform-estado-<ID_DA_CONTA>"
+key          = "producao/terraform.tfstate"
+region       = "sa-east-1"
+encrypt      = true
+use_lockfile = true

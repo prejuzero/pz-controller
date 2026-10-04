@@ -30,19 +30,21 @@ Espelho da página "Padrões de engenharia" do Notion. Em conflito, vale o [CLAU
 
 ## Quality gates do CI (bloqueiam o merge)
 
-| Gate                                                             | Onde                                         |
-| ---------------------------------------------------------------- | -------------------------------------------- |
-| Formatação (Prettier)                                            | `ci.yml` › qualidade                         |
-| Lint (ESLint) e fronteiras (dependency-cruiser)                  | `ci.yml` › qualidade                         |
-| Tipos (TypeScript)                                               | `ci.yml` › qualidade                         |
-| Testes unitários e cobertura mínima                              | `ci.yml` › testes                            |
-| Testes de integração                                             | `ci.yml` › integracao                        |
-| Build                                                            | `ci.yml` › build                             |
-| Conventional Commits                                             | `ci.yml` › commits                           |
-| Segredos (gitleaks)                                              | `ci.yml` › segredos                          |
-| Vulnerabilidades em dependências (`pnpm audit`, severidade alta) | `ci.yml` › dependencias                      |
-| SAST (Semgrep: default, OWASP Top 10, segredos)                  | `ci.yml` › sast                              |
-| Quebra de OpenAPI, migrações, Trivy, avaliação de IA             | entram nas histórias HU04, HU05, HU02 e HU22 |
+| Gate                                                              | Onde                                   |
+| ----------------------------------------------------------------- | -------------------------------------- |
+| Formatação (Prettier)                                             | `ci.yml` › qualidade                   |
+| Lint (ESLint) e fronteiras (dependency-cruiser)                   | `ci.yml` › qualidade                   |
+| Tipos (TypeScript)                                                | `ci.yml` › qualidade                   |
+| Testes unitários e cobertura mínima                               | `ci.yml` › testes                      |
+| Testes de integração                                              | `ci.yml` › integracao                  |
+| Build                                                             | `ci.yml` › build                       |
+| Conventional Commits                                              | `ci.yml` › commits                     |
+| Segredos (gitleaks)                                               | `ci.yml` › segredos                    |
+| Vulnerabilidades em dependências (`pnpm audit`, severidade alta)  | `ci.yml` › dependencias                |
+| SAST (Semgrep: default, OWASP Top 10, segredos)                   | `ci.yml` › sast                        |
+| Infraestrutura: Terraform fmt/validate, Trivy (config) e hadolint | `ci.yml` › infra                       |
+| Trivy nas imagens das apps                                        | `deploy.yml` (ativo a partir da HU04)  |
+| Quebra de OpenAPI, migrações, avaliação de IA                     | entram nas histórias HU04, HU05 e HU22 |
 
 ## Definição de Preparado (DoR)
 

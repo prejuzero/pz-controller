@@ -1,0 +1,2 @@
+# Copie para terraform.tfvars (não versionado).
+certificado_arn = "arn:aws:acm:sa-east-1:<ID_DA_CONTA>:certificate/<ID_DO_CERTIFICADO>"

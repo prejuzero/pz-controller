@@ -10,6 +10,7 @@
   },
   "scripts": {
     "build": "turbo run build",
+    "dev": "pnpm infra:up && turbo run dev",
     "lint": "turbo run lint && pnpm lint:raiz && pnpm depcruise",
     "lint:raiz": "eslint --max-warnings=0 \"*.{js,mjs,cjs,ts}\"",
     "typecheck": "turbo run typecheck",
@@ -19,7 +20,12 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
-    "prepare": "husky"
+    "prepare": "husky",
+    "infra:up": "docker compose -f infra/docker/compose.yml up -d --build --wait && docker compose -f infra/docker/compose.yml run --rm armazenamento-init",
+    "infra:up:obs": "docker compose -f infra/docker/compose.yml --profile observability up -d --build --wait && docker compose -f infra/docker/compose.yml run --rm armazenamento-init",
+    "infra:down": "docker compose -f infra/docker/compose.yml --profile observability down",
+    "infra:reset": "docker compose -f infra/docker/compose.yml --profile observability down -v && pnpm infra:up",
+    "infra:logs": "docker compose -f infra/docker/compose.yml logs -f"
   },
   "lint-staged": {
     "*.{ts,tsx,js,mjs,cjs}": [

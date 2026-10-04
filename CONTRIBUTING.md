@@ -6,6 +6,7 @@ Todo o código deste projeto é escrito por IA sob as regras do [CLAUDE.md](CLAU
 
 - Node.js 24 LTS (versão em [.nvmrc](.nvmrc))
 - pnpm 12, ativado pelo Corepack: `corepack enable`
+- Runtime de containers com Docker Compose v2 (OrbStack ou Docker Desktop). Detalhes em [docs/runbooks/ambiente-local.md](docs/runbooks/ambiente-local.md)
 
 ## Primeiros passos
 
@@ -37,6 +38,9 @@ Os hooks locais rodam ESLint e Prettier nos arquivos alterados (pre-commit) e va
 | `pnpm test:int`                     | Testes de integração (exige Docker)                          |
 | `pnpm build`                        | Build de todos os pacotes                                    |
 | `pnpm format` / `pnpm format:check` | Prettier                                                     |
+| `pnpm infra:up` / `pnpm infra:down` | Sobe/derruba Postgres, Redis, S3 local e Mailpit (Docker)    |
+| `pnpm infra:reset`                  | Recria o ambiente local do zero (apaga volumes)              |
+| `pnpm dev`                          | Infraestrutura local + apps em modo watch                    |
 
 ## Configuração do repositório no GitHub
 
