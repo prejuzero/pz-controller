@@ -139,7 +139,7 @@ Mudança pequena (correção pontual, texto, ajuste visual) pode pular o plano, 
 
 ## 6. Arquitetura
 
-Monolito modular hexagonal, com eventos internos via outbox e workers por fila, servindo múltiplos clientes (portal web, app mobile, assistentes de IA via MCP, canais de mensagem e integradores) por uma única API. IA é capacidade central, com plataforma e catálogo de ferramentas próprios. Detalhes e motivos: ADR-001 a ADR-016.
+Monolito modular hexagonal, com eventos internos via outbox e workers por fila, servindo múltiplos clientes (portal web, app mobile, assistentes de IA via MCP, canais de mensagem e integradores) por uma única API. IA é capacidade central, com plataforma e catálogo de ferramentas próprios. Detalhes e motivos: ADR-001 a ADR-017.
 
 ### Estrutura do repositório
 
@@ -318,7 +318,7 @@ Mudanças nestas áreas só são concluídas com **2 revisores humanos**. No mot
 
 ## 18. Comandos
 
-Requisitos: Node.js 24 LTS (`.nvmrc`) e pnpm 12 via `corepack enable`. Mantenha esta seção atualizada.
+Requisitos: Node.js 24 LTS (`.nvmrc`), pnpm 12 via `corepack enable` e um runtime de containers com Docker Compose v2. Mantenha esta seção atualizada.
 
 Disponíveis:
 
@@ -332,12 +332,14 @@ pnpm test              # unitários com cobertura mínima
 pnpm test:int          # integração (Testcontainers; exige Docker)
 pnpm build             # build de tudo (Turborepo)
 pnpm format            # Prettier (format:check no CI)
+pnpm infra:up          # Postgres, Redis, S3 local (RustFS) e Mailpit (infra:up:obs inclui observabilidade)
+pnpm infra:down        # para a infraestrutura local (infra:reset apaga os volumes)
+pnpm dev               # infraestrutura local + apps em modo watch
 ```
 
 Previstos (criados nas histórias indicadas):
 
 ```
-pnpm dev               # infraestrutura local e apps em watch (HU02)
 pnpm gen:module <nome> # novo módulo hexagonal (HU04)
 pnpm db:migrate        # aplicar migrações (HU05)
 pnpm eval              # avaliação da IA (HU22)

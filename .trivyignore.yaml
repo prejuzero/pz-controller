@@ -1,0 +1,14 @@
+# Exceções do Trivy na varredura de `infra/` (caminhos relativos a essa pasta). Toda exceção precisa de justificativa.
+misconfigurations:
+  - id: AWS-0132
+    paths:
+      - 'terraform/modulos/plataforma/main.tf'
+    statement: >-
+      Bucket de logs de acesso do S3: o serviço de server access logging só entrega logs em buckets
+      com SSE-S3 (AES256); SSE-KMS não é suportado como destino.
+  - id: DS-0002
+    paths:
+      - 'docker/postgres/Dockerfile'
+    statement: >-
+      Imagem de desenvolvimento local baseada na oficial do PostgreSQL: o entrypoint troca para o
+      usuário postgres (gosu) antes de iniciar o banco. Não é usada em produção (RDS).

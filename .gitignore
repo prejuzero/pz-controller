@@ -28,3 +28,12 @@ pnpm-debug.log*
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
+# Terraform: estado, planos e variáveis locais nunca são versionados
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+**/backend.hcl
+**/terraform.tfvars
