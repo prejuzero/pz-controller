@@ -88,6 +88,25 @@ services:
       - '127.0.0.1:${GRAFANA_PORT:-3001}:3000'
       - '127.0.0.1:${OTLP_GRPC_PORT:-4317}:4317'
       - '127.0.0.1:${OTLP_HTTP_PORT:-4318}:4318'
+    environment:
+      # Alertas por e-mail (HU03): localmente chegam ao Mailpit (http://127.0.0.1:8025).
+      ALERTAS_EMAIL: ${ALERTAS_EMAIL:-prejuzero@gmail.com}
+      # Sem webhook no .env, o Discord aponta para um endereço local inexistente: a falha de envio
+      # aparece no Grafana e o e-mail continua chegando normalmente.
+      ALERTAS_DISCORD_WEBHOOK_URL: ${ALERTAS_DISCORD_WEBHOOK_URL:-http://127.0.0.1:9/discord-nao-configurado}
+      GF_SMTP_ENABLED: 'true'
+      GF_SMTP_HOST: mailpit:1025
+      GF_SMTP_STARTTLS_POLICY: NoStartTLS
+      GF_SMTP_FROM_ADDRESS: alertas@prejuzero.local
+      GF_SMTP_FROM_NAME: PrejuZero alertas
+    volumes:
+      # Dashboards e alertas como código (HU03): mudanças aqui valem no próximo `pnpm infra:up:obs`.
+      - ./observabilidade/dashboards:/otel-lgtm/prejuzero/dashboards:ro
+      - ./observabilidade/provisionamento/dashboards.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/prejuzero.yaml:ro
+      - ./observabilidade/provisionamento/alertas.yaml:/otel-lgtm/grafana/conf/provisioning/alerting/prejuzero.yaml:ro
+    depends_on:
+      mailpit:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

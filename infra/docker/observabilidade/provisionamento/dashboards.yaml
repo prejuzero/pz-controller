@@ -1,0 +1,11 @@
+# Dashboards do PrejuZero (HU03, ADR-011), carregados dos arquivos em ../dashboards.
+apiVersion: 1
+
+providers:
+  - name: prejuzero
+    folder: PrejuZero
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: /otel-lgtm/prejuzero/dashboards
