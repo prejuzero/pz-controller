@@ -90,7 +90,10 @@ services:
       - '127.0.0.1:${OTLP_HTTP_PORT:-4318}:4318'
     environment:
       # Alertas por e-mail (HU03): localmente chegam ao Mailpit (http://127.0.0.1:8025).
-      ALERTAS_EMAIL: ${ALERTAS_EMAIL:-equipe@prejuzero.local}
+      ALERTAS_EMAIL: ${ALERTAS_EMAIL:-prejuzero@gmail.com}
+      # Sem webhook no .env, o Discord aponta para um endereço local inexistente: a falha de envio
+      # aparece no Grafana e o e-mail continua chegando normalmente.
+      ALERTAS_DISCORD_WEBHOOK_URL: ${ALERTAS_DISCORD_WEBHOOK_URL:-http://127.0.0.1:9/discord-nao-configurado}
       GF_SMTP_ENABLED: 'true'
       GF_SMTP_HOST: mailpit:1025
       GF_SMTP_STARTTLS_POLICY: NoStartTLS

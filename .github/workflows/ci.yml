@@ -186,6 +186,11 @@ jobs:
       COMPOSE: docker compose -f infra/docker/compose.yml
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: O wrapper do compose lê o .env da raiz
+        run: |
+          echo 'REDIS_PORT=6390' > .env
+          infra/docker/compose.sh config | grep -q 'published: "6390"'
+          rm .env
       - name: Subir infraestrutura e criar buckets
         run: |
           ${COMPOSE} up -d --build --wait

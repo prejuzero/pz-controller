@@ -1,6 +1,6 @@
 # Runbook · Alertas
 
-Alertas iniciais do PrejuZero (HU03, ADR-011), definidos como código em [infra/docker/observabilidade](/infra/docker/observabilidade). Todo alerta chega por e-mail (`ALERTAS_EMAIL`) e traz o link para a seção correspondente abaixo.
+Alertas iniciais do PrejuZero (HU03, ADR-011), definidos como código em [infra/docker/observabilidade](/infra/docker/observabilidade). Todo alerta chega por e-mail (`ALERTAS_EMAIL`, padrão `prejuzero@gmail.com`) e no canal do Discord da equipe, e traz o link para a seção correspondente abaixo.
 
 | Alerta                                   | Dispara quando                                       | Severidade |
 | ---------------------------------------- | ---------------------------------------------------- | ---------- |
@@ -57,4 +57,12 @@ Logo após subir o Grafana, a primeira notificação pode levar alguns minutos; 
 
 Edite `infra/docker/observabilidade/provisionamento/alertas.yaml` ou os JSON em `dashboards/` e rode `pnpm infra:up:obs` de novo. Os nomes das métricas vêm de `NOMES_METRICAS` em `@pz/observability`: mudou lá, muda aqui. Mudanças feitas pela interface do Grafana não são salvas.
 
-Canal de chat (webhook): ainda não configurado, aguarda a escolha da ferramenta pela equipe. Basta acrescentar um receptor `webhook` (ou `slack`, `discord`, `teams`) ao contato `equipe-prejuzero` em `alertas.yaml`.
+## Configurar o Discord
+
+1. No servidor do Discord da equipe: **Configurações do canal → Integrações → Webhooks → Novo webhook**, escolha o canal de alertas e copie a URL.
+2. No `.env` da raiz do repositório (não versionado), defina `ALERTAS_DISCORD_WEBHOOK_URL=<url copiada>`.
+3. Rode `pnpm infra:up:obs` e depois `pnpm alertas:testar`: a mensagem chega no canal e o e-mail no Mailpit.
+
+A URL do webhook é um segredo: quem a tiver consegue postar no canal. Nunca a coloque no repositório; se vazar, apague o webhook no Discord e crie outro. Sem a variável, o envio ao Discord falha (visível em **Alerting → Contact points** no Grafana) e o e-mail continua funcionando.
+
+No ambiente local o e-mail vai para o Mailpit, não para a caixa real: a entrega em `prejuzero@gmail.com` começa quando houver SMTP de verdade (HU72).

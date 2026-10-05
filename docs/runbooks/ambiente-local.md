@@ -17,7 +17,7 @@
 | `pnpm infra:down`     | Para tudo, mantendo os dados                                                                                                 |
 | `pnpm infra:reset`    | Apaga os volumes e sobe de novo, do zero                                                                                     |
 
-Não é preciso criar `.env`: o compose e as apps usam por padrão os valores de [.env.example](../../.env.example). Crie um `.env` só para mudar portas ou credenciais locais.
+Não é preciso criar `.env`: o compose e as apps usam por padrão os valores de [.env.example](../../.env.example). Crie um `.env` na raiz só para mudar portas, credenciais locais ou configurar o webhook de alertas; os comandos `pnpm infra:*` o leem pelo `infra/docker/compose.sh`.
 
 ## Endereços
 

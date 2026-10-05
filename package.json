@@ -21,11 +21,11 @@
     "format:check": "prettier --check .",
     "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "prepare": "husky",
-    "infra:up": "docker compose -f infra/docker/compose.yml up -d --build --wait && docker compose -f infra/docker/compose.yml run --rm armazenamento-init",
-    "infra:up:obs": "docker compose -f infra/docker/compose.yml --profile observability up -d --build --wait && docker compose -f infra/docker/compose.yml run --rm armazenamento-init",
-    "infra:down": "docker compose -f infra/docker/compose.yml --profile observability down",
-    "infra:reset": "docker compose -f infra/docker/compose.yml --profile observability down -v && pnpm infra:up",
-    "infra:logs": "docker compose -f infra/docker/compose.yml logs -f",
+    "infra:up": "infra/docker/compose.sh up -d --build --wait && infra/docker/compose.sh run --rm armazenamento-init",
+    "infra:up:obs": "infra/docker/compose.sh --profile observability up -d --build --wait && infra/docker/compose.sh run --rm armazenamento-init",
+    "infra:down": "infra/docker/compose.sh --profile observability down",
+    "infra:reset": "infra/docker/compose.sh --profile observability down -v && pnpm infra:up",
+    "infra:logs": "infra/docker/compose.sh logs -f",
     "alertas:testar": "infra/docker/observabilidade/testar-alertas.sh"
   },
   "lint-staged": {

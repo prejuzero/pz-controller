@@ -1,5 +1,6 @@
 # Alertas iniciais do PrejuZero (HU03, ADR-011). Cada alerta aponta para o runbook.
-# Canal: e-mail (local: Mailpit em http://127.0.0.1:8025). Destinatário em ALERTAS_EMAIL.
+# Canais: e-mail (ALERTAS_EMAIL; localmente chega ao Mailpit em http://127.0.0.1:8025) e
+# Discord (ALERTAS_DISCORD_WEBHOOK_URL, segredo: só no .env, nunca no repositório).
 apiVersion: 1
 
 contactPoints:
@@ -11,6 +12,11 @@ contactPoints:
         settings:
           addresses: $ALERTAS_EMAIL
           singleEmail: true
+      - uid: pz-discord
+        type: discord
+        settings:
+          url: $ALERTAS_DISCORD_WEBHOOK_URL
+          use_discord_username: false
 
 policies:
   - orgId: 1
