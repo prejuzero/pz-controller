@@ -74,3 +74,30 @@ class Prazo extends AggregateRoot<PrazoConfirmado> {
 // No repositório, na mesma transação do agregado (ADR-004):
 await outbox.gravar(tx, prazo.retirarEventos());
 ```
+
+## Outbox de eventos
+
+Portas do outbox transacional (ADR-004) e a lógica pura das garantias; o Postgres implementa as portas na HU05, o relay do worker na HU10 e o `@Consome` do NestJS no worker.
+
+| Porta                     | Papel                                                                  |
+| ------------------------- | ---------------------------------------------------------------------- |
+| `UnidadeDeTrabalho`       | Transação: confirma se o trabalho terminar, reverte se lançar          |
+| `Outbox`                  | Grava os eventos do agregado na mesma transação da mudança             |
+| `FilaDoRelay`             | Reserva pendentes com `FOR UPDATE SKIP LOCKED` e marca como publicados |
+| `RegistroDeProcessamento` | Chave única (consumidor, evento) em `evento_processado`                |
+
+```ts
+// Caso de uso: agregado e eventos na mesma transação.
+await uow.executar(async (tx) => {
+  await prazos.salvar(tx, prazo);
+  await outbox.gravar(tx, prazo.retirarEventos());
+});
+
+// Relay (worker): entrega pelo menos uma vez.
+await publicarPendentes(uow, fila, (evento) => filas.publicar(evento), relogio, 100);
+
+// Consumidor: processa uma vez só por consumidor, com os efeitos na mesma transação.
+await processarUmaVez(uow, registro, 'notificacoes', evento, async (tx, e) => { ... });
+```
+
+`OutboxEmMemoria` implementa todas as portas com a semântica do Postgres (rollback, `SKIP LOCKED` e chave única) para testes de casos de uso e consumidores.

@@ -12,6 +12,15 @@ export {
 } from './erros.js';
 export type { CategoriaErro, ProblemaValidacao } from './erros.js';
 export { Instant } from './instant.js';
+export { processarUmaVez, publicarPendentes } from './outbox.js';
+export type {
+  FilaDoRelay,
+  Outbox,
+  RegistroDeProcessamento,
+  ResultadoConsumo,
+  UnidadeDeTrabalho,
+} from './outbox.js';
+export { OutboxEmMemoria, TransacaoEmMemoria } from './outbox-em-memoria.js';
 export { DiaDaSemana, LocalDate } from './local-date.js';
 export { err, ok } from './result.js';
 export type { Err, Ok, Result } from './result.js';
