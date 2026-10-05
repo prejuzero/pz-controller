@@ -333,14 +333,16 @@ pnpm test:int          # integração (Testcontainers; exige Docker)
 pnpm build             # build de tudo (Turborepo)
 pnpm format            # Prettier (format:check no CI)
 pnpm infra:up          # Postgres, Redis, S3 local (RustFS) e Mailpit (infra:up:obs inclui observabilidade)
+pnpm infra:up:apps     # o mesmo, mais api e worker nas imagens de produção (perfil apps)
 pnpm infra:down        # para a infraestrutura local (infra:reset apaga os volumes)
 pnpm dev               # infraestrutura local + apps em modo watch
+pnpm gen:module <nome> # novo módulo hexagonal com exemplo ponta a ponta
+pnpm alertas:testar    # dispara um alerta controlado (com infra:up:obs no ar)
 ```
 
 Previstos (criados nas histórias indicadas):
 
 ```
-pnpm gen:module <nome> # novo módulo hexagonal (HU04)
 pnpm db:migrate        # aplicar migrações (HU05)
 pnpm eval              # avaliação da IA (HU22)
 pnpm e2e               # Playwright (HU23)
@@ -356,7 +358,7 @@ Dentro de cada história: Dados → Back-end/Integração → Front-end → Test
 
 ### Estado atual
 
-- [ ] **M0 · Fundação** — HU01–HU10 (concluídas: HU01, HU02, HU03; próxima: **HU04**)
+- [ ] **M0 · Fundação** — HU01–HU10 (concluídas: HU01, HU02, HU03, HU04; próximas: **HU05, HU09, HU10, HU14**)
 - [ ] **M1 · Núcleo jurídico** — HU11–HU16
 - [ ] **M2 · Captura e classificação** — HU17–HU22
 - [ ] **M3 · Portal** — HU23–HU29

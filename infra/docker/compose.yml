@@ -79,6 +79,55 @@ services:
       retries: 20
     restart: unless-stopped
 
+  # Apps em container (perfil apps, HU04): as mesmas imagens de staging e produção.
+  # Suba com `pnpm infra:up:apps`. Para desenvolver com recarga automática, use `pnpm dev`.
+  api:
+    profiles: ['apps']
+    build: &app-build
+      context: ../..
+      dockerfile: infra/docker/node-app.Dockerfile
+      args:
+        APP: '@pz/api'
+        PORTA: '3000'
+        VERSAO: local
+    image: prejuzero/api:local
+    environment: &app-ambiente
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-pz_dev}:${POSTGRES_PASSWORD:-pz_dev_local}@postgres:5432/${POSTGRES_DB:-prejuzero}
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://armazenamento:9000
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-pz_dev}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-pz_dev_local_secret}
+      S3_FORCE_PATH_STYLE: 'true'
+      # Com o perfil observability no ar: APPS_OTEL_ENDPOINT=http://observabilidade:4318 no .env.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${APPS_OTEL_ENDPOINT:-}
+    ports:
+      - '127.0.0.1:${API_PORT:-3000}:3000'
+    depends_on: &app-dependencias
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      armazenamento:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    profiles: ['apps']
+    build:
+      <<: *app-build
+      args:
+        APP: '@pz/worker'
+        PORTA: '3002'
+        VERSAO: local
+    image: prejuzero/worker:local
+    environment: *app-ambiente
+    ports:
+      - '127.0.0.1:${WORKER_PORT:-3002}:3002'
+    depends_on: *app-dependencias
+    restart: unless-stopped
+
   # Observabilidade local (opcional): Grafana + Tempo + Loki + Prometheus + coletor OTel em um contêiner.
   # Suba com `pnpm infra:up:obs`. Grafana em http://127.0.0.1:3001
   observabilidade:

@@ -55,6 +55,8 @@ jobs:
           docker build -f infra/docker/node-app.Dockerfile \
             --platform linux/arm64 \
             --build-arg "APP=@pz/${APP}" \
+            --build-arg "VERSAO=${VERSAO}" \
+            --build-arg "REVISAO=${VERSAO}" \
             -t "${IMAGEM}" .
           echo "IMAGEM=${IMAGEM}" >> "$GITHUB_ENV"
       - name: Varrer imagem (Trivy) e publicar

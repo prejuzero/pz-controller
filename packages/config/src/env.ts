@@ -49,10 +49,15 @@ export const esquemaSmtp = z.object({
   SMTP_PORT: porta,
 });
 
+/** Opcional em que vazio vale como não definida (ex.: `${VAR:-}` no docker compose). */
+function opcional<Esquema extends z.ZodType>(esquema: Esquema) {
+  return z.preprocess((valor) => (valor === '' ? undefined : valor), esquema.optional());
+}
+
 export const esquemaObservabilidade = z.object({
-  OTEL_EXPORTER_OTLP_ENDPOINT: z.url({ protocol: /^https?$/ }).optional(),
+  OTEL_EXPORTER_OTLP_ENDPOINT: opcional(z.url({ protocol: /^https?$/ })),
   /** Sem DSN, a captura de erros no Sentry fica desligada (ADR-011). */
-  SENTRY_DSN: z.url({ protocol: /^https$/ }).optional(),
+  SENTRY_DSN: opcional(z.url({ protocol: /^https$/ })),
 });
 
 export type FonteAmbiente = Readonly<Record<string, string | undefined>>;

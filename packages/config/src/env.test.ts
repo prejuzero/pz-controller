@@ -60,6 +60,12 @@ describe('carregarAmbiente', () => {
     expect(carregarAmbiente(esquemaObservabilidade)).toBeTypeOf('object');
   });
 
+  it('observabilidade: vazio vale como não definida', () => {
+    expect(
+      carregarAmbiente(esquemaObservabilidade, { OTEL_EXPORTER_OTLP_ENDPOINT: '', SENTRY_DSN: '' }),
+    ).toEqual({});
+  });
+
   it('aceita o DSN do Sentry só por HTTPS', () => {
     const dsn = 'https://chavepublica@exemplo.invalid/1';
     expect(carregarAmbiente(esquemaObservabilidade, { SENTRY_DSN: dsn }).SENTRY_DSN).toBe(dsn);
