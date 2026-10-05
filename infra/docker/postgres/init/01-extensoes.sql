@@ -1,4 +1,4 @@
--- Extensões usadas pelo PrejuZero (ADR-010). Papéis e políticas RLS são criados pelas migrações (HU05).
+-- Extensões usadas pelo PrejuZero (ADR-010). Papéis em 02-papeis.sql; RLS nas migrações (HU05).
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE EXTENSION IF NOT EXISTS unaccent;
 CREATE SCHEMA IF NOT EXISTS partman;

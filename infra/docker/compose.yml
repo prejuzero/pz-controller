@@ -93,7 +93,8 @@ services:
     image: prejuzero/api:local
     environment: &app-ambiente
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-pz_dev}:${POSTGRES_PASSWORD:-pz_dev_local}@postgres:5432/${POSTGRES_DB:-prejuzero}
+      # A aplicação conecta como pz_app (sem BYPASSRLS, ADR-003).
+      DATABASE_URL: postgresql://pz_app:pz_app_local@postgres:5432/${POSTGRES_DB:-prejuzero}
       REDIS_URL: redis://redis:6379
       S3_ENDPOINT: http://armazenamento:9000
       S3_REGION: us-east-1

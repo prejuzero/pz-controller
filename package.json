@@ -10,7 +10,7 @@
   },
   "scripts": {
     "build": "turbo run build",
-    "dev": "pnpm infra:up && turbo run dev",
+    "dev": "pnpm infra:up && pnpm db:migrate && pnpm db:seed && turbo run dev",
     "lint": "turbo run lint && pnpm lint:raiz && pnpm depcruise",
     "lint:raiz": "eslint --max-warnings=0 \"*.{js,mjs,cjs,ts}\"",
     "typecheck": "turbo run typecheck",
@@ -18,6 +18,9 @@
     "test:int": "turbo run test:int",
     "depcruise": "depcruise apps modules packages --config .dependency-cruiser.cjs",
     "gen:module": "node packages/config/src/gerar-modulo.mjs",
+    "db:migrate": "pnpm --filter @pz/db migrar",
+    "db:revert": "pnpm --filter @pz/db reverter",
+    "db:seed": "pnpm --filter @pz/db semear",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",

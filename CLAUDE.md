@@ -337,13 +337,13 @@ pnpm infra:up:apps     # o mesmo, mais api e worker nas imagens de produção (p
 pnpm infra:down        # para a infraestrutura local (infra:reset apaga os volumes)
 pnpm dev               # infraestrutura local + apps em modo watch
 pnpm gen:module <nome> # novo módulo hexagonal com exemplo ponta a ponta
+pnpm db:migrate        # aplicar migrações (db:revert reverte a última; db:seed dados fictícios)
 pnpm alertas:testar    # dispara um alerta controlado (com infra:up:obs no ar)
 ```
 
 Previstos (criados nas histórias indicadas):
 
 ```
-pnpm db:migrate        # aplicar migrações (HU05)
 pnpm eval              # avaliação da IA (HU22)
 pnpm e2e               # Playwright (HU23)
 ```

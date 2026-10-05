@@ -1,0 +1,87 @@
+// Schema do PrejuZero (HU05, ADR-003). Convenções:
+// - tabelas e colunas em snake_case (@@map/@map); modelos em PascalCase no código;
+// - PK UUIDv7 gerada pela aplicação (@pz/kernel), nunca pelo banco;
+// - criado_em e atualizado_em em timestamptz;
+// - toda tabela de negócio tem tenant_id NOT NULL com FK e RLS (pz_habilitar_rls na migração).
+// Mudanças: gere o SQL com `prisma migrate diff`, escreva o down.sql e siga expand/contract (README).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/gerado/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TipoTenant {
+  autonomo
+  escritorio
+
+  @@map("tipo_tenant")
+}
+
+/// Escritório ou advogado autônomo: a unidade de isolamento de dados (RNF07).
+model Tenant {
+  id           String     @id @db.Uuid
+  nome         String
+  tipo         TipoTenant
+  criadoEm     DateTime   @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime   @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  usuarios           Usuario[]
+  eventosDominio     EventoDominio[]
+  eventosProcessados EventoProcessado[]
+
+  @@map("tenant")
+}
+
+/// Usuário do portal. Identidade, CPF, 2FA e perfis chegam na HU06.
+model Usuario {
+  id           String   @id @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  nome         String
+  email        String
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, email])
+  @@map("usuario")
+}
+
+/// Outbox transacional (ADR-004): gravado na mesma transação da mudança de negócio.
+model EventoDominio {
+  id          String    @id @db.Uuid
+  tipo        String
+  versao      Int
+  tenantId    String    @map("tenant_id") @db.Uuid
+  agregadoId  String    @map("agregado_id")
+  payload     Json      @db.JsonB
+  /// Contexto de trace e correlação propagado até o consumidor (HU03).
+  contexto    Json?     @db.JsonB
+  ocorridoEm  DateTime  @map("ocorrido_em") @db.Timestamptz(6)
+  publicadoEm DateTime? @map("publicado_em") @db.Timestamptz(6)
+  tentativas  Int       @default(0)
+  criadoEm    DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@map("evento_dominio")
+}
+
+/// Deduplicação dos consumidores (ADR-004): um evento é processado uma vez por consumidor.
+model EventoProcessado {
+  consumidor   String
+  eventoId     String   @map("evento_id") @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  processadoEm DateTime @default(now()) @map("processado_em") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@id([consumidor, eventoId])
+  @@index([tenantId])
+  @@map("evento_processado")
+}
