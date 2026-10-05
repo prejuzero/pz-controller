@@ -4,7 +4,6 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { IORedisInstrumentation } from '@opentelemetry/instrumentation-ioredis';
-import { NestInstrumentation } from '@opentelemetry/instrumentation-nestjs-core';
 import { UndiciInstrumentation } from '@opentelemetry/instrumentation-undici';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { MeterProvider, PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
@@ -125,7 +124,6 @@ export function iniciarTelemetria(opcoes: OpcoesTelemetria): Telemetria {
     instrumentations: [
       new HttpInstrumentation(),
       new UndiciInstrumentation(),
-      new NestInstrumentation(),
       new IORedisInstrumentation(),
       ...(opcoes.instrumentacoes ?? []),
     ],
