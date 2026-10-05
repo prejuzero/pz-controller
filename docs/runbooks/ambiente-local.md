@@ -40,3 +40,9 @@ Extensões criadas no Postgres: `pg_trgm`, `unaccent` e `pg_partman` (schema `pa
 - **Porta ocupada:** defina outra porta no `.env` (ex.: `POSTGRES_PORT=5433`) e ajuste a URL correspondente.
 - **Dados corrompidos ou migração quebrada em desenvolvimento:** `pnpm infra:reset`.
 - **Bucket não criado:** rode de novo `docker compose -f infra/docker/compose.yml run --rm armazenamento-init` (é idempotente).
+
+## Banco de dados (HU05)
+
+- Papéis: a aplicação conecta como `pz_app` (sem BYPASSRLS), migrações como `pz_migrator`, seeds e jobs globais como `pz_sistema` ([packages/db](../../packages/db/README.md)).
+- `pnpm db:migrate`, `pnpm db:revert` e `pnpm db:seed`; o `pnpm dev` já migra e semeia.
+- Os papéis são criados só quando o volume do Postgres é novo. Se aparecer `role "pz_app" does not exist`, rode `pnpm infra:reset` (apaga os dados locais) e `pnpm db:migrate`.
