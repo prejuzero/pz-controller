@@ -2,6 +2,7 @@ import { Writable } from 'node:stream';
 
 import { context, propagation, trace, TraceFlags } from '@opentelemetry/api';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
+import { pino } from 'pino';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { executarComContexto } from './contexto.js';
@@ -141,5 +142,17 @@ describe('criarLogger', () => {
     process.env.LOG_LEVEL = 'verboso';
     expect(criarLogger('config').level).toBe('info');
     expect(criarLogger('config', { nivel: 'debug' }).level).toBe('debug');
+  });
+});
+
+describe('destino padrão', () => {
+  it('escreve no stdout de forma síncrona: nenhum log se perde quando o processo encerra', () => {
+    const logger = criarLogger('teste');
+    const destino = (logger as unknown as Record<symbol, unknown>)[pino.symbols.streamSym] as {
+      sync?: boolean;
+      fd?: number;
+    };
+    expect(destino.fd).toBe(1);
+    expect(destino.sync).toBe(true);
   });
 });

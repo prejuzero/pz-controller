@@ -11,7 +11,7 @@ export type { Logger } from 'pino';
 export interface OpcoesLogger {
   /** Padrão: `LOG_LEVEL` do ambiente (validado pelo `@pz/config/env`) ou `info`. */
   readonly nivel?: Level;
-  /** Padrão: saída padrão. Testes passam um stream em memória. */
+  /** Padrão: saída padrão, síncrona. Testes passam um stream em memória. */
   readonly destino?: DestinationStream;
 }
 
@@ -69,5 +69,7 @@ export function criarLogger(modulo: string, opcoes: OpcoesLogger = {}): Logger {
       },
     },
   };
-  return opcoes.destino === undefined ? pino(configuracao) : pino(configuracao, opcoes.destino);
+  // Stdout síncrono: num container o processo pode ser encerrado logo após o último log
+  // (ex.: desligamento por SIGTERM), e um buffer assíncrono perderia justamente essas linhas.
+  return pino(configuracao, opcoes.destino ?? pino.destination({ dest: 1, sync: true }));
 }
