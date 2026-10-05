@@ -98,6 +98,27 @@ jobs:
           --to ${{ github.event.pull_request.head.sha }}
           --verbose
 
+  gerador:
+    name: Gerador de módulo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Módulo gerado passa em lint, tipos, testes, fronteiras e formatação sem ajustes
+        run: |
+          pnpm gen:module exemplo-gerado
+          pnpm install --no-frozen-lockfile
+          pnpm --filter @pz/exemplo-gerado lint
+          pnpm --filter @pz/exemplo-gerado typecheck
+          pnpm --filter @pz/exemplo-gerado test
+          pnpm depcruise
+          pnpm format:check
+
   contrato:
     name: Contrato da API (OpenAPI e quebra)
     runs-on: ubuntu-latest
@@ -250,9 +271,28 @@ jobs:
         run: |
           ${COMPOSE} exec -T redis redis-cli ping | grep -q PONG
           curl -fsS http://127.0.0.1:8025/readyz
+      - name: Construir e subir as imagens da api e do worker (HU04)
+        run: ${COMPOSE} --profile apps up -d --build --wait api worker
+      - name: Apps prontas com as dependências
+        run: |
+          curl -fsS http://127.0.0.1:3000/health/ready
+          curl -fsS http://127.0.0.1:3002/health/ready
+          curl -fsS http://127.0.0.1:3000/v1/saude
+      - name: Varrer as imagens das apps (Trivy)
+        env:
+          TRIVY_VERSION: 0.75.0
+        run: |
+          base="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}"
+          curl -fsSLO "${base}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          curl -fsSLO "${base}/trivy_${TRIVY_VERSION}_checksums.txt"
+          grep " trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz\$" "trivy_${TRIVY_VERSION}_checksums.txt" | sha256sum --check -
+          tar -xzf "trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" trivy
+          for imagem in prejuzero/api:local prejuzero/worker:local; do
+            ./trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed "${imagem}"
+          done
       - name: Logs em caso de falha
         if: failure()
-        run: ${COMPOSE} logs
+        run: ${COMPOSE} --profile apps logs
       - name: Derrubar
         if: always()
-        run: ${COMPOSE} --profile init down -v
+        run: ${COMPOSE} --profile init --profile apps down -v
