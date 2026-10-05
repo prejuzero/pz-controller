@@ -3,12 +3,14 @@ import { defineConfig } from 'vitest/config';
 /**
  * Perfis de cobertura mínima (CLAUDE.md, seção 13).
  * - motor: packages/motor-prazos (100%).
+ * - kernel: packages/kernel (100%, card PZ-90): base de todos os módulos.
  * - padrao: módulos e demais pacotes (90%).
  */
-export type PerfilCobertura = 'motor' | 'padrao';
+export type PerfilCobertura = 'motor' | 'kernel' | 'padrao';
 
 export const LIMIAR_COBERTURA: Readonly<Record<PerfilCobertura, number>> = {
   motor: 100,
+  kernel: 100,
   padrao: 90,
 };
 
