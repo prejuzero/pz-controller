@@ -1,0 +1,31 @@
+{
+  "name": "@pz/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Schemas Zod da API e dos eventos: fonte única do OpenAPI e dos clientes (ADR-009, ADR-015).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./openapi.json": "./openapi.json",
+    "./gerado/api": "./gerado/api.d.ts"
+  },
+  "scripts": {
+    "gerar": "tsx scripts/gerar.ts",
+    "lint": "eslint --max-warnings=0 .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@pz/config": "workspace:*",
+    "@types/node": "24.19.1",
+    "@vitest/coverage-v8": "5.0.3",
+    "eslint": "10.12.0",
+    "openapi-typescript": "7.13.0",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}

@@ -1,0 +1,157 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "PrejuZero API",
+    "version": "1",
+    "description": "API do PrejuZero. Erros em application/problem+json (RFC 9457), paginação por cursor e Idempotency-Key em operações sensíveis (ADR-009)."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/v1/saude": {
+      "get": {
+        "operationId": "consultarSituacao",
+        "summary": "Situação da API, para clientes verificarem a conexão.",
+        "tags": [
+          "saude"
+        ],
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SituacaoDaApi"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Problema": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "URI que identifica o tipo do problema."
+          },
+          "title": {
+            "type": "string",
+            "description": "Resumo legível, em pt-BR."
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 400,
+            "maximum": 599
+          },
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string"
+          },
+          "codigo": {
+            "type": "string",
+            "description": "Código estável do erro (ex.: prazo.ja-confirmado)."
+          },
+          "problemas": {
+            "description": "Problemas por campo, nos erros de validação.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "campo": {
+                  "type": "string"
+                },
+                "mensagem": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "campo",
+                "mensagem"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "requestId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "codigo"
+        ],
+        "additionalProperties": false
+      },
+      "SituacaoDaApi": {
+        "type": "object",
+        "properties": {
+          "situacao": {
+            "type": "string",
+            "enum": [
+              "operacional",
+              "degradada"
+            ]
+          },
+          "versao": {
+            "type": "string",
+            "description": "Versão implantada (SHA do commit)."
+          },
+          "verificadoEm": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          }
+        },
+        "required": [
+          "situacao",
+          "versao",
+          "verificadoEm"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "sessao": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "pz_sessao"
+      },
+      "oauth2": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Token OAuth 2.1 (ADR-015)."
+      }
+    }
+  },
+  "security": [
+    {
+      "sessao": []
+    },
+    {
+      "oauth2": []
+    }
+  ]
+}
