@@ -1,0 +1,24 @@
+{
+  "name": "@pz/kernel",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Kernel de domínio: Result, erros, Clock, LocalDate, Instant, UUIDv7, Entity e AggregateRoot.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint --max-warnings=0 .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@pz/config": "workspace:*",
+    "@types/node": "24.19.1",
+    "@vitest/coverage-v8": "5.0.3",
+    "eslint": "10.12.0",
+    "fast-check": "4.10.2",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}

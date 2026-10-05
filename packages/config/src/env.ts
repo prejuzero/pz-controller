@@ -51,6 +51,8 @@ export const esquemaSmtp = z.object({
 
 export const esquemaObservabilidade = z.object({
   OTEL_EXPORTER_OTLP_ENDPOINT: z.url({ protocol: /^https?$/ }).optional(),
+  /** Sem DSN, a captura de erros no Sentry fica desligada (ADR-011). */
+  SENTRY_DSN: z.url({ protocol: /^https$/ }).optional(),
 });
 
 export type FonteAmbiente = Readonly<Record<string, string | undefined>>;

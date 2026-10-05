@@ -10,6 +10,10 @@ import {
 } from './vitest.js';
 
 describe('limiaresDeCobertura', () => {
+  it('exige 100% no kernel', () => {
+    expect(limiaresDeCobertura('kernel').branches).toBe(100);
+  });
+
   it('exige 100% no motor de prazos', () => {
     expect(limiaresDeCobertura('motor')).toEqual({
       lines: 100,

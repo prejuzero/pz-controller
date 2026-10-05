@@ -60,6 +60,16 @@ describe('carregarAmbiente', () => {
     expect(carregarAmbiente(esquemaObservabilidade)).toBeTypeOf('object');
   });
 
+  it('aceita o DSN do Sentry só por HTTPS', () => {
+    const dsn = 'https://chavepublica@exemplo.invalid/1';
+    expect(carregarAmbiente(esquemaObservabilidade, { SENTRY_DSN: dsn }).SENTRY_DSN).toBe(dsn);
+    expect(
+      capturarErro(() =>
+        carregarAmbiente(esquemaObservabilidade, { SENTRY_DSN: 'http://chave@exemplo.invalid/1' }),
+      ).problemas,
+    ).toEqual(['SENTRY_DSN: formato inválido (url)']);
+  });
+
   it('lista todos os problemas de uma vez', () => {
     const erro = capturarErro(() =>
       carregarAmbiente(esquemaApi, {

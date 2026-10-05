@@ -1,0 +1,6 @@
+# Falsos positivos já publicados no histórico (reescrever histórico publicado é proibido, CLAUDE.md seção 3).
+# Cada linha precisa de justificativa. Segredo real vazado nunca entra aqui: revogue e troque.
+
+# JWT fictício de teste (cabeçalho {"alg":"HS256"}, assinatura "signatura"), sem valor real.
+# Corrigido no commit seguinte (montado em partes).
+1ed798c5a708befc2188f36194223e143c0eba67:packages/observability/src/logger.test.ts:generic-api-key:14
