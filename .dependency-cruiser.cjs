@@ -63,7 +63,8 @@ module.exports = {
       name: 'motor-prazos-so-kernel',
       severity: 'error',
       comment: 'O motor de prazos é puro: só importa a si mesmo e packages/kernel (ADR-007).',
-      from: { path: '^packages/motor-prazos/', pathNot: '\\.test\\.ts$' },
+      // Testes e a configuração do Vitest são ferramenta, não código do motor.
+      from: { path: '^packages/motor-prazos/', pathNot: '(\\.test\\.ts|/vitest\\.config\\.ts)$' },
       to: {
         pathNot: ['^packages/motor-prazos/', '^packages/kernel/'],
         dependencyTypesNot: ['type-only'],
@@ -73,7 +74,8 @@ module.exports = {
       name: 'kernel-sem-dependencias-internas',
       severity: 'error',
       comment: 'packages/kernel é a base de tudo e não depende de outros pacotes do monorepo.',
-      from: { path: '^packages/kernel/' },
+      // A configuração do Vitest usa @pz/config; o código do kernel continua isolado.
+      from: { path: '^packages/kernel/', pathNot: '/vitest\\.config\\.ts$' },
       to: { path: ['^modules/', '^apps/', '^packages/(?!kernel/)'] },
     },
     {
