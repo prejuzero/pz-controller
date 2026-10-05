@@ -27,7 +27,7 @@ Localmente os papéis vêm de `infra/docker/postgres/init/02-papeis.sql` (só em
 
 - Toda tabela com `tenant_id` chama `SELECT pz_habilitar_rls('tabela')` na migração que a cria: RLS ligado e forçado, política `isolamento_tenant` (USING e WITH CHECK) e permissões dos papéis.
 - O tenant da transação vem de `set_config('app.tenant_id', <uuid>, true)` (local à transação, compatível com PgBouncer em modo transaction). `pz_tenant_atual()` devolve `NULL` sem contexto: nenhuma linha aparece.
-- O teste de integração `src/banco.int.test.ts` falha se alguma tabela com `tenant_id` ficar sem RLS ligado, forçado e com política.
+- **Suíte de isolamento** (`src/isolamento.int.test.ts`): descobre pelo catálogo toda tabela com `tenant_id`, gera dados válidos para dois tenants (`src/teste/isolamento.ts`) e confere que um não lê, atualiza, apaga nem insere dados do outro, que sem contexto nada aparece e que o papel de leitura também é isolado. Tabela nova com `tenant_id` entra sozinha; sem RLS, a suíte falha. Tipo de coluna novo sem gerador também faz a suíte falhar, com a instrução do que acrescentar.
 
 ## Migrações
 
