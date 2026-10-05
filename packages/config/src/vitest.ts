@@ -34,10 +34,10 @@ export interface OpcoesVitest {
    */
   layout?: 'src' | 'modulo';
   /**
-   * Pontos de entrada do processo (ex.: src/main.ts), fora da cobertura unitária. Só para
-   * código coberto por um teste de boot do processo real.
+   * Código fora da cobertura unitária porque é coberto de outra forma: pontos de entrada do
+   * processo (teste de boot) ou acesso a banco real (testes de integração com Testcontainers).
    */
-  pontosDeEntrada?: readonly string[];
+  foraDaCoberturaUnitaria?: readonly string[];
 }
 
 const LAYOUTS = {
@@ -61,7 +61,7 @@ export function criarConfigVitest(opcoes: OpcoesVitest = {}) {
       coverage: {
         provider: 'v8',
         include: [...raizes.map((raiz) => `${raiz}/**/*.ts`), ...extras],
-        exclude: ['**/*.test.ts', '**/*.int.test.ts', ...(opcoes.pontosDeEntrada ?? [])],
+        exclude: ['**/*.test.ts', '**/*.int.test.ts', ...(opcoes.foraDaCoberturaUnitaria ?? [])],
         reporter: ['text', 'lcov', 'json-summary'],
         thresholds: { ...limiaresDeCobertura(perfil) },
       },

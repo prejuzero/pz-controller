@@ -1,7 +1,13 @@
 import { criarConfigVitest } from '@pz/config/vitest';
 
-// O código gerado pelo Prisma e o CLI de reversão ficam fora da cobertura unitária; o banco é
-// coberto pelos testes de integração (Testcontainers).
+// banco.ts e outbox.ts falam com o PostgreSQL: cobertos pelos testes de integração
+// (src/*.int.test.ts, Testcontainers). O código gerado e o CLI de reversão também ficam fora.
 export default criarConfigVitest({
-  pontosDeEntrada: ['src/gerado/**', 'src/reverter.ts', 'src/teste/**'],
+  foraDaCoberturaUnitaria: [
+    'src/gerado/**',
+    'src/reverter.ts',
+    'src/teste/**',
+    'src/banco.ts',
+    'src/outbox.ts',
+  ],
 });

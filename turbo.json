@@ -3,26 +3,29 @@
   "agentGuidance": false,
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "^gerar", "gerar"],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
     },
     "lint": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build", "^gerar", "gerar"]
     },
     "typecheck": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build", "^gerar", "gerar"]
     },
     "test": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "^gerar", "gerar"],
       "outputs": ["coverage/**"]
     },
     "test:int": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "^gerar", "gerar"],
       "cache": false
     },
     "dev": {
       "cache": false,
       "persistent": true
+    },
+    "gerar": {
+      "outputs": ["src/gerado/**"]
     }
   }
 }

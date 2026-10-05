@@ -21,6 +21,8 @@
     "@prisma/adapter-pg": "7.9.1",
     "@prisma/client": "7.9.1",
     "@pz/config": "workspace:*",
+    "@pz/kernel": "workspace:*",
+    "@pz/observability": "workspace:*",
     "pg": "8.23.1"
   },
   "devDependencies": {

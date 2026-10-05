@@ -81,6 +81,26 @@ export default defineConfig(
     },
   },
   proibirRelogioDoSistema,
+  // O Prisma só é usado dentro de packages/db: o resto acessa dados pela Transacao do Banco, que
+  // sempre define o tenant (HU05, ADR-003). Nenhum repositório usa o PrismaClient cru.
+  {
+    files: ['**/*.ts'],
+    ignores: ['packages/db/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@prisma/*', '**/gerado/prisma/**'],
+              message:
+                'Use Banco/BancoSistema e a Transacao de @pz/db, nunca o Prisma direto (ADR-003).',
+            },
+          ],
+        },
+      ],
+    },
+  },
   {
     files: ['**/*.{js,mjs,cjs}'],
     extends: [tseslint.configs.disableTypeChecked],

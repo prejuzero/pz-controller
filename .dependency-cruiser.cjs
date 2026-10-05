@@ -94,7 +94,8 @@ module.exports = {
   ],
   options: {
     doNotFollow: { path: 'node_modules' },
-    exclude: { path: '(^|/)(dist|coverage|\\.next|\\.turbo)/' },
+    // gerado/: código gerado por ferramentas (cliente Prisma, tipos do OpenAPI), não editável.
+    exclude: { path: '(^|/)(dist|coverage|gerado|\\.next|\\.turbo)/' },
     tsPreCompilationDeps: true,
     combinedDependencies: true,
     enhancedResolveOptions: {

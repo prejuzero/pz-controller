@@ -22,8 +22,8 @@ describe('limiaresDeCobertura', () => {
     });
   });
 
-  it('tira da cobertura unitária só os pontos de entrada informados', () => {
-    const config = criarConfigVitest({ pontosDeEntrada: ['src/main.ts'] });
+  it('tira da cobertura unitária só o código informado', () => {
+    const config = criarConfigVitest({ foraDaCoberturaUnitaria: ['src/main.ts'] });
     expect(config.test?.coverage).toMatchObject({
       exclude: ['**/*.test.ts', '**/*.int.test.ts', 'src/main.ts'],
     });
