@@ -7,14 +7,15 @@
 
 ## Subir e derrubar
 
-| Comando             | O que faz                                                                                                                    |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm infra:up`     | Constrói a imagem do Postgres e sobe Postgres, Redis, armazenamento S3 (RustFS) e Mailpit, esperando todos ficarem saudáveis |
-| `pnpm infra:up:obs` | O mesmo, mais Grafana, Tempo, Loki, Prometheus e coletor OpenTelemetry                                                       |
-| `pnpm dev`          | `infra:up` + todas as apps em modo watch                                                                                     |
-| `pnpm infra:logs`   | Logs dos serviços                                                                                                            |
-| `pnpm infra:down`   | Para tudo, mantendo os dados                                                                                                 |
-| `pnpm infra:reset`  | Apaga os volumes e sobe de novo, do zero                                                                                     |
+| Comando               | O que faz                                                                                                                    |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm infra:up`       | Constrói a imagem do Postgres e sobe Postgres, Redis, armazenamento S3 (RustFS) e Mailpit, esperando todos ficarem saudáveis |
+| `pnpm infra:up:obs`   | O mesmo, mais Grafana, Tempo, Loki, Prometheus e coletor OpenTelemetry                                                       |
+| `pnpm alertas:testar` | Com o perfil de observabilidade no ar, dispara um alerta controlado e confere o e-mail no Mailpit ([runbook](alertas.md))    |
+| `pnpm dev`            | `infra:up` + todas as apps em modo watch                                                                                     |
+| `pnpm infra:logs`     | Logs dos serviços                                                                                                            |
+| `pnpm infra:down`     | Para tudo, mantendo os dados                                                                                                 |
+| `pnpm infra:reset`    | Apaga os volumes e sobe de novo, do zero                                                                                     |
 
 Não é preciso criar `.env`: o compose e as apps usam por padrão os valores de [.env.example](../../.env.example). Crie um `.env` só para mudar portas ou credenciais locais.
 

@@ -25,7 +25,8 @@
     "infra:up:obs": "docker compose -f infra/docker/compose.yml --profile observability up -d --build --wait && docker compose -f infra/docker/compose.yml run --rm armazenamento-init",
     "infra:down": "docker compose -f infra/docker/compose.yml --profile observability down",
     "infra:reset": "docker compose -f infra/docker/compose.yml --profile observability down -v && pnpm infra:up",
-    "infra:logs": "docker compose -f infra/docker/compose.yml logs -f"
+    "infra:logs": "docker compose -f infra/docker/compose.yml logs -f",
+    "alertas:testar": "infra/docker/observabilidade/testar-alertas.sh"
   },
   "lint-staged": {
     "*.{ts,tsx,js,mjs,cjs}": [

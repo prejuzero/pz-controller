@@ -1,0 +1,153 @@
+# Alertas iniciais do PrejuZero (HU03, ADR-011). Cada alerta aponta para o runbook.
+# Canal: e-mail (local: Mailpit em http://127.0.0.1:8025). Destinatário em ALERTAS_EMAIL.
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: equipe-prejuzero
+    receivers:
+      - uid: pz-email
+        type: email
+        settings:
+          addresses: $ALERTAS_EMAIL
+          singleEmail: true
+
+policies:
+  - orgId: 1
+    receiver: equipe-prejuzero
+    group_by: ['alertname']
+    group_wait: 10s
+    group_interval: 1m
+    repeat_interval: 4h
+
+groups:
+  - orgId: 1
+    name: prejuzero
+    folder: PrejuZero
+    interval: 30s
+    rules:
+      - uid: pz-api-5xx
+        title: 'API com mais de 1% de erros 5xx'
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: '100 * sum(rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[5m])) / clamp_min(sum(rate(http_server_request_duration_seconds_count[5m])), 1e-9)'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions: [{ evaluator: { type: gt, params: [1] } }]
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels: { severidade: critica }
+        annotations:
+          summary: 'Mais de 1% das requisições terminaram em 5xx nos últimos 5 minutos.'
+          runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#api-5xx'
+      - uid: pz-fila-parada
+        title: 'Fila sem progresso há mais de 15 minutos'
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: 'max by (fila) (pz_fila_idade_mais_antigo_seconds)'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions: [{ evaluator: { type: gt, params: [900] } }]
+        for: 1m
+        noDataState: OK
+        execErrState: Error
+        labels: { severidade: critica }
+        annotations:
+          summary: 'O job mais antigo da fila {{ $labels.fila }} aguarda há mais de 15 minutos.'
+          runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#fila-parada'
+      - uid: pz-fila-dlq
+        title: 'Fila com jobs na DLQ'
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: 'max by (fila) (pz_fila_dlq)'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions: [{ evaluator: { type: gt, params: [0] } }]
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels: { severidade: critica }
+        annotations:
+          summary: 'Há jobs na DLQ da fila {{ $labels.fila }}: falharam após todas as retentativas.'
+          runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#fila-dlq'
+      - uid: pz-integracao-degradada
+        title: 'Adaptador de integração degradado'
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: 'max by (adaptador) (pz_integracao_circuito_estado)'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions: [{ evaluator: { type: gt, params: [1] } }]
+        for: 1m
+        noDataState: OK
+        execErrState: Error
+        labels: { severidade: alta }
+        annotations:
+          summary: 'O circuit breaker do adaptador {{ $labels.adaptador }} está aberto.'
+          runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#integracao-degradada'
+      - uid: pz-email-rejeicao
+        title: 'Rejeição de e-mail'
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: 'sum by (motivo) (increase(pz_email_rejeicoes_total[15m]))'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions: [{ evaluator: { type: gt, params: [0] } }]
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels: { severidade: alta }
+        annotations:
+          summary: 'O provedor rejeitou e-mails ({{ $labels.motivo }}) nos últimos 15 minutos.'
+          runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#email-rejeicao'
