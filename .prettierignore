@@ -6,3 +6,4 @@ dist/
 # Gerados por packages/contracts/scripts/gerar.ts (o CI confere que estão em dia)
 packages/contracts/openapi.json
 packages/contracts/gerado/
+packages/db/src/gerado/

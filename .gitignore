@@ -37,3 +37,6 @@ pnpm-debug.log*
 crash.log
 **/backend.hcl
 **/terraform.tfvars
+
+# Cliente Prisma gerado (pnpm --filter @pz/db gerar)
+packages/db/src/gerado/

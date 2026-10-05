@@ -29,6 +29,29 @@ Localmente os papéis vêm de `infra/docker/postgres/init/02-papeis.sql` (só em
 - O tenant da transação vem de `set_config('app.tenant_id', <uuid>, true)` (local à transação, compatível com PgBouncer em modo transaction). `pz_tenant_atual()` devolve `NULL` sem contexto: nenhuma linha aparece.
 - O teste de integração `src/banco.int.test.ts` falha se alguma tabela com `tenant_id` ficar sem RLS ligado, forçado e com política.
 
+## Acesso a dados
+
+```ts
+const banco = new Banco({ url: env.DATABASE_URL });            // pz_app
+const sistema = new BancoSistema({ url: env.DATABASE_URL_SISTEMA }); // pz_sistema
+
+// Caso de uso: o tenant vem da sessão (HTTP) ou do payload do job (worker).
+await executarNoTenant(tenantId, () =>
+  banco.executar(async (tx) => {
+    await repositorio.salvar(tx, prazo);
+    await outbox.gravar(tx, prazo.retirarEventos()); // mesma transação (ADR-004)
+  }),
+);
+
+// Operação global: motivo obrigatório e registrado.
+await sistema.executarComoSistema('relay do outbox', (tx) => ...);
+```
+
+- `Banco` implementa a porta `UnidadeDeTrabalho` do kernel: cada transação começa com `set_config('app.tenant_id', ...)`. Sem `executarNoTenant`, rejeita com `SemTenant`.
+- `OutboxPostgres` implementa `Outbox`, `RegistroDeProcessamento` e `FilaDoRelay` (`FOR UPDATE SKIP LOCKED`); grava o contexto de trace junto do evento.
+- Fora deste pacote, importar `@prisma/*` ou o cliente gerado é erro de lint: repositórios recebem a `Transacao`.
+- O cliente Prisma é gerado em `src/gerado/` (não versionado) por `pnpm --filter @pz/db gerar`; o Turborepo gera antes de lint, tipos, testes e build.
+
 ## Migrações
 
 Cada pasta em `prisma/migrations` tem `migration.sql` e `down.sql`. O CI aplica, reverte tudo e aplica de novo num PostgreSQL real (Testcontainers).
