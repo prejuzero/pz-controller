@@ -5,6 +5,7 @@ packages:
   - packages/adapters/*
 allowBuilds:
   unrs-resolver: false
+  protobufjs: false # postinstall só confere a versão do Node; não é necessário
 savePrefix: ''
 # Segurança da cadeia de suprimentos
 # Só instala versões publicadas há pelo menos 24 h. Meta: 10080 (7 dias, igual ao cooldown do
