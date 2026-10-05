@@ -62,6 +62,8 @@ export default defineConfig(
         { 'ts-ignore': true, 'ts-nocheck': true, 'ts-expect-error': 'allow-with-description' },
       ],
       '@typescript-eslint/consistent-type-imports': 'error',
+      // Módulos do NestJS são classes só com decorator (@Module), o padrão do framework.
+      '@typescript-eslint/no-extraneous-class': ['error', { allowWithDecorator: true }],
       // Desativar uma regra exige justificativa na mesma linha (CLAUDE.md, seção 3).
       '@eslint-community/eslint-comments/require-description': 'error',
       '@eslint-community/eslint-comments/no-unlimited-disable': 'error',

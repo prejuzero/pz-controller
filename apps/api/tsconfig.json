@@ -1,0 +1,11 @@
+{
+  "extends": "@pz/config/tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true,
+    // NestJS usa decorators legados e metadados de tipo para injeção de dependência.
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  },
+  "include": ["src/**/*.ts", "vitest.config.ts"]
+}

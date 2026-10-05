@@ -1,0 +1,38 @@
+{
+  "name": "@pz/api",
+  "version": "0.0.0",
+  "private": true,
+  "description": "API REST /v1 (NestJS): controllers HTTP e composição dos módulos.",
+  "type": "module",
+  "scripts": {
+    "build": "pz-build-app",
+    "start": "node --enable-source-maps --import ./dist/instrumentacao.js dist/main.js",
+    "dev": "node --env-file=../../.env.example --env-file-if-exists=../../.env --watch --import tsx --import ./src/instrumentacao.ts src/main.ts",
+    "lint": "eslint --max-warnings=0 .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@nestjs/common": "12.1.2",
+    "@nestjs/core": "12.1.2",
+    "@nestjs/platform-fastify": "12.1.2",
+    "@pz/config": "workspace:*",
+    "@pz/contracts": "workspace:*",
+    "@pz/kernel": "workspace:*",
+    "@pz/observability": "workspace:*",
+    "@pz/saude": "workspace:*",
+    "fastify": "5.12.5",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "12.1.2",
+    "@types/node": "24.19.1",
+    "@vitest/coverage-v8": "5.0.3",
+    "eslint": "10.12.0",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}

@@ -51,6 +51,6 @@ Os nomes das métricas ficam em `NOMES_METRICAS`. Os dashboards e alertas depend
 
 ## Instrumentações
 
-Padrão: HTTP, `fetch`/undici, NestJS e ioredis. Prisma (HU05) e BullMQ (HU10) entram pelo parâmetro `instrumentacoes` quando essas bibliotecas chegarem ao projeto.
+Padrão: HTTP, `fetch`/undici e ioredis. A instrumentação oficial do NestJS só suporta até a versão 11; com o NestJS 12, a api informa a rota de cada requisição com `registrarRotaHttp` (vira `http.route` no span e nas métricas). Prisma (HU05) e BullMQ (HU10) entram pelo parâmetro `instrumentacoes` quando essas bibliotecas chegarem ao projeto.
 
 Como o monorepo é ESM, as instrumentações automáticas só se aplicam a módulos carregados depois do registro dos ganchos de importação. As apps (HU04) devem iniciar a telemetria num arquivo carregado com `node --import` antes do `main`.

@@ -10,6 +10,25 @@ import {
 } from './vitest.js';
 
 describe('limiaresDeCobertura', () => {
+  it('no layout de módulo, testa e mede as camadas na raiz', () => {
+    const config = criarConfigVitest({ layout: 'modulo' });
+    expect(config.test?.include).toEqual([
+      'domain/**/*.test.ts',
+      'application/**/*.test.ts',
+      'infra/**/*.test.ts',
+    ]);
+    expect(config.test?.coverage).toMatchObject({
+      include: ['domain/**/*.ts', 'application/**/*.ts', 'infra/**/*.ts', 'index.ts'],
+    });
+  });
+
+  it('tira da cobertura unitária só os pontos de entrada informados', () => {
+    const config = criarConfigVitest({ pontosDeEntrada: ['src/main.ts'] });
+    expect(config.test?.coverage).toMatchObject({
+      exclude: ['**/*.test.ts', '**/*.int.test.ts', 'src/main.ts'],
+    });
+  });
+
   it('exige 100% no kernel', () => {
     expect(limiaresDeCobertura('kernel').branches).toBe(100);
   });
