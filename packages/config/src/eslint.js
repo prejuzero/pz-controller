@@ -39,6 +39,8 @@ export default defineConfig(
       '**/coverage/**',
       '**/.next/**',
       '**/.turbo/**',
+      // Código gerado (ex.: tipos do cliente da API em packages/contracts/gerado).
+      '**/gerado/**',
     ],
   },
   js.configs.recommended,
