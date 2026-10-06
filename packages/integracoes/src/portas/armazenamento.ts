@@ -39,14 +39,23 @@ export interface ArquivoParaGravar {
   readonly tipoMime: string;
 }
 
-export interface PedidoUrlAssinada {
+interface PedidoBase {
   readonly tenantId: Uuid;
   readonly caminho: string;
-  readonly operacao: 'upload' | 'download';
   readonly expiraEmSegundos: number;
-  /** Tipo exigido no upload (o provedor recusa outro). */
-  readonly tipoMime?: string;
 }
+
+/**
+ * URL assinada para o navegador ou app falar direto com o armazenamento. No upload, tipo e
+ * tamanho exatos entram na assinatura: o provedor recusa arquivo diferente do autorizado.
+ */
+export type PedidoUrlAssinada =
+  | (PedidoBase & { readonly operacao: 'download' })
+  | (PedidoBase & {
+      readonly operacao: 'upload';
+      readonly tipoMime: string;
+      readonly tamanhoBytes: number;
+    });
 
 /** Armazenamento de arquivos S3-compatível (RustFS local, S3 em produção; ADR-010/017). */
 export interface ArmazenamentoArquivos {
