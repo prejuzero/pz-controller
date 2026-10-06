@@ -4,6 +4,18 @@ import type { Instant, Uuid } from '@pz/kernel';
 export const INATIVIDADE_MAXIMA_MS = 12 * 3600 * 1000;
 export const DURACAO_MAXIMA_MS = 7 * 24 * 3600 * 1000;
 
+/**
+ * Acesso do administrador da plataforma a um tenant (HU07, ADR-003), guardado na própria sessão:
+ * o tenant de origem não muda; o efetivo da requisição passa a ser o acessado, só para leitura.
+ */
+export interface Impersonacao {
+  readonly id: Uuid;
+  readonly tenantId: Uuid;
+  readonly motivo: string;
+  readonly iniciadaEm: Instant;
+  readonly expiraEm: Instant;
+}
+
 /** `senha`: só passou a senha (falta o 2FA); `completo`: senha e 2FA verificados. */
 export type NivelSessao = 'senha' | 'completo';
 
@@ -20,6 +32,8 @@ export interface Sessao {
   readonly dispositivoId?: Uuid;
   /** Limite absoluto próprio (token de acesso curto), além das regras gerais. */
   readonly expiraAte?: Instant;
+  /** Administrador da plataforma acessando outro tenant (HU07); some ao vencer. */
+  readonly impersonacao?: Impersonacao;
 }
 
 export function expiracao(sessao: Sessao): Instant {
@@ -34,6 +48,9 @@ export function estaAtiva(sessao: Sessao, agora: Instant): boolean {
   return agora.ehAntesDe(expiracao(sessao));
 }
 
+/** Renova o uso; a impersonação vencida cai aqui (todo uso passa por ValidarSessao). */
 export function registrarUso(sessao: Sessao, agora: Instant): Sessao {
-  return { ...sessao, ultimoUso: agora };
+  const { impersonacao, ...resto } = sessao;
+  const vigente = impersonacao !== undefined && agora.ehAntesDe(impersonacao.expiraEm);
+  return { ...resto, ...(vigente ? { impersonacao } : {}), ultimoUso: agora };
 }

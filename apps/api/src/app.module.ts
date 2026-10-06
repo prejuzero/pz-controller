@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { TrilhaPostgres } from '@pz/auditoria';
 import { Banco, WebhooksPostgres } from '@pz/db';
 import {
   AtivarSegundoFator,
@@ -22,6 +23,9 @@ import {
   ConsultarAcessos,
   ConsultarPermissoes,
   CredenciaisPostgres,
+  EncerrarImpersonacao,
+  IniciarImpersonacao,
+  TenantsPostgres,
   PerfisPostgres,
   ElevarSessao,
   EncerrarSessao,
@@ -40,6 +44,7 @@ import { criarLogger, registrarErro } from '@pz/observability';
 import { ConsultarSituacao, VerificadorHttp, VerificadorTcp } from '@pz/saude';
 import { Redis } from 'ioredis';
 
+import { AdminController } from './admin/admin.controller.js';
 import { AuthController } from './auth/auth.controller.js';
 import { ContextoDoUsuario } from './auth/contexto-do-usuario.js';
 import {
@@ -62,6 +67,7 @@ import type { JanelaDeRequisicoes } from './http/limite.js';
 import type { CaixaDeWebhooks } from './webhooks/webhooks.controller.js';
 import type { DynamicModule, Provider, Type } from '@nestjs/common';
 import type {
+  DependenciasDaImpersonacao,
   ArmazemDeRenovacoes,
   RepositorioDeDispositivos,
   ArmazemDeRedefinicoes,
@@ -98,6 +104,11 @@ export interface OpcoesApi {
     readonly dispositivos?: RepositorioDeDispositivos;
     readonly renovacoes?: ArmazemDeRenovacoes;
     readonly perfis?: RepositorioDePerfis;
+    /** Banco, tenants e trilha da impersonação (o resto vem da composição). */
+    readonly impersonacao?: Pick<
+      DependenciasDaImpersonacao<unknown>,
+      'unidade' | 'tenants' | 'trilha'
+    >;
   };
   readonly janelaDeRequisicoes?: JanelaDeRequisicoes;
 }
@@ -164,6 +175,11 @@ export class AppModule {
       opcoes.identidade?.dispositivos ?? new DispositivosPostgres(recursos.banco);
     const renovacoes = opcoes.identidade?.renovacoes ?? new RenovacoesRedis(recursos.redis);
     const perfis = opcoes.identidade?.perfis ?? new PerfisPostgres(recursos.banco);
+    const impersonacao = opcoes.identidade?.impersonacao ?? {
+      unidade: recursos.banco,
+      tenants: new TenantsPostgres(),
+      trilha: new TrilhaPostgres(),
+    };
     const provedores: Provider[] = [
       { provide: RecursosDaApi, useValue: recursos },
       { provide: AMBIENTE, useValue: opcoes.ambiente },
@@ -298,6 +314,23 @@ export class AppModule {
         inject: [RELOGIO],
         useFactory: (relogio: Clock) => new ElevarSessao(sessoes, tokens, relogio),
       },
+      {
+        provide: IniciarImpersonacao,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new IniciarImpersonacao({ ...impersonacao, sessoes, noTenant: noTenantDoBanco, relogio }),
+      },
+      {
+        provide: EncerrarImpersonacao,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new EncerrarImpersonacao({
+            ...impersonacao,
+            sessoes,
+            noTenant: noTenantDoBanco,
+            relogio,
+          }),
+      },
       { provide: APP_INTERCEPTOR, useClass: ContextoDoUsuario },
       { provide: RECEPTORES_DE_WEBHOOK, useValue: opcoes.receptoresDeWebhook ?? new Map() },
       // Ordem importa: o limite por IP vem antes da autenticação.
@@ -309,6 +342,7 @@ export class AppModule {
       module: AppModule,
       controllers: [
         AuthController,
+        AdminController,
         SaudeController,
         SondasController,
         OpenApiController,

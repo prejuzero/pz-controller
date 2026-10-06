@@ -6,6 +6,8 @@ export const TIPOS_DE_AUDITORIA = [
   'identidade.sessao-revogada',
   'identidade.conta-bloqueada',
   'identidade.redefinicao-de-senha-solicitada',
+  'identidade.impersonacao-iniciada',
+  'identidade.impersonacao-encerrada',
   'prazos.tipo-de-ato-cadastrado',
   'prazos.versao-da-tabela-proposta',
   'prazos.versao-da-tabela-aprovada',

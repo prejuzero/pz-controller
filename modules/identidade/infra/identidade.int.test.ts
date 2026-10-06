@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
+import { TrilhaPostgres } from '@pz/auditoria';
 import { Banco, BancoSistema, executarNoTenant } from '@pz/db';
 import { subirBancoDeTeste } from '@pz/db/teste';
 import { FixedClock, gerarUuidV7, Instant } from '@pz/kernel';
@@ -12,6 +13,7 @@ import {
   RenovarTokens,
   RevogarDispositivo,
 } from '../application/dispositivos.js';
+import { IniciarImpersonacao } from '../application/impersonacao.js';
 import {
   AtivarSegundoFator,
   ConfigurarSegundoFator,
@@ -40,6 +42,7 @@ import {
 import { SegundoFatorPostgres } from './segundo-fator-postgres.js';
 import { CifraAesGcm, SegredosTotp } from './segundo-fator.js';
 import { SessoesRedis } from './sessoes-redis.js';
+import { TenantsPostgres } from './tenants-postgres.js';
 import { TentativasRedis } from './tentativas-redis.js';
 import { GeradorDeTokensSeguro, hashDoToken } from './tokens.js';
 
@@ -51,6 +54,7 @@ import type { StartedRedisContainer } from '@testcontainers/redis';
 // Dados fictícios de teste.
 const TENANT_A = '01a10e00-0000-7000-8000-0000000d0a01' as Uuid;
 const TENANT_B = '01a10e00-0000-7000-8000-0000000d0b01' as Uuid;
+const TENANT_P = '01a10e00-0000-7000-8000-0000000d0f01' as Uuid;
 const ANA = '01a10e00-0000-7000-8000-0000000d0a02' as Uuid;
 const BIA = '01a10e00-0000-7000-8000-0000000d0b02' as Uuid;
 const relogio = new FixedClock(Instant.deIso('2026-10-06T12:00:00Z'));
@@ -75,6 +79,7 @@ beforeAll(async () => {
       data: [
         { id: TENANT_A, nome: 'Escritório A', tipo: 'escritorio' },
         { id: TENANT_B, nome: 'Escritório B', tipo: 'escritorio' },
+        { id: TENANT_P, nome: 'Plataforma', tipo: 'plataforma' },
       ],
     });
     await tx.usuario.createMany({
@@ -459,5 +464,64 @@ describe('perfis e permissões no PostgreSQL (HU07)', () => {
         ),
       ),
     ).rejects.toThrow(/admin_plataforma/);
+  });
+});
+
+describe('impersonação com PostgreSQL e Redis (HU07)', () => {
+  it('audita no tenant acessado e no plataforma e guarda a impersonação na sessão do Redis', async () => {
+    const sessoes = new SessoesRedis(redis);
+    const iniciar = new IniciarImpersonacao({
+      sessoes,
+      unidade: banco,
+      tenants: new TenantsPostgres(),
+      trilha: new TrilhaPostgres(),
+      noTenant: noTenantDoBanco,
+      relogio,
+    });
+    const admin = {
+      id: gerarUuidV7(relogio),
+      usuarioId: gerarUuidV7(relogio),
+      tenantId: TENANT_P,
+      nivel: 'completo' as const,
+      segundoFatorAtivo: true,
+      criadaEm: relogio.agora(),
+      ultimoUso: relogio.agora(),
+    };
+    const token = randomBytes(32).toString('base64url');
+    await sessoes.gravar(token, admin, relogio.agora().maisMs(3600_000));
+
+    const inexistente = await iniciar.executar(
+      token,
+      admin,
+      { tenantId: gerarUuidV7(relogio), motivo: 'Chamado 7: conferir' },
+      CTX,
+    );
+    expect(inexistente.ok ? undefined : inexistente.erro.codigo).toBe('tenant-inexistente');
+
+    const r = await iniciar.executar(
+      token,
+      admin,
+      { tenantId: TENANT_A, motivo: 'Chamado 7: conferir' },
+      CTX,
+    );
+    expect(r.ok).toBe(true);
+    const gravada = await sessoes.obter(token);
+    expect(gravada?.impersonacao).toMatchObject({
+      tenantId: TENANT_A,
+      motivo: 'Chamado 7: conferir',
+    });
+    expect(gravada?.impersonacao?.expiraEm.paraIso()).toBe('2026-10-06T13:00:00.000Z');
+
+    const direto = await postgres.conectar('pz_sistema');
+    try {
+      const { rows } = await direto.query<{ tenant_id: string; usuario_id: string }>(
+        `SELECT tenant_id, usuario_id FROM evento_auditoria
+          WHERE tipo = 'identidade.impersonacao-iniciada' ORDER BY tenant_id`,
+      );
+      expect(rows.map((x) => x.tenant_id).sort()).toEqual([TENANT_A, TENANT_P].sort());
+      expect(rows.every((x) => x.usuario_id === admin.usuarioId)).toBe(true);
+    } finally {
+      await direto.end();
+    }
   });
 });

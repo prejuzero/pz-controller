@@ -17,6 +17,13 @@ interface SessaoSerializada {
   ultimoUso: number;
   dispositivoId?: string;
   expiraAte?: number;
+  impersonacao?: {
+    id: string;
+    tenantId: string;
+    motivo: string;
+    iniciadaEm: number;
+    expiraEm: number;
+  };
 }
 
 /**
@@ -49,6 +56,15 @@ export class SessoesRedis implements ArmazemDeSessoes {
       ultimoUso: sessao.ultimoUso.epochMs,
       ...(sessao.dispositivoId === undefined ? {} : { dispositivoId: sessao.dispositivoId }),
       ...(sessao.expiraAte === undefined ? {} : { expiraAte: sessao.expiraAte.epochMs }),
+      ...(sessao.impersonacao === undefined
+        ? {}
+        : {
+            impersonacao: {
+              ...sessao.impersonacao,
+              iniciadaEm: sessao.impersonacao.iniciadaEm.epochMs,
+              expiraEm: sessao.impersonacao.expiraEm.epochMs,
+            },
+          }),
     };
     const multi = this.redis
       .multi()
@@ -76,6 +92,17 @@ export class SessoesRedis implements ArmazemDeSessoes {
       ultimoUso: Instant.deEpochMs(dados.ultimoUso),
       ...(dados.dispositivoId === undefined ? {} : { dispositivoId: dados.dispositivoId as Uuid }),
       ...(dados.expiraAte === undefined ? {} : { expiraAte: Instant.deEpochMs(dados.expiraAte) }),
+      ...(dados.impersonacao === undefined
+        ? {}
+        : {
+            impersonacao: {
+              id: dados.impersonacao.id as Uuid,
+              tenantId: dados.impersonacao.tenantId as Uuid,
+              motivo: dados.impersonacao.motivo,
+              iniciadaEm: Instant.deEpochMs(dados.impersonacao.iniciadaEm),
+              expiraEm: Instant.deEpochMs(dados.impersonacao.expiraEm),
+            },
+          }),
     };
   }
 

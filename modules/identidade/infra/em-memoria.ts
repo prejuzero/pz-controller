@@ -1,6 +1,7 @@
 import { PERFIS_PADRAO } from '../domain/perfis.js';
 
 import type { RepositorioDePerfis } from '../application/autorizacao.js';
+import type { RepositorioDeTenants } from '../application/impersonacao.js';
 import type {
   ArmazemDeRenovacoes,
   DadosDaRenovacao,
@@ -275,5 +276,18 @@ export class PerfisEmMemoria implements RepositorioDePerfis {
   permissoesDoUsuario(_tenantId: Uuid, usuarioId: Uuid): Promise<readonly string[]> {
     const perfis = [...(this.#atribuicoes.get(usuarioId) ?? [])];
     return Promise.resolve([...new Set(perfis.flatMap((perfil) => PERFIS_PADRAO[perfil]))]);
+  }
+}
+
+/** Tipos de tenant para os testes sem banco (no Postgres, o RLS limita ao tenant da transação). */
+export class TenantsEmMemoria implements RepositorioDeTenants<unknown> {
+  readonly #tipos = new Map<Uuid, string>();
+
+  cadastrar(tenantId: Uuid, tipo: 'autonomo' | 'escritorio' | 'plataforma'): void {
+    this.#tipos.set(tenantId, tipo);
+  }
+
+  tipo(_transacao: unknown, tenantId: Uuid): Promise<string | undefined> {
+    return Promise.resolve(this.#tipos.get(tenantId));
   }
 }

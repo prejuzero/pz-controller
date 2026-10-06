@@ -11,6 +11,141 @@
     }
   ],
   "paths": {
+    "/v1/admin/impersonacao": {
+      "post": {
+        "operationId": "iniciarImpersonacao",
+        "summary": "Acessa um tenant por até 60 minutos, só para leitura, com motivo auditado.",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeImpersonacao"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessaoAtual"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "encerrarImpersonacao",
+        "summary": "Encerra a impersonação em curso (sem efeito se não houver).",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Sucesso, sem corpo."
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/auth/2fa/ativar": {
       "post": {
         "operationId": "ativarSegundoFator",
@@ -1119,6 +1254,28 @@
         ],
         "additionalProperties": false
       },
+      "PedidoDeImpersonacao": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "Tenant a acessar (nunca o da plataforma)."
+          },
+          "motivo": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500,
+            "description": "Por que o acesso é necessário (ex.: número do chamado); vai para a auditoria."
+          }
+        },
+        "required": [
+          "tenantId",
+          "motivo"
+        ],
+        "additionalProperties": false
+      },
       "PedidoDeRedefinicaoDeSenha": {
         "type": "object",
         "properties": {
@@ -1314,6 +1471,39 @@
               "type": "string"
             },
             "description": "Permissões efetivas (catálogo da HU07, ex.: `prazos:ler`), também usadas como escopos OAuth. Vazio sem o 2FA. O portal só oculta ações; a API sempre confere."
+          },
+          "impersonacao": {
+            "description": "Impersonação em curso (HU07): o portal mostra a faixa enquanto houver. Ausente ou null fora dela.",
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "tenantId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "description": "Tenant acessado; as requisições rodam nele, só para leitura."
+                  },
+                  "motivo": {
+                    "type": "string"
+                  },
+                  "expiraEm": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  }
+                },
+                "required": [
+                  "tenantId",
+                  "motivo",
+                  "expiraEm"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
