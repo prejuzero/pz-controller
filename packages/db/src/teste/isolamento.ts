@@ -103,6 +103,11 @@ async function valorPara(cliente: pg.Client, coluna: Coluna): Promise<unknown> {
 /** Tabelas globais referenciadas por tabelas de negócio: usa uma linha que a migração já semeou. */
 const LINHAS_GLOBAIS: Readonly<Record<string, string>> = { perfil: 'advogado' };
 
+/** Colunas com valor fixo para a linha satisfazer as CHECKs da tabela (dados fictícios). */
+const COLUNAS_FIXAS: Readonly<Record<string, Record<string, unknown>>> = {
+  feriado_local: { abrangencia: 'uf', uf: 'XA' },
+};
+
 /**
  * Insere uma linha válida na tabela para o tenant, criando antes as linhas referenciadas por
  * chave estrangeira (no mesmo tenant). Usa um cliente com BYPASSRLS (pz_sistema).
@@ -125,6 +130,7 @@ export async function criarLinha(
       valores[coluna.nome] = pai.id;
     } else valores[coluna.nome] = await valorPara(cliente, coluna);
   }
+  Object.assign(valores, COLUNAS_FIXAS[tabela]);
   const nomes = Object.keys(valores);
   const { rows } = await cliente.query<Record<string, unknown>>(
     `INSERT INTO ${tabela} (${nomes.map((n) => `"${n}"`).join(', ')})
@@ -152,11 +158,12 @@ export async function valoresDeLinhaNova(
       valores[coluna.nome] = (await criarLinha(cliente, coluna.referencia, tenantId)).id;
     } else valores[coluna.nome] = await valorPara(cliente, coluna);
   }
-  return valores;
+  return Object.assign(valores, COLUNAS_FIXAS[tabela]);
 }
 
 /**
  * Tabelas só de inserção (ADR-006): UPDATE e DELETE são recusados para todos os papéis da
- * aplicação, uma garantia mais forte que o RLS (que só filtra o tenant).
+ * aplicação, uma garantia mais forte que o RLS (que só filtra o tenant). `feriado_local` aceita
+ * só a revogação, controlada por trigger; qualquer outro UPDATE é recusado (HU13).
  */
-export const TABELAS_SO_INSERCAO: readonly string[] = ['evento_auditoria'];
+export const TABELAS_SO_INSERCAO: readonly string[] = ['evento_auditoria', 'feriado_local'];
