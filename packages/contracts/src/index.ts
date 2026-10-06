@@ -1,5 +1,6 @@
 import { ROTAS_ADMIN } from './admin/index.js';
 import { ROTAS_AUTH } from './auth/index.js';
+import { ROTAS_CALENDARIO } from './calendario/index.js';
 import { gerarOpenApi } from './openapi.js';
 import { ROTAS_SAUDE } from './saude/index.js';
 import { ROTAS_WEBHOOKS } from './webhooks/index.js';
@@ -41,6 +42,28 @@ export {
   verificarSegundoFator,
 } from './auth/index.js';
 export {
+  aprovarEventoDoCalendario,
+  cadastrarFeriadoLocal,
+  ConsultaDoPeriodo,
+  consultarDiasNaoUteis,
+  DiasNaoUteis,
+  EventoDoCalendario,
+  EventosDoCalendario,
+  FeriadoLocal,
+  FeriadosLocais,
+  importarCalendario,
+  listarCalendarioGlobal,
+  listarFeriadosLocais,
+  PedidoDeEventoDoCalendario,
+  PedidoDeImportacaoDoCalendario,
+  PedidoDeRevogacaoDoEvento,
+  proporEventoDoCalendario,
+  ResultadoDaImportacao,
+  revogarEventoDoCalendario,
+  revogarFeriadoLocal,
+  ROTAS_CALENDARIO,
+} from './calendario/index.js';
+export {
   CABECALHO_IDEMPOTENCIA,
   ChaveIdempotencia,
   ConsultaPaginada,
@@ -53,6 +76,7 @@ export {
   Uuid,
 } from './comum.js';
 export {
+  CalendarioAlterado,
   catalogoDeEventos,
   ContaBloqueada,
   definirEvento,
@@ -69,7 +93,13 @@ export { consultarSituacao, ROTAS_SAUDE, SituacaoDaApi } from './saude/index.js'
 export { receberWebhook, ROTAS_WEBHOOKS, WebhookAceito } from './webhooks/index.js';
 
 /** Todas as rotas da API `/v1`. Cada módulo novo acrescenta as suas aqui. */
-export const ROTAS = [...ROTAS_AUTH, ...ROTAS_ADMIN, ...ROTAS_SAUDE, ...ROTAS_WEBHOOKS] as const;
+export const ROTAS = [
+  ...ROTAS_AUTH,
+  ...ROTAS_ADMIN,
+  ...ROTAS_CALENDARIO,
+  ...ROTAS_SAUDE,
+  ...ROTAS_WEBHOOKS,
+] as const;
 
 /** O documento OpenAPI 3.1 da API, gerado das rotas (é o que `openapi.json` guarda). */
 export function documentoOpenApi(): Record<string, unknown> {

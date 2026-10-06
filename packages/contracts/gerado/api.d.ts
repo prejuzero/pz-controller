@@ -1,5 +1,74 @@
 // Gerado por scripts/gerar.ts a partir de openapi.json. Não edite à mão.
 export interface paths {
+    "/v1/admin/calendario": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista os eventos do calendário global que cruzam o período (rascunhos inclusive). */
+        get: operations["listarCalendarioGlobal"];
+        put?: never;
+        /** Propõe um evento global; só vale depois de aprovado por outro curador. */
+        post: operations["proporEventoDoCalendario"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/calendario/{id}/aprovar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Aprova um evento proposto por outro curador (quatro olhos). */
+        post: operations["aprovarEventoDoCalendario"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/calendario/{id}/revogar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoga um evento aprovado, com motivo auditado. */
+        post: operations["revogarEventoDoCalendario"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/calendario/importacao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Valida um CSV (prévia) e, se tudo estiver certo, grava os eventos como rascunho. */
+        post: operations["importarCalendario"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/filas/{fila}/dlq/{jobId}/reprocessar": {
         parameters: {
             query?: never;
@@ -256,6 +325,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/calendario/dias-nao-uteis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dias sem contagem na jurisdição e no período (até 3 anos), com motivo e fonte. */
+        get: operations["consultarDiasNaoUteis"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/calendario/locais": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista os feriados e suspensões cadastrados pelo escritório. */
+        get: operations["listarFeriadosLocais"];
+        put?: never;
+        /** Cadastra um feriado ou suspensão local, com o ato normativo (nunca nacional). */
+        post: operations["cadastrarFeriadoLocal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/calendario/locais/{id}/revogar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoga um feriado local do escritório. */
+        post: operations["revogarFeriadoLocal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/saude": {
         parameters: {
             query?: never;
@@ -319,6 +440,23 @@ export interface components {
             email: string;
             senha: string;
         };
+        DiasNaoUteis: {
+            itens: {
+                /** Format: date */
+                data: string;
+                /** @enum {string} */
+                tipo: "feriado" | "recesso" | "portaria" | "indisponibilidade";
+                motivo: string;
+                fonte: {
+                    /** @enum {string} */
+                    origem: "global" | "local";
+                    /** Format: uuid */
+                    eventoId: string;
+                    atoNormativo: string;
+                    urlAto: string;
+                };
+            }[];
+        };
         DispositivosDaConta: {
             itens: {
                 /** Format: uuid */
@@ -333,6 +471,102 @@ export interface components {
                 revogadaEm: string | null;
             }[];
         };
+        EventoDoCalendario: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            abrangencia: "nacional" | "uf" | "municipio" | "tribunal" | "comarca";
+            uf: string | null;
+            municipioIbge: string | null;
+            tribunal: string | null;
+            comarca: string | null;
+            /** @enum {string} */
+            tipo: "feriado" | "recesso" | "portaria" | "indisponibilidade";
+            /** Format: date */
+            inicio: string;
+            /** Format: date */
+            fim: string;
+            descricao: string;
+            atoNormativo: string;
+            urlAto: string;
+            revogadoPor: string | null;
+            revogadoEm: string | null;
+            /**
+             * @description Só aprovado e não revogado vale.
+             * @enum {string}
+             */
+            status: "rascunho" | "aprovado";
+            /** Format: uuid */
+            propostoPor: string;
+            /** Format: date-time */
+            propostoEm: string;
+            aprovadoPor: string | null;
+            aprovadoEm: string | null;
+            motivoRevogacao: string | null;
+        };
+        EventosDoCalendario: {
+            itens: components["schemas"]["EventoDoCalendario"][];
+        };
+        FeriadoLocal: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            abrangencia: "nacional" | "uf" | "municipio" | "tribunal" | "comarca";
+            uf: string | null;
+            municipioIbge: string | null;
+            tribunal: string | null;
+            comarca: string | null;
+            /** @enum {string} */
+            tipo: "feriado" | "recesso" | "portaria" | "indisponibilidade";
+            /** Format: date */
+            inicio: string;
+            /** Format: date */
+            fim: string;
+            descricao: string;
+            atoNormativo: string;
+            urlAto: string;
+            revogadoPor: string | null;
+            revogadoEm: string | null;
+            /** Format: uuid */
+            cadastradoPor: string;
+            /** Format: date-time */
+            cadastradoEm: string;
+        };
+        FeriadosLocais: {
+            itens: components["schemas"]["FeriadoLocal"][];
+        };
+        PedidoDeEventoDoCalendario: {
+            /**
+             * @description Os campos de jurisdição exigidos dependem dela.
+             * @enum {string}
+             */
+            abrangencia: "nacional" | "uf" | "municipio" | "tribunal" | "comarca";
+            /** @description Sigla da UF. */
+            uf?: string;
+            /** @description Código IBGE do município. */
+            municipioIbge?: string;
+            /** @description Sigla do tribunal (ex.: TJSP). */
+            tribunal?: string;
+            /** @description Comarca, dentro do tribunal. */
+            comarca?: string;
+            /** @enum {string} */
+            tipo: "feriado" | "recesso" | "portaria" | "indisponibilidade";
+            /** Format: date */
+            inicio: string;
+            /**
+             * Format: date
+             * @description Inclusivo; igual ao início para um só dia.
+             */
+            fim: string;
+            descricao: string;
+            /** @description Lei, resolução ou portaria, com artigo. */
+            atoNormativo: string;
+            /**
+             * Format: uri
+             * @description Link HTTPS da fonte oficial.
+             */
+            urlAto: string;
+        };
         PedidoDeImpersonacao: {
             /**
              * Format: uuid
@@ -342,6 +576,15 @@ export interface components {
             /** @description Por que o acesso é necessário (ex.: número do chamado); vai para a auditoria. */
             motivo: string;
         };
+        PedidoDeImportacaoDoCalendario: {
+            /** @description CSV (separador ; ou ,) com o cabeçalho abrangencia;uf;municipioIbge;tribunal;comarca;tipo;inicio;fim;descricao;atoNormativo;urlAto. */
+            csv: string;
+            /**
+             * @description true: só valida; false: grava se tudo for válido.
+             * @default true
+             */
+            somentePrevia: boolean;
+        };
         PedidoDeRedefinicaoDeSenha: {
             email: string;
         };
@@ -350,6 +593,10 @@ export interface components {
         };
         PedidoDeReprocessamento: {
             /** @description Por que o job pode voltar à fila (ex.: causa corrigida); vai para a auditoria. */
+            motivo: string;
+        };
+        PedidoDeRevogacaoDoEvento: {
+            /** @description Vai para a auditoria. */
             motivo: string;
         };
         PedidoDeTokensDeDispositivo: {
@@ -378,6 +625,17 @@ export interface components {
             /** @description Token do link enviado por e-mail. */
             token: string;
             novaSenha: string;
+        };
+        ResultadoDaImportacao: {
+            linhas: {
+                linha: number;
+                problemas: {
+                    campo: string;
+                    mensagem: string;
+                }[];
+            }[];
+            /** @description Rascunhos gravados (vazio na prévia). */
+            propostos: components["schemas"]["EventoDoCalendario"][];
         };
         SegundoFatorAtivado: {
             sessao: components["schemas"]["SessaoAtual"];
@@ -443,6 +701,341 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listarCalendarioGlobal: {
+        parameters: {
+            query?: {
+                inicio?: string;
+                fim?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventosDoCalendario"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    proporEventoDoCalendario: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeEventoDoCalendario"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventoDoCalendario"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    aprovarEventoDoCalendario: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventoDoCalendario"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    revogarEventoDoCalendario: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeRevogacaoDoEvento"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventoDoCalendario"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    importarCalendario: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeImportacaoDoCalendario"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoDaImportacao"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
     reprocessarJobMorto: {
         parameters: {
             query?: never;
@@ -1350,6 +1943,268 @@ export interface operations {
             };
             /** @description Limite de requisições excedido. */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    consultarDiasNaoUteis: {
+        parameters: {
+            query: {
+                /** @description Sigla da UF. */
+                uf?: string;
+                /** @description Código IBGE do município. */
+                municipioIbge?: string;
+                /** @description Sigla do tribunal (ex.: TJSP). */
+                tribunal?: string;
+                /** @description Comarca, dentro do tribunal. */
+                comarca?: string;
+                inicio: string;
+                fim: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiasNaoUteis"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarFeriadosLocais: {
+        parameters: {
+            query?: {
+                inicio?: string;
+                fim?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeriadosLocais"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    cadastrarFeriadoLocal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeEventoDoCalendario"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeriadoLocal"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    revogarFeriadoLocal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeriadoLocal"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

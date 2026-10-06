@@ -23,6 +23,10 @@ export const CATALOGO_DE_PERMISSOES = {
   'admin:tenants': { descricao: 'Administrar tenants da plataforma.', leitura: false },
   'admin:impersonar': { descricao: 'Acessar um tenant por impersonação auditada.', leitura: false },
   'admin:filas': { descricao: 'Acompanhar filas e reprocessar a DLQ.', leitura: false },
+  'curadoria:calendario': {
+    descricao: 'Propor, aprovar e revogar o calendário forense global (curador).',
+    leitura: false,
+  },
 } as const satisfies Record<string, { readonly descricao: string; readonly leitura: boolean }>;
 
 export type Permissao = keyof typeof CATALOGO_DE_PERMISSOES;

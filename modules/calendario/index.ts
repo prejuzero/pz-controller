@@ -18,6 +18,14 @@ export type {
   EventoListado,
   FeriadoLocalListado,
 } from './application/calendario.js';
+export {
+  COLUNAS_DO_CSV,
+  EntradaImportacao,
+  ImportarCalendario,
+  lerCsv,
+  MAXIMO_DE_LINHAS,
+} from './application/importacao.js';
+export type { LinhaDaPrevia, ResultadoDaImportacao } from './application/importacao.js';
 export type {
   FiltroDoCalendario,
   RepositorioDeEventosGlobais,

@@ -2,7 +2,19 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { FilaDeMortosBullMq, ReprocessarJobMorto } from '@pz/administracao';
 import { TrilhaPostgres } from '@pz/auditoria';
-import { Banco, WebhooksPostgres } from '@pz/db';
+import {
+  AprovarEventoDoCalendario,
+  CadastrarFeriadoLocal,
+  ConsultarCalendario,
+  ConsultarDiasNaoUteis,
+  EventosGlobaisPostgres,
+  FeriadosLocaisPostgres,
+  ImportarCalendario,
+  ProporEventoDoCalendario,
+  RevogarEventoDoCalendario,
+  RevogarFeriadoLocal,
+} from '@pz/calendario';
+import { Banco, OutboxPostgres, WebhooksPostgres } from '@pz/db';
 import {
   AtivarSegundoFator,
   Autenticar,
@@ -48,6 +60,7 @@ import { Redis } from 'ioredis';
 import { AdminController } from './admin/admin.controller.js';
 import { AuthController } from './auth/auth.controller.js';
 import { ContextoDoUsuario } from './auth/contexto-do-usuario.js';
+import { CalendarioController } from './calendario/calendario.controller.js';
 import {
   AMBIENTE,
   CAIXA_DE_WEBHOOKS,
@@ -69,6 +82,8 @@ import type { JanelaDeRequisicoes } from './http/limite.js';
 import type { CaixaDeWebhooks } from './webhooks/webhooks.controller.js';
 import type { DynamicModule, Provider, Type } from '@nestjs/common';
 import type { DependenciasDoReprocessamento } from '@pz/administracao';
+import type { TrilhaDeAuditoria } from '@pz/auditoria';
+import type { RepositorioDeEventosGlobais, RepositorioDeFeriadosLocais } from '@pz/calendario';
 import type {
   DependenciasDaImpersonacao,
   ArmazemDeRenovacoes,
@@ -83,7 +98,7 @@ import type {
   RepositorioDeSegundoFator,
 } from '@pz/identidade';
 import type { ReceptorWebhook } from '@pz/integracoes';
-import type { Clock } from '@pz/kernel';
+import type { Clock, Outbox, UnidadeDeTrabalho } from '@pz/kernel';
 import type { VerificadorDeDependencia } from '@pz/saude';
 import type { Queue } from 'bullmq';
 
@@ -116,6 +131,8 @@ export interface OpcoesApi {
   };
   readonly janelaDeRequisicoes?: JanelaDeRequisicoes;
   /** DLQ, banco e trilha do reprocessamento e filas do painel nos testes (sem Redis). */
+  /** Calendário forense (HU13); nos testes, repositórios em memória. */
+  readonly calendario?: DependenciasDoCalendario;
   readonly filas?: {
     readonly reprocessamento: DependenciasDoReprocessamento<unknown>;
     readonly painel: readonly Queue[];
@@ -170,6 +187,57 @@ function filasDoAmbiente(recursos: RecursosDaApi): NonNullable<OpcoesApi['filas'
   return { reprocessamento, painel: mortos.todas() };
 }
 
+interface DependenciasDoCalendario {
+  readonly unidade: UnidadeDeTrabalho<unknown>;
+  readonly globais: RepositorioDeEventosGlobais<unknown>;
+  readonly locais: RepositorioDeFeriadosLocais<unknown>;
+  readonly trilha: TrilhaDeAuditoria<unknown>;
+  readonly outbox: Outbox<unknown>;
+}
+
+/** Casos de uso do calendário (HU13), ligados aos mesmos repositórios. */
+function provedoresDoCalendario(d: DependenciasDoCalendario): Provider[] {
+  const comRelogio = <T>(classe: Type<T>, criar: (relogio: Clock) => T): Provider => ({
+    provide: classe,
+    inject: [RELOGIO],
+    useFactory: criar,
+  });
+  return [
+    comRelogio(
+      ProporEventoDoCalendario,
+      (r) => new ProporEventoDoCalendario(d.unidade, d.globais, d.trilha, r),
+    ),
+    comRelogio(
+      AprovarEventoDoCalendario,
+      (r) => new AprovarEventoDoCalendario(d.unidade, d.globais, d.trilha, d.outbox, r),
+    ),
+    comRelogio(
+      RevogarEventoDoCalendario,
+      (r) => new RevogarEventoDoCalendario(d.unidade, d.globais, d.trilha, d.outbox, r),
+    ),
+    comRelogio(
+      ImportarCalendario,
+      (r) => new ImportarCalendario(d.unidade, d.globais, d.trilha, r),
+    ),
+    comRelogio(
+      CadastrarFeriadoLocal,
+      (r) => new CadastrarFeriadoLocal(d.unidade, d.locais, d.trilha, d.outbox, r),
+    ),
+    comRelogio(
+      RevogarFeriadoLocal,
+      (r) => new RevogarFeriadoLocal(d.unidade, d.locais, d.trilha, d.outbox, r),
+    ),
+    {
+      provide: ConsultarCalendario,
+      useValue: new ConsultarCalendario(d.unidade, d.globais, d.locais),
+    },
+    {
+      provide: ConsultarDiasNaoUteis,
+      useValue: new ConsultarDiasNaoUteis(d.unidade, d.globais, d.locais),
+    },
+  ];
+}
+
 /**
  * Composição da api (CLAUDE.md, seção 6): só liga módulos, controllers e infraestrutura HTTP.
  * Módulos entram por lista explícita.
@@ -201,6 +269,13 @@ export class AppModule {
       trilha: new TrilhaPostgres(),
     };
     const filas = opcoes.filas ?? filasDoAmbiente(recursos);
+    const calendario = opcoes.calendario ?? {
+      unidade: recursos.banco,
+      globais: new EventosGlobaisPostgres(),
+      locais: new FeriadosLocaisPostgres(),
+      trilha: new TrilhaPostgres(),
+      outbox: new OutboxPostgres(),
+    };
     const provedores: Provider[] = [
       { provide: RecursosDaApi, useValue: recursos },
       { provide: AMBIENTE, useValue: opcoes.ambiente },
@@ -354,6 +429,7 @@ export class AppModule {
       },
       { provide: ReprocessarJobMorto, useValue: new ReprocessarJobMorto(filas.reprocessamento) },
       { provide: FILAS_DO_PAINEL, useValue: filas.painel },
+      ...provedoresDoCalendario(calendario),
       { provide: APP_INTERCEPTOR, useClass: ContextoDoUsuario },
       { provide: RECEPTORES_DE_WEBHOOK, useValue: opcoes.receptoresDeWebhook ?? new Map() },
       // Ordem importa: o limite por IP vem antes da autenticação.
@@ -366,6 +442,7 @@ export class AppModule {
       controllers: [
         AuthController,
         AdminController,
+        CalendarioController,
         SaudeController,
         SondasController,
         OpenApiController,

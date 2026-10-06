@@ -98,7 +98,7 @@ function semIndefinidos<T extends object>(objeto: T): { [K in keyof T]: Exclude<
   };
 }
 
-function lerConteudo(entrada: unknown): Result<ConteudoDoEvento, Validacao> {
+export function lerConteudo(entrada: unknown): Result<ConteudoDoEvento, Validacao> {
   const dados = EntradaDoEvento.safeParse(entrada);
   return dados.success ? ok(semIndefinidos(dados.data)) : err(validacao(dados.error));
 }
@@ -179,7 +179,10 @@ export function localListado(e: EstadoDoFeriadoLocal): FeriadoLocalListado {
 }
 
 const naoEncontrado = () => new NaoEncontrado('evento-inexistente', 'Evento não encontrado.');
-const origemDe = (autor: AutorEmAcao) => ({ canal: autor.canal, usuarioId: autor.usuarioId });
+export const origemDe = (autor: AutorEmAcao) => ({
+  canal: autor.canal,
+  usuarioId: autor.usuarioId,
+});
 
 /**
  * Casos de uso do calendário global (HU13). Escrevem na tabela global pela transação do tenant
