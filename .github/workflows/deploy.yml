@@ -52,7 +52,10 @@ jobs:
           IMAGEM: ${{ steps.ecr.outputs.registry }}/pz-staging/${{ matrix.app }}:${{ env.VERSAO }}
           APP: ${{ matrix.app }}
         run: |
-          docker build -f infra/docker/node-app.Dockerfile \
+          # O portal tem imagem própria (Next.js standalone, PZ-292).
+          dockerfile=infra/docker/node-app.Dockerfile
+          if [ "${APP}" = web ]; then dockerfile=infra/docker/web.Dockerfile; fi
+          docker build -f "${dockerfile}" \
             --platform linux/arm64 \
             --build-arg "APP=@pz/${APP}" \
             --build-arg "VERSAO=${VERSAO}" \

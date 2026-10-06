@@ -264,7 +264,7 @@ jobs:
       - name: Trivy (configuração de infraestrutura)
         run: ./trivy config --exit-code 1 --ignorefile .trivyignore.yaml infra/
       - name: hadolint (Dockerfiles)
-        run: ./hadolint infra/docker/node-app.Dockerfile infra/docker/postgres/Dockerfile
+        run: ./hadolint infra/docker/node-app.Dockerfile infra/docker/web.Dockerfile infra/docker/postgres/Dockerfile
 
   ambiente-local:
     name: Ambiente local (docker compose)
@@ -299,17 +299,28 @@ jobs:
         run: |
           ${COMPOSE} exec -T redis redis-cli ping | grep -q PONG
           curl -fsS http://127.0.0.1:8025/readyz
-      - name: Construir e subir as imagens da api e do worker (HU04)
+      - name: Construir e subir as imagens da api, do worker (HU04) e do portal (HU23)
         run: |
           # Chave de cifragem descartável, só deste job (HU06), pela variável de ambiente.
           CHAVE_CIFRAGEM="$(openssl rand -base64 32)"
           export CHAVE_CIFRAGEM
-          ${COMPOSE} --profile apps up -d --build --wait api worker
+          ${COMPOSE} --profile apps up -d --build --wait api worker web
       - name: Apps prontas com as dependências
         run: |
           curl -fsS http://127.0.0.1:3000/health/ready
           curl -fsS http://127.0.0.1:3002/health/ready
           curl -fsS http://127.0.0.1:3000/v1/saude
+          curl -fsS http://127.0.0.1:3003/health/ready
+          # O portal encaminha /v1 à api pela API_URL de execução.
+          curl -fsS http://127.0.0.1:3003/v1/saude
+      - name: Nenhum segredo no bundle do navegador (PZ-292)
+        run: |
+          docker run --rm --entrypoint test prejuzero/web:local -d apps/web/.next/static
+          if docker run --rm --entrypoint grep prejuzero/web:local -rlE \
+            'DATABASE_URL|REDIS_URL|CHAVE_CIFRAGEM|S3_SECRET|SECRET_ACCESS_KEY|pz_app_local|pz_sistema_local' \
+            apps/web/.next/static; then
+            echo "Segredo ou variável de servidor encontrada no bundle do navegador"; exit 1
+          fi
       - name: Varrer as imagens das apps (Trivy)
         env:
           TRIVY_VERSION: 0.75.0
@@ -319,7 +330,7 @@ jobs:
           curl -fsSLO "${base}/trivy_${TRIVY_VERSION}_checksums.txt"
           grep " trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz\$" "trivy_${TRIVY_VERSION}_checksums.txt" | sha256sum --check -
           tar -xzf "trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" trivy
-          for imagem in prejuzero/api:local prejuzero/worker:local; do
+          for imagem in prejuzero/api:local prejuzero/worker:local prejuzero/web:local; do
             ./trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed "${imagem}"
           done
       - name: Logs em caso de falha

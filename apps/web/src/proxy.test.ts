@@ -23,4 +23,16 @@ describe('proxy de sessão', () => {
     expect(proxy(requisicao('/prazos', `${COOKIE_SESSAO}=abc`)).headers.get('location')).toBeNull();
     expect(proxy(requisicao('/entrar')).headers.get('location')).toBeNull();
   });
+
+  it('encaminha /v1 para a API_URL lida em execução, com a query', () => {
+    const anterior = process.env.API_URL;
+    process.env.API_URL = 'http://api:3000';
+    try {
+      const resposta = proxy(requisicao('/v1/sessao?x=1'));
+      expect(resposta.headers.get('x-middleware-rewrite')).toBe('http://api:3000/v1/sessao?x=1');
+    } finally {
+      if (anterior === undefined) delete process.env.API_URL;
+      else process.env.API_URL = anterior;
+    }
+  });
 });

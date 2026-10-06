@@ -30,7 +30,7 @@ Infraestrutura como código em [infra/terraform](../../infra/terraform) (ADR-010
 O workflow [deploy.yml](../../.github/workflows/deploy.yml) roda depois do CI verde na `main` e só é ativado quando tudo abaixo existir:
 
 - Papel IAM com OIDC do GitHub para o repositório, com permissão de ECR, ECS e Terraform do ambiente (variável `AWS_ROLE_DEPLOY`).
-- Variáveis do repositório: `DEPLOY_HABILITADO=true`, `APPS_DEPLOY` (ex.: `["api","worker"]`) e `URL_STAGING`.
+- Variáveis do repositório: `DEPLOY_HABILITADO=true`, `APPS_DEPLOY` (ex.: `["api","worker","web"]`; o `web` usa o [web.Dockerfile](../../infra/docker/web.Dockerfile)) e `URL_STAGING`.
 - Segredos do repositório: `TF_BACKEND_STAGING` (conteúdo do `backend.hcl`) e `TF_VARS_STAGING` (conteúdo do `terraform.tfvars`).
 - Apps com `/health/live` e `/health/ready` e serviços declarados na variável `servicos` do ambiente (HU04 e HU23).
 
