@@ -19,11 +19,13 @@
     "@pz/config": "workspace:*",
     "@pz/contracts": "workspace:*",
     "@pz/db": "workspace:*",
+    "@pz/identidade": "workspace:*",
     "@pz/integracoes": "workspace:*",
     "@pz/kernel": "workspace:*",
     "@pz/observability": "workspace:*",
     "@pz/saude": "workspace:*",
     "fastify": "5.12.5",
+    "ioredis": "5.11.1",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
     "zod": "4.6.5"

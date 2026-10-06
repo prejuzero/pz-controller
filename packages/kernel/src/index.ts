@@ -5,6 +5,7 @@ export type { EventoDominio } from './entidade.js';
 export {
   Conflito,
   ErroDominio,
+  NaoAutenticado,
   NaoEncontrado,
   Proibido,
   RegraDeNegocio,

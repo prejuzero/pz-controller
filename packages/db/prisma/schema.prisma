@@ -42,6 +42,8 @@ model Usuario {
   tenantId     String   @map("tenant_id") @db.Uuid
   nome         String
   email        String
+  /// Hash Argon2id em formato PHC; null = ainda sem senha (HU06).
+  senhaHash String?  @map("senha_hash")
   criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 

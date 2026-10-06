@@ -69,10 +69,11 @@ export function criarConfigVitest(opcoes: OpcoesVitest = {}) {
   });
 }
 
-export function criarConfigVitestIntegracao() {
+export function criarConfigVitestIntegracao(opcoes: Pick<OpcoesVitest, 'layout'> = {}) {
+  const { raizes } = LAYOUTS[opcoes.layout ?? 'src'];
   return defineConfig({
     test: {
-      include: [PADRAO_TESTE_INTEGRACAO],
+      include: raizes.map((raiz) => `${raiz}/**/*.int.test.ts`),
       exclude: ['**/node_modules/**', '**/dist/**'],
       passWithNoTests: true,
       testTimeout: 60_000,
