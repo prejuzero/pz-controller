@@ -6,6 +6,7 @@ import {
   CadastrarFeriadoLocal,
   ConsultarCalendario,
   ConsultarDiasNaoUteis,
+  InvalidarCacheDoCalendario,
   ProporEventoDoCalendario,
   RevogarEventoDoCalendario,
   RevogarFeriadoLocal,
@@ -15,6 +16,8 @@ import { ANA, BETO, CAIO, relogio } from '../teste/ficticios.js';
 import { EventosGlobaisEmMemoria, FeriadosLocaisEmMemoria } from './em-memoria.js';
 
 import type { AutorEmAcao } from '../application/calendario.js';
+import type { AlteracaoDoCalendario, CacheDeDiasNaoUteis } from '../application/portas.js';
+import type { DiaNaoUtil } from '../domain/dias-nao-uteis.js';
 import type { EntradaDeAuditoria, OrigemDaAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
 import type { TransacaoEmMemoria } from '@pz/kernel';
 
@@ -242,5 +245,80 @@ describe('consultas (HU13)', () => {
       fim: '2030-01-01',
     });
     expect(!uf.ok && uf.erro.problemas[0]?.campo).toBe('jurisdicao.uf');
+  });
+});
+
+/** Cache em memória com a mesma interface: só para observar o caso de uso. */
+class CacheFalso implements CacheDeDiasNaoUteis {
+  readonly anos = new Map<number, DiaNaoUtil[]>();
+  readonly calculos: number[] = [];
+  readonly invalidacoes: AlteracaoDoCalendario[] = [];
+
+  async doAno(_j: unknown, ano: number, calcular: () => Promise<DiaNaoUtil[]>) {
+    const guardado = this.anos.get(ano);
+    if (guardado !== undefined) return guardado;
+    this.calculos.push(ano);
+    const dias = await calcular();
+    this.anos.set(ano, dias);
+    return dias;
+  }
+
+  invalidar(alteracao: AlteracaoDoCalendario): Promise<void> {
+    this.invalidacoes.push(alteracao);
+    for (const ano of alteracao.anos) this.anos.delete(ano);
+    return Promise.resolve();
+  }
+}
+
+describe('cache de diasNaoUteis por (jurisdição, ano) (HU13)', () => {
+  const periodo = { jurisdicao: { tribunal: 'TJXA', comarca: 'Alfa' } };
+
+  it('guarda o ano inteiro, recorta o período e dá o mesmo resultado que sem cache', async () => {
+    await aprovado({ inicio: '2030-12-20', fim: '2031-01-20', tipo: 'recesso' });
+    await aprovado({ inicio: '2031-03-10', fim: '2031-03-10' });
+    const cache = new CacheFalso();
+    const comCache = new ConsultarDiasNaoUteis(outbox, globais, locais, cache);
+    const consulta = { ...periodo, inicio: '2030-12-30', fim: '2031-01-02' };
+
+    const r = await comCache.executar(consulta);
+    const semCache = await dias.executar(consulta);
+    if (!r.ok || !semCache.ok) throw new Error('consulta inválida');
+    expect(r.valor.map((d) => d.data.paraIso())).toEqual([
+      '2030-12-30',
+      '2030-12-31',
+      '2031-01-01',
+      '2031-01-02',
+    ]);
+    expect(r.valor).toEqual(semCache.valor);
+    expect(cache.calculos).toEqual([2030, 2031]);
+    expect(cache.anos.get(2031)?.length).toBe(21);
+
+    await comCache.executar({ ...periodo, inicio: '2031-03-01', fim: '2031-03-31' });
+    expect(cache.calculos).toEqual([2030, 2031]);
+  });
+
+  it('InvalidarCacheDoCalendario: anos do período do evento, origem e tenant', async () => {
+    const cache = new CacheFalso();
+    const comCache = new ConsultarDiasNaoUteis(outbox, globais, locais, cache);
+    const consulta = { ...periodo, inicio: '2030-03-01', fim: '2030-03-31' };
+    await comCache.executar(consulta);
+    const feriado = await cadastrar.executar(
+      caio,
+      entrada({ ...comarca, inicio: '2030-03-14', fim: '2030-03-14' }),
+    );
+    if (!feriado.ok) throw feriado.erro;
+    const [evento] = await eventosNoOutbox();
+
+    await new InvalidarCacheDoCalendario(cache).executar(evento);
+    expect(cache.invalidacoes).toEqual([
+      { origem: 'local', tenantId: CAIO.tenantId, anos: [2030] },
+    ]);
+    const depois = await comCache.executar(consulta);
+    expect(depois.ok && depois.valor.map((d) => d.data.paraIso())).toEqual(['2030-03-14']);
+  });
+
+  it('InvalidarCacheDoCalendario recusa evento malformado (vai para a DLQ)', async () => {
+    const invalidar = new InvalidarCacheDoCalendario(new CacheFalso());
+    await expect(invalidar.executar({ tenantId: 'x', payload: {} })).rejects.toThrow();
   });
 });

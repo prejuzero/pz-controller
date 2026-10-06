@@ -19,6 +19,7 @@
     "@pz/adapter-s3": "workspace:*",
     "@pz/adapter-smtp": "workspace:*",
     "@pz/auditoria": "workspace:*",
+    "@pz/calendario": "workspace:*",
     "@pz/config": "workspace:*",
     "@pz/contracts": "workspace:*",
     "@pz/db": "workspace:*",

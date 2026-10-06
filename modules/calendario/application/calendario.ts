@@ -5,6 +5,7 @@ import { diasNaoUteis } from '../domain/dias-nao-uteis.js';
 import { ABRANGENCIAS, EventoGlobal, FeriadoLocal, TIPOS_DE_EVENTO } from '../domain/evento.js';
 
 import type {
+  CacheDeDiasNaoUteis,
   FiltroDoCalendario,
   RepositorioDeEventosGlobais,
   RepositorioDeFeriadosLocais,
@@ -403,15 +404,23 @@ export class ConsultarCalendario<Transacao> {
   }
 }
 
+/** Sem cache: calcula sempre (testes e composições sem Redis). */
+const SEM_CACHE: CacheDeDiasNaoUteis = {
+  doAno: (_jurisdicao, _ano, calcular) => calcular(),
+  invalidar: () => Promise.resolve(),
+};
+
 /**
  * Porta de consulta do motor (HU13): `diasNaoUteis(jurisdicao, periodo)`. Junta os globais
  * vigentes e os locais do tenant da transação. Só datas cadastradas, nunca calculadas (ADR-007).
+ * Com cache, guarda o ano inteiro por (jurisdição, ano) e recorta o período pedido.
  */
 export class ConsultarDiasNaoUteis<Transacao> {
   constructor(
     private readonly unidade: UnidadeDeTrabalho<Transacao>,
     private readonly globais: RepositorioDeEventosGlobais<Transacao>,
     private readonly locais: RepositorioDeFeriadosLocais<Transacao>,
+    private readonly cache: CacheDeDiasNaoUteis = SEM_CACHE,
   ) {}
 
   async executar(entrada: unknown): Promise<Result<DiaNaoUtil[], Validacao>> {
@@ -421,7 +430,23 @@ export class ConsultarDiasNaoUteis<Transacao> {
     return ok(await this.diasNaoUteis(semIndefinidos(jurisdicao), inicio, fim));
   }
 
-  async diasNaoUteis(jurisdicao: Jurisdicao, inicio: LocalDate, fim: LocalDate) {
+  async diasNaoUteis(
+    jurisdicao: Jurisdicao,
+    inicio: LocalDate,
+    fim: LocalDate,
+  ): Promise<DiaNaoUtil[]> {
+    const dias: DiaNaoUtil[] = [];
+    // Cada ano vem ordenado; concatenados em ordem, o resultado continua ordenado.
+    for (let ano = inicio.ano; ano <= fim.ano; ano++) {
+      const doAno = await this.cache.doAno(jurisdicao, ano, () =>
+        this.calcular(jurisdicao, LocalDate.de(ano, 1, 1), LocalDate.de(ano, 12, 31)),
+      );
+      dias.push(...doAno.filter((d) => !d.data.ehAntesDe(inicio) && !d.data.ehDepoisDe(fim)));
+    }
+    return dias;
+  }
+
+  private async calcular(jurisdicao: Jurisdicao, inicio: LocalDate, fim: LocalDate) {
     const [globais, locais] = await this.unidade.executar(async (transacao) => [
       await this.globais.vigentesNoPeriodo(transacao, inicio, fim),
       await this.locais.vigentesNoPeriodo(transacao, inicio, fim),
@@ -436,5 +461,25 @@ export class ConsultarDiasNaoUteis<Transacao> {
         .map((e) => ({ id: e.id, origem: 'local' as const, conteudo: e.estado })),
     ];
     return diasNaoUteis(vigentes, jurisdicao, inicio, fim);
+  }
+}
+
+const AlteracaoRecebida = z.object({
+  tenantId: z.uuid(),
+  payload: z.object({ origem: z.enum(['global', 'local']), inicio: Data, fim: Data }),
+});
+
+/**
+ * Invalida o cache dos anos alcançados por um CalendarioAlterado (HU13). Repetir é inofensivo:
+ * só força uma nova leitura do banco. Falha lança, para o job tentar de novo e ir à DLQ.
+ */
+export class InvalidarCacheDoCalendario {
+  constructor(private readonly cache: CacheDeDiasNaoUteis) {}
+
+  async executar(evento: unknown): Promise<void> {
+    const { tenantId, payload } = AlteracaoRecebida.parse(evento);
+    const anos: number[] = [];
+    for (let ano = payload.inicio.ano; ano <= payload.fim.ano; ano++) anos.push(ano);
+    await this.cache.invalidar({ origem: payload.origem, tenantId: tenantId as Uuid, anos });
   }
 }

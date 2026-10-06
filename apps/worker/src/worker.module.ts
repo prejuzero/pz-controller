@@ -9,6 +9,7 @@ import {
   TrilhaPostgres,
   VerificarIntegridade,
 } from '@pz/auditoria';
+import { CacheDeDiasNaoUteisRedis, InvalidarCacheDoCalendario } from '@pz/calendario';
 import { Banco, BancoSistema, OutboxPostgres } from '@pz/db';
 import { CifraAesGcm, EmailsDosUsuariosPostgres, EnviarAvisosDeSeguranca } from '@pz/identidade';
 import { RegistroDeAdaptadores } from '@pz/integracoes';
@@ -23,6 +24,7 @@ import {
 import { Redis } from 'ioredis';
 
 import { ConsumidorDeAuditoria } from './auditoria/consumidor.js';
+import { ConsumidorDoCalendario } from './calendario/consumidor.js';
 import { DespachanteDeEventos } from './eventos/consome.js';
 import { RelayDoOutbox } from './eventos/relay.js';
 import {
@@ -54,6 +56,7 @@ import type { FonteDoRelay } from './eventos/relay.js';
 import type { ProcessadorDeWebhook } from './integracoes/webhooks.js';
 import type { DynamicModule, Provider } from '@nestjs/common';
 import type { DestinoWorm } from '@pz/auditoria';
+import type { CacheDeDiasNaoUteis } from '@pz/calendario';
 import type { ProvedorEmail } from '@pz/integracoes';
 import type { Clock, OutboxEmMemoria, Uuid } from '@pz/kernel';
 import type { VerificadorDeDependencia } from '@pz/saude';
@@ -73,6 +76,8 @@ export interface OpcoesWorker {
   readonly email?: ProvedorEmail;
   /** Destino WORM no lugar do S3 (testes). */
   readonly worm?: DestinoWorm;
+  /** Cache do calendário no lugar do Redis (testes). */
+  readonly cacheDoCalendario?: CacheDeDiasNaoUteis;
 }
 
 function verificadoresDoAmbiente(
@@ -242,6 +247,16 @@ export class WorkerModule {
       ConsumidorDeSituacao,
       ConsumidorDeAvisosDeIdentidade,
       ConsumidorDeAuditoria,
+      ConsumidorDoCalendario,
+      {
+        provide: InvalidarCacheDoCalendario,
+        useValue: new InvalidarCacheDoCalendario(
+          opcoes.cacheDoCalendario ??
+            new CacheDeDiasNaoUteisRedis(redis, (erro) => {
+              registrarErro(logger, erro, 'cache do calendário indisponível', 'calendario.cache');
+            }),
+        ),
+      },
       { provide: AuditarEvento, useValue: new AuditarEvento(new TrilhaPostgres()) },
       {
         provide: VerificarIntegridade,

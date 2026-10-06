@@ -4,6 +4,7 @@ import { FilaDeMortosBullMq, ReprocessarJobMorto } from '@pz/administracao';
 import { TrilhaPostgres } from '@pz/auditoria';
 import {
   AprovarEventoDoCalendario,
+  CacheDeDiasNaoUteisRedis,
   CadastrarFeriadoLocal,
   ConsultarCalendario,
   ConsultarDiasNaoUteis,
@@ -83,7 +84,11 @@ import type { CaixaDeWebhooks } from './webhooks/webhooks.controller.js';
 import type { DynamicModule, Provider, Type } from '@nestjs/common';
 import type { DependenciasDoReprocessamento } from '@pz/administracao';
 import type { TrilhaDeAuditoria } from '@pz/auditoria';
-import type { RepositorioDeEventosGlobais, RepositorioDeFeriadosLocais } from '@pz/calendario';
+import type {
+  CacheDeDiasNaoUteis,
+  RepositorioDeEventosGlobais,
+  RepositorioDeFeriadosLocais,
+} from '@pz/calendario';
 import type {
   DependenciasDaImpersonacao,
   ArmazemDeRenovacoes,
@@ -193,6 +198,8 @@ interface DependenciasDoCalendario {
   readonly locais: RepositorioDeFeriadosLocais<unknown>;
   readonly trilha: TrilhaDeAuditoria<unknown>;
   readonly outbox: Outbox<unknown>;
+  /** Ausente: sem cache (testes). */
+  readonly cache?: CacheDeDiasNaoUteis;
 }
 
 /** Casos de uso do calendário (HU13), ligados aos mesmos repositórios. */
@@ -233,7 +240,7 @@ function provedoresDoCalendario(d: DependenciasDoCalendario): Provider[] {
     },
     {
       provide: ConsultarDiasNaoUteis,
-      useValue: new ConsultarDiasNaoUteis(d.unidade, d.globais, d.locais),
+      useValue: new ConsultarDiasNaoUteis(d.unidade, d.globais, d.locais, d.cache),
     },
   ];
 }
@@ -275,6 +282,9 @@ export class AppModule {
       locais: new FeriadosLocaisPostgres(),
       trilha: new TrilhaPostgres(),
       outbox: new OutboxPostgres(),
+      cache: new CacheDeDiasNaoUteisRedis(recursos.redis, (erro) => {
+        registrarErro(logger, erro, 'cache do calendário indisponível', 'calendario.cache');
+      }),
     };
     const provedores: Provider[] = [
       { provide: RecursosDaApi, useValue: recursos },

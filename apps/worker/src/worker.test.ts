@@ -9,6 +9,7 @@ import { criarServidorDeSaude } from './saude/servidor.js';
 import { criarWorker } from './worker.js';
 
 import type { INestApplicationContext } from '@nestjs/common';
+import type { AlteracaoDoCalendario, CacheDeDiasNaoUteis } from '@pz/calendario';
 import type { EventoDominio } from '@pz/kernel';
 import type { AddressInfo } from 'node:net';
 
@@ -33,6 +34,15 @@ afterEach(async () => {
   worker = undefined;
 });
 
+const invalidacoes: AlteracaoDoCalendario[] = [];
+const cacheDoCalendario: CacheDeDiasNaoUteis = {
+  doAno: (_jurisdicao, _ano, calcular) => calcular(),
+  invalidar: (alteracao) => {
+    invalidacoes.push(alteracao);
+    return Promise.resolve();
+  },
+};
+
 async function subir(outbox = new OutboxEmMemoria()) {
   worker = await criarWorker({
     ambiente,
@@ -40,6 +50,7 @@ async function subir(outbox = new OutboxEmMemoria()) {
     verificadores: [disponivel],
     outbox,
     filas: false,
+    cacheDoCalendario,
   });
   await worker.init();
   return { worker, outbox };
@@ -91,6 +102,7 @@ describe('@Consome e o despachante', () => {
         ],
         ['DispositivoRegistrado@1', ['ConsumidorDeAuditoria.dispositivoRegistrado']],
         ['SessaoRevogada@1', ['ConsumidorDeAuditoria.sessaoRevogada']],
+        ['CalendarioAlterado@1', ['ConsumidorDoCalendario.alterado']],
       ]),
     );
   });
@@ -114,6 +126,22 @@ describe('@Consome e o despachante', () => {
     expect(app.get(HistoricoEmMemoria).entradas()).toEqual([
       expect.objectContaining({ tenantId, situacao: 'operacional' }),
     ]);
+  });
+
+  it('CalendarioAlterado invalida o cache dos anos alcançados (HU13)', async () => {
+    const { worker: app } = await subir();
+    const tenantId = gerarUuidV7(relogio);
+    const evento: EventoDominio = {
+      id: gerarUuidV7(relogio),
+      tipo: 'CalendarioAlterado',
+      versao: 1,
+      tenantId,
+      agregadoId: gerarUuidV7(relogio),
+      ocorridoEm: relogio.agora(),
+      payload: { origem: 'local', inicio: '2030-12-20', fim: '2031-01-20' },
+    };
+    expect(await app.get(DespachanteDeEventos).despachar(evento)).toEqual(['processado']);
+    expect(invalidacoes.at(-1)).toEqual({ origem: 'local', tenantId, anos: [2030, 2031] });
   });
 
   it('evento sem consumidor inscrito, de outra versão ou consumidor desconhecido', async () => {

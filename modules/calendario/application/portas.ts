@@ -1,4 +1,5 @@
-import type { EventoGlobal, FeriadoLocal } from '../domain/evento.js';
+import type { DiaNaoUtil, Jurisdicao } from '../domain/dias-nao-uteis.js';
+import type { EventoGlobal, FeriadoLocal, OrigemDoEvento } from '../domain/evento.js';
 import type { LocalDate, Uuid } from '@pz/kernel';
 
 /** Filtro das listagens: eventos que cruzam o período (inclusivo). */
@@ -37,4 +38,24 @@ export interface RepositorioDeFeriadosLocais<Transacao> {
     inicio: LocalDate,
     fim: LocalDate,
   ): Promise<FeriadoLocal[]>;
+}
+
+/**
+ * Porta: cache dos dias não úteis por (jurisdição, ano) no tenant corrente (HU13). Só guarda o
+ * que `calcular` devolveu; nunca produz data. `invalidar` vem do evento CalendarioAlterado.
+ */
+export interface CacheDeDiasNaoUteis {
+  doAno(
+    jurisdicao: Jurisdicao,
+    ano: number,
+    calcular: () => Promise<DiaNaoUtil[]>,
+  ): Promise<DiaNaoUtil[]>;
+  invalidar(alteracao: AlteracaoDoCalendario): Promise<void>;
+}
+
+/** O que mudou: globais valem para todos os tenants; locais, só para o tenant do evento. */
+export interface AlteracaoDoCalendario {
+  readonly origem: OrigemDoEvento;
+  readonly tenantId: Uuid;
+  readonly anos: readonly number[];
 }

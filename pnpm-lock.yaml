@@ -309,6 +309,9 @@ importers:
       '@pz/auditoria':
         specifier: workspace:*
         version: link:../../modules/auditoria
+      '@pz/calendario':
+        specifier: workspace:*
+        version: link:../../modules/calendario
       '@pz/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -474,6 +477,9 @@ importers:
       '@pz/kernel':
         specifier: workspace:*
         version: link:../../packages/kernel
+      ioredis:
+        specifier: 5.11.1
+        version: 5.11.1(supports-color@10.2.2)
       zod:
         specifier: 4.6.5
         version: 4.6.5
@@ -481,6 +487,9 @@ importers:
       '@pz/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@testcontainers/redis':
+        specifier: 12.2.0
+        version: 12.2.0(supports-color@10.2.2)
       '@types/node':
         specifier: 24.19.1
         version: 24.19.1
