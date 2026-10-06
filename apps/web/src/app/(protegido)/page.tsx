@@ -1,34 +1,18 @@
-'use client';
+import { getTranslations } from 'next-intl/server';
 
-import { Botao, EstadoCarregando } from '@pz/ui';
-import { useTranslations } from 'next-intl';
+import type { Metadata } from 'next';
 
-import { useSair, useSessao } from '../../api/hooks';
-import { ROTA_ENTRAR } from '../../rotas';
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations('menu'))('dashboard') };
+}
 
-// Página provisória: o layout autenticado e a navegação chegam no PZ-166.
-export default function Inicio() {
-  const t = useTranslations('inicio');
-  const sessao = useSessao();
-  const sair = useSair();
-
-  if (sessao.isPending) return <EstadoCarregando />;
+// Provisória: o conteúdo do dashboard chega em história própria.
+export default async function Dashboard() {
+  const t = await getTranslations();
   return (
-    <main className="mx-auto max-w-3xl space-y-4 p-6">
-      <h1 className="text-2xl font-semibold">{t('titulo')}</h1>
-      <Botao
-        variante="secundaria"
-        carregando={sair.isPending}
-        onClick={() => {
-          sair.mutate(undefined, {
-            onSuccess: () => {
-              window.location.assign(ROTA_ENTRAR);
-            },
-          });
-        }}
-      >
-        {t('sair')}
-      </Botao>
-    </main>
+    <div className="space-y-2">
+      <h1 className="text-2xl font-semibold">{t('menu.dashboard')}</h1>
+      <p className="text-texto-suave">{t('secao.emConstrucao')}</p>
+    </div>
   );
 }
