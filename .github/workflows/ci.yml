@@ -139,6 +139,11 @@ jobs:
           pnpm --filter @pz/contracts gerar
           git diff --exit-code -- packages/contracts/openapi.json packages/contracts/gerado \
             || { echo "::error::Rode 'pnpm --filter @pz/contracts gerar' e versione o resultado."; exit 1; }
+      - name: CSS dos tokens de design em dia
+        run: |
+          pnpm --filter @pz/design-tokens gerar
+          git diff --exit-code -- packages/design-tokens/gerado \
+            || { echo "::error::Rode 'pnpm --filter @pz/design-tokens gerar' e versione o resultado."; exit 1; }
       - name: Instalar oasdiff (com verificação de checksum)
         run: |
           base="https://github.com/oasdiff/oasdiff/releases/download/v${OASDIFF_VERSION}"

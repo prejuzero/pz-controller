@@ -7,3 +7,5 @@ dist/
 packages/contracts/openapi.json
 packages/contracts/gerado/
 packages/db/src/gerado/
+# Gerado por packages/design-tokens/scripts/gerar.ts (o CI confere que está em dia)
+packages/design-tokens/gerado/
