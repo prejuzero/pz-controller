@@ -35,6 +35,7 @@ model Tenant {
   acessos            Acesso[]
   dispositivos       SessaoDispositivo[]
   auditoria          EventoAuditoria[]
+  verificacao        AuditoriaVerificacao?
 
   @@map("tenant")
 }
@@ -197,4 +198,17 @@ model EventoAuditoria {
   @@index([tenantId, entidade, entidadeId, criadoEm], map: "evento_auditoria_entidade_idx")
   @@index([tenantId, sequencia], map: "evento_auditoria_sequencia_idx")
   @@map("evento_auditoria")
+}
+
+/// Checkpoint da verificação e da cópia WORM da auditoria (HU08): âncora do último elo conferido.
+model AuditoriaVerificacao {
+  tenantId        String   @id @map("tenant_id") @db.Uuid
+  ultimaSequencia BigInt   @map("ultima_sequencia")
+  ultimoHash      String   @map("ultimo_hash")
+  ultimaExportada BigInt   @default(0) @map("ultima_exportada")
+  verificadoEm    DateTime @default(now()) @map("verificado_em") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@map("auditoria_verificacao")
 }

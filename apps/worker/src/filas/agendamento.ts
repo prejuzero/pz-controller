@@ -43,6 +43,13 @@ export const limparOutboxJob = definirJob({
   global: true,
 });
 
+export const verificarAuditoriaJob = definirJob({
+  fila: 'manutencao',
+  tipo: 'manutencao.verificar-auditoria',
+  dados: z.object({}).strict(),
+  global: true,
+});
+
 /** Catálogo dos jobs recorrentes. Remover daqui remove o agendador no próximo boot. */
 export const AGENDAMENTOS: readonly Agendamento<unknown>[] = [
   definirAgendamento({
@@ -51,5 +58,12 @@ export const AGENDAMENTOS: readonly Agendamento<unknown>[] = [
     cron: '0 3 * * *', // diário às 3h, fora do horário de expediente
     dados: {},
     motivo: 'limpeza diária do outbox (retenção de 30 dias)',
+  }),
+  definirAgendamento({
+    id: 'manutencao.verificar-auditoria',
+    job: verificarAuditoriaJob,
+    cron: '0 2 * * *', // diário às 2h: verifica a cadeia e exporta para o WORM (HU08)
+    dados: {},
+    motivo: 'verificação diária da trilha de auditoria e cópia WORM',
   }),
 ] as readonly Agendamento<unknown>[];

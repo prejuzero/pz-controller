@@ -1,8 +1,13 @@
-import { CreateBucketCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  CreateBucketCommand,
+  DeleteObjectCommand,
+  HeadObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { verificarContratoArmazenamento } from '@pz/integracoes/contrato';
-import { SystemClock } from '@pz/kernel';
+import { gerarUuidV7, SystemClock } from '@pz/kernel';
 import { GenericContainer, Wait } from 'testcontainers';
-import { afterAll, beforeAll } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { ArmazenamentoS3, DESCRITOR_S3 } from './armazenamento-s3.js';
 
@@ -13,6 +18,8 @@ import type { StartedTestContainer } from 'testcontainers';
 const CHAVE = 'pz_teste';
 const SEGREDO = 'pz_teste_segredo_local';
 const BUCKET = 'pz-arquivos-teste';
+const BUCKET_WORM = 'pz-auditoria-worm-teste';
+let admin: S3Client;
 
 let rustfs: StartedTestContainer;
 let endpoint = '';
@@ -26,18 +33,22 @@ beforeAll(async () => {
     .withWaitStrategy(Wait.forHttp('/health', 9000).forStatusCode(200))
     .start();
   endpoint = `http://${rustfs.getHost()}:${String(rustfs.getMappedPort(9000))}`;
-  const admin = new S3Client({
+  admin = new S3Client({
     region: 'us-east-1',
     endpoint,
     forcePathStyle: true,
     credentials: { accessKeyId: CHAVE, secretAccessKey: SEGREDO },
   });
   await admin.send(new CreateBucketCommand({ Bucket: BUCKET }));
-  admin.destroy();
+  // Como no ambiente local (ADR-017): object lock só pode ser ligado na criação do bucket.
+  await admin.send(
+    new CreateBucketCommand({ Bucket: BUCKET_WORM, ObjectLockEnabledForBucket: true }),
+  );
 }, 300_000);
 
 afterAll(async () => {
   for (const armazenamento of abertos) armazenamento.encerrar();
+  admin.destroy();
   await rustfs.stop();
 });
 
@@ -69,4 +80,32 @@ verificarContratoArmazenamento('S3 (RustFS)', {
   tipoPermitido: 'text/plain',
   tipoProibido: 'application/x-msdownload',
   tamanhoMaximoBytes: 1024,
+});
+
+describe('cópia WORM (object lock em modo COMPLIANCE, HU08)', () => {
+  it('grava com retenção e nem as credenciais de administrador apagam a versão antes do prazo', async () => {
+    const tenant = gerarUuidV7();
+    const worm = criar({
+      bucket: BUCKET_WORM,
+      tiposPermitidos: ['application/x-ndjson'],
+      retencaoDias: 1,
+    });
+    await worm.gravar({
+      tenantId: tenant,
+      caminho: 'auditoria/2026/10/07/1-1.ndjson',
+      conteudo: new TextEncoder().encode('{}\n'),
+      tipoMime: 'application/x-ndjson',
+    });
+    const chave = `${tenant}/auditoria/2026/10/07/1-1.ndjson`;
+    const objeto = await admin.send(new HeadObjectCommand({ Bucket: BUCKET_WORM, Key: chave }));
+    expect(objeto.ObjectLockMode).toBe('COMPLIANCE');
+    expect(objeto.ObjectLockRetainUntilDate?.getTime() ?? 0).toBeGreaterThan(
+      Date.now() + 23 * 3600 * 1000,
+    );
+    await expect(
+      admin.send(
+        new DeleteObjectCommand({ Bucket: BUCKET_WORM, Key: chave, VersionId: objeto.VersionId }),
+      ),
+    ).rejects.toThrow();
+  });
 });

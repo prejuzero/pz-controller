@@ -46,6 +46,13 @@ export const esquemaWorker = esquemaBase
     EMAIL_REMETENTE: z.string().min(3).default('PrejuZero <nao-responda@prejuzero.local>'),
     /** STARTTLS obrigatório no SMTP; só o Mailpit local usa false. */
     SMTP_EXIGIR_TLS: z.stringbool().default(true),
+    /** Bucket com object lock da cópia WORM da auditoria (HU08). */
+    AUDITORIA_WORM_BUCKET: z.string().min(3).default('pz-auditoria-worm'),
+    /**
+     * Retenção WORM em dias (modo COMPLIANCE: ninguém apaga antes). Prazo legal a definir pelo
+     * responsável jurídico; obrigatório em produção, 1 dia no ambiente local.
+     */
+    AUDITORIA_WORM_RETENCAO_DIAS: z.coerce.number().int().positive().optional(),
     /** Intervalo do ciclo do relay do outbox. */
     RELAY_INTERVALO_MS: z.coerce.number().int().min(100).default(1_000),
   });

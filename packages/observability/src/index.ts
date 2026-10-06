@@ -9,6 +9,7 @@ export {
   ESTADO_CIRCUITO,
   NOMES_METRICAS,
   registrarChamadaIntegracao,
+  registrarDivergenciaDeAuditoria,
   registrarEstadoCircuito,
   registrarJobProcessado,
   registrarRejeicaoEmail,

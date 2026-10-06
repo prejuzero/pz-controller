@@ -66,3 +66,11 @@ Edite `infra/docker/observabilidade/provisionamento/alertas.yaml` ou os JSON em 
 A URL do webhook é um segredo: quem a tiver consegue postar no canal. Nunca a coloque no repositório; se vazar, apague o webhook no Discord e crie outro. Sem a variável, o envio ao Discord falha (visível em **Alerting → Contact points** no Grafana) e o e-mail continua funcionando.
 
 No ambiente local o e-mail vai para o Mailpit, não para a caixa real: a entrega em `prejuzero@gmail.com` começa quando houver SMTP de verdade (HU72).
+
+## auditoria-divergente
+
+**Severidade crítica.** A verificação diária (job `manutencao.verificar-auditoria`) encontrou na trilha de um tenant conteúdo alterado, buraco na sequência ou registros apagados do fim (cadeia mais curta que o checkpoint).
+
+1. Não altere nada no banco: preserve a evidência. O log `trilha de auditoria divergente` traz o tenant, a sequência e o motivo; o Sentry tem o erro.
+2. Compare com a cópia WORM do bucket `pz-auditoria-worm` (`<tenant>/auditoria/AAAA/MM/DD/<inicio>-<fim>.ndjson`), que não pode ser alterada: ela mostra o conteúdo original até a última exportação.
+3. Trate como incidente de segurança (acesso indevido ao banco com privilégio de dono ou superusuário) e comunique o responsável pela LGPD.
