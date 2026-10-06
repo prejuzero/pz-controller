@@ -8,14 +8,20 @@ import {
   ConfigurarSegundoFator,
   VerificarSegundoFator,
 } from '../application/segundo-fator.js';
-import { ElevarSessao } from '../application/sessoes.js';
+import { ElevarSessao, ProtecaoDeAcesso } from '../application/sessoes.js';
 
-import { SegundoFatorEmMemoria, SessoesEmMemoria } from './em-memoria.js';
+import {
+  AcessosEmMemoria,
+  SegundoFatorEmMemoria,
+  SessoesEmMemoria,
+  TentativasEmMemoria,
+} from './em-memoria.js';
 import { CifraAesGcm, SegredosTotp } from './segundo-fator.js';
 
 import type { Sessao } from '../domain/sessao.js';
 
 const relogio = new FixedClock(Instant.deIso('2026-10-06T12:00:00Z'));
+const CTX = { ip: '203.0.113.7', userAgent: 'teste' };
 const passo = () => Math.floor(relogio.agora().epochMs / 30_000);
 
 function montar() {
@@ -38,7 +44,13 @@ function montar() {
     sessao,
     configurar: new ConfigurarSegundoFator(repositorio, segredos, cifra),
     ativar: new AtivarSegundoFator(repositorio, segredos, cifra, relogio),
-    verificar: new VerificarSegundoFator(repositorio, segredos, cifra, relogio),
+    verificar: new VerificarSegundoFator(
+      repositorio,
+      segredos,
+      cifra,
+      relogio,
+      new ProtecaoDeAcesso(new TentativasEmMemoria(), new AcessosEmMemoria(), relogio),
+    ),
   };
 }
 
@@ -98,29 +110,33 @@ describe('verificar o 2FA', () => {
     const { verificar, segredos, segredo, sessao } = await ativado();
     relogio.avancarMs(60_000);
     const anterior = segredos.codigo(segredo, passo() - 1);
-    expect((await verificar.executar(sessao, anterior)).ok).toBe(true);
-    expect((await verificar.executar(sessao, anterior)).ok).toBe(false); // reutilização
-    expect((await verificar.executar(sessao, segredos.codigo(segredo, passo() - 2))).ok).toBe(
+    expect((await verificar.executar(sessao, anterior, CTX)).ok).toBe(true);
+    expect((await verificar.executar(sessao, anterior, CTX)).ok).toBe(false); // reutilização
+    expect((await verificar.executar(sessao, segredos.codigo(segredo, passo() - 2), CTX)).ok).toBe(
       false,
     ); // fora da janela
-    expect((await verificar.executar(sessao, segredos.codigo(segredo, passo() + 1))).ok).toBe(true);
-    expect((await verificar.executar(sessao, segredos.codigo(segredo, passo()))).ok).toBe(false); // passo já superado
+    expect((await verificar.executar(sessao, segredos.codigo(segredo, passo() + 1), CTX)).ok).toBe(
+      true,
+    );
+    expect((await verificar.executar(sessao, segredos.codigo(segredo, passo()), CTX)).ok).toBe(
+      false,
+    ); // passo já superado
   });
 
   it('código de recuperação vale uma vez, com ou sem hífen e em minúsculas', async () => {
     const { verificar, codigos, sessao } = await ativado();
     const [primeiro, segundo] = codigos;
-    expect((await verificar.executar(sessao, String(primeiro))).ok).toBe(true);
-    expect((await verificar.executar(sessao, String(primeiro))).ok).toBe(false);
+    expect((await verificar.executar(sessao, String(primeiro), CTX)).ok).toBe(true);
+    expect((await verificar.executar(sessao, String(primeiro), CTX)).ok).toBe(false);
     expect(
-      (await verificar.executar(sessao, String(segundo).replace('-', '').toLowerCase())).ok,
+      (await verificar.executar(sessao, String(segundo).replace('-', '').toLowerCase(), CTX)).ok,
     ).toBe(true);
-    expect((await verificar.executar(sessao, 'AAAAA-BBBBB')).ok).toBe(false);
+    expect((await verificar.executar(sessao, 'AAAAA-BBBBB', CTX)).ok).toBe(false);
   });
 
   it('sem 2FA ativo, nenhuma verificação passa', async () => {
     const { verificar, sessao } = montar();
-    expect((await verificar.executar(sessao, '123456')).ok).toBe(false);
+    expect((await verificar.executar(sessao, '123456', CTX)).ok).toBe(false);
   });
 });
 
@@ -140,5 +156,20 @@ describe('elevar a sessão', () => {
     });
     expect(await sessoes.obter('antigo')).toBeUndefined();
     expect(await sessoes.obter('novo')).toEqual(elevada.sessao);
+  });
+});
+
+describe('força bruta no 2FA', () => {
+  it('10 códigos errados bloqueiam a verificação do usuário, mesmo com o código certo', async () => {
+    const { verificar, segredos, segredo, sessao } = await ativado();
+    for (let i = 0; i < 10; i++) await verificar.executar(sessao, '000000', CTX);
+    relogio.avancarMs(30_000);
+    expect((await verificar.executar(sessao, segredos.codigo(segredo, passo()), CTX)).ok).toBe(
+      false,
+    );
+    relogio.avancarMs(15 * 60_000);
+    expect((await verificar.executar(sessao, segredos.codigo(segredo, passo()), CTX)).ok).toBe(
+      true,
+    );
   });
 });

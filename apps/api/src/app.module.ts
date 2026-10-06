@@ -5,15 +5,19 @@ import {
   AtivarSegundoFator,
   Autenticar,
   CifraAesGcm,
+  AcessosPostgres,
   ConfigurarSegundoFator,
+  ConsultarAcessos,
   CredenciaisPostgres,
   ElevarSessao,
   EncerrarSessao,
+  ProtecaoDeAcesso,
   GeradorDeTokensSeguro,
   HasherArgon2,
   SegredosTotp,
   SegundoFatorPostgres,
   SessoesRedis,
+  TentativasRedis,
   ValidarSessao,
   VerificarSegundoFator,
 } from '@pz/identidade';
@@ -27,21 +31,26 @@ import { ContextoDoUsuario } from './auth/contexto-do-usuario.js';
 import {
   AMBIENTE,
   CAIXA_DE_WEBHOOKS,
+  JANELA_DE_REQUISICOES,
   RECEPTORES_DE_WEBHOOK,
   RELOGIO,
   VERIFICADORES,
 } from './fichas.js';
 import { GuardaDeAcesso } from './http/acesso.js';
+import { GuardaDeLimite, JanelaRedis } from './http/limite.js';
 import { FiltroDeProblemas } from './http/problemas.js';
 import { OpenApiController } from './openapi.controller.js';
 import { SaudeController, SondasController } from './saude/saude.controller.js';
 import { WebhooksController } from './webhooks/webhooks.controller.js';
 
 import type { AmbienteApi } from './ambiente.js';
+import type { JanelaDeRequisicoes } from './http/limite.js';
 import type { CaixaDeWebhooks } from './webhooks/webhooks.controller.js';
 import type { DynamicModule, Provider, Type } from '@nestjs/common';
 import type {
   ArmazemDeSessoes,
+  ControleDeTentativas,
+  RegistroDeAcessos,
   RepositorioDeCredenciais,
   RepositorioDeSegundoFator,
 } from '@pz/identidade';
@@ -63,7 +72,10 @@ export interface OpcoesApi {
     readonly credenciais: RepositorioDeCredenciais;
     readonly sessoes: ArmazemDeSessoes;
     readonly segundoFator: RepositorioDeSegundoFator;
+    readonly tentativas: ControleDeTentativas;
+    readonly acessos: RegistroDeAcessos;
   };
+  readonly janelaDeRequisicoes?: JanelaDeRequisicoes;
 }
 
 /** Dependências que /health/ready e /v1/saude conferem (ADR-010). */
@@ -119,6 +131,8 @@ export class AppModule {
     const segredos = new SegredosTotp();
     const cifra = new CifraAesGcm(opcoes.ambiente.CHAVE_CIFRAGEM);
     const tokens = new GeradorDeTokensSeguro();
+    const acessos = opcoes.identidade?.acessos ?? new AcessosPostgres(recursos.banco);
+    const tentativas = opcoes.identidade?.tentativas ?? new TentativasRedis(recursos.redis);
     const provedores: Provider[] = [
       { provide: RecursosDaApi, useValue: recursos },
       { provide: AMBIENTE, useValue: opcoes.ambiente },
@@ -146,23 +160,31 @@ export class AppModule {
           } satisfies CaixaDeWebhooks),
       },
       {
-        provide: Autenticar,
+        provide: ProtecaoDeAcesso,
         inject: [RELOGIO],
-        useFactory: (relogio: Clock) =>
-          new Autenticar(
-            credenciais,
-            new HasherArgon2(),
-            sessoes,
-            new GeradorDeTokensSeguro(),
-            relogio,
-          ),
+        useFactory: (relogio: Clock) => new ProtecaoDeAcesso(tentativas, acessos, relogio),
+      },
+      {
+        provide: Autenticar,
+        inject: [RELOGIO, ProtecaoDeAcesso],
+        useFactory: (relogio: Clock, protecao: ProtecaoDeAcesso) =>
+          new Autenticar(credenciais, new HasherArgon2(), sessoes, tokens, relogio, protecao),
+      },
+      { provide: ConsultarAcessos, useValue: new ConsultarAcessos(acessos) },
+      {
+        provide: JANELA_DE_REQUISICOES,
+        useValue: opcoes.janelaDeRequisicoes ?? new JanelaRedis(recursos.redis),
       },
       {
         provide: ValidarSessao,
         inject: [RELOGIO],
         useFactory: (relogio: Clock) => new ValidarSessao(sessoes, relogio),
       },
-      { provide: EncerrarSessao, useValue: new EncerrarSessao(sessoes) },
+      {
+        provide: EncerrarSessao,
+        inject: [ProtecaoDeAcesso],
+        useFactory: (protecao: ProtecaoDeAcesso) => new EncerrarSessao(sessoes, protecao),
+      },
       {
         provide: ConfigurarSegundoFator,
         useValue: new ConfigurarSegundoFator(segundoFator, segredos, cifra),
@@ -175,9 +197,9 @@ export class AppModule {
       },
       {
         provide: VerificarSegundoFator,
-        inject: [RELOGIO],
-        useFactory: (relogio: Clock) =>
-          new VerificarSegundoFator(segundoFator, segredos, cifra, relogio),
+        inject: [RELOGIO, ProtecaoDeAcesso],
+        useFactory: (relogio: Clock, protecao: ProtecaoDeAcesso) =>
+          new VerificarSegundoFator(segundoFator, segredos, cifra, relogio, protecao),
       },
       {
         provide: ElevarSessao,
@@ -186,6 +208,8 @@ export class AppModule {
       },
       { provide: APP_INTERCEPTOR, useClass: ContextoDoUsuario },
       { provide: RECEPTORES_DE_WEBHOOK, useValue: opcoes.receptoresDeWebhook ?? new Map() },
+      // Ordem importa: o limite por IP vem antes da autenticação.
+      { provide: APP_GUARD, useClass: GuardaDeLimite },
       { provide: APP_GUARD, useClass: GuardaDeAcesso },
       { provide: APP_FILTER, useClass: FiltroDeProblemas },
     ];

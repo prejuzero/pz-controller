@@ -227,6 +227,58 @@
         }
       }
     },
+    "/v1/auth/acessos": {
+      "get": {
+        "operationId": "listarAcessos",
+        "summary": "Últimos acessos da conta (logins, 2FA, saídas e bloqueios).",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcessosRecentes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/auth/entrar": {
       "post": {
         "operationId": "entrar",
@@ -269,6 +321,16 @@
           },
           "401": {
             "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições excedido.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -496,6 +558,54 @@
   },
   "components": {
     "schemas": {
+      "AcessosRecentes": {
+        "type": "object",
+        "properties": {
+          "itens": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tipo": {
+                  "type": "string",
+                  "enum": [
+                    "login",
+                    "segundo-fator",
+                    "logout",
+                    "bloqueio"
+                  ]
+                },
+                "sucesso": {
+                  "type": "boolean"
+                },
+                "ip": {
+                  "type": "string"
+                },
+                "userAgent": {
+                  "type": "string"
+                },
+                "ocorridoEm": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "tipo",
+                "sucesso",
+                "ip",
+                "userAgent",
+                "ocorridoEm"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "itens"
+        ],
+        "additionalProperties": false
+      },
       "CodigoSegundoFator": {
         "type": "object",
         "properties": {

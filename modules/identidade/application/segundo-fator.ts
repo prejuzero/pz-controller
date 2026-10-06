@@ -1,6 +1,12 @@
 import { Conflito, err, NaoAutenticado, ok } from '@pz/kernel';
 
-import type { Cifra, RepositorioDeSegundoFator, SegredosDoSegundoFator } from './portas.js';
+import type {
+  Cifra,
+  ContextoDeAcesso,
+  RepositorioDeSegundoFator,
+  SegredosDoSegundoFator,
+} from './portas.js';
+import type { ProtecaoDeAcesso } from './sessoes.js';
 import type { Sessao } from '../domain/sessao.js';
 import type { Clock, Result } from '@pz/kernel';
 
@@ -89,20 +95,44 @@ export class AtivarSegundoFator {
   }
 }
 
-/** Verifica o 2FA no login: código do aplicativo (sem reutilização) ou de recuperação. */
+/**
+ * Verifica o 2FA no login: código do aplicativo (sem reutilização) ou de recuperação. Falhas
+ * contam para o bloqueio progressivo do usuário: 6 dígitos não podem ser testados à vontade.
+ */
 export class VerificarSegundoFator {
   constructor(
     private readonly repositorio: RepositorioDeSegundoFator,
     private readonly segredos: SegredosDoSegundoFator,
     private readonly cifra: Cifra,
     private readonly relogio: Clock,
+    private readonly protecao: ProtecaoDeAcesso,
   ) {}
 
-  async executar(sessao: Sessao, codigo: string): Promise<Result<void, NaoAutenticado>> {
-    const dados = await this.repositorio.obter(sessao.usuarioId);
-    if (dados === undefined || !dados.ativo || dados.segredoCifrado === null) {
+  async executar(
+    sessao: Sessao,
+    codigo: string,
+    contexto: ContextoDeAcesso,
+  ): Promise<Result<void, NaoAutenticado>> {
+    const chave = `2fa:${sessao.usuarioId}`;
+    const acesso = {
+      usuarioId: sessao.usuarioId,
+      tenantId: sessao.tenantId,
+      tipo: 'segundo-fator' as const,
+      ...contexto,
+    };
+    if (await this.protecao.bloqueado(chave)) {
+      await this.protecao.registrar({ ...acesso, sucesso: false });
       return err(codigoInvalido());
     }
+    const resultado = await this.#conferir(sessao, codigo);
+    if (resultado) await this.protecao.passou(chave, acesso);
+    else await this.protecao.falhou(chave, acesso);
+    return resultado ? ok(undefined) : err(codigoInvalido());
+  }
+
+  async #conferir(sessao: Sessao, codigo: string): Promise<boolean> {
+    const dados = await this.repositorio.obter(sessao.usuarioId);
+    if (dados === undefined || !dados.ativo || dados.segredoCifrado === null) return false;
     const limpo = codigo.replace(/[\s-]/g, '').toUpperCase();
     if (FORMATO_TOTP.test(limpo)) {
       const segredo = this.cifra.decifrar(dados.segredoCifrado);
@@ -113,13 +143,13 @@ export class VerificarSegundoFator {
         passoAtual(this.relogio),
         dados.ultimoPasso,
       );
-      const aceito =
-        passo !== undefined && (await this.repositorio.registrarPasso(sessao.usuarioId, passo));
-      return aceito ? ok(undefined) : err(codigoInvalido());
+      return (
+        passo !== undefined && (await this.repositorio.registrarPasso(sessao.usuarioId, passo))
+      );
     }
-    const hash = this.segredos.hashDoCodigoDeRecuperacao(limpo);
-    return (await this.repositorio.consumirCodigo(sessao.usuarioId, hash))
-      ? ok(undefined)
-      : err(codigoInvalido());
+    return this.repositorio.consumirCodigo(
+      sessao.usuarioId,
+      this.segredos.hashDoCodigoDeRecuperacao(limpo),
+    );
   }
 }
