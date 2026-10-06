@@ -4,6 +4,7 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { IORedisInstrumentation } from '@opentelemetry/instrumentation-ioredis';
+import { PgInstrumentation } from '@opentelemetry/instrumentation-pg';
 import { UndiciInstrumentation } from '@opentelemetry/instrumentation-undici';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { MeterProvider, PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
@@ -30,7 +31,7 @@ export interface OpcoesTelemetria {
   readonly ambiente: string;
   /** `OTEL_EXPORTER_OTLP_ENDPOINT`. Sem ele, nada é exportado (traces e métricas só em memória). */
   readonly endpointOtlp?: string;
-  /** Instrumentações além das padrão (ex.: Prisma na HU05, BullMQ na HU10). */
+  /** Instrumentações além das padrão (ex.: BullMQ na HU10). */
   readonly instrumentacoes?: readonly Instrumentation[];
   /** Exportador de spans adicional, síncrono. Usado em testes ou por um backend alternativo. */
   readonly exportadorDeSpans?: SpanExporter;
@@ -125,6 +126,9 @@ export function iniciarTelemetria(opcoes: OpcoesTelemetria): Telemetria {
       new HttpInstrumentation(),
       new UndiciInstrumentation(),
       new IORedisInstrumentation(),
+      // SQL parametrizado nos traces (driver pg do adaptador Prisma); os valores dos parâmetros
+      // ficam fora (enhancedDatabaseReporting desligado) para não vazar dados pessoais.
+      new PgInstrumentation({ enhancedDatabaseReporting: false }),
       ...(opcoes.instrumentacoes ?? []),
     ],
   });
