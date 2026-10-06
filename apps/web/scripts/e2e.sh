@@ -11,19 +11,20 @@ cd "$raiz"
 
 pnpm infra:up:apps
 pnpm db:migrate
-pnpm db:seed
-# Só o banco local fictício: o 2FA do usuário de demonstração volta ao zero a cada execução, para que
-# o smoke cubra a ativação obrigatória (HU06) e o segredo seja conhecido pelos testes.
+# Só o banco local fictício: o usuário de demonstração volta ao estado do seed a cada execução (sem
+# 2FA e com a senha padrão), para que o smoke cubra a ativação obrigatória (HU06) e a recuperação.
 infra/docker/compose.sh exec -T postgres psql -v ON_ERROR_STOP=1 -U pz_dev -d prejuzero -qc \
-  "UPDATE usuario SET totp_segredo_cifrado = NULL, totp_ativo_em = NULL, totp_ultimo_passo = NULL,
-   codigos_recuperacao = '{}' WHERE email = 'demonstracao@prejuzero.local'" >/dev/null
+  "UPDATE usuario SET senha_hash = NULL, totp_segredo_cifrado = NULL, totp_ativo_em = NULL,
+   totp_ultimo_passo = NULL, codigos_recuperacao = '{}' WHERE email = 'demonstracao@prejuzero.local'" \
+  >/dev/null
+pnpm db:seed
 rm -rf apps/web/e2e/.sessao
 
 versao="$(node -p "require('$raiz/apps/web/node_modules/@playwright/test/package.json').version")"
 imagem="pz-ui-visual:${versao}"
 docker build -q --platform linux/amd64 -t "$imagem" --build-arg "PLAYWRIGHT_VERSION=${versao}" \
   -f infra/docker/ui-visual.Dockerfile infra/docker >/dev/null
-docker run --rm --platform linux/amd64 --ipc=host --network host -e E2E_URL -e SENHA_DEMONSTRACAO \
+docker run --rm --platform linux/amd64 --ipc=host --network host -e E2E_URL -e E2E_MAILPIT_URL -e SENHA_DEMONSTRACAO \
   -v "$raiz":/src -v pz-ui-visual-pnpm:/pnpm/store "$imagem" bash -c '
   set -euo pipefail
   tar -C /src --exclude=node_modules --exclude=.git --exclude=.turbo --exclude=coverage --exclude=.next \

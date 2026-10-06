@@ -8,7 +8,7 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: 'e2e',
-  testMatch: /.*\.(e2e|setup)\.ts$/,
+  testMatch: /.*\.(e2e|setup|final)\.ts$/,
   outputDir: 'e2e/.resultados',
   snapshotPathTemplate: 'e2e/__screenshots__/{testFilePath}/{arg}{ext}',
   // Um único usuário de demonstração e TOTP com passo de uso único: execução serial.
@@ -31,6 +31,13 @@ export default defineConfig({
       testMatch: /\.e2e\.ts$/,
       dependencies: ['sessao'],
       use: { ...devices['Desktop Chrome'], storageState: 'e2e/.sessao/estado.json' },
+    },
+    // Troca a senha: só depois de tudo que usa a sessão compartilhada.
+    {
+      name: 'recuperacao',
+      testMatch: /\.final\.ts$/,
+      dependencies: ['portal'],
+      use: devices['Desktop Chrome'],
     },
   ],
 });
