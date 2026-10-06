@@ -25,6 +25,11 @@ export const SessaoAtual = nomear(
       .enum(['configurar-2fa', 'verificar-2fa'])
       .nullable()
       .describe('O que falta para a sessão ficar completa; null quando já está.'),
+    permissoes: z
+      .array(z.string())
+      .describe(
+        'Permissões efetivas (catálogo da HU07, ex.: `prazos:ler`), também usadas como escopos OAuth. Vazio sem o 2FA. O portal só oculta ações; a API sempre confere.',
+      ),
   }),
 );
 export type SessaoAtual = z.infer<typeof SessaoAtual.esquema>;

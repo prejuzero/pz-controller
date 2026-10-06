@@ -1307,13 +1307,21 @@
               }
             ],
             "description": "O que falta para a sessão ficar completa; null quando já está."
+          },
+          "permissoes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Permissões efetivas (catálogo da HU07, ex.: `prazos:ler`), também usadas como escopos OAuth. Vazio sem o 2FA. O portal só oculta ações; a API sempre confere."
           }
         },
         "required": [
           "usuarioId",
           "tenantId",
           "nivel",
-          "proximoPasso"
+          "proximoPasso",
+          "permissoes"
         ],
         "additionalProperties": false
       },

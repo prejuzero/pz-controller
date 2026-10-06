@@ -23,6 +23,7 @@ import {
   Autenticar,
   ConfigurarSegundoFator,
   ConsultarAcessos,
+  ConsultarPermissoes,
   ElevarSessao,
   EncerrarSessao,
   ListarDispositivos,
@@ -36,7 +37,7 @@ import {
 import { Validacao } from '@pz/kernel';
 import { z } from 'zod';
 
-import { PermiteSessaoParcial, Publico } from '../http/acesso.js';
+import { PermiteSessaoParcial, Publico, RequerPermissao } from '../http/acesso.js';
 import { LimitarPorIp } from '../http/limite.js';
 
 import { cookieCsrf, cookieDeSessao, cookiesApagados } from './cookies.js';
@@ -58,7 +59,7 @@ import type {
 } from '@pz/identidade';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 
-function sessaoAtual(sessao: Sessao): SessaoAtual {
+function sessaoAtual(sessao: Sessao, permissoes: Iterable<string> = []): SessaoAtual {
   const proximoPasso =
     sessao.nivel === 'completo'
       ? null
@@ -70,6 +71,7 @@ function sessaoAtual(sessao: Sessao): SessaoAtual {
     tenantId: sessao.tenantId,
     nivel: sessao.nivel,
     proximoPasso,
+    permissoes: [...permissoes].sort(),
   };
 }
 
@@ -113,6 +115,7 @@ export class AuthController {
     @Inject(RenovarTokens) private readonly renovar: RenovarTokens,
     @Inject(ListarDispositivos) private readonly listarDispositivos: ListarDispositivos,
     @Inject(RevogarDispositivo) private readonly revogarDispositivo: RevogarDispositivo,
+    @Inject(ConsultarPermissoes) private readonly consultarPermissoes: ConsultarPermissoes,
   ) {}
 
   @Post('entrar')
@@ -149,8 +152,8 @@ export class AuthController {
   @Get('eu')
   @PermiteSessaoParcial()
   eu(@Req() requisicao: RequisicaoAutenticada): SessaoAtual | undefined {
-    const sessao = requisicao.autenticacao?.sessao;
-    return sessao === undefined ? undefined : sessaoAtual(sessao);
+    const atual = requisicao.autenticacao;
+    return atual === undefined ? undefined : sessaoAtual(atual.sessao, atual.permissoes);
   }
 
   @Post('senha/esqueci')
@@ -174,6 +177,7 @@ export class AuthController {
   }
 
   @Post('tokens')
+  @RequerPermissao('conta:gerir')
   @HttpCode(201)
   async emitirTokens(
     @Req() requisicao: RequisicaoAutenticada,
@@ -206,6 +210,7 @@ export class AuthController {
   }
 
   @Get('dispositivos')
+  @RequerPermissao('conta:gerir')
   async dispositivos(@Req() requisicao: RequisicaoAutenticada): Promise<DispositivosDaConta> {
     const itens = await this.listarDispositivos.executar(autenticacao(requisicao).sessao);
     return {
@@ -221,6 +226,7 @@ export class AuthController {
   }
 
   @Delete('dispositivos/:id')
+  @RequerPermissao('conta:gerir')
   @HttpCode(204)
   async revogar(@Req() requisicao: RequisicaoAutenticada, @Param('id') id: string): Promise<void> {
     const dispositivoId = validar(z.uuid(), id);
@@ -232,6 +238,7 @@ export class AuthController {
   }
 
   @Get('acessos')
+  @RequerPermissao('conta:gerir')
   async acessos(@Req() requisicao: RequisicaoAutenticada): Promise<AcessosRecentes> {
     const itens = await this.consultarAcessos.executar(autenticacao(requisicao).sessao);
     return { itens: itens.map(paraContrato) };
@@ -266,7 +273,7 @@ export class AuthController {
     const elevada = await this.elevar.executar(token, sessao);
     emitirSessao(resposta, elevada);
     return {
-      sessao: sessaoAtual(elevada.sessao),
+      sessao: sessaoAtual(elevada.sessao, await this.consultarPermissoes.executar(elevada.sessao)),
       codigosDeRecuperacao: resultado.valor.codigosDeRecuperacao,
     };
   }
@@ -289,7 +296,7 @@ export class AuthController {
     if (!resultado.ok) throw resultado.erro;
     const elevada = await this.elevar.executar(token, sessao);
     emitirSessao(resposta, elevada);
-    return sessaoAtual(elevada.sessao);
+    return sessaoAtual(elevada.sessao, await this.consultarPermissoes.executar(elevada.sessao));
   }
 }
 

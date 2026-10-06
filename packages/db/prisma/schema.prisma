@@ -36,6 +36,7 @@ model Tenant {
   eventosProcessados EventoProcessado[]
   acessos            Acesso[]
   dispositivos       SessaoDispositivo[]
+  perfis             UsuarioPerfil[]
   auditoria          EventoAuditoria[]
   verificacao        AuditoriaVerificacao?
 
@@ -61,6 +62,7 @@ model Usuario {
   tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   acessos      Acesso[]
   dispositivos SessaoDispositivo[]
+  perfis       UsuarioPerfil[]
 
   @@unique([tenantId, email])
   @@map("usuario")
@@ -279,4 +281,46 @@ model TabelaPrazo {
 
   @@unique([tipoAto, ramo, versao])
   @@map("tabela_prazo")
+}
+
+/// Perfil de acesso (HU07): global, só muda por migração. As permissões vêm do catálogo em código
+/// (módulo identidade); perfil novo não exige mudar endpoints.
+model Perfil {
+  codigo       String   @id
+  nome         String
+  descricao    String
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  permissoes PerfilPermissao[]
+  usuarios   UsuarioPerfil[]
+
+  @@map("perfil")
+}
+
+/// O que cada perfil concede (permissões do catálogo em código).
+model PerfilPermissao {
+  perfil    String
+  permissao String
+
+  dono Perfil @relation(fields: [perfil], references: [codigo], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([perfil, permissao])
+  @@map("perfil_permissao")
+}
+
+/// Perfis de cada usuário, por tenant (RLS). admin_plataforma só no tenant plataforma (trigger).
+model UsuarioPerfil {
+  tenantId  String   @map("tenant_id") @db.Uuid
+  usuarioId String   @map("usuario_id") @db.Uuid
+  perfil    String
+  criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  dono    Perfil  @relation(fields: [perfil], references: [codigo], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([usuarioId, perfil])
+  @@index([tenantId])
+  @@map("usuario_perfil")
 }

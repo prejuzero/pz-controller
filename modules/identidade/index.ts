@@ -94,3 +94,21 @@ export type {
   TipoCliente,
 } from './application/portas.js';
 export { DispositivosPostgres, RenovacoesRedis } from './infra/dispositivos.js';
+export {
+  CATALOGO_DE_PERMISSOES,
+  concede,
+  ehPermissao,
+  escoposOAuth,
+  PERMISSOES,
+  somenteLeitura,
+} from './domain/permissoes.js';
+export type { Permissao } from './domain/permissoes.js';
+export { PERFIS_PADRAO } from './domain/perfis.js';
+export type { CodigoPerfil } from './domain/perfis.js';
+export { ConsultarPermissoes } from './application/autorizacao.js';
+export type {
+  AvisoDePermissaoDesconhecida,
+  RepositorioDePerfis,
+} from './application/autorizacao.js';
+export { PerfisEmMemoria } from './infra/em-memoria.js';
+export { PerfisPostgres } from './infra/perfis-postgres.js';

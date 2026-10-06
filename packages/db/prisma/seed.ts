@@ -46,6 +46,13 @@ try {
      ON CONFLICT (id) DO NOTHING`,
     [USUARIO_DEMONSTRACAO, TENANT_DEMONSTRACAO],
   );
+  // Dono do escritório (HU07). Com RLS forçado, a atribuição roda no contexto do tenant.
+  await cliente.query(`SELECT set_config('app.tenant_id', $1, true)`, [TENANT_DEMONSTRACAO]);
+  await cliente.query(
+    `INSERT INTO usuario_perfil (tenant_id, usuario_id, perfil) VALUES ($1, $2, 'advogado')
+     ON CONFLICT DO NOTHING`,
+    [TENANT_DEMONSTRACAO, USUARIO_DEMONSTRACAO],
+  );
   await cliente.query('UPDATE usuario SET senha_hash = $2 WHERE id = $1 AND senha_hash IS NULL', [
     USUARIO_DEMONSTRACAO,
     await hashArgon2id(SENHA),

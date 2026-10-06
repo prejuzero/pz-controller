@@ -23,11 +23,14 @@ import {
   RegistrarCredencial,
   ValidarSessao,
 } from '../application/sessoes.js';
+import { PERFIS_PADRAO } from '../domain/perfis.js';
+import { PERMISSOES } from '../domain/permissoes.js';
 
 import { AcessosPostgres } from './acessos-postgres.js';
 import { HasherArgon2 } from './argon2.js';
 import { CredenciaisPostgres } from './credenciais-postgres.js';
 import { DispositivosPostgres, RenovacoesRedis } from './dispositivos.js';
+import { PerfisPostgres } from './perfis-postgres.js';
 import {
   EmailsDosUsuariosPostgres,
   noTenantDoBanco,
@@ -408,5 +411,53 @@ describe('sessões por dispositivo com PostgreSQL e Redis (HU06)', () => {
       (await executarNoTenant(TENANT_A, () => revogar.executar(sessao, terceiro.dispositivoId))).ok,
     ).toBe(true);
     expect((await renovar.executar(terceiro.tokenDeRenovacao)).ok).toBe(false);
+  });
+});
+
+describe('perfis e permissões no PostgreSQL (HU07)', () => {
+  it('os perfis semeados pela migração são os do código e só usam permissões do catálogo', async () => {
+    const migrador = await postgres.conectar('pz_migrator');
+    try {
+      const { rows } = await migrador.query<{ perfil: string; permissao: string }>(
+        'SELECT perfil, permissao FROM perfil_permissao ORDER BY perfil, permissao',
+      );
+      const doBanco: Record<string, string[]> = {};
+      for (const { perfil, permissao } of rows) (doBanco[perfil] ??= []).push(permissao);
+      const doCodigo = Object.fromEntries(
+        Object.entries(PERFIS_PADRAO).map(([perfil, lista]) => [perfil, [...lista].sort()]),
+      );
+      expect(doBanco).toEqual(doCodigo);
+      expect(rows.every((r) => (PERMISSOES as readonly string[]).includes(r.permissao))).toBe(true);
+    } finally {
+      await migrador.end();
+    }
+  });
+
+  it('permissões vêm dos perfis do usuário no tenant dele (RLS)', async () => {
+    await executarNoTenant(TENANT_A, () =>
+      banco.executar((tx) =>
+        tx.usuarioPerfil.create({
+          data: { tenantId: TENANT_A, usuarioId: ANA, perfil: 'colaborador' },
+        }),
+      ),
+    );
+    const perfis = new PerfisPostgres(banco);
+    expect([...(await perfis.permissoesDoUsuario(TENANT_A, ANA))].sort()).toEqual(
+      [...PERFIS_PADRAO.colaborador].sort(),
+    );
+    // Outro tenant não enxerga a atribuição.
+    expect(await perfis.permissoesDoUsuario(TENANT_B, ANA)).toEqual([]);
+  });
+
+  it('admin_plataforma não pode ser atribuído num escritório', async () => {
+    await expect(
+      executarNoTenant(TENANT_B, () =>
+        banco.executar((tx) =>
+          tx.usuarioPerfil.create({
+            data: { tenantId: TENANT_B, usuarioId: BIA, perfil: 'admin_plataforma' },
+          }),
+        ),
+      ),
+    ).rejects.toThrow(/admin_plataforma/);
   });
 });

@@ -13,6 +13,7 @@ import {
   AcessosEmMemoria,
   TentativasEmMemoria,
   CredenciaisEmMemoria,
+  PerfisEmMemoria,
   HasherArgon2,
   SegredosTotp,
   SegundoFatorEmMemoria,
@@ -23,7 +24,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { esquemaApi } from '../ambiente.js';
 import { criarApi } from '../app.js';
-import { PermiteSessaoParcial } from '../http/acesso.js';
+import { PermiteSessaoParcial, RequerPermissao } from '../http/acesso.js';
 
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import type { Email } from '@pz/identidade';
@@ -44,6 +45,7 @@ class RotasDeTeste {
   }
 
   @Post('completa')
+  @RequerPermissao('conta:gerir')
   completa(): { ok: true } {
     return { ok: true };
   }
@@ -53,6 +55,7 @@ const sessoes = new SessoesEmMemoria();
 const segundoFator = new SegundoFatorEmMemoria();
 const credenciais = new CredenciaisEmMemoria();
 const acessos = new AcessosEmMemoria();
+const perfis = new PerfisEmMemoria();
 let hashDaSenha = '';
 let api: NestFastifyApplication;
 
@@ -64,6 +67,7 @@ beforeAll(async () => {
     segundoFatorAtivo: false,
   });
   segundoFator.cadastrar(USUARIO, 'ana@exemplo.invalid');
+  perfis.atribuir(USUARIO, 'advogado');
   api = await criarApi({
     ambiente: carregarAmbiente(esquemaApi, {
       NODE_ENV: 'test',
@@ -84,6 +88,7 @@ beforeAll(async () => {
       segundoFator,
       tentativas: new TentativasEmMemoria(),
       acessos,
+      perfis,
     },
     // Sem limite por IP nesta suíte (muitos logins); o limite tem teste próprio.
     janelaDeRequisicoes: { registrar: () => Promise.resolve(1) },
@@ -120,6 +125,7 @@ describe('login (HU06)', () => {
       tenantId: TENANT,
       nivel: 'senha',
       proximoPasso: 'configurar-2fa',
+      permissoes: [],
     });
     expect(resposta.headers['cache-control']).toBe('no-store');
     expect(cookies.find((c) => c.startsWith('__Host-pz_sessao='))).toMatch(

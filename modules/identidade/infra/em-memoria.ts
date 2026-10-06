@@ -1,3 +1,6 @@
+import { PERFIS_PADRAO } from '../domain/perfis.js';
+
+import type { RepositorioDePerfis } from '../application/autorizacao.js';
 import type {
   ArmazemDeRenovacoes,
   DadosDaRenovacao,
@@ -15,6 +18,7 @@ import type {
 } from '../application/portas.js';
 import type { PedidoDeRedefinicao } from '../application/redefinicao.js';
 import type { Email } from '../domain/credenciais.js';
+import type { CodigoPerfil } from '../domain/perfis.js';
 import type { Sessao } from '../domain/sessao.js';
 import type { EventoDominio, Instant, Uuid } from '@pz/kernel';
 
@@ -255,5 +259,21 @@ export class RenovacoesEmMemoria implements ArmazemDeRenovacoes {
     for (const [token, dados] of this.#validos)
       if (dados.dispositivoId === dispositivoId) this.#validos.delete(token);
     return Promise.resolve();
+  }
+}
+
+/** Perfis dos usuários com as permissões padrão da migração (testes sem banco). */
+export class PerfisEmMemoria implements RepositorioDePerfis {
+  readonly #atribuicoes = new Map<Uuid, Set<CodigoPerfil>>();
+
+  atribuir(usuarioId: Uuid, perfil: CodigoPerfil): void {
+    const perfis = this.#atribuicoes.get(usuarioId) ?? new Set();
+    perfis.add(perfil);
+    this.#atribuicoes.set(usuarioId, perfis);
+  }
+
+  permissoesDoUsuario(_tenantId: Uuid, usuarioId: Uuid): Promise<readonly string[]> {
+    const perfis = [...(this.#atribuicoes.get(usuarioId) ?? [])];
+    return Promise.resolve([...new Set(perfis.flatMap((perfil) => PERFIS_PADRAO[perfil]))]);
   }
 }

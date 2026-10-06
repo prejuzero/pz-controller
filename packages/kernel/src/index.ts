@@ -1,3 +1,5 @@
+export { autorizar, temPermissao } from './autorizacao.js';
+export type { Ator, Politica } from './autorizacao.js';
 export { FixedClock, FUSO_PADRAO, hoje, SystemClock } from './clock.js';
 export type { Clock } from './clock.js';
 export { AggregateRoot, Entity } from './entidade.js';
