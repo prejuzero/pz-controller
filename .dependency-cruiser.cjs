@@ -19,7 +19,8 @@ module.exports = {
       name: 'domain-so-importa-kernel',
       severity: 'error',
       comment: 'domain é puro: só pode importar o próprio domínio e packages/kernel.',
-      from: { path: '^modules/([^/]+)/domain/' },
+      // Testes são ferramenta (ex.: fast-check, obrigatório nos VOs), não código do domínio.
+      from: { path: '^modules/([^/]+)/domain/', pathNot: '\\.test\\.ts$' },
       to: {
         pathNot: ['^modules/$1/domain/', '^packages/kernel/'],
         dependencyTypesNot: ['type-only'],

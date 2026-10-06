@@ -3,7 +3,7 @@
  * API); o código é estável e serve a clientes e ao catálogo de mensagens; a mensagem é pt-BR.
  */
 export type CategoriaErro =
-  'nao-encontrado' | 'conflito' | 'proibido' | 'validacao' | 'regra-de-negocio';
+  'nao-autenticado' | 'nao-encontrado' | 'conflito' | 'proibido' | 'validacao' | 'regra-de-negocio';
 
 export abstract class ErroDominio extends Error {
   abstract readonly categoria: CategoriaErro;
@@ -14,6 +14,11 @@ export abstract class ErroDominio extends Error {
     this.name = new.target.name;
     this.codigo = codigo;
   }
+}
+
+/** Credencial ou sessão ausente ou inválida (mensagem genérica: não revela o motivo). */
+export class NaoAutenticado extends ErroDominio {
+  readonly categoria = 'nao-autenticado';
 }
 
 /** O recurso não existe para este tenant (ou o usuário não pode saber que existe). */

@@ -1,9 +1,22 @@
 import { Module } from '@nestjs/common';
-import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { Banco, WebhooksPostgres } from '@pz/db';
+import {
+  Autenticar,
+  CredenciaisPostgres,
+  EncerrarSessao,
+  GeradorDeTokensSeguro,
+  HasherArgon2,
+  SessoesRedis,
+  ValidarSessao,
+} from '@pz/identidade';
 import { SystemClock } from '@pz/kernel';
+import { criarLogger, registrarErro } from '@pz/observability';
 import { ConsultarSituacao, VerificadorHttp, VerificadorTcp } from '@pz/saude';
+import { Redis } from 'ioredis';
 
+import { AuthController } from './auth/auth.controller.js';
+import { ContextoDoUsuario } from './auth/contexto-do-usuario.js';
 import {
   AMBIENTE,
   CAIXA_DE_WEBHOOKS,
@@ -20,6 +33,7 @@ import { WebhooksController } from './webhooks/webhooks.controller.js';
 import type { AmbienteApi } from './ambiente.js';
 import type { CaixaDeWebhooks } from './webhooks/webhooks.controller.js';
 import type { DynamicModule, Provider, Type } from '@nestjs/common';
+import type { ArmazemDeSessoes, RepositorioDeCredenciais } from '@pz/identidade';
 import type { ReceptorWebhook } from '@pz/integracoes';
 import type { Clock } from '@pz/kernel';
 import type { VerificadorDeDependencia } from '@pz/saude';
@@ -33,6 +47,11 @@ export interface OpcoesApi {
   readonly caixaDeWebhooks?: CaixaDeWebhooks;
   /** Receptores por ID do adaptador; cada adaptador com webhook entra aqui (HU30 em diante). */
   readonly receptoresDeWebhook?: ReadonlyMap<string, ReceptorWebhook>;
+  /** Credenciais e sessões em memória nos testes (sem PostgreSQL e Redis). */
+  readonly identidade?: {
+    readonly credenciais: RepositorioDeCredenciais;
+    readonly sessoes: ArmazemDeSessoes;
+  };
 }
 
 /** Dependências que /health/ready e /v1/saude conferem (ADR-010). */
@@ -46,28 +65,45 @@ function verificadoresDoAmbiente(ambiente: AmbienteApi): VerificadorDeDependenci
   ];
 }
 
-/** Webhook gravado sem tenant (ainda desconhecido), como pz_app: só INSERT na tabela global. */
-function caixaPostgres(
-  ambiente: AmbienteApi,
-): CaixaDeWebhooks & { onApplicationShutdown(): Promise<void> } {
-  const banco = new Banco({ url: ambiente.DATABASE_URL });
-  const webhooks = new WebhooksPostgres();
-  return {
-    gravar: (webhook) =>
-      banco.executarSemTenant('webhook de entrada', (tx) => webhooks.gravar(tx, webhook)),
-    // O Nest chama no desligamento (também em provedores criados por fábrica).
-    onApplicationShutdown: () => banco.encerrar(),
-  };
+const logger = criarLogger('api');
+
+/** Conexões da api (PostgreSQL como pz_app e Redis), fechadas no desligamento. */
+class RecursosDaApi {
+  readonly banco: Banco;
+  readonly redis: Redis;
+  #ultimoErroRedis = Number.NEGATIVE_INFINITY;
+
+  constructor(ambiente: AmbienteApi) {
+    this.banco = new Banco({ url: ambiente.DATABASE_URL });
+    this.redis = new Redis(ambiente.REDIS_URL, { lazyConnect: true, maxRetriesPerRequest: 3 });
+    // Sem tratador, o ioredis imprime cada falha de reconexão fora do log estruturado.
+    this.redis.on('error', (erro: Error) => {
+      if (performance.now() - this.#ultimoErroRedis < 60_000) return;
+      this.#ultimoErroRedis = performance.now();
+      registrarErro(logger, erro, 'conexão com o Redis indisponível', 'api.redis');
+    });
+  }
+
+  async onApplicationShutdown(): Promise<void> {
+    this.redis.disconnect();
+    await this.banco.encerrar();
+  }
 }
 
 /**
+ * Composição da api/**
  * Composição da api (CLAUDE.md, seção 6): só liga módulos, controllers e infraestrutura HTTP.
  * Módulos entram por lista explícita.
  */
 @Module({})
 export class AppModule {
   static registrar(opcoes: OpcoesApi): DynamicModule {
+    const recursos = new RecursosDaApi(opcoes.ambiente);
+    const webhooks = new WebhooksPostgres();
+    const credenciais = opcoes.identidade?.credenciais ?? new CredenciaisPostgres(recursos.banco);
+    const sessoes = opcoes.identidade?.sessoes ?? new SessoesRedis(recursos.redis);
     const provedores: Provider[] = [
+      { provide: RecursosDaApi, useValue: recursos },
       { provide: AMBIENTE, useValue: opcoes.ambiente },
       { provide: RELOGIO, useValue: opcoes.relogio ?? new SystemClock() },
       {
@@ -82,8 +118,35 @@ export class AppModule {
       },
       {
         provide: CAIXA_DE_WEBHOOKS,
-        useFactory: () => opcoes.caixaDeWebhooks ?? caixaPostgres(opcoes.ambiente),
+        // Webhook gravado sem tenant (ainda desconhecido), como pz_app: só INSERT na tabela global.
+        useValue:
+          opcoes.caixaDeWebhooks ??
+          ({
+            gravar: (webhook) =>
+              recursos.banco.executarSemTenant('webhook de entrada', (tx) =>
+                webhooks.gravar(tx, webhook),
+              ),
+          } satisfies CaixaDeWebhooks),
       },
+      {
+        provide: Autenticar,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new Autenticar(
+            credenciais,
+            new HasherArgon2(),
+            sessoes,
+            new GeradorDeTokensSeguro(),
+            relogio,
+          ),
+      },
+      {
+        provide: ValidarSessao,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) => new ValidarSessao(sessoes, relogio),
+      },
+      { provide: EncerrarSessao, useValue: new EncerrarSessao(sessoes) },
+      { provide: APP_INTERCEPTOR, useClass: ContextoDoUsuario },
       { provide: RECEPTORES_DE_WEBHOOK, useValue: opcoes.receptoresDeWebhook ?? new Map() },
       { provide: APP_GUARD, useClass: GuardaDeAcesso },
       { provide: APP_FILTER, useClass: FiltroDeProblemas },
@@ -91,6 +154,7 @@ export class AppModule {
     return {
       module: AppModule,
       controllers: [
+        AuthController,
         SaudeController,
         SondasController,
         OpenApiController,

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   Conflito,
   ErroDominio,
+  NaoAutenticado,
   NaoEncontrado,
   Proibido,
   RegraDeNegocio,
@@ -12,6 +13,10 @@ import {
 describe('erros de domínio', () => {
   it('cada tipo tem categoria, código estável e mensagem em português', () => {
     const casos = [
+      [
+        new NaoAutenticado('credenciais-invalidas', 'E-mail ou senha inválidos.'),
+        'nao-autenticado',
+      ],
       [new NaoEncontrado('prazo.nao-encontrado', 'Prazo não encontrado.'), 'nao-encontrado'],
       [new Conflito('prazo.ja-confirmado', 'O prazo já foi confirmado.'), 'conflito'],
       [new Proibido('acesso.negado', 'Sem permissão para confirmar prazos.'), 'proibido'],

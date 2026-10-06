@@ -11,6 +11,7 @@ const logger = criarLogger('api.http');
 
 const STATUS_POR_CATEGORIA: Readonly<Record<CategoriaErro, number>> = {
   validacao: 400,
+  'nao-autenticado': 401,
   proibido: 403,
   'nao-encontrado': 404,
   conflito: 409,

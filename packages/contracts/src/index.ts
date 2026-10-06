@@ -1,7 +1,16 @@
+import { ROTAS_AUTH } from './auth/index.js';
 import { gerarOpenApi } from './openapi.js';
 import { ROTAS_SAUDE } from './saude/index.js';
 import { ROTAS_WEBHOOKS } from './webhooks/index.js';
 
+export {
+  consultarSessao,
+  Credenciais,
+  entrar,
+  ROTAS_AUTH,
+  sair,
+  SessaoAtual,
+} from './auth/index.js';
 export {
   CABECALHO_IDEMPOTENCIA,
   ChaveIdempotencia,
@@ -24,7 +33,7 @@ export { consultarSituacao, ROTAS_SAUDE, SituacaoDaApi } from './saude/index.js'
 export { receberWebhook, ROTAS_WEBHOOKS, WebhookAceito } from './webhooks/index.js';
 
 /** Todas as rotas da API `/v1`. Cada módulo novo acrescenta as suas aqui. */
-export const ROTAS = [...ROTAS_SAUDE, ...ROTAS_WEBHOOKS] as const;
+export const ROTAS = [...ROTAS_AUTH, ...ROTAS_SAUDE, ...ROTAS_WEBHOOKS] as const;
 
 /** O documento OpenAPI 3.1 da API, gerado das rotas (é o que `openapi.json` guarda). */
 export function documentoOpenApi(): Record<string, unknown> {

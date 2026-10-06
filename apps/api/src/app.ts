@@ -9,6 +9,7 @@ import { validacaoPorContrato } from './http/problemas.js';
 
 import type { OpcoesApi } from './app.module.js';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { RawServerDefault } from 'fastify';
 
 /** Monta a api com a mesma configuração em produção e nos testes. */
 export async function criarApi(opcoes: OpcoesApi): Promise<NestFastifyApplication> {
@@ -21,8 +22,12 @@ export async function criarApi(opcoes: OpcoesApi): Promise<NestFastifyApplicatio
     // rawBody: a assinatura de webhook é verificada sobre os bytes exatos recebidos.
     { logger: false, abortOnError: false, rawBody: true },
   );
-  // Corpo bruto preservado em JSON e texto (provedores como o SNS enviam text/plain).
-  api.useBodyParser('application/json');
+  // Corpo bruto preservado (assinatura de webhook) sem perder o parse padrão do Fastify, com a
+  // proteção contra prototype poisoning. Texto puro: provedores como o SNS.
+  const jsonPadrao = adaptador.getInstance().getDefaultJsonParser('error', 'error');
+  api.useBodyParser<RawServerDefault>('application/json', {}, (requisicao, corpo, pronto) => {
+    void jsonPadrao(requisicao, corpo.toString('utf8'), pronto);
+  });
   api.useBodyParser('text/plain');
   api.useGlobalPipes(validacaoPorContrato);
   api.enableShutdownHooks();
