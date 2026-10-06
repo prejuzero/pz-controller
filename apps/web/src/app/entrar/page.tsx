@@ -1,5 +1,9 @@
 import { getTranslations } from 'next-intl/server';
 
+import { PaginaAcesso } from '../_acesso/pagina-acesso';
+
+import { FormularioEntrar } from './formulario-entrar';
+
 import type { Metadata } from 'next';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -7,17 +11,22 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Entrar({ searchParams }: PageProps<'/entrar'>) {
-  const { motivo } = await searchParams;
+  const { motivo, retorno } = await searchParams;
   const t = await getTranslations('entrar');
+  const aviso =
+    motivo === 'sessao-expirada'
+      ? t('sessaoExpirada')
+      : motivo === 'senha-redefinida'
+        ? t('senhaRedefinida')
+        : undefined;
   return (
-    <main className="mx-auto max-w-sm space-y-4 p-6">
-      <h1 className="text-2xl font-semibold">{t('titulo')}</h1>
-      {motivo === 'sessao-expirada' && (
+    <PaginaAcesso titulo={t('titulo')}>
+      {aviso === undefined ? null : (
         <p role="status" className="rounded-md border border-alerta p-3 text-sm">
-          {t('sessaoExpirada')}
+          {aviso}
         </p>
       )}
-      <p className="text-sm text-texto-suave">{t('emBreve')}</p>
-    </main>
+      <FormularioEntrar retorno={typeof retorno === 'string' ? retorno : undefined} />
+    </PaginaAcesso>
   );
 }

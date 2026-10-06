@@ -1,12 +1,12 @@
 'use client';
 
-import { CircleUser, LogOut, Settings } from 'lucide-react';
+import { CircleUser, LogOut, Settings, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { DropdownMenu } from 'radix-ui';
 
 import { useSair } from '../../../api/hooks';
-import { ROTA_ENTRAR } from '../../../rotas';
+import { ROTA_ENTRAR, ROTA_SEGURANCA } from '../../../rotas';
 
 const CLASSE_ITEM =
   'flex min-h-11 cursor-pointer items-center gap-2 rounded-sm px-3 text-sm outline-none data-[highlighted]:bg-primaria-suave';
@@ -52,6 +52,12 @@ export function Cabecalho() {
                 <Link href="/configuracoes">
                   <Settings className="size-4" aria-hidden />
                   {t('configuracoes')}
+                </Link>
+              </DropdownMenu.Item>
+              <DropdownMenu.Item asChild className={CLASSE_ITEM}>
+                <Link href={ROTA_SEGURANCA}>
+                  <ShieldCheck className="size-4" aria-hidden />
+                  {t('seguranca')}
                 </Link>
               </DropdownMenu.Item>
               <DropdownMenu.Separator className="my-1 h-px bg-borda" />

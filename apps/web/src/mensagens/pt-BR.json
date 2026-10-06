@@ -6,7 +6,60 @@
   "entrar": {
     "titulo": "Entrar",
     "sessaoExpirada": "Sua sessão expirou. Entre novamente para continuar de onde parou.",
-    "emBreve": "O formulário de entrada chega com as telas de acesso (HU06)."
+    "senhaRedefinida": "Senha redefinida. Entre com a nova senha.",
+    "email": "E-mail",
+    "senha": "Senha",
+    "enviar": "Entrar",
+    "esqueciSenha": "Esqueci minha senha"
+  },
+  "segundoFator": {
+    "titulo": "Verificação em duas etapas",
+    "verificarDescricao": "Digite o código de 6 dígitos do aplicativo autenticador ou um código de recuperação.",
+    "codigo": "Código",
+    "verificar": "Verificar",
+    "configurarTitulo": "Ative a verificação em duas etapas",
+    "configurarDescricao": "Ela é obrigatória para proteger os prazos do escritório. Escaneie o QR code com um aplicativo autenticador (Google Authenticator, Microsoft Authenticator, 1Password ou similar).",
+    "qrRotulo": "QR code para o aplicativo autenticador",
+    "segredoManual": "Sem câmera? Digite este código no aplicativo:",
+    "ativar": "Ativar",
+    "gerandoQr": "Gerando o QR code…",
+    "codigosTitulo": "Guarde seus códigos de recuperação",
+    "codigosDescricao": "Cada código vale uma vez, se você perder o celular. Eles não serão mostrados de novo.",
+    "copiar": "Copiar códigos",
+    "copiados": "Códigos copiados.",
+    "continuar": "Já guardei, continuar",
+    "copiaFalhou": "Não foi possível copiar. Anote os códigos antes de continuar."
+  },
+  "recuperarSenha": {
+    "titulo": "Recuperar senha",
+    "descricao": "Informe o e-mail da sua conta. Se ele estiver cadastrado, enviaremos um link para criar uma nova senha, válido por 30 minutos.",
+    "email": "E-mail",
+    "enviar": "Enviar link",
+    "enviado": "Se o e-mail estiver cadastrado, o link chegará em instantes. Confira também a caixa de spam.",
+    "voltar": "Voltar para a entrada"
+  },
+  "redefinirSenha": {
+    "titulo": "Criar nova senha",
+    "novaSenha": "Nova senha",
+    "ajuda": "Use uma frase longa e única; senhas fracas ou vazadas são recusadas.",
+    "confirmacao": "Confirme a nova senha",
+    "enviar": "Salvar nova senha",
+    "semToken": "Link inválido ou incompleto. Peça um novo link de redefinição.",
+    "pedirNovo": "Pedir novo link"
+  },
+  "acesso": {
+    "erros": {
+      "credenciaisInvalidas": "E-mail ou senha incorretos.",
+      "codigoInvalido": "Código incorreto ou expirado. Tente o código atual do aplicativo.",
+      "linkInvalido": "O link expirou ou já foi usado. Peça um novo link.",
+      "muitasTentativas": "Muitas tentativas. Aguarde alguns minutos e tente de novo; se a conta foi bloqueada, você recebeu um e-mail com as instruções."
+    }
+  },
+  "validacao": {
+    "obrigatorio": "Preencha este campo.",
+    "muitoLongo": "Texto longo demais.",
+    "confirmacaoDiferente": "As senhas não conferem.",
+    "invalido": "Valor inválido."
   },
   "menu": {
     "marca": "PrejuZero",
@@ -31,6 +84,7 @@
     "menuUsuario": "Menu do usuário",
     "minhaConta": "Minha conta",
     "configuracoes": "Configurações",
+    "seguranca": "Segurança",
     "sair": "Sair"
   },
   "avisos": {
@@ -50,5 +104,38 @@
     "naoEncontrado": "Página não encontrada",
     "naoEncontradoDescricao": "O endereço pode estar errado ou a página foi removida.",
     "voltarInicio": "Voltar ao início"
+  },
+  "seguranca": {
+    "titulo": "Segurança",
+    "segundoFatorTitulo": "Verificação em duas etapas",
+    "segundoFatorAtivo": "Ativa. Todo acesso pede o código do aplicativo autenticador.",
+    "acessosTitulo": "Últimos acessos",
+    "acessosVazio": "Nenhum acesso registrado.",
+    "quando": "Quando",
+    "evento": "Evento",
+    "resultado": "Resultado",
+    "origem": "Origem",
+    "sucesso": "Sucesso",
+    "falha": "Falha",
+    "tipos": {
+      "login": "Entrada",
+      "segundo-fator": "Verificação em duas etapas",
+      "logout": "Saída",
+      "bloqueio": "Bloqueio"
+    },
+    "dispositivosTitulo": "Sessões ativas",
+    "dispositivosVazio": "Nenhuma outra sessão ativa.",
+    "ultimoUso": "Último uso: {quando}",
+    "encerrar": "Encerrar sessão",
+    "encerrarTitulo": "Encerrar a sessão de {nome}?",
+    "encerrarDescricao": "O dispositivo sai na hora e precisará entrar de novo.",
+    "cancelar": "Cancelar",
+    "encerrada": "Sessão encerrada.",
+    "tiposCliente": {
+      "web": "Navegador",
+      "mobile": "Aplicativo",
+      "mcp": "Assistente de IA",
+      "integrador": "Integração"
+    }
   }
 }

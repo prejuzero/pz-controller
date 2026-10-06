@@ -6,5 +6,7 @@ export const chaves = {
   sessao: {
     todas: ['sessao'] as const,
     atual: () => [...chaves.sessao.todas, 'atual'] as const,
+    acessos: () => [...chaves.sessao.todas, 'acessos'] as const,
+    dispositivos: () => [...chaves.sessao.todas, 'dispositivos'] as const,
   },
 };

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { criarCache, deveTentarNovamente } from './cache';
 import { paraErroApi } from './erros';
+import { ERRO_NO_FORMULARIO } from './sessao';
 
 const erro = (status: number) =>
   paraErroApi(status, {
@@ -73,5 +74,16 @@ describe('tratamento global de erros', () => {
     await executar(erro(401));
     expect(acoes.avisarErro).toHaveBeenCalledOnce();
     expect(acoes.sessaoExpirada).toHaveBeenCalledOnce();
+  });
+
+  it('mutação de formulário de acesso trata o próprio erro, inclusive o 401', async () => {
+    const { acoes, cache } = montar();
+    await cache
+      .getMutationCache()
+      .build(cache, { meta: ERRO_NO_FORMULARIO, mutationFn: () => Promise.reject(erro(401)) })
+      .execute(undefined)
+      .catch(() => undefined);
+    expect(acoes.avisarErro).not.toHaveBeenCalled();
+    expect(acoes.sessaoExpirada).not.toHaveBeenCalled();
   });
 });

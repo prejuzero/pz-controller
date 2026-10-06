@@ -1,10 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
-import { ehRotaPublica, retornoSeguro, urlEntrar } from './rotas';
+import {
+  destinoAposEntrar,
+  ehRotaPublica,
+  retornoSeguro,
+  tokenDoFragmento,
+  urlEntrar,
+} from './rotas';
 
 describe('rotas', () => {
-  it('só /entrar é pública', () => {
+  it('só as telas de acesso são públicas', () => {
     expect(ehRotaPublica('/entrar')).toBe(true);
+    expect(ehRotaPublica('/recuperar-senha')).toBe(true);
+    expect(ehRotaPublica('/redefinir-senha')).toBe(true);
+    expect(ehRotaPublica('/configuracoes/seguranca')).toBe(false);
     expect(ehRotaPublica('/entrar/2fa')).toBe(true);
     expect(ehRotaPublica('/entrarx')).toBe(false);
     expect(ehRotaPublica('/')).toBe(false);
@@ -23,5 +32,18 @@ describe('rotas', () => {
     );
     expect(urlEntrar('/')).toBe('/entrar');
     expect(urlEntrar('//mal.com')).toBe('/entrar');
+  });
+
+  it('leva ao 2FA enquanto a sessão estiver incompleta, preservando o retorno', () => {
+    expect(destinoAposEntrar('verificar-2fa', null)).toBe('/entrar/2fa');
+    expect(destinoAposEntrar('configurar-2fa', '/prazos')).toBe('/entrar/2fa?retorno=%2Fprazos');
+    expect(destinoAposEntrar(null, '/prazos')).toBe('/prazos');
+    expect(destinoAposEntrar(null, '//mal.com')).toBe('/');
+  });
+
+  it('lê o token do fragmento do link', () => {
+    expect(tokenDoFragmento('#token=abc%2Bdef')).toBe('abc+def');
+    expect(tokenDoFragmento('#token=')).toBeUndefined();
+    expect(tokenDoFragmento('')).toBeUndefined();
   });
 });
