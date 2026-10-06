@@ -2,6 +2,12 @@ import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query';
 
 import { descreverErro, ehSessaoExpirada, ErroApi, type DescricaoErro } from './erros';
 
+declare module '@tanstack/react-query' {
+  interface Register {
+    mutationMeta: { erroNoFormulario?: boolean };
+  }
+}
+
 export interface AcoesDeErro {
   avisarErro: (erro: DescricaoErro) => void;
   /** Sessão expirada (401): avisar e levar a /entrar preservando a URL. */
@@ -18,7 +24,8 @@ export function deveTentarNovamente(falhas: number, erro: unknown): boolean {
 
 /**
  * Tratamento global de erros: 401 → sessão expirada; mutação → aviso (toast); consulta sem dados
- * → página de erro (error boundary); falha ao atualizar dados já exibidos → aviso.
+ * → página de erro (error boundary); falha ao atualizar dados já exibidos → aviso. Mutação com
+ * `meta.erroNoFormulario` mostra o erro no próprio formulário (telas de acesso, api/sessao.ts).
  */
 export function criarCache(acoes: AcoesDeErro): QueryClient {
   const tratar = (erro: unknown) => {
@@ -31,7 +38,11 @@ export function criarCache(acoes: AcoesDeErro): QueryClient {
         if (ehSessaoExpirada(erro) || consulta.state.data !== undefined) tratar(erro);
       },
     }),
-    mutationCache: new MutationCache({ onError: tratar }),
+    mutationCache: new MutationCache({
+      onError: (erro, _variaveis, _contexto, mutacao) => {
+        if (mutacao.meta?.erroNoFormulario !== true) tratar(erro);
+      },
+    }),
     defaultOptions: {
       queries: {
         staleTime: 30_000,

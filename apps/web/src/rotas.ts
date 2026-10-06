@@ -1,8 +1,13 @@
 /** Rotas do portal que não exigem sessão. */
 export const ROTA_ENTRAR = '/entrar';
-const ROTAS_PUBLICAS = [ROTA_ENTRAR];
+export const ROTA_SEGUNDO_FATOR = '/entrar/2fa';
+export const ROTA_RECUPERAR_SENHA = '/recuperar-senha';
+// O caminho vem do e-mail de redefinição (modules/identidade/application/avisos.ts).
+export const ROTA_REDEFINIR_SENHA = '/redefinir-senha';
+export const ROTA_SEGURANCA = '/configuracoes/seguranca';
+const ROTAS_PUBLICAS = [ROTA_ENTRAR, ROTA_RECUPERAR_SENHA, ROTA_REDEFINIR_SENHA];
 
-export type MotivoEntrar = 'sessao-expirada';
+export type MotivoEntrar = 'sessao-expirada' | 'senha-redefinida';
 
 export function ehRotaPublica(caminho: string): boolean {
   return ROTAS_PUBLICAS.some((rota) => caminho === rota || caminho.startsWith(`${rota}/`));
@@ -26,4 +31,25 @@ export function urlEntrar(retorno: string, motivo?: MotivoEntrar): string {
   if (motivo !== undefined) parametros.set('motivo', motivo);
   const consulta = parametros.toString();
   return consulta === '' ? ROTA_ENTRAR : `${ROTA_ENTRAR}?${consulta}`;
+}
+
+/** Depois da senha ou do 2FA: falta um passo da sessão → tela do 2FA; senão, volta ao destino. */
+export function destinoAposEntrar(
+  proximoPasso: 'configurar-2fa' | 'verificar-2fa' | null,
+  retorno: string | null | undefined,
+): string {
+  const destino = retornoSeguro(retorno);
+  if (proximoPasso === null) return destino;
+  return destino === '/'
+    ? ROTA_SEGUNDO_FATOR
+    : `${ROTA_SEGUNDO_FATOR}?${new URLSearchParams({ retorno: destino }).toString()}`;
+}
+
+/**
+ * Token do link de redefinição. Vem no fragmento (`#token=...`), que o navegador não envia ao
+ * servidor nem grava em logs de acesso.
+ */
+export function tokenDoFragmento(fragmento: string): string | undefined {
+  const token = new URLSearchParams(fragmento.replace(/^#/, '')).get('token');
+  return token === null || token === '' ? undefined : token;
 }
