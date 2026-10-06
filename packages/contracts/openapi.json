@@ -43,6 +43,79 @@
           }
         }
       }
+    },
+    "/v1/webhooks/{adaptador}": {
+      "post": {
+        "operationId": "receberWebhook",
+        "summary": "Recebe o webhook de um provedor (assinatura verificada pelo adaptador).",
+        "tags": [
+          "integracoes"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "name": "adaptador",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookAceito"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -129,6 +202,19 @@
           "situacao",
           "versao",
           "verificadoEm"
+        ],
+        "additionalProperties": false
+      },
+      "WebhookAceito": {
+        "type": "object",
+        "properties": {
+          "duplicado": {
+            "type": "boolean",
+            "description": "O mesmo webhook (ID externo) já tinha sido recebido."
+          }
+        },
+        "required": [
+          "duplicado"
         ],
         "additionalProperties": false
       }

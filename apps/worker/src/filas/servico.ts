@@ -4,12 +4,23 @@ import { criarLogger, registrarErro, registrarSituacaoDasFilas } from '@pz/obser
 
 import { DespachanteDeEventos } from '../eventos/consome.js';
 import { consumirEvento, desserializarEvento } from '../eventos/job-evento.js';
-import { FILAS_RUNTIME, LIMPEZA_DO_OUTBOX, REDIS, RELOGIO, UNIDADE_DA_LIMPEZA } from '../fichas.js';
+import {
+  FILAS_RUNTIME,
+  LIMPEZA_DO_OUTBOX,
+  PROCESSADORES_DE_WEBHOOK,
+  REDIS,
+  RELOGIO,
+  UNIDADE_DA_LIMPEZA,
+  UNIDADE_DOS_WEBHOOKS,
+} from '../fichas.js';
+import { processarWebhook, tratarWebhook } from '../integracoes/webhooks.js';
 
 import { AGENDAMENTOS, limparOutboxJob, RETENCAO_DO_OUTBOX_MS } from './agendamento.js';
 import { Filas } from './runtime.js';
 
+import type { ProcessadorDeWebhook } from '../integracoes/webhooks.js';
 import type { OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
+import type { Transacao } from '@pz/db';
 import type { Clock, LimpezaDoOutbox, UnidadeDeTrabalho } from '@pz/kernel';
 import type { Redis } from 'ioredis';
 
@@ -31,6 +42,9 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     @Inject(UNIDADE_DA_LIMPEZA) private readonly unidadeDaLimpeza: UnidadeDeTrabalho<unknown>,
     @Inject(LIMPEZA_DO_OUTBOX) private readonly limpeza: LimpezaDoOutbox<unknown>,
     @Inject(RELOGIO) private readonly relogio: Clock,
+    @Inject(UNIDADE_DOS_WEBHOOKS) private readonly unidadeDosWebhooks: UnidadeDeTrabalho<Transacao>,
+    @Inject(PROCESSADORES_DE_WEBHOOK)
+    private readonly processadores: ReadonlyMap<string, ProcessadorDeWebhook>,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -45,6 +59,9 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
       });
       logger.info(removidos, 'limpeza do outbox concluída');
     });
+    this.filas.registrar(processarWebhook, ({ id }) =>
+      tratarWebhook(this.unidadeDosWebhooks, this.processadores, this.relogio, id),
+    );
     this.filas.validarAgendamentos(AGENDAMENTOS);
     this.filas.iniciar();
     // Sem esperar o Redis: com ele fora, o worker sobe e a prontidão mostra a falha; os

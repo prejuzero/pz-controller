@@ -19,7 +19,8 @@ export function nomear<Esquema extends z.ZodType>(
 export type MetodoHttp = 'get' | 'post' | 'put' | 'patch' | 'delete';
 
 /** Status de erro documentados por rota além dos padrões (401, 403, 500 e 400 quando há entrada). */
-export type StatusDeErro = 404 | 409 | 422 | 429;
+/** 401 em rota pública: credencial do chamador inválida (ex.: assinatura de webhook). */
+export type StatusDeErro = 401 | 404 | 409 | 422 | 429;
 
 export interface Rota {
   /** Identificador único da operação (operationId), em camelCase. */

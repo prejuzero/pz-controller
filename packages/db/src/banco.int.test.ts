@@ -50,7 +50,13 @@ describe('migrações', () => {
           )
         ).rows.map((linha) => linha.tablename);
 
-      expect(await tabelas()).toEqual(['evento_dominio', 'evento_processado', 'tenant', 'usuario']);
+      expect(await tabelas()).toEqual([
+        'evento_dominio',
+        'evento_processado',
+        'tenant',
+        'usuario',
+        'webhook_recebido',
+      ]);
 
       while ((await reverterUltimaMigracao(migrador)) !== undefined) {
         // reverte até não sobrar nenhuma
@@ -59,7 +65,13 @@ describe('migrações', () => {
       expect(await reverterUltimaMigracao(migrador)).toBeUndefined();
 
       await banco.migrar();
-      expect(await tabelas()).toEqual(['evento_dominio', 'evento_processado', 'tenant', 'usuario']);
+      expect(await tabelas()).toEqual([
+        'evento_dominio',
+        'evento_processado',
+        'tenant',
+        'usuario',
+        'webhook_recebido',
+      ]);
     } finally {
       await migrador.end();
     }

@@ -1,7 +1,7 @@
 import { trace } from '@opentelemetry/api';
 import { InMemorySpanExporter } from '@opentelemetry/sdk-trace-node';
 import { carregarAmbiente } from '@pz/config/env';
-import { Banco, executarNoTenant, OutboxPostgres } from '@pz/db';
+import { Banco, executarNoTenant, OutboxPostgres, WebhooksPostgres } from '@pz/db';
 import { subirBancoDeTeste } from '@pz/db/teste';
 import { gerarUuidV7, SystemClock } from '@pz/kernel';
 import { executarComContexto, iniciarTelemetria } from '@pz/observability';
@@ -35,6 +35,7 @@ let worker: INestApplicationContext;
 let banco: Banco;
 let telemetria: Telemetria;
 const spans = new InMemorySpanExporter();
+const webhooksProcessados: string[] = [];
 
 function novoEvento(agregadoId: string): EventoDominio {
   return {
@@ -119,7 +120,18 @@ beforeAll(async () => {
     S3_REGION: 'us-east-1',
     RELAY_INTERVALO_MS: '100',
   });
-  worker = await criarWorker({ ambiente });
+  worker = await criarWorker({
+    ambiente,
+    processadoresDeWebhook: new Map([
+      [
+        'teste',
+        (webhook) => {
+          webhooksProcessados.push(webhook.idExterno);
+          return Promise.resolve();
+        },
+      ],
+    ]),
+  });
   await worker.init();
   banco = new Banco({ url: postgres.url('pz_app') });
 }, 300_000);
@@ -269,6 +281,42 @@ describe('jobs recorrentes no worker (HU10)', () => {
       ).rows.map((linha) => linha.id);
     await esperar(async () => !(await existentes()).includes(antigo.id));
     expect(await existentes()).toEqual([recente.id]);
+    await sistema.end();
+  }, 60_000);
+});
+
+describe('webhooks de entrada no worker (HU09)', () => {
+  const gravar = (adaptador: string, idExterno: string) =>
+    banco.executarSemTenant('webhook de entrada', (tx) =>
+      new WebhooksPostgres().gravar(tx, {
+        adaptador,
+        idExterno,
+        cabecalhos: {},
+        corpo: new TextEncoder().encode('{}'),
+      }),
+    );
+
+  it('o webhook gravado pela api é processado uma vez e marcado; sem processador vai para a DLQ', async () => {
+    expect(await gravar('teste', 'wh-1')).toBe(true);
+    expect(await gravar('teste', 'wh-1')).toBe(false);
+    expect(await gravar('sem-processador', 'wh-2')).toBe(true);
+
+    await esperar(() => webhooksProcessados.includes('wh-1'));
+    const sistema = await postgres.conectar('pz_sistema');
+    const processado = async (id: string) =>
+      (
+        await sistema.query<{ ok: boolean }>(
+          'SELECT processado_em IS NOT NULL AS ok FROM webhook_recebido WHERE id_externo = $1',
+          [id],
+        )
+      ).rows[0]?.ok;
+    await esperar(async () => (await processado('wh-1')) === true);
+
+    const dlq = new Queue('integracoes-dlq', { connection: { url: redis.getConnectionUrl() } });
+    await esperar(async () => ((await dlq.getJobCounts('wait')).wait ?? 0) === 1);
+    await dlq.close();
+    expect(await processado('wh-2')).toBe(false);
+    expect(webhooksProcessados).toEqual(['wh-1']);
     await sistema.end();
   }, 60_000);
 });

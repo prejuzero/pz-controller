@@ -17,6 +17,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/webhooks/{adaptador}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Recebe o webhook de um provedor (assinatura verificada pelo adaptador). */
+        post: operations["receberWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -46,6 +63,10 @@ export interface components {
             /** Format: date-time */
             verificadoEm: string;
         };
+        WebhookAceito: {
+            /** @description O mesmo webhook (ID externo) já tinha sido recebido. */
+            duplicado: boolean;
+        };
     };
     responses: never;
     parameters: never;
@@ -71,6 +92,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SituacaoDaApi"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    receberWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                adaptador: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookAceito"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
                 };
             };
             /** @description Erro inesperado. */

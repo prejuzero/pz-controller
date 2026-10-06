@@ -15,6 +15,7 @@ export const NOMES_METRICAS = {
   integracaoDuracao: 'pz.integracao.chamada.duracao',
   integracaoCircuito: 'pz.integracao.circuito.estado',
   emailRejeicoes: 'pz.email.rejeicoes',
+  webhooksRecusados: 'pz.integracao.webhook.recusados',
   erros: 'pz.erros',
 } as const;
 
@@ -29,6 +30,7 @@ interface Instrumentos {
   readonly integracaoDuracao: Histogram;
   readonly integracaoCircuito: Gauge;
   readonly emailRejeicoes: Counter;
+  readonly webhooksRecusados: Counter;
   readonly erros: Counter;
 }
 
@@ -53,6 +55,9 @@ function instrumentos(): Instrumentos {
       integracaoCircuito: medidor.createGauge(NOMES_METRICAS.integracaoCircuito, {
         description:
           'Estado do circuit breaker por adaptador (0 fechado, 1 meio-aberto, 2 aberto).',
+      }),
+      webhooksRecusados: medidor.createCounter(NOMES_METRICAS.webhooksRecusados, {
+        description: 'Webhooks de entrada recusados (assinatura inválida), por adaptador.',
       }),
       emailRejeicoes: medidor.createCounter(NOMES_METRICAS.emailRejeicoes, {
         description: 'E-mails rejeitados pelo provedor (bounce ou reclamação).',
@@ -85,6 +90,10 @@ export function registrarChamadaIntegracao(
 
 export function registrarEstadoCircuito(adaptador: string, estado: EstadoCircuito): void {
   instrumentos().integracaoCircuito.record(ESTADO_CIRCUITO[estado], { adaptador });
+}
+
+export function registrarWebhookRecusado(adaptador: string): void {
+  instrumentos().webhooksRecusados.add(1, { adaptador });
 }
 
 export function registrarRejeicaoEmail(motivo: string): void {
