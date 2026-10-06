@@ -12,6 +12,8 @@ allowBuilds:
   cpu-features: false # otimização nativa opcional do ssh2 (Testcontainers); não usada
   ssh2: false # idem: compilação nativa opcional
   msgpackr-extract: false # aceleração nativa opcional do msgpackr (BullMQ); funciona em JavaScript puro
+  '@swc/core': false # postinstall só confere o binário, que já vem da dependência opcional da plataforma (next-intl)
+  '@parcel/watcher': false # idem: binário pré-compilado por plataforma; o script só compila se faltar (next-intl)
 savePrefix: ''
 # Segurança da cadeia de suprimentos
 # Só instala versões publicadas há pelo menos 24 h. Meta: 10080 (7 dias, igual ao cooldown do

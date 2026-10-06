@@ -1,0 +1,24 @@
+{
+  "app": {
+    "nome": "PrejuZero",
+    "descricao": "Intimações, prazos e ciência sem prejuízo."
+  },
+  "entrar": {
+    "titulo": "Entrar",
+    "sessaoExpirada": "Sua sessão expirou. Entre novamente para continuar de onde parou.",
+    "emBreve": "O formulário de entrada chega com as telas de acesso (HU06)."
+  },
+  "inicio": {
+    "titulo": "Início",
+    "sair": "Sair"
+  },
+  "erros": {
+    "inesperado": "Algo deu errado",
+    "inesperadoDescricao": "Tente novamente. Se o problema continuar, fale com o suporte.",
+    "semConexao": "Sem conexão com o servidor",
+    "semConexaoDescricao": "Verifique a internet e tente novamente.",
+    "naoEncontrado": "Página não encontrada",
+    "naoEncontradoDescricao": "O endereço pode estar errado ou a página foi removida.",
+    "voltarInicio": "Voltar ao início"
+  }
+}

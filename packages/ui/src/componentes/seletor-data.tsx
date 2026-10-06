@@ -1,3 +1,5 @@
+'use client';
+
 import { CalendarDays } from 'lucide-react';
 import { Popover } from 'radix-ui';
 import { useState } from 'react';

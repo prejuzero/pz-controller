@@ -44,3 +44,5 @@ packages/db/src/gerado/
 # Storybook e testes visuais do @pz/ui (falhas e build estático)
 storybook-static/
 .vitest/
+# Tipos gerados pelo Next.js (next typegen/dev/build)
+next-env.d.ts

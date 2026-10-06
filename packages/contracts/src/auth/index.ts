@@ -3,6 +3,11 @@ import { z } from 'zod';
 import { Instante, Uuid } from '../comum.js';
 import { definirRota, nomear } from '../rota.js';
 
+/** Cookies da sessão no navegador (HU06) e o cabeçalho que repete o token CSRF (double-submit). */
+export const COOKIE_SESSAO = '__Host-pz_sessao';
+export const COOKIE_CSRF = '__Host-pz_csrf';
+export const CABECALHO_CSRF = 'x-csrf-token';
+
 export const Credenciais = nomear(
   'Credenciais',
   z.object({

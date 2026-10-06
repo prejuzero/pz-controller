@@ -62,6 +62,15 @@ module.exports = {
       to: { path: '^(modules|apps|packages/(?!ui/|design-tokens/))' },
     },
     {
+      name: 'portal-so-pela-api',
+      severity: 'error',
+      comment:
+        'O portal fala com o back-end só pela API /v1 e o cliente gerado: nada de módulos nem pacotes de servidor (ADR-015).',
+      // Configuração de ferramentas (ESLint, Vitest) não vai para o portal.
+      from: { path: '^apps/web/src/' },
+      to: { path: '^(modules|apps/(?!web/)|packages/(?!ui/|design-tokens/|contracts/))' },
+    },
+    {
       name: 'apps-so-pela-api-publica',
       severity: 'error',
       comment: 'apps apenas compõem módulos, pela API pública (index.ts).',
@@ -103,8 +112,13 @@ module.exports = {
   ],
   options: {
     doNotFollow: { path: 'node_modules' },
-    // gerado/: código gerado por ferramentas (cliente Prisma, tipos do OpenAPI), não editável.
-    exclude: { path: '(^|/)(dist|coverage|gerado|storybook-static|\\.next|\\.turbo)/' },
+    // gerado/ e next-env.d.ts: código gerado por ferramentas (Prisma, OpenAPI, Next.js), não editável.
+    exclude: {
+      path: [
+        '(^|/)(dist|coverage|gerado|storybook-static|\\.next|\\.turbo)/',
+        'next-env\\.d\\.ts$',
+      ],
+    },
     tsPreCompilationDeps: true,
     combinedDependencies: true,
     enhancedResolveOptions: {
