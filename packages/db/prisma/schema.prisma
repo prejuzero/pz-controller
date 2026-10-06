@@ -17,6 +17,8 @@ datasource db {
 enum TipoTenant {
   autonomo
   escritorio
+  /// Tenant interno do PrejuZero (curador, administração), dono da trilha dos dados globais.
+  plataforma
 
   @@map("tipo_tenant")
 }
@@ -211,4 +213,70 @@ model AuditoriaVerificacao {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@map("auditoria_verificacao")
+}
+
+enum RamoProcessual {
+  civel
+  juizados
+  trabalhista
+  penal
+
+  @@map("ramo_processual")
+}
+
+enum UnidadePrazo {
+  dias
+  horas
+  meses
+  anos
+
+  @@map("unidade_prazo")
+}
+
+enum StatusTabelaPrazo {
+  rascunho
+  aprovado
+
+  @@map("status_tabela_prazo")
+}
+
+/// Taxonomia única de tipos de ato (HU15): regras rápidas, IA e portal. Global, mantida pelo curador.
+model TipoAto {
+  codigo       String   @id
+  nome         String
+  descricao    String
+  sinonimos    String[] @default([])
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  versoes TabelaPrazo[]
+
+  @@map("tipo_ato")
+}
+
+/// Tabela de prazos por ato e ramo (HU15, ADR-007): versões com vigência e aprovação por quatro
+/// olhos. Global; versão aprovada é imutável (trigger pz_tabela_prazo_imutavel).
+model TabelaPrazo {
+  id             String            @id @db.Uuid
+  tipoAto        String            @map("tipo_ato")
+  ramo           RamoProcessual
+  versao         Int
+  dias           Int
+  unidade        UnidadePrazo
+  fundamento     String
+  fonteUrl       String            @map("fonte_url")
+  vigenciaInicio DateTime          @map("vigencia_inicio") @db.Date
+  vigenciaFim    DateTime?         @map("vigencia_fim") @db.Date
+  status         StatusTabelaPrazo
+  propostoPor    String            @map("proposto_por") @db.Uuid
+  propostoEm     DateTime          @map("proposto_em") @db.Timestamptz(6)
+  aprovadoPor    String?           @map("aprovado_por") @db.Uuid
+  aprovadoEm     DateTime?         @map("aprovado_em") @db.Timestamptz(6)
+  criadoEm       DateTime          @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm   DateTime          @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  ato TipoAto @relation(fields: [tipoAto], references: [codigo], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tipoAto, ramo, versao])
+  @@map("tabela_prazo")
 }
