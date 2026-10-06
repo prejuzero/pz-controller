@@ -6,3 +6,6 @@ export const VERIFICADORES = Symbol('VERIFICADORES');
 export const UNIDADE_DE_TRABALHO = Symbol('UNIDADE_DE_TRABALHO');
 export const FILA_DO_RELAY = Symbol('FILA_DO_RELAY');
 export const REGISTRO_DE_PROCESSAMENTO = Symbol('REGISTRO_DE_PROCESSAMENTO');
+/** Conexão Redis (ioredis) e runtime das filas BullMQ (HU10). */
+export const REDIS = Symbol('REDIS');
+export const FILAS_RUNTIME = Symbol('FILAS_RUNTIME');
