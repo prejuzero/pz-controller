@@ -46,4 +46,8 @@ A instância entregue já vem com tudo; o adaptador não escreve nada disso:
 
 Erro que o adaptador não classificou é tratado como defeito: `ErroPermanente`, sem retentativa, e alerta.
 
-Próximos passos da HU09: adaptador S3 com o kit de contrato; gateway de webhooks; persistência da saúde (`integracao_status`).
+## Kit de contrato
+
+`@pz/integracoes/contrato` exporta a suíte genérica de cada porta (`verificarContratoArmazenamento`), que todo adaptador executa no próprio teste de integração. Guia completo: [docs/guias/como-criar-um-adaptador.md](../../docs/guias/como-criar-um-adaptador.md).
+
+Próximos passos da HU09: gateway de webhooks.

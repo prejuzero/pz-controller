@@ -1,12 +1,11 @@
 {
-  "name": "@pz/integracoes",
+  "name": "@pz/adapter-s3",
   "version": "0.0.0",
   "private": true,
-  "description": "Portas de integração, modelos canônicos, descritores, resiliência e kit de contrato (ADR-005).",
+  "description": "Adaptador ArmazenamentoArquivos S3-compatível (RustFS local, Amazon S3), ADR-005/010/017.",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./contrato": "./src/contrato/index.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "lint": "eslint --max-warnings=0 .",
@@ -15,19 +14,16 @@
     "test:int": "vitest run --config vitest.int.config.ts"
   },
   "dependencies": {
-    "@opentelemetry/api": "1.9.1",
-    "@pz/kernel": "workspace:*",
-    "@pz/observability": "workspace:*",
-    "cockatiel": "4.0.0",
-    "zod": "4.6.5"
+    "@aws-sdk/client-s3": "3.1146.0",
+    "@aws-sdk/s3-request-presigner": "3.1146.0",
+    "@pz/integracoes": "workspace:*",
+    "@pz/kernel": "workspace:*"
   },
   "devDependencies": {
     "@pz/config": "workspace:*",
-    "@testcontainers/redis": "12.2.0",
     "@types/node": "24.19.1",
     "@vitest/coverage-v8": "5.0.3",
     "eslint": "10.12.0",
-    "ioredis": "5.11.1",
     "testcontainers": "12.2.0",
     "typescript": "6.0.3",
     "vitest": "5.0.3"
