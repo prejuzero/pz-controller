@@ -101,6 +101,39 @@ jobs:
           path: packages/ui/.vitest/
           if-no-files-found: ignore
 
+  e2e:
+    name: E2E do portal (Playwright, axe e regressão visual)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Pilha do compose e Playwright no mesmo container dos testes visuais do @pz/ui (PZ-167).
+      - name: Rodar o E2E
+        run: |
+          # Chave de cifragem descartável, só deste job (HU06), pela variável de ambiente.
+          CHAVE_CIFRAGEM="$(openssl rand -base64 32)"
+          export CHAVE_CIFRAGEM
+          pnpm e2e
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: relatorio-e2e
+          path: |
+            apps/web/e2e/.relatorio/
+            apps/web/e2e/.resultados/
+          if-no-files-found: ignore
+      - name: Logs em caso de falha
+        if: failure()
+        run: infra/docker/compose.sh --profile apps logs
+      - name: Derrubar
+        if: always()
+        run: infra/docker/compose.sh --profile init --profile apps down -v
+
   commits:
     name: Padrão de commits
     if: github.event_name == 'pull_request'

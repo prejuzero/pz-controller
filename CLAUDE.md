@@ -339,13 +339,13 @@ pnpm dev               # infraestrutura local + apps em modo watch
 pnpm gen:module <nome> # novo módulo hexagonal com exemplo ponta a ponta
 pnpm db:migrate        # aplicar migrações (db:revert reverte a última; db:seed dados fictícios)
 pnpm alertas:testar    # dispara um alerta controlado (com infra:up:obs no ar)
+pnpm e2e               # Playwright do portal: smoke, axe e regressão visual (e2e:atualizar regrava capturas)
 ```
 
 Previstos (criados nas histórias indicadas):
 
 ```
 pnpm eval              # avaliação da IA (HU22)
-pnpm e2e               # Playwright (HU23)
 ```
 
 ## 19. Ordem de implementação
@@ -358,7 +358,7 @@ Dentro de cada história: Dados → Back-end/Integração → Front-end → Test
 
 ### Estado atual
 
-- [x] **M0 · Fundação** — HU01–HU10 (todas concluídas; as telas da HU06 e da HU07 ficam na HU23. Fora do M0, HU15 concluída só no mecanismo; próximas: **HU13** e **HU23**; **HU14** aguarda o curador)
+- [x] **M0 · Fundação** — HU01–HU10 (todas concluídas, com as telas da HU06 e da HU07 entregues na HU23. Fora do M0: HU15 concluída só no mecanismo; HU23 concluída; HU13 com back-end pronto, faltam telas e QA; **HU14** aguarda o curador)
 - [ ] **M1 · Núcleo jurídico** — HU11–HU16
 - [ ] **M2 · Captura e classificação** — HU17–HU22
 - [ ] **M3 · Portal** — HU23–HU29

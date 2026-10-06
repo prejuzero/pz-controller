@@ -11,3 +11,7 @@ packages/db/src/gerado/
 packages/design-tokens/gerado/
 storybook-static/
 .vitest/
+# Saídas locais do E2E do portal (Playwright)
+apps/web/e2e/.relatorio/
+apps/web/e2e/.resultados/
+apps/web/e2e/.sessao/

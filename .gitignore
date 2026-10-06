@@ -46,3 +46,8 @@ storybook-static/
 .vitest/
 # Tipos gerados pelo Next.js (next typegen/dev/build)
 next-env.d.ts
+
+# E2E do portal (Playwright): sessão, relatório e resultados locais
+apps/web/e2e/.sessao/
+apps/web/e2e/.relatorio/
+apps/web/e2e/.resultados/

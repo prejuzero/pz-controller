@@ -9,7 +9,7 @@ const SO_PELO_CLIENTE =
   'Use o cliente gerado do OpenAPI (src/api/cliente.ts) pelos hooks de src/api (card PZ-164).';
 
 export default defineConfig(
-  { ignores: ['.next/**', 'next-env.d.ts'] },
+  { ignores: ['.next/**', 'next-env.d.ts', 'e2e/.relatorio/**', 'e2e/.resultados/**'] },
   base,
   reactHooks.configs.flat.recommended,
   nextPlugin.configs['core-web-vitals'],
