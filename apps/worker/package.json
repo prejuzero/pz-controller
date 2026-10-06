@@ -16,6 +16,7 @@
   "dependencies": {
     "@nestjs/common": "12.1.2",
     "@nestjs/core": "12.1.2",
+    "@pz/adapter-s3": "workspace:*",
     "@pz/adapter-smtp": "workspace:*",
     "@pz/auditoria": "workspace:*",
     "@pz/config": "workspace:*",

@@ -10,3 +10,11 @@ export type {
 } from './domain/cadeia.js';
 export { jsonCanonico } from './domain/canonico.js';
 export { sha256, TrilhaPostgres } from './infra/trilha-postgres.js';
+export { ConsultarTrecho, VerificarIntegridade } from './application/integridade.js';
+export type {
+  Checkpoint,
+  DestinoWorm,
+  RepositorioDaCadeia,
+  ResultadoDoTenant,
+} from './application/integridade.js';
+export { CadeiaPostgres } from './infra/cadeia-postgres.js';

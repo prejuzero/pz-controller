@@ -107,6 +107,31 @@ groups:
         annotations:
           summary: 'Há jobs na DLQ da fila {{ $labels.fila }}: falharam após todas as retentativas.'
           runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#fila-dlq'
+      - uid: pz-auditoria-divergente
+        title: 'Trilha de auditoria divergente'
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 86400, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: 'sum(increase(pz_auditoria_divergencias_total[24h]))'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions: [{ evaluator: { type: gt, params: [0] } }]
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels: { severidade: critica }
+        annotations:
+          summary: 'A verificação diária encontrou adulteração ou registros apagados na trilha de auditoria.'
+          runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#auditoria-divergente'
       - uid: pz-integracao-degradada
         title: 'Adaptador de integração degradado'
         condition: C

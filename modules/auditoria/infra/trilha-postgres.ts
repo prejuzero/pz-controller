@@ -58,9 +58,10 @@ export class TrilhaPostgres implements TrilhaDeAuditoria<Transacao> {
         ${JSON.stringify(registro.depois)}::jsonb, ${contexto?.agora}, ${hashAnterior}, ${hash})`;
   }
 
-  /** Trecho da cadeia do tenant da transação, em ordem, a partir de uma sequência. */
+  /** Trecho da cadeia do tenant, em ordem, a partir de uma sequência (filtro explícito: o verificador roda como sistema). */
   async lerCadeia(
     tx: Transacao,
+    tenantId: string,
     desdeSequencia = 0,
     limite = 10_000,
   ): Promise<RegistroEncadeado[]> {
@@ -83,7 +84,7 @@ export class TrilhaPostgres implements TrilhaDeAuditoria<Transacao> {
         hash_anterior: string;
         hash: string;
       }[]
-    >`SELECT * FROM evento_auditoria WHERE sequencia > ${BigInt(desdeSequencia)}
+    >`SELECT * FROM evento_auditoria WHERE tenant_id = ${tenantId}::uuid AND sequencia > ${BigInt(desdeSequencia)}
        ORDER BY sequencia LIMIT ${limite}`;
     return linhas.map((l) => ({
       id: l.id,

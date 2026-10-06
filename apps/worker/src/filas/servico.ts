@@ -1,6 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { VerificarIntegridade } from '@pz/auditoria';
 import { limparOutbox } from '@pz/kernel';
-import { criarLogger, registrarErro, registrarSituacaoDasFilas } from '@pz/observability';
+import {
+  criarLogger,
+  registrarDivergenciaDeAuditoria,
+  registrarErro,
+  registrarSituacaoDasFilas,
+} from '@pz/observability';
 
 import { DespachanteDeEventos } from '../eventos/consome.js';
 import { consumirEvento, desserializarEvento } from '../eventos/job-evento.js';
@@ -15,7 +21,12 @@ import {
 } from '../fichas.js';
 import { processarWebhook, tratarWebhook } from '../integracoes/webhooks.js';
 
-import { AGENDAMENTOS, limparOutboxJob, RETENCAO_DO_OUTBOX_MS } from './agendamento.js';
+import {
+  AGENDAMENTOS,
+  limparOutboxJob,
+  RETENCAO_DO_OUTBOX_MS,
+  verificarAuditoriaJob,
+} from './agendamento.js';
 import { Filas } from './runtime.js';
 
 import type { ProcessadorDeWebhook } from '../integracoes/webhooks.js';
@@ -45,6 +56,7 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     @Inject(UNIDADE_DOS_WEBHOOKS) private readonly unidadeDosWebhooks: UnidadeDeTrabalho<Transacao>,
     @Inject(PROCESSADORES_DE_WEBHOOK)
     private readonly processadores: ReadonlyMap<string, ProcessadorDeWebhook>,
+    @Inject(VerificarIntegridade) private readonly integridade: VerificarIntegridade<unknown>,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -58,6 +70,25 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
         lote: 1_000,
       });
       logger.info(removidos, 'limpeza do outbox concluída');
+    });
+    this.filas.registrar(verificarAuditoriaJob, async () => {
+      const resultados = await this.integridade.executar();
+      for (const resultado of resultados) {
+        if (resultado.situacao === 'integra') continue;
+        // Alerta crítico: adulteração ou registros apagados (nada falha em silêncio).
+        registrarDivergenciaDeAuditoria();
+        registrarErro(
+          logger,
+          new Error(`auditoria divergente no tenant ${resultado.tenantId}: ${resultado.motivo}`),
+          'trilha de auditoria divergente',
+          'auditoria.integridade',
+        );
+      }
+      const exportados = resultados.reduce(
+        (total, r) => total + (r.situacao === 'integra' ? r.exportados : 0),
+        0,
+      );
+      logger.info({ tenants: resultados.length, exportados }, 'verificação da auditoria concluída');
     });
     this.filas.registrar(processarWebhook, ({ id }) =>
       tratarWebhook(this.unidadeDosWebhooks, this.processadores, this.relogio, id),

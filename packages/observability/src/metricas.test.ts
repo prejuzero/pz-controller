@@ -7,7 +7,9 @@ import {
   registrarErroInesperado,
   registrarEstadoCircuito,
   registrarJobProcessado,
+  registrarDivergenciaDeAuditoria,
   registrarRejeicaoEmail,
+  registrarWebhookRecusado,
   registrarSituacaoDasFilas,
 } from './metricas.js';
 import { iniciarTelemetria } from './telemetria.js';
@@ -63,8 +65,16 @@ describe('catálogo de métricas', () => {
     registrarRejeicaoEmail('bounce');
     registrarErroInesperado('captura');
     registrarJobProcessado('captura', 'sucesso', 0.2);
+    registrarWebhookRecusado('ses');
+    registrarDivergenciaDeAuditoria();
 
     const metricas = await coletar();
+    expect(pontos(metricas.get(NOMES_METRICAS.webhooksRecusados))).toEqual([
+      { atributos: { adaptador: 'ses' }, valor: 1 },
+    ]);
+    expect(pontos(metricas.get(NOMES_METRICAS.auditoriaDivergencias))).toEqual([
+      { atributos: {}, valor: 1 },
+    ]);
 
     expect(metricas.get(NOMES_METRICAS.integracaoDuracao)?.dataPoints[0]?.attributes).toEqual({
       adaptador: 'djen',

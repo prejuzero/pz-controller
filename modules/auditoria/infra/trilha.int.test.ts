@@ -1,9 +1,12 @@
 import { Banco, BancoSistema, executarNoTenant } from '@pz/db';
 import { subirBancoDeTeste } from '@pz/db/teste';
+import { SystemClock } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { VerificarIntegridade } from '../application/integridade.js';
 import { verificarCadeia } from '../domain/cadeia.js';
 
+import { CadeiaPostgres } from './cadeia-postgres.js';
 import { sha256, TrilhaPostgres } from './trilha-postgres.js';
 
 import type { BancoDeTeste } from '@pz/db/teste';
@@ -12,6 +15,7 @@ import type { Uuid } from '@pz/kernel';
 // Dados fictícios de teste.
 const TENANT_A = '01a10e00-0000-7000-8000-0000000a0d01' as Uuid;
 const TENANT_B = '01a10e00-0000-7000-8000-0000000a0d02' as Uuid;
+const TENANT_C = '01a10e00-0000-7000-8000-0000000a0d03' as Uuid;
 const trilha = new TrilhaPostgres();
 const entrada = (n: number) => ({
   tipo: 'identidade.conta-bloqueada' as const,
@@ -22,30 +26,33 @@ const entrada = (n: number) => ({
 
 let postgres: BancoDeTeste;
 let banco: Banco;
+let sistema: BancoSistema;
 
 beforeAll(async () => {
   postgres = await subirBancoDeTeste();
   await postgres.migrar();
-  const sistema = new BancoSistema({ url: postgres.url('pz_sistema') });
-  await sistema.executarComoSistema('preparar tenants', (tx) =>
+  const preparo = new BancoSistema({ url: postgres.url('pz_sistema') });
+  await preparo.executarComoSistema('preparar tenants', (tx) =>
     tx.tenant.createMany({
       data: [
         { id: TENANT_A, nome: 'A', tipo: 'escritorio' },
         { id: TENANT_B, nome: 'B', tipo: 'escritorio' },
+        { id: TENANT_C, nome: 'C', tipo: 'escritorio' },
       ],
     }),
   );
-  await sistema.encerrar();
+  await preparo.encerrar();
   banco = new Banco({ url: postgres.url('pz_app'), maxConexoes: 20 });
+  sistema = new BancoSistema({ url: postgres.url('pz_sistema') });
 }, 300_000);
 
 afterAll(async () => {
-  await banco.encerrar();
+  await Promise.all([banco.encerrar(), sistema.encerrar()]);
   await postgres.parar();
 });
 
 const ler = (tenant: Uuid) =>
-  executarNoTenant(tenant, () => banco.executar((tx) => trilha.lerCadeia(tx)));
+  executarNoTenant(tenant, () => banco.executar((tx) => trilha.lerCadeia(tx, tenant)));
 
 describe('trilha de auditoria no PostgreSQL (HU08)', () => {
   it('1.000 registros concorrentes no mesmo tenant: sequência sem buracos e cadeia válida', async () => {
@@ -151,4 +158,64 @@ describe('trilha de auditoria no PostgreSQL (HU08)', () => {
       await cliente.end();
     }
   });
+});
+
+describe('verificador diário com PostgreSQL real (PZ-110)', () => {
+  it('exporta só o que é novo, detecta adulteração e registros apagados do fim', async () => {
+    for (let n = 0; n < 4; n++) {
+      await executarNoTenant(TENANT_C, () =>
+        banco.executar((tx) => trilha.registrar(tx, entrada(n), { canal: 'sistema' })),
+      );
+    }
+    const gravados: { tenantId: string; caminho: string; linhas: number }[] = [];
+    const worm = {
+      gravar: (tenantId: string, caminho: string, conteudo: Uint8Array) => {
+        gravados.push({
+          tenantId,
+          caminho,
+          linhas: new TextDecoder().decode(conteudo).trim().split('\n').length,
+        });
+        return Promise.resolve();
+      },
+    };
+    const verificar = new VerificarIntegridade(
+      sistema.unidade('verificação da auditoria (teste)'),
+      new CadeiaPostgres(),
+      worm,
+      sha256,
+      { agora: () => new SystemClock().agora() },
+    );
+    const doTenant = async () => (await verificar.executar()).find((r) => r.tenantId === TENANT_C);
+
+    expect(await doTenant()).toEqual({ tenantId: TENANT_C, situacao: 'integra', exportados: 4 });
+    expect(gravados.find((g) => g.tenantId === TENANT_C)).toMatchObject({
+      linhas: 4,
+      caminho: expect.stringMatching(/^auditoria\/\d{4}\/\d{2}\/\d{2}\/1-4\.ndjson$/) as unknown,
+    });
+    expect(await doTenant()).toEqual({ tenantId: TENANT_C, situacao: 'integra', exportados: 0 }); // incremental
+
+    const superusuario = await postgres.conectar('pz_dev');
+    await superusuario.query(
+      'ALTER TABLE evento_auditoria DISABLE TRIGGER evento_auditoria_imutavel',
+    );
+    await superusuario.query(
+      'DELETE FROM evento_auditoria WHERE tenant_id = $1 AND sequencia = 4',
+      [TENANT_C],
+    );
+    await superusuario.query(
+      'ALTER TABLE evento_auditoria ENABLE TRIGGER evento_auditoria_imutavel',
+    );
+    await superusuario.end();
+    expect(await doTenant()).toMatchObject({
+      situacao: 'divergente',
+      sequencia: 4,
+      motivo: expect.stringContaining('removidos do fim') as unknown,
+    });
+
+    // O tenant A foi adulterado no teste anterior (sequência 500): o verificador também acusa.
+    expect((await verificar.executar()).find((r) => r.tenantId === TENANT_A)).toMatchObject({
+      situacao: 'divergente',
+      sequencia: 500,
+    });
+  }, 120_000);
 });

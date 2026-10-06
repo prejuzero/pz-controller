@@ -52,6 +52,7 @@ describe('migrações', () => {
 
       expect(await tabelas()).toEqual([
         'acesso',
+        'auditoria_verificacao',
         'evento_auditoria',
         'evento_dominio',
         'evento_processado',
@@ -70,6 +71,7 @@ describe('migrações', () => {
       await banco.migrar();
       expect(await tabelas()).toEqual([
         'acesso',
+        'auditoria_verificacao',
         'evento_auditoria',
         'evento_dominio',
         'evento_processado',
@@ -107,6 +109,7 @@ describe('RLS (ADR-003)', () => {
 
       expect(rows.map((linha) => linha.tabela)).toEqual([
         'acesso',
+        'auditoria_verificacao',
         'evento_auditoria',
         'evento_dominio',
         'evento_processado',

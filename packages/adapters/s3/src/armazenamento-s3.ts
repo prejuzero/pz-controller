@@ -48,6 +48,11 @@ export interface ConfiguracaoS3 {
   readonly criptografia: 'AES256' | 'nenhuma';
   readonly tiposPermitidos: readonly string[];
   readonly tamanhoMaximoBytes: number;
+  /**
+   * Retenção WORM (object lock em modo COMPLIANCE): nem o dono da conta apaga antes do prazo.
+   * Só para o bucket de auditoria, criado com object lock (ADR-006/017).
+   */
+  readonly retencaoDias?: number;
   /** Validade máxima de uma URL assinada. Padrão: 15 min. */
   readonly expiracaoMaximaSegundos?: number;
 }
@@ -104,6 +109,17 @@ export class ArmazenamentoS3 implements ArmazenamentoArquivos {
     }
   }
 
+  #retencao() {
+    const dias = this.config.retencaoDias;
+    if (dias === undefined) return {};
+    return {
+      ObjectLockMode: 'COMPLIANCE' as const,
+      ObjectLockRetainUntilDate: new Date(
+        this.relogio.agora().maisMs(dias * 24 * 3600 * 1000).epochMs,
+      ),
+    };
+  }
+
   #criptografia() {
     return this.config.criptografia === 'AES256' ? { ServerSideEncryption: 'AES256' as const } : {};
   }
@@ -119,6 +135,7 @@ export class ArmazenamentoS3 implements ArmazenamentoArquivos {
           Body: arquivo.conteudo,
           ContentType: arquivo.tipoMime,
           ...this.#criptografia(),
+          ...this.#retencao(),
         }),
         opcoesDeEnvio(),
       ),

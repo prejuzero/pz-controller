@@ -16,6 +16,7 @@ export const NOMES_METRICAS = {
   integracaoCircuito: 'pz.integracao.circuito.estado',
   emailRejeicoes: 'pz.email.rejeicoes',
   webhooksRecusados: 'pz.integracao.webhook.recusados',
+  auditoriaDivergencias: 'pz.auditoria.divergencias',
   erros: 'pz.erros',
 } as const;
 
@@ -31,6 +32,7 @@ interface Instrumentos {
   readonly integracaoCircuito: Gauge;
   readonly emailRejeicoes: Counter;
   readonly webhooksRecusados: Counter;
+  readonly auditoriaDivergencias: Counter;
   readonly erros: Counter;
 }
 
@@ -55,6 +57,9 @@ function instrumentos(): Instrumentos {
       integracaoCircuito: medidor.createGauge(NOMES_METRICAS.integracaoCircuito, {
         description:
           'Estado do circuit breaker por adaptador (0 fechado, 1 meio-aberto, 2 aberto).',
+      }),
+      auditoriaDivergencias: medidor.createCounter(NOMES_METRICAS.auditoriaDivergencias, {
+        description: 'Tenants com a cadeia de auditoria divergente na verificação diária (HU08).',
       }),
       webhooksRecusados: medidor.createCounter(NOMES_METRICAS.webhooksRecusados, {
         description: 'Webhooks de entrada recusados (assinatura inválida), por adaptador.',
@@ -90,6 +95,10 @@ export function registrarChamadaIntegracao(
 
 export function registrarEstadoCircuito(adaptador: string, estado: EstadoCircuito): void {
   instrumentos().integracaoCircuito.record(ESTADO_CIRCUITO[estado], { adaptador });
+}
+
+export function registrarDivergenciaDeAuditoria(): void {
+  instrumentos().auditoriaDivergencias.add(1);
 }
 
 export function registrarWebhookRecusado(adaptador: string): void {

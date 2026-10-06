@@ -282,6 +282,9 @@ importers:
       '@nestjs/core':
         specifier: 12.1.2
         version: 12.1.2(@nestjs/common@12.1.2(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@10.2.2))(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@pz/adapter-s3':
+        specifier: workspace:*
+        version: link:../../packages/adapters/s3
       '@pz/adapter-smtp':
         specifier: workspace:*
         version: link:../../packages/adapters/smtp

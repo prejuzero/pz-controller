@@ -1,7 +1,14 @@
 import { Module } from '@nestjs/common';
 import { DiscoveryModule } from '@nestjs/core';
+import { ArmazenamentoS3 } from '@pz/adapter-s3';
 import { DESCRITOR_SMTP, ProvedorEmailSmtp } from '@pz/adapter-smtp';
-import { AuditarEvento, TrilhaPostgres } from '@pz/auditoria';
+import {
+  AuditarEvento,
+  CadeiaPostgres,
+  sha256,
+  TrilhaPostgres,
+  VerificarIntegridade,
+} from '@pz/auditoria';
 import { Banco, BancoSistema, OutboxPostgres } from '@pz/db';
 import { CifraAesGcm, EmailsDosUsuariosPostgres, EnviarAvisosDeSeguranca } from '@pz/identidade';
 import { RegistroDeAdaptadores } from '@pz/integracoes';
@@ -46,8 +53,9 @@ import type { AmbienteWorker } from './ambiente.js';
 import type { FonteDoRelay } from './eventos/relay.js';
 import type { ProcessadorDeWebhook } from './integracoes/webhooks.js';
 import type { DynamicModule, Provider } from '@nestjs/common';
+import type { DestinoWorm } from '@pz/auditoria';
 import type { ProvedorEmail } from '@pz/integracoes';
-import type { Clock, OutboxEmMemoria } from '@pz/kernel';
+import type { Clock, OutboxEmMemoria, Uuid } from '@pz/kernel';
 import type { VerificadorDeDependencia } from '@pz/saude';
 
 export interface OpcoesWorker {
@@ -63,6 +71,8 @@ export interface OpcoesWorker {
   readonly processadoresDeWebhook?: ReadonlyMap<string, ProcessadorDeWebhook>;
   /** Provedor de e-mail no lugar do SMTP (testes). */
   readonly email?: ProvedorEmail;
+  /** Destino WORM no lugar do S3 (testes). */
+  readonly worm?: DestinoWorm;
 }
 
 function verificadoresDoAmbiente(
@@ -96,6 +106,48 @@ function fonteEmMemoria(outbox: OutboxEmMemoria): FonteDoRelay<unknown> {
         contexto: {},
       })),
     marcarPublicados: (transacao, ids, em) => outbox.marcarPublicados(transacao as never, ids, em),
+  };
+}
+
+/** Cópia WORM da auditoria no bucket com object lock (modo COMPLIANCE). */
+function wormDoAmbiente(ambiente: AmbienteWorker, relogio: Clock): DestinoWorm {
+  const dias = ambiente.AUDITORIA_WORM_RETENCAO_DIAS;
+  if (
+    dias === undefined &&
+    ambiente.NODE_ENV === 'production' &&
+    ambiente.S3_ENDPOINT === undefined
+  ) {
+    throw new Error('Defina AUDITORIA_WORM_RETENCAO_DIAS (prazo legal de retenção da auditoria)');
+  }
+  const armazenamento = new ArmazenamentoS3(
+    {
+      bucket: ambiente.AUDITORIA_WORM_BUCKET,
+      regiao: ambiente.S3_REGION,
+      ...(ambiente.S3_ENDPOINT === undefined ? {} : { endpoint: ambiente.S3_ENDPOINT }),
+      ...(ambiente.S3_ACCESS_KEY_ID === undefined || ambiente.S3_SECRET_ACCESS_KEY === undefined
+        ? {}
+        : {
+            credenciais: {
+              idChave: ambiente.S3_ACCESS_KEY_ID,
+              segredo: ambiente.S3_SECRET_ACCESS_KEY,
+            },
+          }),
+      forcarPathStyle: ambiente.S3_FORCE_PATH_STYLE,
+      criptografia: ambiente.S3_ENDPOINT === undefined ? 'AES256' : 'nenhuma',
+      tiposPermitidos: ['application/x-ndjson'],
+      tamanhoMaximoBytes: 512 * 1024 * 1024,
+      retencaoDias: dias ?? 1,
+    },
+    relogio,
+  );
+  return {
+    gravar: (tenantId, caminho, conteudo) =>
+      armazenamento.gravar({
+        tenantId: tenantId as Uuid,
+        caminho,
+        conteudo,
+        tipoMime: 'application/x-ndjson',
+      }),
   };
 }
 
@@ -191,6 +243,18 @@ export class WorkerModule {
       ConsumidorDeAvisosDeIdentidade,
       ConsumidorDeAuditoria,
       { provide: AuditarEvento, useValue: new AuditarEvento(new TrilhaPostgres()) },
+      {
+        provide: VerificarIntegridade,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new VerificarIntegridade(
+            sistema.unidade('verificação da trilha de auditoria'),
+            new CadeiaPostgres(),
+            opcoes.worm ?? wormDoAmbiente(ambiente, relogio),
+            sha256,
+            relogio,
+          ),
+      },
       {
         provide: EnviarAvisosDeSeguranca,
         inject: [RELOGIO],
