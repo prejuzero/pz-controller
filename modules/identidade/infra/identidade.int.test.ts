@@ -8,6 +8,11 @@ import { Redis } from 'ioredis';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
+  RegistrarDispositivo,
+  RenovarTokens,
+  RevogarDispositivo,
+} from '../application/dispositivos.js';
+import {
   AtivarSegundoFator,
   ConfigurarSegundoFator,
   VerificarSegundoFator,
@@ -22,7 +27,13 @@ import {
 import { AcessosPostgres } from './acessos-postgres.js';
 import { HasherArgon2 } from './argon2.js';
 import { CredenciaisPostgres } from './credenciais-postgres.js';
-import { EmailsDosUsuariosPostgres, PublicadorOutbox, RedefinicoesRedis } from './redefinicao.js';
+import { DispositivosPostgres, RenovacoesRedis } from './dispositivos.js';
+import {
+  EmailsDosUsuariosPostgres,
+  noTenantDoBanco,
+  PublicadorOutbox,
+  RedefinicoesRedis,
+} from './redefinicao.js';
 import { SegundoFatorPostgres } from './segundo-fator-postgres.js';
 import { CifraAesGcm, SegredosTotp } from './segundo-fator.js';
 import { SessoesRedis } from './sessoes-redis.js';
@@ -325,5 +336,77 @@ describe('redefinição de senha com Redis e PostgreSQL (HU06)', () => {
     expect(
       await executarNoTenant(TENANT_A, () => banco.executar((tx) => emails.emailDe(tx, BIA))),
     ).toBeUndefined();
+  });
+});
+
+describe('sessões por dispositivo com PostgreSQL e Redis (HU06)', () => {
+  it('rotação, reuso e revogação ponta a ponta; o dispositivo só existe no tenant do usuário', async () => {
+    const dispositivos = new DispositivosPostgres(banco);
+    const sessoes = new SessoesRedis(redis);
+    const renovacoes = new RenovacoesRedis(redis);
+    const publicador = new PublicadorOutbox(banco);
+    const tokens = new GeradorDeTokensSeguro();
+    const sessao = {
+      id: gerarUuidV7(),
+      usuarioId: ANA,
+      tenantId: TENANT_A,
+      nivel: 'completo' as const,
+      segundoFatorAtivo: true,
+      criadaEm: relogio.agora(),
+      ultimoUso: relogio.agora(),
+    };
+    const emitidos = await executarNoTenant(TENANT_A, () =>
+      new RegistrarDispositivo(
+        dispositivos,
+        sessoes,
+        renovacoes,
+        tokens,
+        publicador,
+        relogio,
+      ).executar(sessao, { tipoCliente: 'mobile', nome: 'Celular' }),
+    );
+    expect(await redis.exists(`pz:renovacao:${emitidos.tokenDeRenovacao}`)).toBe(0); // só o hash
+    expect(await executarNoTenant(TENANT_B, () => dispositivos.listar(ANA))).toEqual([]);
+
+    const renovar = new RenovarTokens(
+      dispositivos,
+      sessoes,
+      renovacoes,
+      tokens,
+      publicador,
+      relogio,
+      noTenantDoBanco,
+    );
+    const segundo = await renovar.executar(emitidos.tokenDeRenovacao);
+    if (!segundo.ok) throw new Error('renovar deveria passar');
+    expect((await renovar.executar(emitidos.tokenDeRenovacao)).ok).toBe(false); // reuso
+    expect(
+      (await new ValidarSessao(sessoes, relogio).executar(segundo.valor.tokenDeAcesso)).ok,
+    ).toBe(false);
+    const [registro] = await executarNoTenant(TENANT_A, () => dispositivos.listar(ANA));
+    expect(registro?.revogadaEm).toBeDefined();
+
+    const terceiro = await executarNoTenant(TENANT_A, () =>
+      new RegistrarDispositivo(
+        dispositivos,
+        sessoes,
+        renovacoes,
+        tokens,
+        publicador,
+        relogio,
+      ).executar(sessao, { tipoCliente: 'mcp', nome: 'Assistente' }),
+    );
+    const revogar = new RevogarDispositivo(dispositivos, sessoes, renovacoes, publicador, relogio);
+    expect(
+      (
+        await executarNoTenant(TENANT_B, () =>
+          revogar.executar({ ...sessao, tenantId: TENANT_B }, terceiro.dispositivoId),
+        )
+      ).ok,
+    ).toBe(false);
+    expect(
+      (await executarNoTenant(TENANT_A, () => revogar.executar(sessao, terceiro.dispositivoId))).ok,
+    ).toBe(true);
+    expect((await renovar.executar(terceiro.tokenDeRenovacao)).ok).toBe(false);
   });
 });

@@ -10,5 +10,6 @@ export default criarConfigVitest({
     'infra/acessos-postgres.ts',
     'infra/tentativas-redis.ts',
     'infra/redefinicao.ts',
+    'infra/dispositivos.ts',
   ],
 });

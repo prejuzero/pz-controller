@@ -68,6 +68,10 @@ class Sessoes implements ArmazemDeSessoes {
     this.mapa.delete(token);
     return Promise.resolve();
   }
+  removerTodasDoDispositivo(dispositivoId: Uuid) {
+    for (const [t, s] of this.mapa) if (s.dispositivoId === dispositivoId) this.mapa.delete(t);
+    return Promise.resolve();
+  }
   removerTodasDoUsuario(usuarioId: Uuid) {
     for (const [t, s] of this.mapa) if (s.usuarioId === usuarioId) this.mapa.delete(t);
     return Promise.resolve();

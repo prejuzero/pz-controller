@@ -197,6 +197,91 @@ export const redefinirSenha = definirRota({
   erros: [401, 429],
 });
 
+const TipoCliente = z.enum(['web', 'mobile', 'mcp', 'integrador']);
+
+export const PedidoDeTokensDeDispositivo = nomear(
+  'PedidoDeTokensDeDispositivo',
+  z.object({ tipoCliente: TipoCliente, nomeDispositivo: z.string().min(1).max(100) }),
+);
+
+export const TokensDeDispositivo = nomear(
+  'TokensDeDispositivo',
+  z.object({
+    dispositivoId: z.uuid(),
+    tokenDeAcesso: z.string().describe('Bearer de 15 min.'),
+    acessoExpiraEm: z.iso.datetime(),
+    tokenDeRenovacao: z.string().describe('Uso único; reutilizar revoga o dispositivo.'),
+    renovacaoExpiraEm: z.iso.datetime(),
+  }),
+);
+export type TokensDeDispositivo = z.infer<typeof TokensDeDispositivo.esquema>;
+
+export const PedidoDeRenovacao = nomear(
+  'PedidoDeRenovacao',
+  z.object({ tokenDeRenovacao: z.string().min(20).max(200) }),
+);
+
+export const DispositivosDaConta = nomear(
+  'DispositivosDaConta',
+  z.object({
+    itens: z.array(
+      z.object({
+        id: z.uuid(),
+        tipoCliente: TipoCliente,
+        nome: z.string(),
+        criadoEm: z.iso.datetime(),
+        ultimoUso: z.iso.datetime(),
+        revogadaEm: z.iso.datetime().nullable(),
+      }),
+    ),
+  }),
+);
+export type DispositivosDaConta = z.infer<typeof DispositivosDaConta.esquema>;
+
+/** Tokens para clientes que não são navegador (app, MCP, integrador); exige sessão completa. */
+export const emitirTokensDeDispositivo = definirRota({
+  id: 'emitirTokensDeDispositivo',
+  metodo: 'post',
+  caminho: '/v1/auth/tokens',
+  resumo: 'Registra o dispositivo e emite token de acesso curto e de renovação.',
+  tag: 'auth',
+  corpo: PedidoDeTokensDeDispositivo,
+  resposta: { status: 201, corpo: TokensDeDispositivo },
+});
+
+/** Troca o token de renovação por um par novo (rotação). */
+export const renovarTokens = definirRota({
+  id: 'renovarTokens',
+  metodo: 'post',
+  caminho: '/v1/auth/tokens/renovar',
+  resumo: 'Renova os tokens do dispositivo; o de renovação usado deixa de valer.',
+  tag: 'auth',
+  publica: true,
+  corpo: PedidoDeRenovacao,
+  resposta: { status: 200, corpo: TokensDeDispositivo },
+  erros: [401, 429],
+});
+
+export const listarDispositivos = definirRota({
+  id: 'listarDispositivos',
+  metodo: 'get',
+  caminho: '/v1/auth/dispositivos',
+  resumo: 'Dispositivos com sessão na conta.',
+  tag: 'auth',
+  resposta: { status: 200, corpo: DispositivosDaConta },
+});
+
+export const revogarDispositivo = definirRota({
+  id: 'revogarDispositivo',
+  metodo: 'delete',
+  caminho: '/v1/auth/dispositivos/{id}',
+  resumo: 'Encerra a sessão de um dispositivo na hora.',
+  tag: 'auth',
+  parametrosDeCaminho: z.object({ id: z.uuid() }),
+  resposta: { status: 204, corpo: null },
+  erros: [404],
+});
+
 export const ROTAS_AUTH = [
   entrar,
   sair,
@@ -207,4 +292,8 @@ export const ROTAS_AUTH = [
   listarAcessos,
   solicitarRedefinicaoDeSenha,
   redefinirSenha,
+  emitirTokensDeDispositivo,
+  renovarTokens,
+  listarDispositivos,
+  revogarDispositivo,
 ] as const;

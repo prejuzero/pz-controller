@@ -15,6 +15,8 @@ interface SessaoSerializada {
   segundoFatorAtivo: boolean;
   criadaEm: number;
   ultimoUso: number;
+  dispositivoId?: string;
+  expiraAte?: number;
 }
 
 /**
@@ -45,13 +47,19 @@ export class SessoesRedis implements ArmazemDeSessoes {
       segundoFatorAtivo: sessao.segundoFatorAtivo,
       criadaEm: sessao.criadaEm.epochMs,
       ultimoUso: sessao.ultimoUso.epochMs,
+      ...(sessao.dispositivoId === undefined ? {} : { dispositivoId: sessao.dispositivoId }),
+      ...(sessao.expiraAte === undefined ? {} : { expiraAte: sessao.expiraAte.epochMs }),
     };
-    await this.redis
+    const multi = this.redis
       .multi()
       .set(this.#chave(token), JSON.stringify(dados), 'PX', ttlMs)
       .sadd(this.#doUsuario(sessao.usuarioId), hashDoToken(token))
-      .pexpire(this.#doUsuario(sessao.usuarioId), 7 * 24 * 3600 * 1000)
-      .exec();
+      .pexpire(this.#doUsuario(sessao.usuarioId), 7 * 24 * 3600 * 1000);
+    if (sessao.dispositivoId !== undefined) {
+      const doDispositivo = this.#doUsuario(`dispositivo:${sessao.dispositivoId}`);
+      multi.sadd(doDispositivo, hashDoToken(token)).pexpire(doDispositivo, 7 * 24 * 3600 * 1000);
+    }
+    await multi.exec();
   }
 
   async obter(token: string): Promise<Sessao | undefined> {
@@ -66,6 +74,8 @@ export class SessoesRedis implements ArmazemDeSessoes {
       segundoFatorAtivo: dados.segundoFatorAtivo,
       criadaEm: Instant.deEpochMs(dados.criadaEm),
       ultimoUso: Instant.deEpochMs(dados.ultimoUso),
+      ...(dados.dispositivoId === undefined ? {} : { dispositivoId: dados.dispositivoId as Uuid }),
+      ...(dados.expiraAte === undefined ? {} : { expiraAte: Instant.deEpochMs(dados.expiraAte) }),
     };
   }
 
@@ -77,5 +87,9 @@ export class SessoesRedis implements ArmazemDeSessoes {
     const conjunto = this.#doUsuario(usuarioId);
     const hashes = await this.redis.smembers(conjunto);
     await this.redis.del(conjunto, ...hashes.map((hash) => `${this.prefixo}${hash}`));
+  }
+
+  removerTodasDoDispositivo(dispositivoId: Uuid): Promise<void> {
+    return this.removerTodasDoUsuario(`dispositivo:${dispositivoId}` as Uuid);
   }
 }

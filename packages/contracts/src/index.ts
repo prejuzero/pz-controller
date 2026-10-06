@@ -4,6 +4,14 @@ import { ROTAS_SAUDE } from './saude/index.js';
 import { ROTAS_WEBHOOKS } from './webhooks/index.js';
 
 export {
+  DispositivosDaConta,
+  emitirTokensDeDispositivo,
+  listarDispositivos,
+  PedidoDeRenovacao,
+  PedidoDeTokensDeDispositivo,
+  renovarTokens,
+  revogarDispositivo,
+  TokensDeDispositivo,
   PedidoDeRedefinicaoDeSenha,
   RedefinicaoDeSenha,
   redefinirSenha,

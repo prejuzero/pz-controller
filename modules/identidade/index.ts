@@ -52,6 +52,8 @@ export {
   TentativasEmMemoria,
   PublicadorEmMemoria,
   RedefinicoesEmMemoria,
+  DispositivosEmMemoria,
+  RenovacoesEmMemoria,
 } from './infra/em-memoria.js';
 export { AcessosPostgres } from './infra/acessos-postgres.js';
 export { TentativasRedis } from './infra/tentativas-redis.js';
@@ -76,3 +78,19 @@ export {
   PublicadorOutbox,
   RedefinicoesRedis,
 } from './infra/redefinicao.js';
+export {
+  ListarDispositivos,
+  RegistrarDispositivo,
+  RenovarTokens,
+  RevogarDispositivo,
+  VALIDADE_DA_RENOVACAO_MS,
+  VALIDADE_DO_ACESSO_MS,
+} from './application/dispositivos.js';
+export type { TokensDeDispositivo } from './application/dispositivos.js';
+export type {
+  ArmazemDeRenovacoes,
+  Dispositivo,
+  RepositorioDeDispositivos,
+  TipoCliente,
+} from './application/portas.js';
+export { DispositivosPostgres, RenovacoesRedis } from './infra/dispositivos.js';
