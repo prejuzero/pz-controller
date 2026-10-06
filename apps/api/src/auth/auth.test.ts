@@ -2,9 +2,11 @@ import { randomBytes } from 'node:crypto';
 
 import { Controller, Get, Post } from '@nestjs/common';
 import { carregarAmbiente } from '@pz/config/env';
-import { SessaoAtual } from '@pz/contracts';
+import { SessaoAtual, TokensDeDispositivo } from '@pz/contracts';
 import { tenantAtual } from '@pz/db';
 import {
+  DispositivosEmMemoria,
+  RenovacoesEmMemoria,
   CifraAesGcm,
   PublicadorEmMemoria,
   RedefinicoesEmMemoria,
@@ -16,7 +18,7 @@ import {
   SegundoFatorEmMemoria,
   SessoesEmMemoria,
 } from '@pz/identidade';
-import { gerarUuidV7 } from '@pz/kernel';
+import { gerarUuidV7, SystemClock } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { esquemaApi } from '../ambiente.js';
@@ -75,6 +77,8 @@ beforeAll(async () => {
     identidade: {
       publicador,
       redefinicoes: new RedefinicoesEmMemoria(),
+      dispositivos: new DispositivosEmMemoria(),
+      renovacoes: new RenovacoesEmMemoria(),
       credenciais,
       sessoes,
       segundoFator,
@@ -370,5 +374,93 @@ describe('recuperação de senha na api (HU06)', () => {
     expect(
       (await entrar('ana@exemplo.invalid', 'senha nova de teste longa')).resposta.statusCode,
     ).toBe(200);
+  });
+});
+
+describe('sessões por dispositivo na api (HU06)', () => {
+  it('emite tokens com sessão completa, renova com rotação, lista e revoga remotamente', async () => {
+    const tokenCompleto = 'c'.repeat(43);
+    const agora = new SystemClock().agora();
+    await sessoes.gravar(tokenCompleto, {
+      id: gerarUuidV7(),
+      usuarioId: USUARIO,
+      tenantId: TENANT,
+      nivel: 'completo',
+      segundoFatorAtivo: true,
+      criadaEm: agora,
+      ultimoUso: agora,
+    });
+    const bearer = (token: string) => ({ authorization: `Bearer ${token}` });
+
+    const emitidos = await api.inject({
+      method: 'POST',
+      url: '/v1/auth/tokens',
+      headers: bearer(tokenCompleto),
+      payload: { tipoCliente: 'mobile', nomeDispositivo: 'Celular' },
+    });
+    expect(emitidos.statusCode).toBe(201);
+    const tokens = TokensDeDispositivo.esquema.parse(emitidos.json());
+
+    const renovados = await api.inject({
+      method: 'POST',
+      url: '/v1/auth/tokens/renovar',
+      payload: { tokenDeRenovacao: tokens.tokenDeRenovacao },
+    });
+    expect(renovados.statusCode).toBe(200);
+    const novos = TokensDeDispositivo.esquema.parse(renovados.json());
+    expect(
+      (
+        await api.inject({
+          method: 'GET',
+          url: '/v1/auth/eu',
+          headers: bearer(novos.tokenDeAcesso),
+        })
+      ).statusCode,
+    ).toBe(200);
+
+    const lista = await api.inject({
+      method: 'GET',
+      url: '/v1/auth/dispositivos',
+      headers: bearer(novos.tokenDeAcesso),
+    });
+    expect(lista.json()).toMatchObject({
+      itens: [
+        { id: tokens.dispositivoId, tipoCliente: 'mobile', nome: 'Celular', revogadaEm: null },
+      ],
+    });
+
+    const revogado = await api.inject({
+      method: 'DELETE',
+      url: `/v1/auth/dispositivos/${tokens.dispositivoId}`,
+      headers: bearer(tokenCompleto),
+    });
+    expect(revogado.statusCode).toBe(204);
+    expect(
+      (
+        await api.inject({
+          method: 'GET',
+          url: '/v1/auth/eu',
+          headers: bearer(novos.tokenDeAcesso),
+        })
+      ).statusCode,
+    ).toBe(401);
+    expect(
+      (
+        await api.inject({
+          method: 'POST',
+          url: '/v1/auth/tokens/renovar',
+          payload: { tokenDeRenovacao: novos.tokenDeRenovacao },
+        })
+      ).statusCode,
+    ).toBe(401);
+    expect(
+      (
+        await api.inject({
+          method: 'DELETE',
+          url: '/v1/auth/dispositivos/nao-uuid',
+          headers: bearer(tokenCompleto),
+        })
+      ).statusCode,
+    ).toBe(400);
   });
 });

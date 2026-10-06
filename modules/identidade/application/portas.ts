@@ -29,6 +29,7 @@ export interface ArmazemDeSessoes {
   obter(token: string): Promise<Sessao | undefined>;
   remover(token: string): Promise<void>;
   removerTodasDoUsuario(usuarioId: Uuid): Promise<void>;
+  removerTodasDoDispositivo(dispositivoId: Uuid): Promise<void>;
 }
 
 export interface GeradorDeTokens {
@@ -111,4 +112,49 @@ export interface RegistroDeAcessos {
 /** Grava eventos no outbox, no tenant informado (a requisição pode não ter sessão). */
 export interface PublicadorDeEventos {
   publicar(tenantId: Uuid, eventos: readonly EventoDominio[]): Promise<void>;
+}
+
+export type TipoCliente = 'web' | 'mobile' | 'mcp' | 'integrador';
+
+export interface Dispositivo {
+  readonly id: Uuid;
+  readonly usuarioId: Uuid;
+  readonly tenantId: Uuid;
+  readonly tipoCliente: TipoCliente;
+  readonly nome: string;
+  readonly criadoEm: Instant;
+  readonly ultimoUso: Instant;
+  readonly revogadaEm?: Instant;
+}
+
+/** Sessões de dispositivo no tenant do contexto (RLS). */
+export interface RepositorioDeDispositivos {
+  registrar(dispositivo: Dispositivo): Promise<void>;
+  listar(usuarioId: Uuid): Promise<Dispositivo[]>;
+  /** Ativo = existe, é do usuário e não foi revogado. */
+  ativo(id: Uuid, usuarioId: Uuid): Promise<boolean>;
+  registrarUso(id: Uuid, em: Instant): Promise<void>;
+  /** false se não existe (para este usuário) ou já estava revogado. */
+  revogar(id: Uuid, usuarioId: Uuid, em: Instant): Promise<boolean>;
+}
+
+export interface DadosDaRenovacao {
+  readonly dispositivoId: Uuid;
+  readonly usuarioId: Uuid;
+  readonly tenantId: Uuid;
+}
+
+export type ResultadoDaRenovacao =
+  | { readonly tipo: 'valido'; readonly dados: DadosDaRenovacao }
+  | { readonly tipo: 'reuso'; readonly dados: DadosDaRenovacao }
+  | { readonly tipo: 'invalido' };
+
+/**
+ * Tokens de renovação (só o hash): cada um vale uma vez. Apresentar um já usado indica roubo
+ * (o legítimo e o atacante disputam a mesma família) e revoga o dispositivo (OAuth 2.1, BCP).
+ */
+export interface ArmazemDeRenovacoes {
+  emitir(token: string, dados: DadosDaRenovacao, expiraEm: Instant): Promise<void>;
+  consumir(token: string): Promise<ResultadoDaRenovacao>;
+  revogarDoDispositivo(dispositivoId: Uuid): Promise<void>;
 }

@@ -1,4 +1,9 @@
 import type {
+  ArmazemDeRenovacoes,
+  DadosDaRenovacao,
+  Dispositivo,
+  RepositorioDeDispositivos,
+  ResultadoDaRenovacao,
   Acesso,
   ControleDeTentativas,
   RegistroDeAcessos,
@@ -55,6 +60,13 @@ export class SessoesEmMemoria implements ArmazemDeSessoes {
   removerTodasDoUsuario(usuarioId: Uuid): Promise<void> {
     for (const [token, sessao] of this.#sessoes) {
       if (sessao.usuarioId === usuarioId) this.#sessoes.delete(token);
+    }
+    return Promise.resolve();
+  }
+
+  removerTodasDoDispositivo(dispositivoId: Uuid): Promise<void> {
+    for (const [token, sessao] of this.#sessoes) {
+      if (sessao.dispositivoId === dispositivoId) this.#sessoes.delete(token);
     }
     return Promise.resolve();
   }
@@ -180,6 +192,68 @@ export class PublicadorEmMemoria {
 
   publicar(_tenantId: Uuid, eventos: readonly EventoDominio[]): Promise<void> {
     this.publicados.push(...eventos);
+    return Promise.resolve();
+  }
+}
+
+export class DispositivosEmMemoria implements RepositorioDeDispositivos {
+  readonly #dispositivos = new Map<string, Dispositivo>();
+
+  registrar(d: Dispositivo): Promise<void> {
+    this.#dispositivos.set(d.id, d);
+    return Promise.resolve();
+  }
+
+  listar(usuarioId: Uuid): Promise<Dispositivo[]> {
+    return Promise.resolve(
+      [...this.#dispositivos.values()].filter((d) => d.usuarioId === usuarioId),
+    );
+  }
+
+  ativo(id: Uuid, usuarioId: Uuid): Promise<boolean> {
+    const d = this.#dispositivos.get(id);
+    return Promise.resolve(d?.usuarioId === usuarioId && d.revogadaEm === undefined);
+  }
+
+  registrarUso(id: Uuid, em: Instant): Promise<void> {
+    const d = this.#dispositivos.get(id);
+    if (d !== undefined) this.#dispositivos.set(id, { ...d, ultimoUso: em });
+    return Promise.resolve();
+  }
+
+  revogar(id: Uuid, usuarioId: Uuid, em: Instant): Promise<boolean> {
+    const d = this.#dispositivos.get(id);
+    if (d?.usuarioId !== usuarioId || d.revogadaEm !== undefined) return Promise.resolve(false);
+    this.#dispositivos.set(id, { ...d, revogadaEm: em });
+    return Promise.resolve(true);
+  }
+}
+
+export class RenovacoesEmMemoria implements ArmazemDeRenovacoes {
+  readonly #validos = new Map<string, DadosDaRenovacao>();
+  readonly #usados = new Map<string, DadosDaRenovacao>();
+
+  emitir(token: string, dados: DadosDaRenovacao): Promise<void> {
+    this.#validos.set(token, dados);
+    return Promise.resolve();
+  }
+
+  consumir(token: string): Promise<ResultadoDaRenovacao> {
+    const dados = this.#validos.get(token);
+    if (dados !== undefined) {
+      this.#validos.delete(token);
+      this.#usados.set(token, dados);
+      return Promise.resolve({ tipo: 'valido', dados });
+    }
+    const usado = this.#usados.get(token);
+    return Promise.resolve(
+      usado === undefined ? { tipo: 'invalido' } : { tipo: 'reuso', dados: usado },
+    );
+  }
+
+  revogarDoDispositivo(dispositivoId: Uuid): Promise<void> {
+    for (const [token, dados] of this.#validos)
+      if (dados.dispositivoId === dispositivoId) this.#validos.delete(token);
     return Promise.resolve();
   }
 }

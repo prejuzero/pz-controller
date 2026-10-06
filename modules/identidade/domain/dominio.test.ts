@@ -82,3 +82,13 @@ describe('sessão', () => {
     );
   });
 });
+
+describe('token de acesso de dispositivo', () => {
+  it('o limite próprio vence antes das regras gerais; sem ele, valem as gerais', () => {
+    const curto = { ...sessao, expiraAte: inicio.maisMs(15 * 60_000) };
+    expect(expiracao(curto)).toEqual(inicio.maisMs(15 * 60_000));
+    expect(expiracao({ ...sessao, expiraAte: inicio.maisMs(DURACAO_MAXIMA_MS * 2) })).toEqual(
+      inicio.maisMs(INATIVIDADE_MAXIMA_MS),
+    );
+  });
+});

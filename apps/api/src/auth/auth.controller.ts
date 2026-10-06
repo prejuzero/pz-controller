@@ -1,8 +1,21 @@
-import { Body, Controller, Get, HttpCode, Inject, Post, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Inject,
+  Param,
+  Post,
+  Req,
+  Res,
+} from '@nestjs/common';
 import {
   CodigoSegundoFator,
   Credenciais,
   PedidoDeRedefinicaoDeSenha,
+  PedidoDeRenovacao,
+  PedidoDeTokensDeDispositivo,
   RedefinicaoDeSenha,
 } from '@pz/contracts';
 import {
@@ -12,11 +25,16 @@ import {
   ConsultarAcessos,
   ElevarSessao,
   EncerrarSessao,
+  ListarDispositivos,
   RedefinirSenha,
+  RegistrarDispositivo,
+  RenovarTokens,
+  RevogarDispositivo,
   SolicitarRedefinicaoDeSenha,
   VerificarSegundoFator,
 } from '@pz/identidade';
 import { Validacao } from '@pz/kernel';
+import { z } from 'zod';
 
 import { PermiteSessaoParcial, Publico } from '../http/acesso.js';
 import { LimitarPorIp } from '../http/limite.js';
@@ -25,14 +43,20 @@ import { cookieCsrf, cookieDeSessao, cookiesApagados } from './cookies.js';
 
 import type { RequisicaoAutenticada } from '../http/acesso.js';
 import type {
+  DispositivosDaConta,
+  TokensDeDispositivo,
   AcessosRecentes,
   ConfiguracaoSegundoFator,
   SegundoFatorAtivado,
   SessaoAtual,
 } from '@pz/contracts';
-import type { ContextoDeAcesso, Sessao, SessaoCriada } from '@pz/identidade';
+import type {
+  ContextoDeAcesso,
+  Sessao,
+  SessaoCriada,
+  TokensDeDispositivo as Tokens,
+} from '@pz/identidade';
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import type { z } from 'zod';
 
 function sessaoAtual(sessao: Sessao): SessaoAtual {
   const proximoPasso =
@@ -85,6 +109,10 @@ export class AuthController {
     @Inject(SolicitarRedefinicaoDeSenha)
     private readonly solicitarRedefinicao: SolicitarRedefinicaoDeSenha,
     @Inject(RedefinirSenha) private readonly redefinir: RedefinirSenha,
+    @Inject(RegistrarDispositivo) private readonly registrarDispositivo: RegistrarDispositivo,
+    @Inject(RenovarTokens) private readonly renovar: RenovarTokens,
+    @Inject(ListarDispositivos) private readonly listarDispositivos: ListarDispositivos,
+    @Inject(RevogarDispositivo) private readonly revogarDispositivo: RevogarDispositivo,
   ) {}
 
   @Post('entrar')
@@ -142,6 +170,64 @@ export class AuthController {
   async redefinirSenha(@Body() corpo: unknown): Promise<void> {
     const { token, novaSenha } = validar(RedefinicaoDeSenha.esquema, corpo);
     const resultado = await this.redefinir.executar(token, novaSenha);
+    if (!resultado.ok) throw resultado.erro;
+  }
+
+  @Post('tokens')
+  @HttpCode(201)
+  async emitirTokens(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Body() corpo: unknown,
+    @Res({ passthrough: true }) resposta: FastifyReply,
+  ): Promise<TokensDeDispositivo> {
+    const { tipoCliente, nomeDispositivo } = validar(PedidoDeTokensDeDispositivo.esquema, corpo);
+    const tokens = await this.registrarDispositivo.executar(autenticacao(requisicao).sessao, {
+      tipoCliente,
+      nome: nomeDispositivo,
+    });
+    void resposta.header('cache-control', 'no-store');
+    return paraTokens(tokens);
+  }
+
+  @Post('tokens/renovar')
+  @Publico()
+  @LimitarPorIp(30)
+  @HttpCode(200)
+  async renovarTokens(
+    @Body() corpo: unknown,
+    @Res({ passthrough: true }) resposta: FastifyReply,
+  ): Promise<TokensDeDispositivo> {
+    const resultado = await this.renovar.executar(
+      validar(PedidoDeRenovacao.esquema, corpo).tokenDeRenovacao,
+    );
+    if (!resultado.ok) throw resultado.erro;
+    void resposta.header('cache-control', 'no-store');
+    return paraTokens(resultado.valor);
+  }
+
+  @Get('dispositivos')
+  async dispositivos(@Req() requisicao: RequisicaoAutenticada): Promise<DispositivosDaConta> {
+    const itens = await this.listarDispositivos.executar(autenticacao(requisicao).sessao);
+    return {
+      itens: itens.map((d) => ({
+        id: d.id,
+        tipoCliente: d.tipoCliente,
+        nome: d.nome,
+        criadoEm: d.criadoEm.paraIso(),
+        ultimoUso: d.ultimoUso.paraIso(),
+        revogadaEm: d.revogadaEm?.paraIso() ?? null,
+      })),
+    };
+  }
+
+  @Delete('dispositivos/:id')
+  @HttpCode(204)
+  async revogar(@Req() requisicao: RequisicaoAutenticada, @Param('id') id: string): Promise<void> {
+    const dispositivoId = validar(z.uuid(), id);
+    const resultado = await this.revogarDispositivo.executar(
+      autenticacao(requisicao).sessao,
+      dispositivoId as Sessao['id'],
+    );
     if (!resultado.ok) throw resultado.erro;
   }
 
@@ -205,6 +291,16 @@ export class AuthController {
     emitirSessao(resposta, elevada);
     return sessaoAtual(elevada.sessao);
   }
+}
+
+function paraTokens(tokens: Tokens): TokensDeDispositivo {
+  return {
+    dispositivoId: tokens.dispositivoId,
+    tokenDeAcesso: tokens.tokenDeAcesso,
+    acessoExpiraEm: tokens.acessoExpiraEm.paraIso(),
+    tokenDeRenovacao: tokens.tokenDeRenovacao,
+    renovacaoExpiraEm: tokens.renovacaoExpiraEm.paraIso(),
+  };
 }
 
 function paraContrato(acesso: Awaited<ReturnType<ConsultarAcessos['executar']>>[number]) {

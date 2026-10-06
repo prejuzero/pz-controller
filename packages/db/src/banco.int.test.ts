@@ -54,6 +54,7 @@ describe('migrações', () => {
         'acesso',
         'evento_dominio',
         'evento_processado',
+        'sessao_dispositivo',
         'tenant',
         'usuario',
         'webhook_recebido',
@@ -70,6 +71,7 @@ describe('migrações', () => {
         'acesso',
         'evento_dominio',
         'evento_processado',
+        'sessao_dispositivo',
         'tenant',
         'usuario',
         'webhook_recebido',
@@ -105,6 +107,7 @@ describe('RLS (ADR-003)', () => {
         'acesso',
         'evento_dominio',
         'evento_processado',
+        'sessao_dispositivo',
         'tenant',
         'usuario',
       ]);

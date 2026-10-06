@@ -6,6 +6,12 @@ import {
   Autenticar,
   CifraAesGcm,
   AcessosPostgres,
+  DispositivosPostgres,
+  ListarDispositivos,
+  RegistrarDispositivo,
+  RenovacoesRedis,
+  RenovarTokens,
+  RevogarDispositivo,
   noTenantDoBanco,
   PublicadorOutbox,
   RedefinicoesRedis,
@@ -54,6 +60,8 @@ import type { JanelaDeRequisicoes } from './http/limite.js';
 import type { CaixaDeWebhooks } from './webhooks/webhooks.controller.js';
 import type { DynamicModule, Provider, Type } from '@nestjs/common';
 import type {
+  ArmazemDeRenovacoes,
+  RepositorioDeDispositivos,
   ArmazemDeRedefinicoes,
   PublicadorDeEventos,
   ArmazemDeSessoes,
@@ -84,6 +92,8 @@ export interface OpcoesApi {
     readonly acessos: RegistroDeAcessos;
     readonly publicador?: PublicadorDeEventos;
     readonly redefinicoes?: ArmazemDeRedefinicoes;
+    readonly dispositivos?: RepositorioDeDispositivos;
+    readonly renovacoes?: ArmazemDeRenovacoes;
   };
   readonly janelaDeRequisicoes?: JanelaDeRequisicoes;
 }
@@ -146,6 +156,9 @@ export class AppModule {
     const publicador = opcoes.identidade?.publicador ?? new PublicadorOutbox(recursos.banco);
     const redefinicoes = opcoes.identidade?.redefinicoes ?? new RedefinicoesRedis(recursos.redis);
     const hasher = new HasherArgon2();
+    const dispositivos =
+      opcoes.identidade?.dispositivos ?? new DispositivosPostgres(recursos.banco);
+    const renovacoes = opcoes.identidade?.renovacoes ?? new RenovacoesRedis(recursos.redis);
     const provedores: Provider[] = [
       { provide: RecursosDaApi, useValue: recursos },
       { provide: AMBIENTE, useValue: opcoes.ambiente },
@@ -185,6 +198,33 @@ export class AppModule {
           new Autenticar(credenciais, new HasherArgon2(), sessoes, tokens, relogio, protecao),
       },
       { provide: ConsultarAcessos, useValue: new ConsultarAcessos(acessos) },
+      {
+        provide: RegistrarDispositivo,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new RegistrarDispositivo(dispositivos, sessoes, renovacoes, tokens, publicador, relogio),
+      },
+      {
+        provide: RenovarTokens,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new RenovarTokens(
+            dispositivos,
+            sessoes,
+            renovacoes,
+            tokens,
+            publicador,
+            relogio,
+            noTenantDoBanco,
+          ),
+      },
+      { provide: ListarDispositivos, useValue: new ListarDispositivos(dispositivos) },
+      {
+        provide: RevogarDispositivo,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new RevogarDispositivo(dispositivos, sessoes, renovacoes, publicador, relogio),
+      },
       {
         provide: SolicitarRedefinicaoDeSenha,
         inject: [RELOGIO],
