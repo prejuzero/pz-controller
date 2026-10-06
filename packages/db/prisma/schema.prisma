@@ -86,3 +86,19 @@ model EventoProcessado {
   @@index([processadoEm])
   @@map("evento_processado")
 }
+
+/// Webhook de entrada com o corpo bruto (HU09, ADR-005). Global: o tenant só é conhecido no
+/// processamento. pz_app só insere; pz_sistema lê e processa.
+model WebhookRecebido {
+  id            String    @id @db.Uuid
+  adaptador     String
+  idExterno     String    @map("id_externo")
+  cabecalhos    Json      @db.JsonB
+  corpo         Bytes
+  recebidoEm    DateTime  @default(now()) @map("recebido_em") @db.Timestamptz(6)
+  enfileiradoEm DateTime? @map("enfileirado_em") @db.Timestamptz(6)
+  processadoEm  DateTime? @map("processado_em") @db.Timestamptz(6)
+
+  @@unique([adaptador, idExterno])
+  @@map("webhook_recebido")
+}

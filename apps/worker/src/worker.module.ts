@@ -20,21 +20,25 @@ import {
   FILAS_RUNTIME,
   FONTE_DO_RELAY,
   LIMPEZA_DO_OUTBOX,
+  PROCESSADORES_DE_WEBHOOK,
   REDIS,
   REGISTRO_DE_PROCESSAMENTO,
   RELOGIO,
   UNIDADE_DA_LIMPEZA,
   UNIDADE_DE_TRABALHO,
   UNIDADE_DO_RELAY,
+  UNIDADE_DOS_WEBHOOKS,
   VERIFICADORES,
 } from './fichas.js';
 import { Filas } from './filas/runtime.js';
 import { ServicoDeFilas } from './filas/servico.js';
+import { RelayDeWebhooks } from './integracoes/webhooks.js';
 import { RecursosDoBanco } from './recursos.js';
 import { ConsumidorDeSituacao } from './saude/consumidor.js';
 
 import type { AmbienteWorker } from './ambiente.js';
 import type { FonteDoRelay } from './eventos/relay.js';
+import type { ProcessadorDeWebhook } from './integracoes/webhooks.js';
 import type { DynamicModule, Provider } from '@nestjs/common';
 import type { Clock, OutboxEmMemoria } from '@pz/kernel';
 import type { VerificadorDeDependencia } from '@pz/saude';
@@ -48,6 +52,8 @@ export interface OpcoesWorker {
   readonly outbox?: OutboxEmMemoria;
   /** false nos testes que não sobem Redis: sem filas nem relay. Padrão: true. */
   readonly filas?: boolean;
+  /** Processadores de webhook por ID do adaptador (cada adaptador com webhook entra aqui). */
+  readonly processadoresDeWebhook?: ReadonlyMap<string, ProcessadorDeWebhook>;
 }
 
 function verificadoresDoAmbiente(
@@ -122,6 +128,9 @@ export class WorkerModule {
       // Limpeza diária do outbox: também atravessa tenants (sistema, motivo registrado).
       { provide: UNIDADE_DA_LIMPEZA, useValue: sistema.unidade('limpeza do outbox') },
       { provide: LIMPEZA_DO_OUTBOX, useValue: outboxPostgres },
+      // Webhooks de entrada: tabela global, lida e processada como sistema.
+      { provide: UNIDADE_DOS_WEBHOOKS, useValue: sistema.unidade('webhooks de entrada') },
+      { provide: PROCESSADORES_DE_WEBHOOK, useValue: opcoes.processadoresDeWebhook ?? new Map() },
       {
         provide: FONTE_DO_RELAY,
         useValue: emMemoria === undefined ? outboxPostgres : fonteEmMemoria(emMemoria),
@@ -145,7 +154,7 @@ export class WorkerModule {
           new Filas({ redis, relogio, filasAtivas: ambiente.WORKER_QUEUES }),
       },
       DespachanteDeEventos,
-      ...(opcoes.filas === false ? [] : [ServicoDeFilas, RelayDoOutbox]),
+      ...(opcoes.filas === false ? [] : [ServicoDeFilas, RelayDoOutbox, RelayDeWebhooks]),
       RecursosDoBanco,
       // Consumidores (lista explícita, CLAUDE.md seção 6).
       ConsumidorDeSituacao,

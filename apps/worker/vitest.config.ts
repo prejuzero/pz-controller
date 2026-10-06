@@ -11,5 +11,6 @@ export default criarConfigVitest({
     'src/filas/servico.ts',
     'src/eventos/relay.ts',
     'src/recursos.ts',
+    'src/integracoes/webhooks.ts',
   ],
 });

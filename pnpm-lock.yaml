@@ -218,6 +218,12 @@ importers:
       '@pz/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@pz/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@pz/integracoes':
+        specifier: workspace:*
+        version: link:../../packages/integracoes
       '@pz/kernel':
         specifier: workspace:*
         version: link:../../packages/kernel

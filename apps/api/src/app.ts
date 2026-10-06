@@ -18,8 +18,12 @@ export async function criarApi(opcoes: OpcoesApi): Promise<NestFastifyApplicatio
     AppModule.registrar(opcoes),
     adaptador,
     // Logs da api saem pelo @pz/observability; o logger interno do Nest fica desligado.
-    { logger: false, abortOnError: false },
+    // rawBody: a assinatura de webhook é verificada sobre os bytes exatos recebidos.
+    { logger: false, abortOnError: false, rawBody: true },
   );
+  // Corpo bruto preservado em JSON e texto (provedores como o SNS enviam text/plain).
+  api.useBodyParser('application/json');
+  api.useBodyParser('text/plain');
   api.useGlobalPipes(validacaoPorContrato);
   api.enableShutdownHooks();
   return api;

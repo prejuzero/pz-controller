@@ -13,6 +13,7 @@ export {
   registrarJobProcessado,
   registrarRejeicaoEmail,
   registrarSituacaoDasFilas,
+  registrarWebhookRecusado,
 } from './metricas.js';
 export type { EstadoCircuito, ResultadoOperacao, SituacaoFila } from './metricas.js';
 export {

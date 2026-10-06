@@ -46,6 +46,24 @@ export class Banco implements UnidadeDeTrabalho<Transacao> {
     });
   }
 
+  /**
+   * Transação sem tenant, ainda como pz_app (sem BYPASSRLS): as tabelas de tenant continuam
+   * invisíveis pelo RLS; só tabelas globais com permissão explícita são alcançáveis (ex.: a
+   * api gravando um webhook antes de saber o tenant). Exige motivo, como o acesso de sistema.
+   */
+  executarSemTenant<Resultado>(
+    motivo: string,
+    trabalho: (transacao: Transacao) => Promise<Resultado>,
+  ): Promise<Resultado> {
+    if (motivo.trim().length < 3)
+      return Promise.reject(new Error('Informe o motivo do acesso sem tenant'));
+    return this.#prisma.$transaction(async (transacao) => {
+      // Garante tenant vazio nesta transação, mesmo que o contexto tenha um.
+      await transacao.$executeRaw`SELECT set_config('app.tenant_id', '', true)`;
+      return trabalho(transacao);
+    });
+  }
+
   /** Confere a conexão no protocolo do PostgreSQL (prontidão). */
   async verificar(): Promise<void> {
     await this.#prisma.$queryRaw`SELECT 1`;

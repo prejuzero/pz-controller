@@ -17,3 +17,6 @@ export const FONTE_DO_RELAY = Symbol('FONTE_DO_RELAY');
 /** Limpeza agendada do outbox: unidade como sistema e a porta de remoção (HU10). */
 export const UNIDADE_DA_LIMPEZA = Symbol('UNIDADE_DA_LIMPEZA');
 export const LIMPEZA_DO_OUTBOX = Symbol('LIMPEZA_DO_OUTBOX');
+/** Webhooks de entrada (HU09): unidade como sistema e processadores por adaptador. */
+export const UNIDADE_DOS_WEBHOOKS = Symbol('UNIDADE_DOS_WEBHOOKS');
+export const PROCESSADORES_DE_WEBHOOK = Symbol('PROCESSADORES_DE_WEBHOOK');
