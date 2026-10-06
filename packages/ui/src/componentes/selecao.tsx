@@ -1,3 +1,5 @@
+'use client';
+
 import { Check, ChevronDown } from 'lucide-react';
 import { Select } from 'radix-ui';
 

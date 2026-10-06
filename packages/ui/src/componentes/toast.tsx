@@ -1,3 +1,5 @@
+'use client';
+
 import { toast as sonner, Toaster } from 'sonner';
 
 import { mensagens } from '../mensagens.js';

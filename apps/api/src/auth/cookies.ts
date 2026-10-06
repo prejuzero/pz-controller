@@ -1,14 +1,15 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 
+import { COOKIE_CSRF, COOKIE_SESSAO } from '@pz/contracts';
 import { DURACAO_MAXIMA_MS } from '@pz/identidade';
 
+export { CABECALHO_CSRF, COOKIE_CSRF, COOKIE_SESSAO } from '@pz/contracts';
+
 /**
- * Prefixo `__Host-`: o navegador só aceita o cookie com Secure, Path=/ e sem Domain (não pode
- * ser plantado por subdomínio). `localhost` conta como contexto seguro no desenvolvimento.
+ * Nomes em @pz/contracts, compartilhados com o portal. Prefixo `__Host-`: o navegador só aceita
+ * o cookie com Secure, Path=/ e sem Domain (não pode ser plantado por subdomínio). `localhost`
+ * conta como contexto seguro no desenvolvimento.
  */
-export const COOKIE_SESSAO = '__Host-pz_sessao';
-export const COOKIE_CSRF = '__Host-pz_csrf';
-export const CABECALHO_CSRF = 'x-csrf-token';
 
 export function lerCookies(cabecalho: string | undefined): Map<string, string> {
   const cookies = new Map<string, string>();
