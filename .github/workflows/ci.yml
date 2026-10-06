@@ -273,8 +273,9 @@ jobs:
           curl -fsS http://127.0.0.1:8025/readyz
       - name: Construir e subir as imagens da api e do worker (HU04)
         run: |
-          # Chave de cifragem descartável, só deste job (HU06): o compose a lê do .env da raiz.
-          echo "CHAVE_CIFRAGEM=$(openssl rand -base64 32)" > .env
+          # Chave de cifragem descartável, só deste job (HU06), pela variável de ambiente.
+          CHAVE_CIFRAGEM="$(openssl rand -base64 32)"
+          export CHAVE_CIFRAGEM
           ${COMPOSE} --profile apps up -d --build --wait api worker
       - name: Apps prontas com as dependências
         run: |
