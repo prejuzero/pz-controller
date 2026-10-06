@@ -7,7 +7,9 @@ import { useTranslations } from 'next-intl';
 import { Dialog } from 'radix-ui';
 import { useState, type ReactNode } from 'react';
 
+import { usePermissoes } from '../../../api/hooks';
 import { ITENS_BARRA_INFERIOR, ITENS_MENU, itemAtivo } from '../../../navegacao';
+import { filtrarPermitidos } from '../../../permissoes';
 
 import { Cabecalho } from './cabecalho';
 import { FaixaAvisos } from './faixa-avisos';
@@ -21,6 +23,9 @@ export function Casca({ children }: { children: ReactNode }) {
   const t = useTranslations('menu');
   const caminho = usePathname();
   const [recolhida, setRecolhida] = useState(false);
+  // Enquanto a sessão carrega, só os itens sem permissão aparecem; nenhum some depois de visto.
+  const permissoes = usePermissoes() ?? [];
+  const itens = filtrarPermitidos(ITENS_MENU, permissoes);
 
   return (
     <div className="flex min-h-dvh bg-fundo text-texto">
@@ -64,7 +69,7 @@ export function Casca({ children }: { children: ReactNode }) {
         </div>
         <nav id="menu-lateral" aria-label={t('principal')}>
           <ul className="grid gap-1">
-            {ITENS_MENU.map((item) => (
+            {itens.map((item) => (
               <li key={item.chave}>
                 <LinkMenu item={item} ativo={itemAtivo(caminho, item.href)} compacto={recolhida} />
               </li>
@@ -81,13 +86,21 @@ export function Casca({ children }: { children: ReactNode }) {
         </main>
       </div>
 
-      <NavegacaoInferior caminho={caminho} />
+      <NavegacaoInferior caminho={caminho} permissoes={permissoes} />
     </div>
   );
 }
 
-function NavegacaoInferior({ caminho }: { caminho: string }) {
+function NavegacaoInferior({
+  caminho,
+  permissoes,
+}: {
+  caminho: string;
+  permissoes: readonly string[];
+}) {
   const t = useTranslations('menu');
+  const itens = filtrarPermitidos(ITENS_MENU, permissoes);
+  const itensBarra = filtrarPermitidos(ITENS_BARRA_INFERIOR, permissoes);
   const [aberta, setAberta] = useState(false);
   const fechar = () => {
     setAberta(false);
@@ -98,8 +111,8 @@ function NavegacaoInferior({ caminho }: { caminho: string }) {
       aria-label={t('principal')}
       className="fixed inset-x-0 bottom-0 z-40 border-t border-borda bg-superficie pb-[env(safe-area-inset-bottom)] md:hidden"
     >
-      <ul className="grid grid-cols-5">
-        {ITENS_BARRA_INFERIOR.map((item) => (
+      <ul className="grid auto-cols-fr grid-flow-col">
+        {itensBarra.map((item) => (
           <li key={item.chave}>
             <LinkMenu item={item} ativo={itemAtivo(caminho, item.href)} vertical />
           </li>
@@ -126,7 +139,7 @@ function NavegacaoInferior({ caminho }: { caminho: string }) {
                   </Dialog.Close>
                 </div>
                 <ul className="grid gap-1">
-                  {ITENS_MENU.map((item) => (
+                  {itens.map((item) => (
                     <li key={item.chave}>
                       <LinkMenu
                         item={item}

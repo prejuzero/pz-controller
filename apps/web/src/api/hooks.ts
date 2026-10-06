@@ -3,6 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext } from 'react';
 
+import { permite, type Exigencia } from '../permissoes';
+
 import { consultasSessao, mutacoesSessao } from './sessao';
 
 import type { ClienteApi } from './cliente';
@@ -21,6 +23,17 @@ function useMutacoesSessao() {
 
 export function useSessao() {
   return useQuery(consultasSessao(useApi()).atual());
+}
+
+/** Permissões efetivas da sessão; `undefined` enquanto a sessão carrega. */
+export function usePermissoes(): readonly string[] | undefined {
+  return useSessao().data?.permissoes;
+}
+
+/** `undefined` enquanto a sessão carrega: nem mostra a ação nem o aviso de acesso negado. */
+export function usePermissao(exigencia: Exigencia): boolean | undefined {
+  const permissoes = usePermissoes();
+  return permissoes === undefined ? undefined : permite(permissoes, exigencia);
 }
 
 export function useAcessos() {
