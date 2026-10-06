@@ -8,9 +8,10 @@ import type {
   RepositorioDeCredenciais,
   RepositorioDeSegundoFator,
 } from '../application/portas.js';
+import type { PedidoDeRedefinicao } from '../application/redefinicao.js';
 import type { Email } from '../domain/credenciais.js';
 import type { Sessao } from '../domain/sessao.js';
-import type { Instant, Uuid } from '@pz/kernel';
+import type { EventoDominio, Instant, Uuid } from '@pz/kernel';
 
 /** Credenciais em memória, para testes das apps (sem PostgreSQL). */
 export class CredenciaisEmMemoria implements RepositorioDeCredenciais {
@@ -154,5 +155,31 @@ export class AcessosEmMemoria implements RegistroDeAcessos {
         .reverse()
         .slice(0, limite),
     );
+  }
+}
+
+export class RedefinicoesEmMemoria {
+  readonly #pedidos = new Map<string, PedidoDeRedefinicao>();
+
+  guardar(token: string, pedido: PedidoDeRedefinicao): Promise<void> {
+    for (const [chave, existente] of this.#pedidos)
+      if (existente.usuarioId === pedido.usuarioId) this.#pedidos.delete(chave);
+    this.#pedidos.set(token, pedido);
+    return Promise.resolve();
+  }
+
+  consumir(token: string): Promise<PedidoDeRedefinicao | undefined> {
+    const pedido = this.#pedidos.get(token);
+    this.#pedidos.delete(token);
+    return Promise.resolve(pedido);
+  }
+}
+
+export class PublicadorEmMemoria {
+  readonly publicados: EventoDominio[] = [];
+
+  publicar(_tenantId: Uuid, eventos: readonly EventoDominio[]): Promise<void> {
+    this.publicados.push(...eventos);
+    return Promise.resolve();
   }
 }

@@ -9,5 +9,6 @@ export default criarConfigVitest({
     'infra/segundo-fator-postgres.ts',
     'infra/acessos-postgres.ts',
     'infra/tentativas-redis.ts',
+    'infra/redefinicao.ts',
   ],
 });

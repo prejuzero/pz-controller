@@ -13,6 +13,7 @@ import type {
   RegistroDeAcessos,
   HasherDeSenha,
   RepositorioDeCredenciais,
+  PublicadorDeEventos,
 } from './portas.js';
 import type { Sessao } from '../domain/sessao.js';
 import type { Clock, Result, Uuid, Validacao } from '@pz/kernel';
@@ -45,6 +46,8 @@ export class ProtecaoDeAcesso {
     private readonly tentativas: ControleDeTentativas,
     private readonly acessos: RegistroDeAcessos,
     private readonly relogio: Clock,
+    /** Publica `ContaBloqueada` para o titular ser avisado por e-mail (worker). */
+    private readonly publicador?: PublicadorDeEventos,
   ) {}
 
   async bloqueado(chave: string): Promise<boolean> {
@@ -66,6 +69,21 @@ export class ProtecaoDeAcesso {
         sucesso: false,
         ocorridoEm: agora,
       });
+      await this.publicador?.publicar(acesso.tenantId, [
+        {
+          id: gerarUuidV7(this.relogio),
+          tipo: 'ContaBloqueada',
+          versao: 1,
+          tenantId: acesso.tenantId,
+          agregadoId: acesso.usuarioId,
+          ocorridoEm: agora,
+          payload: {
+            usuarioId: acesso.usuarioId,
+            motivo: acesso.tipo === 'segundo-fator' ? 'segundo-fator' : 'login',
+            bloqueadaAte: agora.maisMs(duracao).paraIso(),
+          },
+        },
+      ]);
     }
   }
 

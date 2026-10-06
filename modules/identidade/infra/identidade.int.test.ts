@@ -22,6 +22,7 @@ import {
 import { AcessosPostgres } from './acessos-postgres.js';
 import { HasherArgon2 } from './argon2.js';
 import { CredenciaisPostgres } from './credenciais-postgres.js';
+import { EmailsDosUsuariosPostgres, PublicadorOutbox, RedefinicoesRedis } from './redefinicao.js';
 import { SegundoFatorPostgres } from './segundo-fator-postgres.js';
 import { CifraAesGcm, SegredosTotp } from './segundo-fator.js';
 import { SessoesRedis } from './sessoes-redis.js';
@@ -283,5 +284,46 @@ describe('registro de acessos e bloqueio com PostgreSQL e Redis', () => {
     expect(await redis.pttl('pz:tentativas:bloqueio:login:x')).toBeLessThanOrEqual(60_000);
     await b.limpar('login:x');
     expect(await a.bloqueadoAte('login:x')).toBeUndefined();
+  });
+});
+
+describe('redefinição de senha com Redis e PostgreSQL (HU06)', () => {
+  it('token de uso único com TTL, só o hash no Redis; um novo pedido invalida o anterior', async () => {
+    const redefinicoes = new RedefinicoesRedis(redis);
+    const pedido = { usuarioId: ANA, tenantId: TENANT_A, email: 'ana@exemplo.invalid' as Email };
+    const ate = Instant.deEpochMs(Date.now() + 30 * 60_000);
+    await redefinicoes.guardar('token-a-com-tamanho-suficiente', pedido, ate);
+    expect(await redis.exists('pz:redefinicao:token-a-com-tamanho-suficiente')).toBe(0);
+    await redefinicoes.guardar('token-b-com-tamanho-suficiente', pedido, ate);
+    expect(await redefinicoes.consumir('token-a-com-tamanho-suficiente')).toBeUndefined();
+    expect(await redefinicoes.consumir('token-b-com-tamanho-suficiente')).toEqual(pedido);
+    expect(await redefinicoes.consumir('token-b-com-tamanho-suficiente')).toBeUndefined();
+  });
+
+  it('o evento vai para o outbox do tenant do usuário e o e-mail é lido sob RLS', async () => {
+    const evento = {
+      id: gerarUuidV7(),
+      tipo: 'RedefinicaoDeSenhaSolicitada',
+      versao: 1,
+      tenantId: TENANT_B,
+      agregadoId: BIA,
+      ocorridoEm: relogio.agora(),
+      payload: { usuarioId: BIA, tokenCifrado: 'v1.x.y.z' },
+    };
+    await new PublicadorOutbox(banco).publicar(TENANT_B, [evento]);
+    const direto = await postgres.conectar('pz_sistema');
+    const { rows } = await direto.query<{ tenant_id: string }>(
+      'SELECT tenant_id FROM evento_dominio WHERE id = $1',
+      [evento.id],
+    );
+    await direto.end();
+    expect(rows).toEqual([{ tenant_id: TENANT_B }]);
+    const emails = new EmailsDosUsuariosPostgres();
+    expect(
+      await executarNoTenant(TENANT_B, () => banco.executar((tx) => emails.emailDe(tx, BIA))),
+    ).toBe('Bia@Exemplo.invalid');
+    expect(
+      await executarNoTenant(TENANT_A, () => banco.executar((tx) => emails.emailDe(tx, BIA))),
+    ).toBeUndefined();
   });
 });

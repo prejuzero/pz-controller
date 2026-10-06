@@ -104,6 +104,11 @@ services:
       # Cifragem de segredos da aplicação (ex.: 2FA): gere com `openssl rand -base64 32` no .env.
       # Vazia: só a api recusa subir (validação do ambiente); a infraestrutura sobe sem ela.
       CHAVE_CIFRAGEM: ${CHAVE_CIFRAGEM:-}
+      # E-mail local pelo Mailpit (sem TLS); em produção, relay SMTP com STARTTLS (HU72).
+      SMTP_HOST: mailpit
+      SMTP_PORT: '1025'
+      SMTP_EXIGIR_TLS: 'false'
+      PORTAL_URL: ${PORTAL_URL:-http://localhost:3001}
       # Com o perfil observability no ar: APPS_OTEL_ENDPOINT=http://observabilidade:4318 no .env.
       OTEL_EXPORTER_OTLP_ENDPOINT: ${APPS_OTEL_ENDPOINT:-}
     ports:

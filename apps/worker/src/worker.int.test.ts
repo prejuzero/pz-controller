@@ -3,6 +3,7 @@ import { InMemorySpanExporter } from '@opentelemetry/sdk-trace-node';
 import { carregarAmbiente } from '@pz/config/env';
 import { Banco, executarNoTenant, OutboxPostgres, WebhooksPostgres } from '@pz/db';
 import { subirBancoDeTeste } from '@pz/db/teste';
+import { CifraAesGcm } from '@pz/identidade';
 import { gerarUuidV7, SystemClock } from '@pz/kernel';
 import { executarComContexto, iniciarTelemetria } from '@pz/observability';
 import { HistoricoEmMemoria } from '@pz/saude';
@@ -28,6 +29,7 @@ import type { StartedRedisContainer } from '@testcontainers/redis';
 
 // Dados fictícios de teste.
 const TENANT = '01a10e00-0000-7000-8000-0000000e2e01' as Uuid;
+const USUARIO_E2E = '01a10e00-0000-7000-8000-0000000e2e02' as Uuid;
 
 let postgres: BancoDeTeste;
 let redis: StartedRedisContainer;
@@ -36,6 +38,7 @@ let banco: Banco;
 let telemetria: Telemetria;
 const spans = new InMemorySpanExporter();
 const webhooksProcessados: string[] = [];
+const emailsEnviados: { para: readonly string[]; texto: string; idempotencia: string }[] = [];
 
 function novoEvento(agregadoId: string): EventoDominio {
   return {
@@ -104,6 +107,10 @@ beforeAll(async () => {
     `INSERT INTO tenant (id, nome, tipo) VALUES ($1, 'Escritório E2E', 'escritorio')`,
     [TENANT],
   );
+  await sistema.query(
+    `INSERT INTO usuario (id, tenant_id, nome, email) VALUES ($1, $2, 'Pessoa E2E', 'e2e@exemplo.invalid')`,
+    [USUARIO_E2E, TENANT],
+  );
   await sistema.end();
 
   telemetria = iniciarTelemetria({
@@ -116,12 +123,23 @@ beforeAll(async () => {
     NODE_ENV: 'test',
     DATABASE_URL: postgres.url('pz_app'),
     DATABASE_URL_SISTEMA: postgres.url('pz_sistema'),
+    SMTP_HOST: '127.0.0.1',
+    SMTP_PORT: '1025',
+    CHAVE_CIFRAGEM: 'MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=',
     REDIS_URL: redis.getConnectionUrl(),
     S3_REGION: 'us-east-1',
     RELAY_INTERVALO_MS: '100',
   });
   worker = await criarWorker({
     ambiente,
+    email: {
+      enviar: (email) => {
+        emailsEnviados.push(email);
+        return Promise.resolve({ idExterno: 'teste', aceitoEm: new SystemClock().agora() });
+      },
+      saude: () =>
+        Promise.resolve({ estado: 'operacional', verificadoEm: new SystemClock().agora() }),
+    },
     processadoresDeWebhook: new Map([
       [
         'teste',
@@ -318,5 +336,38 @@ describe('webhooks de entrada no worker (HU09)', () => {
     expect(await processado('wh-2')).toBe(false);
     expect(webhooksProcessados).toEqual(['wh-1']);
     await sistema.end();
+  }, 60_000);
+});
+
+describe('e-mails de segurança pelo worker (HU06)', () => {
+  it('RedefinicaoDeSenhaSolicitada no outbox vira e-mail com o link, para o e-mail do usuário, uma vez', async () => {
+    const id = gerarUuidV7();
+    await executarNoTenant(TENANT, () =>
+      banco.executar((tx) =>
+        new OutboxPostgres().gravar(tx, [
+          {
+            id,
+            tipo: 'RedefinicaoDeSenhaSolicitada',
+            versao: 1,
+            tenantId: TENANT,
+            agregadoId: USUARIO_E2E,
+            ocorridoEm: new SystemClock().agora(),
+            payload: {
+              usuarioId: USUARIO_E2E,
+              tokenCifrado: new CifraAesGcm('MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=').cifrar(
+                'token-do-link',
+              ),
+            },
+          },
+        ]),
+      ),
+    );
+    // O relay automático foi parado no bloco anterior: um ciclo manual publica o evento.
+    await novoRelay().executarCiclo();
+    await esperar(() => emailsEnviados.some((e) => e.idempotencia === id));
+    const enviados = emailsEnviados.filter((e) => e.idempotencia === id);
+    expect(enviados).toHaveLength(1);
+    expect(enviados[0]?.para).toEqual(['e2e@exemplo.invalid']);
+    expect(enviados[0]?.texto).toContain('/redefinir-senha#token=token-do-link');
   }, 60_000);
 });

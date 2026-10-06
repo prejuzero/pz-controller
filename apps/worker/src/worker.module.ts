@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { DiscoveryModule } from '@nestjs/core';
+import { DESCRITOR_SMTP, ProvedorEmailSmtp } from '@pz/adapter-smtp';
 import { Banco, BancoSistema, OutboxPostgres } from '@pz/db';
+import { CifraAesGcm, EmailsDosUsuariosPostgres, EnviarAvisosDeSeguranca } from '@pz/identidade';
+import { RegistroDeAdaptadores } from '@pz/integracoes';
 import { SystemClock } from '@pz/kernel';
 import { criarLogger, registrarErro } from '@pz/observability';
 import {
@@ -32,6 +35,7 @@ import {
 } from './fichas.js';
 import { Filas } from './filas/runtime.js';
 import { ServicoDeFilas } from './filas/servico.js';
+import { ConsumidorDeAvisosDeIdentidade } from './identidade/consumidor.js';
 import { RelayDeWebhooks } from './integracoes/webhooks.js';
 import { RecursosDoBanco } from './recursos.js';
 import { ConsumidorDeSituacao } from './saude/consumidor.js';
@@ -40,6 +44,7 @@ import type { AmbienteWorker } from './ambiente.js';
 import type { FonteDoRelay } from './eventos/relay.js';
 import type { ProcessadorDeWebhook } from './integracoes/webhooks.js';
 import type { DynamicModule, Provider } from '@nestjs/common';
+import type { ProvedorEmail } from '@pz/integracoes';
 import type { Clock, OutboxEmMemoria } from '@pz/kernel';
 import type { VerificadorDeDependencia } from '@pz/saude';
 
@@ -54,6 +59,8 @@ export interface OpcoesWorker {
   readonly filas?: boolean;
   /** Processadores de webhook por ID do adaptador (cada adaptador com webhook entra aqui). */
   readonly processadoresDeWebhook?: ReadonlyMap<string, ProcessadorDeWebhook>;
+  /** Provedor de e-mail no lugar do SMTP (testes). */
+  readonly email?: ProvedorEmail;
 }
 
 function verificadoresDoAmbiente(
@@ -88,6 +95,27 @@ function fonteEmMemoria(outbox: OutboxEmMemoria): FonteDoRelay<unknown> {
       })),
     marcarPublicados: (transacao, ids, em) => outbox.marcarPublicados(transacao as never, ids, em),
   };
+}
+
+/** E-mail pelo registro de adaptadores (resiliência, telemetria e saúde padrão, ADR-005). */
+function emailDoAmbiente(ambiente: AmbienteWorker, relogio: Clock): ProvedorEmail {
+  const registro = new RegistroDeAdaptadores({ padrao: { 'provedor-email': 'smtp' } }, { relogio });
+  registro.registrar(
+    DESCRITOR_SMTP,
+    () =>
+      new ProvedorEmailSmtp(
+        {
+          host: ambiente.SMTP_HOST,
+          porta: ambiente.SMTP_PORT,
+          tls: false,
+          exigirStartTls: ambiente.SMTP_EXIGIR_TLS,
+          remetente: ambiente.EMAIL_REMETENTE,
+        },
+        relogio,
+      ),
+  );
+  registro.validar();
+  return registro.obter('provedor-email');
 }
 
 /** Composição do worker: filas, relay do outbox e consumidores de eventos (lista explícita). */
@@ -158,6 +186,18 @@ export class WorkerModule {
       RecursosDoBanco,
       // Consumidores (lista explícita, CLAUDE.md seção 6).
       ConsumidorDeSituacao,
+      ConsumidorDeAvisosDeIdentidade,
+      {
+        provide: EnviarAvisosDeSeguranca,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new EnviarAvisosDeSeguranca(
+            opcoes.email ?? emailDoAmbiente(ambiente, relogio),
+            new EmailsDosUsuariosPostgres(),
+            new CifraAesGcm(ambiente.CHAVE_CIFRAGEM),
+            ambiente.PORTAL_URL,
+          ),
+      },
     ];
     return { module: WorkerModule, imports: [DiscoveryModule], providers: provedores };
   }
