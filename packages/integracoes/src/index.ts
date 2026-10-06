@@ -18,6 +18,8 @@ export {
   ErroTransitorio,
 } from './erros.js';
 export type { TipoErroIntegracao } from './erros.js';
+export { FILAS, filaDlq, NOMES_FILAS } from './filas.js';
+export type { NomeFila } from './filas.js';
 export { LimitadorEmMemoria } from './limitador.js';
 export type { LimitadorDeTaxa } from './limitador.js';
 export { LimitadorRedis } from './limitador-redis.js';

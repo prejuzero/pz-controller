@@ -358,7 +358,7 @@ Dentro de cada história: Dados → Back-end/Integração → Front-end → Test
 
 ### Estado atual
 
-- [ ] **M0 · Fundação** — HU01–HU10 (concluídas: HU01, HU02, HU03, HU04, HU05, HU06 — telas na HU23 —, HU08, HU09, HU10; próximas: **HU15** e **HU14** — esta aguarda o curador)
+- [x] **M0 · Fundação** — HU01–HU10 (todas concluídas; as telas da HU06 e da HU07 ficam na HU23. Fora do M0, HU15 concluída só no mecanismo; próximas: **HU13** e **HU23**; **HU14** aguarda o curador)
 - [ ] **M1 · Núcleo jurídico** — HU11–HU16
 - [ ] **M2 · Captura e classificação** — HU17–HU22
 - [ ] **M3 · Portal** — HU23–HU29

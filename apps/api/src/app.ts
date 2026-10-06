@@ -3,6 +3,7 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
 
+import { registrarPainelDeFilas } from './admin/painel-de-filas.js';
 import { AppModule } from './app.module.js';
 import { registrarContextoDeRequisicao } from './http/contexto.js';
 import { validacaoPorContrato } from './http/problemas.js';
@@ -30,6 +31,7 @@ export async function criarApi(opcoes: OpcoesApi): Promise<NestFastifyApplicatio
   });
   api.useBodyParser('text/plain');
   api.useGlobalPipes(validacaoPorContrato);
+  await registrarPainelDeFilas(api);
   api.enableShutdownHooks();
   return api;
 }

@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 
 import { Controller, Get } from '@nestjs/common';
+import { FilaDeMortosEmMemoria } from '@pz/administracao';
 import { carregarAmbiente } from '@pz/config/env';
 import { tenantAtual } from '@pz/db';
 import {
@@ -25,7 +26,10 @@ import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import type { EntradaDeAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
 import type { TransacaoEmMemoria } from '@pz/kernel';
 
-/** Impersonação pela API (HU07, PZ-105): tenant efetivo, só leitura, validade e auditoria. */
+/**
+ * Impersonação pela API (HU07, PZ-105): tenant efetivo, só leitura, validade e auditoria. Painel
+ * de filas e reprocessamento auditado da DLQ (PZ-107).
+ */
 
 @Controller('v1/teste-impersonacao')
 class LeituraDeTeste {
@@ -54,6 +58,9 @@ const trilha: TrilhaDeAuditoria<TransacaoEmMemoria> = {
 };
 const token = randomBytes(32).toString('base64url');
 const autorizacao = { authorization: `Bearer ${token}` };
+const SEM_PERFIL = gerarUuidV7();
+const tokenSemPerfil = randomBytes(32).toString('base64url');
+const mortos = new FilaDeMortosEmMemoria();
 let api: NestFastifyApplication;
 
 beforeAll(async () => {
@@ -81,6 +88,10 @@ beforeAll(async () => {
       impersonacao: { unidade: new OutboxEmMemoria(), tenants, trilha },
     },
     janelaDeRequisicoes: { registrar: () => Promise.resolve(1) },
+    filas: {
+      reprocessamento: { filaDeMortos: mortos, unidade: new OutboxEmMemoria(), trilha },
+      painel: [],
+    },
   });
   await api.init();
   await api.getHttpAdapter().getInstance().ready();
@@ -92,6 +103,15 @@ beforeEach(async () => {
   await sessoes.gravar(token, {
     id: gerarUuidV7(),
     usuarioId: ADMIN,
+    tenantId: PLATAFORMA,
+    nivel: 'completo',
+    segundoFatorAtivo: true,
+    criadaEm: agora,
+    ultimoUso: agora,
+  });
+  await sessoes.gravar(tokenSemPerfil, {
+    id: gerarUuidV7(),
+    usuarioId: SEM_PERFIL,
     tenantId: PLATAFORMA,
     nivel: 'completo',
     segundoFatorAtivo: true,
@@ -166,5 +186,91 @@ describe('impersonação pela API (HU07)', () => {
     expect((await ler()).statusCode).toBe(403);
     const eu = await api.inject({ method: 'GET', url: '/v1/auth/eu', headers: autorizacao });
     expect(eu.json<{ impersonacao: unknown }>().impersonacao).toBeNull();
+  });
+});
+
+const MORTO = {
+  fila: 'notificacoes',
+  jobId: 'notificacao.email-1',
+  tipo: 'notificacao.email',
+  erro: 'SMTP fora do ar',
+  tentativas: 6,
+  falhouEm: '2026-10-06T11:00:00.000Z',
+  originalDisponivel: true,
+};
+const reprocessar = (headers = autorizacao, motivo = 'SMTP voltou (chamado 77)') =>
+  api.inject({
+    method: 'POST',
+    url: '/v1/admin/filas/notificacoes/dlq/notificacao.email-1/reprocessar',
+    headers,
+    payload: { motivo },
+  });
+
+describe('reprocessamento da DLQ pela API (HU07)', () => {
+  it('admin da plataforma: 204, job de volta à fila e auditoria no tenant plataforma', async () => {
+    mortos.morrer(MORTO);
+    expect((await reprocessar()).statusCode).toBe(204);
+    expect(mortos.reprocessados.at(-1)).toEqual(MORTO);
+    expect(registros).toMatchObject([
+      {
+        tenant: PLATAFORMA,
+        entrada: {
+          tipo: 'administracao.job-morto-reprocessado',
+          entidadeId: 'notificacoes/notificacao.email-1',
+        },
+      },
+    ]);
+  });
+
+  it('fora da DLQ: 404; original apagado: 409; motivo curto: 400', async () => {
+    expect((await reprocessar()).statusCode).toBe(404);
+    mortos.morrer({ ...MORTO, originalDisponivel: false });
+    expect((await reprocessar()).statusCode).toBe(409);
+    expect((await reprocessar(autorizacao, 'curto')).statusCode).toBe(400);
+    expect(registros).toEqual([]);
+  });
+
+  it('sem admin:filas, nem impersonando: 403', async () => {
+    mortos.morrer(MORTO);
+    const semPerfil = { authorization: `Bearer ${tokenSemPerfil}` };
+    expect((await reprocessar(semPerfil)).statusCode).toBe(403);
+    await iniciar();
+    registros.length = 0;
+    expect((await reprocessar()).statusCode).toBe(403);
+    expect(registros).toEqual([]);
+  });
+});
+
+describe('painel de filas em /admin/filas (HU07)', () => {
+  const painel = (cookie?: string) =>
+    api.inject({
+      method: 'GET',
+      url: '/admin/filas',
+      headers: cookie === undefined ? {} : { cookie: `__Host-pz_sessao=${cookie}` },
+    });
+
+  it('admin da plataforma pelo navegador: abre o painel', async () => {
+    const resposta = await painel(token);
+    expect(resposta.statusCode).toBe(200);
+    expect(resposta.headers['content-type']).toContain('text/html');
+  });
+
+  it('sem sessão: 401; sem admin:filas ou impersonando: 403; ações do painel: 405', async () => {
+    expect((await painel()).statusCode).toBe(401);
+    expect((await painel('x'.repeat(43))).statusCode).toBe(401);
+    expect((await painel(tokenSemPerfil)).statusCode).toBe(403);
+    const acao = await api.inject({
+      method: 'PUT',
+      url: '/admin/filas/api/queues/notificacoes-dlq/retry/failed',
+      headers: { cookie: `__Host-pz_sessao=${token}` },
+    });
+    expect(acao.statusCode).toBe(405);
+    await iniciar();
+    expect((await painel(token)).statusCode).toBe(403);
+  });
+
+  it('a API do painel também passa pela guarda', async () => {
+    const resposta = await api.inject({ method: 'GET', url: '/admin/filas/api/queues' });
+    expect(resposta.statusCode).toBe(401);
   });
 });

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { FilaDeMortosBullMq, ReprocessarJobMorto } from '@pz/administracao';
 import { TrilhaPostgres } from '@pz/auditoria';
 import { Banco, WebhooksPostgres } from '@pz/db';
 import {
@@ -50,6 +51,7 @@ import { ContextoDoUsuario } from './auth/contexto-do-usuario.js';
 import {
   AMBIENTE,
   CAIXA_DE_WEBHOOKS,
+  FILAS_DO_PAINEL,
   JANELA_DE_REQUISICOES,
   RECEPTORES_DE_WEBHOOK,
   RELOGIO,
@@ -66,6 +68,7 @@ import type { AmbienteApi } from './ambiente.js';
 import type { JanelaDeRequisicoes } from './http/limite.js';
 import type { CaixaDeWebhooks } from './webhooks/webhooks.controller.js';
 import type { DynamicModule, Provider, Type } from '@nestjs/common';
+import type { DependenciasDoReprocessamento } from '@pz/administracao';
 import type {
   DependenciasDaImpersonacao,
   ArmazemDeRenovacoes,
@@ -82,6 +85,7 @@ import type {
 import type { ReceptorWebhook } from '@pz/integracoes';
 import type { Clock } from '@pz/kernel';
 import type { VerificadorDeDependencia } from '@pz/saude';
+import type { Queue } from 'bullmq';
 
 export interface OpcoesApi {
   readonly ambiente: AmbienteApi;
@@ -111,6 +115,11 @@ export interface OpcoesApi {
     >;
   };
   readonly janelaDeRequisicoes?: JanelaDeRequisicoes;
+  /** DLQ, banco e trilha do reprocessamento e filas do painel nos testes (sem Redis). */
+  readonly filas?: {
+    readonly reprocessamento: DependenciasDoReprocessamento<unknown>;
+    readonly painel: readonly Queue[];
+  };
 }
 
 /** Dependências que /health/ready e /v1/saude conferem (ADR-010). */
@@ -150,7 +159,18 @@ class RecursosDaApi {
 }
 
 /**
- * Composição da api/**
+ * Composição da api/** DLQs no Redis e reprocessamento auditado no PostgreSQL (HU07). */
+function filasDoAmbiente(recursos: RecursosDaApi): NonNullable<OpcoesApi['filas']> {
+  const mortos = new FilaDeMortosBullMq(recursos.redis);
+  const reprocessamento = {
+    filaDeMortos: mortos,
+    unidade: recursos.banco,
+    trilha: new TrilhaPostgres(),
+  };
+  return { reprocessamento, painel: mortos.todas() };
+}
+
+/**
  * Composição da api (CLAUDE.md, seção 6): só liga módulos, controllers e infraestrutura HTTP.
  * Módulos entram por lista explícita.
  */
@@ -180,6 +200,7 @@ export class AppModule {
       tenants: new TenantsPostgres(),
       trilha: new TrilhaPostgres(),
     };
+    const filas = opcoes.filas ?? filasDoAmbiente(recursos);
     const provedores: Provider[] = [
       { provide: RecursosDaApi, useValue: recursos },
       { provide: AMBIENTE, useValue: opcoes.ambiente },
@@ -331,6 +352,8 @@ export class AppModule {
             relogio,
           }),
       },
+      { provide: ReprocessarJobMorto, useValue: new ReprocessarJobMorto(filas.reprocessamento) },
+      { provide: FILAS_DO_PAINEL, useValue: filas.painel },
       { provide: APP_INTERCEPTOR, useClass: ContextoDoUsuario },
       { provide: RECEPTORES_DE_WEBHOOK, useValue: opcoes.receptoresDeWebhook ?? new Map() },
       // Ordem importa: o limite por IP vem antes da autenticação.
