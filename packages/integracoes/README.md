@@ -20,4 +20,30 @@ Portas de integração, modelos canônicos, descritores de adaptador e erros cla
 - **Arquivos por tenant:** `chaveDoArquivo(tenant, caminho)` sempre prefixa o tenant e recusa travessia de diretório.
 - **Webhooks:** o adaptador implementa `ReceptorWebhook` (assinatura sobre os bytes brutos e ID externo para idempotência); o gateway é único (`/v1/webhooks/{adaptador}`).
 
-Próximos passos da HU09: resiliência, registro de adaptadores e saúde; adaptador S3 com o kit de contrato; gateway de webhooks.
+## Registro e resiliência
+
+```ts
+const registro = new RegistroDeAdaptadores(
+  { padrao: { 'armazenamento-arquivos': 's3' }, porTenant: { [tenantPiloto]: { ... } } },
+  { relogio, limitador: new LimitadorRedis(redis) },
+);
+registro.registrar(descritorS3, () => new ArmazenamentoS3(config));
+registro.validar(); // no boot: configuração errada derruba a subida
+const armazenamento = registro.obter('armazenamento-arquivos', tenantId);
+```
+
+A instância entregue já vem com tudo; o adaptador não escreve nada disso:
+
+| Camada             | Comportamento                                                                                                                               |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bulkhead           | `limites.concorrencia` chamadas simultâneas + fila; além disso, `ErroLimiteExcedido` na hora                                                |
+| Retentativa        | só erros `retentavel` (transitório, cota), backoff exponencial com jitter                                                                   |
+| Circuit breaker    | abre após falhas seguidas que `indicaDegradacao`; recusa sem chamar o provedor; meio-aberto depois da janela                                |
+| Rate limit         | `limites.requisicoesPorMinuto`, token bucket no Redis compartilhado entre instâncias                                                        |
+| Timeout            | por tentativa; o adaptador repassa `sinalDaChamada()` ao cliente HTTP/SDK para a chamada ser cortada de verdade                             |
+| Validação da saída | o resultado de cada operação é validado contra o modelo canônico; fora do contrato vira `ErroPermanente` e alerta                           |
+| Telemetria e saúde | span e `pz.integracao.chamada.duracao` por chamada; `pz.integracao.circuito.estado` (alerta "integração degradada") e `registro.situacao()` |
+
+Erro que o adaptador não classificou é tratado como defeito: `ErroPermanente`, sem retentativa, e alerta.
+
+Próximos passos da HU09: adaptador S3 com o kit de contrato; gateway de webhooks; persistência da saúde (`integracao_status`).

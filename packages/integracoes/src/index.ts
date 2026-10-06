@@ -18,6 +18,15 @@ export {
   ErroTransitorio,
 } from './erros.js';
 export type { TipoErroIntegracao } from './erros.js';
+export { LimitadorEmMemoria } from './limitador.js';
+export type { LimitadorDeTaxa } from './limitador.js';
+export { LimitadorRedis } from './limitador-redis.js';
+export type { ClienteRedisComScript } from './limitador-redis.js';
+export { ConfiguracaoIntegracoes, RegistroDeAdaptadores } from './registro.js';
+export type { MapaDePortas } from './registro.js';
+export { POLITICA_PADRAO, sinalDaChamada } from './resiliencia.js';
+export type { PoliticaDeResiliencia } from './resiliencia.js';
+export type { SituacaoAdaptador } from './saude.js';
 export { CaminhoArquivo, chaveDoArquivo, MetadadosArquivo } from './portas/armazenamento.js';
 export type {
   ArmazenamentoArquivos,
