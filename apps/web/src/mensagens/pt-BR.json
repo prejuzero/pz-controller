@@ -103,7 +103,9 @@
     "semConexaoDescricao": "Verifique a internet e tente novamente.",
     "naoEncontrado": "Página não encontrada",
     "naoEncontradoDescricao": "O endereço pode estar errado ou a página foi removida.",
-    "voltarInicio": "Voltar ao início"
+    "voltarInicio": "Voltar ao início",
+    "acessoNegado": "Você não tem acesso a esta página",
+    "acessoNegadoDescricao": "Seu perfil não inclui esta permissão. Se precisar dela, peça ao administrador do escritório."
   },
   "seguranca": {
     "titulo": "Segurança",

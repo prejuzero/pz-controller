@@ -1,21 +1,24 @@
-/** Menu do portal na ordem da especificação (seção 2.12). */
+/**
+ * Menu do portal na ordem da especificação (seção 2.12). `permissao` é a de leitura exigida pela
+ * API da seção (HU07); seções sem permissão de leitura no catálogo ficam sempre visíveis.
+ */
 export const ITENS_MENU = [
   { chave: 'dashboard', href: '/' },
-  { chave: 'prazos', href: '/prazos' },
-  { chave: 'publicacoes', href: '/publicacoes' },
+  { chave: 'prazos', href: '/prazos', permissao: 'prazos:ler' },
+  { chave: 'publicacoes', href: '/publicacoes', permissao: 'publicacoes:ler' },
   { chave: 'busca', href: '/busca' },
   { chave: 'processos', href: '/processos' },
-  { chave: 'calendario', href: '/calendario' },
+  { chave: 'calendario', href: '/calendario', permissao: 'calendario:ler' },
   { chave: 'relatorios', href: '/relatorios' },
   { chave: 'configuracoes', href: '/configuracoes' },
-] as const;
+] as const satisfies readonly { chave: string; href: string; permissao?: string }[];
 
 export type ItemMenu = (typeof ITENS_MENU)[number];
 export type ChaveMenu = ItemMenu['chave'];
 
 /** No celular, a barra inferior mostra os itens de uso diário; o restante fica na gaveta "Mais". */
 const CHAVES_BARRA_INFERIOR: readonly ChaveMenu[] = ['dashboard', 'prazos', 'publicacoes', 'busca'];
-export const ITENS_BARRA_INFERIOR = ITENS_MENU.filter((item) =>
+export const ITENS_BARRA_INFERIOR: readonly ItemMenu[] = ITENS_MENU.filter((item) =>
   CHAVES_BARRA_INFERIOR.includes(item.chave),
 );
 

@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
 import { secaoDoSegmento } from '../../../navegacao';
+import { AcessoNegado } from '../_casca/acesso-negado';
+import { SePermitido } from '../_casca/se-permitido';
 
 import type { Metadata } from 'next';
 
@@ -20,10 +22,16 @@ export default async function Secao({ params }: Props) {
   const item = secaoDoSegmento((await params).secao);
   if (item === undefined) notFound();
   const t = await getTranslations();
-  return (
+  const conteudo = (
     <div className="space-y-2">
       <h1 className="text-2xl font-semibold">{t(`menu.${item.chave}`)}</h1>
       <p className="text-texto-suave">{t('secao.emConstrucao')}</p>
     </div>
+  );
+  if (!('permissao' in item)) return conteudo;
+  return (
+    <SePermitido permissao={item.permissao} alternativa={<AcessoNegado />}>
+      {conteudo}
+    </SePermitido>
   );
 }

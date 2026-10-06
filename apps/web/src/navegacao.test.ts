@@ -35,4 +35,11 @@ describe('navegacao', () => {
     expect(secaoDoSegmento('')).toBeUndefined();
     expect(secaoDoSegmento('admin')).toBeUndefined();
   });
+
+  it('exige a permissão de leitura das seções protegidas pela API (HU07)', () => {
+    expect(secaoDoSegmento('prazos')).toMatchObject({ permissao: 'prazos:ler' });
+    expect(secaoDoSegmento('publicacoes')).toMatchObject({ permissao: 'publicacoes:ler' });
+    expect(secaoDoSegmento('calendario')).toMatchObject({ permissao: 'calendario:ler' });
+    expect(secaoDoSegmento('configuracoes')).not.toHaveProperty('permissao');
+  });
 });
