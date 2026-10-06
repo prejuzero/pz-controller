@@ -3,7 +3,8 @@ import type { Permissao } from './permissoes.js';
 /**
  * Perfis semeados pela migração `20261009000000_perfis` (o banco é a fonte em produção; o teste de
  * integração garante que esta cópia e o banco não divergem). Servem aos testes sem banco e à
- * matriz de autorização. MVP: advogado e admin_plataforma; F2 já modelados.
+ * matriz de autorização. MVP: advogado, admin_plataforma e curador (HU13,
+ * migração `20261011000000_perfil_curador`); F2 já modelados.
  */
 export const PERFIS_PADRAO = {
   advogado: [
@@ -29,6 +30,7 @@ export const PERFIS_PADRAO = {
     'usuarios:gerir',
   ],
   colaborador: ['conta:gerir', 'prazos:ler', 'publicacoes:ler', 'calendario:ler'],
+  curador: ['conta:gerir', 'curadoria:calendario'],
 } as const satisfies Record<string, readonly Permissao[]>;
 
 export type CodigoPerfil = keyof typeof PERFIS_PADRAO;

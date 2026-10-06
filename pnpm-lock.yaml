@@ -224,6 +224,9 @@ importers:
       '@pz/auditoria':
         specifier: workspace:*
         version: link:../../modules/auditoria
+      '@pz/calendario':
+        specifier: workspace:*
+        version: link:../../modules/calendario
       '@pz/config':
         specifier: workspace:*
         version: link:../../packages/config

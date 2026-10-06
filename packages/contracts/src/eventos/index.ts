@@ -30,8 +30,28 @@ export const ContaBloqueada = definirEvento(
   }),
 );
 
+/** O calendário de uma jurisdição mudou (HU13): o motor recalcula e o cache é invalidado. */
+export const CalendarioAlterado = definirEvento(
+  'CalendarioAlterado',
+  1,
+  z.object({
+    eventoId: z.uuid(),
+    origem: z.enum(['global', 'local']),
+    acao: z.enum(['incluido', 'revogado']),
+    abrangencia: z.enum(['nacional', 'uf', 'municipio', 'tribunal', 'comarca']),
+    uf: z.string().optional(),
+    municipioIbge: z.string().optional(),
+    tribunal: z.string().optional(),
+    comarca: z.string().optional(),
+    inicio: z.iso.date(),
+    fim: z.iso.date(),
+    usuarioId: z.uuid(),
+  }),
+);
+
 export const EVENTOS = catalogoDeEventos(
   SituacaoVerificada,
   RedefinicaoDeSenhaSolicitada,
   ContaBloqueada,
+  CalendarioAlterado,
 );

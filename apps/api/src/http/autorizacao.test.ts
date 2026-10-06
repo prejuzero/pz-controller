@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { RequestMethod } from '@nestjs/common';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants.js';
 import { Reflector } from '@nestjs/core';
+import { EventosGlobaisEmMemoria, FeriadosLocaisEmMemoria } from '@pz/calendario';
 import { carregarAmbiente } from '@pz/config/env';
 import {
   AcessosEmMemoria,
@@ -18,7 +19,7 @@ import {
   SessoesEmMemoria,
   TentativasEmMemoria,
 } from '@pz/identidade';
-import { gerarUuidV7, SystemClock } from '@pz/kernel';
+import { gerarUuidV7, OutboxEmMemoria, SystemClock } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { esquemaApi } from '../ambiente.js';
@@ -68,6 +69,13 @@ const opcoes: OpcoesApi = {
     perfis,
   },
   janelaDeRequisicoes: { registrar: () => Promise.resolve(1) },
+  calendario: {
+    unidade: new OutboxEmMemoria(),
+    globais: new EventosGlobaisEmMemoria(),
+    locais: new FeriadosLocaisEmMemoria(),
+    trilha: { registrar: () => Promise.resolve() },
+    outbox: new OutboxEmMemoria(),
+  },
 };
 
 /** Todas as rotas dos controllers da api, com o que cada uma declara. */

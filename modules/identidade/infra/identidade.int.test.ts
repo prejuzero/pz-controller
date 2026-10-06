@@ -454,17 +454,18 @@ describe('perfis e permissões no PostgreSQL (HU07)', () => {
     expect(await perfis.permissoesDoUsuario(TENANT_B, ANA)).toEqual([]);
   });
 
-  it('admin_plataforma não pode ser atribuído num escritório', async () => {
-    await expect(
-      executarNoTenant(TENANT_B, () =>
-        banco.executar((tx) =>
-          tx.usuarioPerfil.create({
-            data: { tenantId: TENANT_B, usuarioId: BIA, perfil: 'admin_plataforma' },
-          }),
+  it.each(['admin_plataforma', 'curador'])(
+    '%s não pode ser atribuído num escritório',
+    async (perfil) => {
+      await expect(
+        executarNoTenant(TENANT_B, () =>
+          banco.executar((tx) =>
+            tx.usuarioPerfil.create({ data: { tenantId: TENANT_B, usuarioId: BIA, perfil } }),
+          ),
         ),
-      ),
-    ).rejects.toThrow(/admin_plataforma/);
-  });
+      ).rejects.toThrow(new RegExp(perfil));
+    },
+  );
 });
 
 describe('impersonação com PostgreSQL e Redis (HU07)', () => {
