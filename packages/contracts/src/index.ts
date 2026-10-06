@@ -8,6 +8,8 @@ export {
   encerrarImpersonacao,
   iniciarImpersonacao,
   PedidoDeImpersonacao,
+  PedidoDeReprocessamento,
+  reprocessarJobMorto,
   ROTAS_ADMIN,
 } from './admin/index.js';
 export {

@@ -41,4 +41,40 @@ export const encerrarImpersonacao = definirRota({
   resposta: { status: 204, corpo: null },
 });
 
-export const ROTAS_ADMIN = [iniciarImpersonacao, encerrarImpersonacao] as const;
+export const PedidoDeReprocessamento = nomear(
+  'PedidoDeReprocessamento',
+  z.object({
+    motivo: z
+      .string()
+      .min(10)
+      .max(500)
+      .describe('Por que o job pode voltar à fila (ex.: causa corrigida); vai para a auditoria.'),
+  }),
+);
+export type PedidoDeReprocessamento = z.infer<typeof PedidoDeReprocessamento.esquema>;
+
+/**
+ * Reprocessamento auditado da DLQ (HU07, herdado da HU10): exige `admin:filas`. O job original
+ * volta à fila de origem com as tentativas zeradas; o painel em `/admin/filas` só lê.
+ */
+export const reprocessarJobMorto = definirRota({
+  id: 'reprocessarJobMorto',
+  metodo: 'post',
+  caminho: '/v1/admin/filas/{fila}/dlq/{jobId}/reprocessar',
+  resumo: 'Devolve um job da DLQ à fila de origem, com motivo auditado.',
+  tag: 'admin',
+  parametrosDeCaminho: z.object({
+    // Fila fora do catálogo responde 404 (o catálogo fica no back-end, @pz/integracoes).
+    fila: z.string().regex(/^[a-z]{1,40}$/),
+    jobId: z.string().min(1).max(300),
+  }),
+  corpo: PedidoDeReprocessamento,
+  resposta: { status: 204, corpo: null },
+  erros: [404, 409],
+});
+
+export const ROTAS_ADMIN = [
+  iniciarImpersonacao,
+  encerrarImpersonacao,
+  reprocessarJobMorto,
+] as const;

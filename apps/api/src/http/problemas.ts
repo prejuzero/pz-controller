@@ -42,7 +42,11 @@ const CODIGOS_HTTP: Readonly<Record<number, string>> = {
   429: 'limite.excedido',
 };
 
-function problema(status: number, codigo: string, detalhes: Partial<Problema> = {}): Problema {
+export function problema(
+  status: number,
+  codigo: string,
+  detalhes: Partial<Problema> = {},
+): Problema {
   const { requestId } = obterContexto();
   return {
     type: 'about:blank',

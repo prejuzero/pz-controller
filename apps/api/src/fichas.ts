@@ -7,3 +7,5 @@ export const CAIXA_DE_WEBHOOKS = Symbol('CAIXA_DE_WEBHOOKS');
 export const RECEPTORES_DE_WEBHOOK = Symbol('RECEPTORES_DE_WEBHOOK');
 /** Janela deslizante do rate limit por IP (Redis em produção, memória nos testes). */
 export const JANELA_DE_REQUISICOES = Symbol('JANELA_DE_REQUISICOES');
+/** Filas e DLQs que o painel (Bull Board) mostra (HU07). */
+export const FILAS_DO_PAINEL = Symbol('FILAS_DO_PAINEL');

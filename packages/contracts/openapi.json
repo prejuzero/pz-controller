@@ -11,6 +11,111 @@
     }
   ],
   "paths": {
+    "/v1/admin/filas/{fila}/dlq/{jobId}/reprocessar": {
+      "post": {
+        "operationId": "reprocessarJobMorto",
+        "summary": "Devolve um job da DLQ à fila de origem, com motivo auditado.",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "fila",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z]{1,40}$"
+            }
+          },
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeReprocessamento"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Sucesso, sem corpo."
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/admin/impersonacao": {
       "post": {
         "operationId": "iniciarImpersonacao",
@@ -1301,6 +1406,21 @@
         },
         "required": [
           "tokenDeRenovacao"
+        ],
+        "additionalProperties": false
+      },
+      "PedidoDeReprocessamento": {
+        "type": "object",
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500,
+            "description": "Por que o job pode voltar à fila (ex.: causa corrigida); vai para a auditoria."
+          }
+        },
+        "required": [
+          "motivo"
         ],
         "additionalProperties": false
       },

@@ -1,5 +1,22 @@
 // Gerado por scripts/gerar.ts a partir de openapi.json. Não edite à mão.
 export interface paths {
+    "/v1/admin/filas/{fila}/dlq/{jobId}/reprocessar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Devolve um job da DLQ à fila de origem, com motivo auditado. */
+        post: operations["reprocessarJobMorto"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/impersonacao": {
         parameters: {
             query?: never;
@@ -331,6 +348,10 @@ export interface components {
         PedidoDeRenovacao: {
             tokenDeRenovacao: string;
         };
+        PedidoDeReprocessamento: {
+            /** @description Por que o job pode voltar à fila (ex.: causa corrigida); vai para a auditoria. */
+            motivo: string;
+        };
         PedidoDeTokensDeDispositivo: {
             /** @enum {string} */
             tipoCliente: "web" | "mobile" | "mcp" | "integrador";
@@ -422,6 +443,85 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    reprocessarJobMorto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fila: string;
+                jobId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeReprocessamento"];
+            };
+        };
+        responses: {
+            /** @description Sucesso, sem corpo. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
     iniciarImpersonacao: {
         parameters: {
             query?: never;
