@@ -41,7 +41,7 @@ module.exports = {
       from: {
         path: [
           '^modules/[^/]+/(domain|application)/',
-          '^packages/(kernel|motor-prazos|contracts|ia|design-tokens)/',
+          '^packages/(kernel|motor-prazos|contracts|ia|design-tokens|ui)/',
         ],
       },
       to: { path: `node_modules/${SDKS_DE_INFRA.slice(1, -1)}/` },
@@ -52,6 +52,14 @@ module.exports = {
       comment: 'Um módulo usa outro apenas pelo index.ts dele ou por eventos.',
       from: { path: '^modules/([^/]+)/' },
       to: { path: '^modules/([^/]+)/(?!index\\.ts$)', pathNot: '^modules/$1/' },
+    },
+    {
+      name: 'ui-so-apresentacao',
+      severity: 'error',
+      comment:
+        'packages/ui é só apresentação: não conhece módulos, apps nem contratos; regra de negócio fica na API (ADR-015).',
+      from: { path: '^packages/ui/src/' },
+      to: { path: '^(modules|apps|packages/(?!ui/|design-tokens/))' },
     },
     {
       name: 'apps-so-pela-api-publica',
@@ -96,7 +104,7 @@ module.exports = {
   options: {
     doNotFollow: { path: 'node_modules' },
     // gerado/: código gerado por ferramentas (cliente Prisma, tipos do OpenAPI), não editável.
-    exclude: { path: '(^|/)(dist|coverage|gerado|\\.next|\\.turbo)/' },
+    exclude: { path: '(^|/)(dist|coverage|gerado|storybook-static|\\.next|\\.turbo)/' },
     tsPreCompilationDeps: true,
     combinedDependencies: true,
     enhancedResolveOptions: {

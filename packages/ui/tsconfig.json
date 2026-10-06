@@ -1,0 +1,12 @@
+{
+  "extends": "@pz/config/tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "types": ["node", "vite/client", "@vitest/browser-playwright"],
+    "noEmit": true
+  },
+  "include": ["src", ".storybook/*.ts", ".storybook/*.tsx", "vitest.config.ts", "eslint.config.js"]
+}

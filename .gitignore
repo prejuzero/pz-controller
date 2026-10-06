@@ -40,3 +40,7 @@ crash.log
 
 # Cliente Prisma gerado (pnpm --filter @pz/db gerar)
 packages/db/src/gerado/
+
+# Storybook e testes visuais do @pz/ui (falhas e build estático)
+storybook-static/
+.vitest/

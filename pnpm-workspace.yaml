@@ -18,6 +18,10 @@ savePrefix: ''
 # Dependabot) a partir de 2026-10-10, quando as versões fixadas na HU01 completam 7 dias.
 minimumReleaseAge: 1440 # nosemgrep: package_managers.pnpm.pnpm-missing-minimum-release-age.pnpm-minimum-release-age
 trustPolicy: no-downgrade # recusa versão com nível de confiança menor que o já instalado
+trustPolicyExclude:
+  # Versão oficial de 2023 (correção de ReDoS), publicada antes da proveniência no npm. Exigida
+  # pelo Babel do Storybook e do eslint-plugin-react-hooks (HU23, PZ-165; aprovada pelo usuário).
+  - semver@6.3.1
 blockExoticSubdeps: true # subdependências só do registro, nunca de git ou URL
 # Correções de segurança em dependências de terceiros (pnpm audit), restritas ao caminho afetado.
 # Revisar a cada atualização do Prisma: remover quando ele já trouxer as versões corrigidas.

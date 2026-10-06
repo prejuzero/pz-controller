@@ -1,0 +1,26 @@
+/* CSS global do design system. O portal importa só este arquivo:
+   @import '@pz/ui/estilos.css'; */
+@import 'tailwindcss';
+@import '@pz/design-tokens/tokens.css';
+@import '@pz/design-tokens/tema-tailwind.css';
+
+/* Classes usadas pelos componentes deste pacote. */
+@source '.';
+
+@layer base {
+  html {
+    color-scheme: light dark;
+  }
+  :root[data-tema='claro'] {
+    color-scheme: light;
+  }
+  :root[data-tema='escuro'] {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-fundo font-sans text-texto antialiased;
+  }
+  *:focus-visible {
+    @apply outline-2 outline-offset-2 outline-foco;
+  }
+}
