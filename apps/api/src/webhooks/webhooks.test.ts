@@ -52,6 +52,7 @@ beforeAll(async () => {
       },
     },
     receptoresDeWebhook: new Map([['teste', receptor]]),
+    janelaDeRequisicoes: { registrar: () => Promise.resolve(1) },
   });
   await api.init();
   await api.getHttpAdapter().getInstance().ready();

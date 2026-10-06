@@ -4,6 +4,8 @@ import { ROTAS_SAUDE } from './saude/index.js';
 import { ROTAS_WEBHOOKS } from './webhooks/index.js';
 
 export {
+  AcessosRecentes,
+  listarAcessos,
   ativarSegundoFator,
   CodigoSegundoFator,
   ConfiguracaoSegundoFator,

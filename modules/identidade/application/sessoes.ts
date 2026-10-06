@@ -1,11 +1,16 @@
 import { err, gerarUuidV7, NaoAutenticado, ok } from '@pz/kernel';
 
+import { duracaoDoBloqueio } from '../domain/bloqueio.js';
 import { normalizarEmail, validarNovaSenha } from '../domain/credenciais.js';
 import { estaAtiva, expiracao, registrarUso } from '../domain/sessao.js';
 
 import type {
+  Acesso,
   ArmazemDeSessoes,
+  ContextoDeAcesso,
+  ControleDeTentativas,
   GeradorDeTokens,
+  RegistroDeAcessos,
   HasherDeSenha,
   RepositorioDeCredenciais,
 } from './portas.js';
@@ -23,11 +28,64 @@ export interface SessaoCriada {
 }
 
 /**
+ * Porta dos provedores de identidade (HU06, ADR-005): hoje o local (senha + TOTP); OIDC e SAML
+ * de escritórios entram na HU57 com a mesma sessão.
+ */
+export interface ProvedorIdentidade {
+  readonly id: string;
+  autenticar(
+    credenciais: { readonly email: string; readonly senha: string },
+    contexto: ContextoDeAcesso,
+  ): Promise<Result<SessaoCriada, NaoAutenticado>>;
+}
+
+/** Proteção contra força bruta compartilhada pelo login e pelo 2FA (bloqueio + registro). */
+export class ProtecaoDeAcesso {
+  constructor(
+    private readonly tentativas: ControleDeTentativas,
+    private readonly acessos: RegistroDeAcessos,
+    private readonly relogio: Clock,
+  ) {}
+
+  async bloqueado(chave: string): Promise<boolean> {
+    const ate = await this.tentativas.bloqueadoAte(chave);
+    return ate !== undefined && this.relogio.agora().ehAntesDe(ate);
+  }
+
+  /** Conta a falha; na 10ª, 20ª, 30ª... bloqueia (progressivo) e registra o bloqueio. */
+  async falhou(chave: string, acesso?: Omit<Acesso, 'sucesso' | 'ocorridoEm'>): Promise<void> {
+    const agora = this.relogio.agora();
+    const duracao = duracaoDoBloqueio(await this.tentativas.registrarFalha(chave));
+    if (duracao !== undefined) await this.tentativas.bloquear(chave, agora.maisMs(duracao));
+    if (acesso === undefined) return;
+    await this.acessos.registrar({ ...acesso, sucesso: false, ocorridoEm: agora });
+    if (duracao !== undefined) {
+      await this.acessos.registrar({
+        ...acesso,
+        tipo: 'bloqueio',
+        sucesso: false,
+        ocorridoEm: agora,
+      });
+    }
+  }
+
+  async passou(chave: string, acesso: Omit<Acesso, 'sucesso' | 'ocorridoEm'>): Promise<void> {
+    await this.tentativas.limpar(chave);
+    await this.acessos.registrar({ ...acesso, sucesso: true, ocorridoEm: this.relogio.agora() });
+  }
+
+  registrar(acesso: Omit<Acesso, 'ocorridoEm'>): Promise<void> {
+    return this.acessos.registrar({ ...acesso, ocorridoEm: this.relogio.agora() });
+  }
+}
+
+/**
  * Login com e-mail e senha (HU06). Sempre executa a verificação do hash, mesmo sem usuário
  * (contra um hash fictício): o tempo de resposta não revela quais e-mails existem.
  * A sessão nasce no nível `senha`; o 2FA a eleva para `completo`.
  */
-export class Autenticar {
+export class Autenticar implements ProvedorIdentidade {
+  readonly id = 'local';
   #hashFicticio: Promise<string> | undefined;
 
   constructor(
@@ -36,21 +94,56 @@ export class Autenticar {
     private readonly sessoes: ArmazemDeSessoes,
     private readonly tokens: GeradorDeTokens,
     private readonly relogio: Clock,
+    private readonly protecao: ProtecaoDeAcesso,
   ) {}
 
-  async executar(entrada: {
-    readonly email: string;
-    readonly senha: string;
-  }): Promise<Result<SessaoCriada, NaoAutenticado>> {
+  autenticar(
+    credenciais: { readonly email: string; readonly senha: string },
+    contexto: ContextoDeAcesso,
+  ): Promise<Result<SessaoCriada, NaoAutenticado>> {
+    return this.executar(credenciais, contexto);
+  }
+
+  /**
+   * Conta bloqueada responde igual a senha errada (não revela o bloqueio a quem tenta) e não
+   * entra nem com a senha certa até o bloqueio vencer.
+   */
+  async executar(
+    entrada: { readonly email: string; readonly senha: string },
+    contexto: ContextoDeAcesso,
+  ): Promise<Result<SessaoCriada, NaoAutenticado>> {
     const email = normalizarEmail(entrada.email);
+    const chave = `login:${email.ok ? email.valor : '(invalido)'}`;
+    const bloqueado = email.ok && (await this.protecao.bloqueado(chave));
     const credencial = email.ok ? await this.credenciais.localizarPorEmail(email.valor) : undefined;
     this.#hashFicticio ??= this.hasher.gerar(this.tokens.novoToken());
     const hash = credencial?.senhaHash ?? (await this.#hashFicticio);
     const senhaConfere = await this.hasher.verificar(hash, entrada.senha);
     const temSenha = typeof credencial?.senhaHash === 'string';
-    if (credencial === undefined || !temSenha || !senhaConfere) {
+    const acesso =
+      credencial === undefined
+        ? undefined
+        : {
+            usuarioId: credencial.usuarioId,
+            tenantId: credencial.tenantId,
+            tipo: 'login' as const,
+            ...contexto,
+          };
+    if (credencial === undefined || !temSenha || !senhaConfere || bloqueado) {
+      if (bloqueado) {
+        if (acesso !== undefined) await this.protecao.registrar({ ...acesso, sucesso: false });
+      } else if (email.ok) {
+        await this.protecao.falhou(chave, acesso);
+      }
       return err(credenciaisInvalidas());
     }
+    await this.protecao.passou(chave, {
+      ...acesso,
+      usuarioId: credencial.usuarioId,
+      tenantId: credencial.tenantId,
+      tipo: 'login',
+      ...contexto,
+    });
     const agora = this.relogio.agora();
     const sessao: Sessao = {
       id: gerarUuidV7(this.relogio),
@@ -114,10 +207,29 @@ export class ElevarSessao {
 }
 
 export class EncerrarSessao {
-  constructor(private readonly sessoes: ArmazemDeSessoes) {}
+  constructor(
+    private readonly sessoes: ArmazemDeSessoes,
+    private readonly protecao: ProtecaoDeAcesso,
+  ) {}
 
-  executar(token: string): Promise<void> {
-    return this.sessoes.remover(token);
+  async executar(token: string, sessao: Sessao, contexto: ContextoDeAcesso): Promise<void> {
+    await this.sessoes.remover(token);
+    await this.protecao.registrar({
+      usuarioId: sessao.usuarioId,
+      tenantId: sessao.tenantId,
+      tipo: 'logout',
+      sucesso: true,
+      ...contexto,
+    });
+  }
+}
+
+/** Últimos acessos do próprio usuário (Configurações > Segurança). */
+export class ConsultarAcessos {
+  constructor(private readonly acessos: RegistroDeAcessos) {}
+
+  executar(sessao: Sessao): Promise<Acesso[]> {
+    return this.acessos.ultimos(sessao.usuarioId, 20);
   }
 }
 

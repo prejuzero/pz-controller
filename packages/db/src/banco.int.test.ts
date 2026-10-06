@@ -51,6 +51,7 @@ describe('migrações', () => {
         ).rows.map((linha) => linha.tablename);
 
       expect(await tabelas()).toEqual([
+        'acesso',
         'evento_dominio',
         'evento_processado',
         'tenant',
@@ -66,6 +67,7 @@ describe('migrações', () => {
 
       await banco.migrar();
       expect(await tabelas()).toEqual([
+        'acesso',
         'evento_dominio',
         'evento_processado',
         'tenant',
@@ -100,6 +102,7 @@ describe('RLS (ADR-003)', () => {
          ORDER BY 1`);
 
       expect(rows.map((linha) => linha.tabela)).toEqual([
+        'acesso',
         'evento_dominio',
         'evento_processado',
         'tenant',

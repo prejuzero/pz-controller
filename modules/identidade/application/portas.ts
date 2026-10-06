@@ -75,3 +75,35 @@ export interface Cifra {
   cifrar(texto: string): string;
   decifrar(cifrado: string): string;
 }
+
+/** Contador de falhas e bloqueio temporário por chave (conta ou usuário), compartilhado entre instâncias. */
+export interface ControleDeTentativas {
+  bloqueadoAte(chave: string): Promise<Instant | undefined>;
+  /** Registra uma falha e devolve quantas houve na janela de 24 h. */
+  registrarFalha(chave: string): Promise<number>;
+  bloquear(chave: string, ate: Instant): Promise<void>;
+  limpar(chave: string): Promise<void>;
+}
+
+export type TipoAcesso = 'login' | 'segundo-fator' | 'logout' | 'bloqueio';
+
+/** De onde veio a tentativa (dado pessoal, LGPD: retido só para segurança da conta). */
+export interface ContextoDeAcesso {
+  readonly ip: string;
+  readonly userAgent: string;
+}
+
+export interface Acesso extends ContextoDeAcesso {
+  readonly usuarioId: Uuid;
+  readonly tenantId: Uuid;
+  readonly tipo: TipoAcesso;
+  readonly sucesso: boolean;
+  readonly ocorridoEm: Instant;
+}
+
+export interface RegistroDeAcessos {
+  /** Grava no tenant do usuário (a tentativa pode chegar antes de haver sessão). */
+  registrar(acesso: Acesso): Promise<void>;
+  /** Últimos acessos do usuário, no tenant do contexto. */
+  ultimos(usuarioId: Uuid, limite: number): Promise<Acesso[]>;
+}

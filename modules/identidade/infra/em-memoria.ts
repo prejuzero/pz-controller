@@ -1,4 +1,7 @@
 import type {
+  Acesso,
+  ControleDeTentativas,
+  RegistroDeAcessos,
   ArmazemDeSessoes,
   CredencialArmazenada,
   DadosSegundoFator,
@@ -106,5 +109,50 @@ export class SegundoFatorEmMemoria implements RepositorioDeSegundoFator {
     if (dados?.codigos.includes(hash) !== true) return Promise.resolve(false);
     this.#dados.set(usuarioId, { ...dados, codigos: dados.codigos.filter((c) => c !== hash) });
     return Promise.resolve(true);
+  }
+}
+
+/** Tentativas em memória (relógio injetado nos testes pelo `agora`). */
+export class TentativasEmMemoria implements ControleDeTentativas {
+  readonly #falhas = new Map<string, number>();
+  readonly #bloqueios = new Map<string, Instant>();
+
+  bloqueadoAte(chave: string): Promise<Instant | undefined> {
+    return Promise.resolve(this.#bloqueios.get(chave));
+  }
+
+  registrarFalha(chave: string): Promise<number> {
+    const falhas = (this.#falhas.get(chave) ?? 0) + 1;
+    this.#falhas.set(chave, falhas);
+    return Promise.resolve(falhas);
+  }
+
+  bloquear(chave: string, ate: Instant): Promise<void> {
+    this.#bloqueios.set(chave, ate);
+    return Promise.resolve();
+  }
+
+  limpar(chave: string): Promise<void> {
+    this.#falhas.delete(chave);
+    this.#bloqueios.delete(chave);
+    return Promise.resolve();
+  }
+}
+
+export class AcessosEmMemoria implements RegistroDeAcessos {
+  readonly registrados: Acesso[] = [];
+
+  registrar(acesso: Acesso): Promise<void> {
+    this.registrados.push(acesso);
+    return Promise.resolve();
+  }
+
+  ultimos(usuarioId: Uuid, limite: number): Promise<Acesso[]> {
+    return Promise.resolve(
+      this.registrados
+        .filter((a) => a.usuarioId === usuarioId)
+        .reverse()
+        .slice(0, limite),
+    );
   }
 }

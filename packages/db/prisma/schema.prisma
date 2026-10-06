@@ -32,6 +32,7 @@ model Tenant {
   usuarios           Usuario[]
   eventosDominio     EventoDominio[]
   eventosProcessados EventoProcessado[]
+  acessos            Acesso[]
 
   @@map("tenant")
 }
@@ -52,7 +53,8 @@ model Usuario {
   criadoEm           DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm       DateTime  @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  acessos Acesso[]
 
   @@unique([tenantId, email])
   @@map("usuario")
@@ -108,4 +110,32 @@ model WebhookRecebido {
 
   @@unique([adaptador, idExterno])
   @@map("webhook_recebido")
+}
+
+/// Registro de acessos (HU06): login, 2FA, logout e bloqueios. IP e user agent são dados pessoais.
+model Acesso {
+  id         String     @id @db.Uuid
+  tenantId   String     @map("tenant_id") @db.Uuid
+  usuarioId  String     @map("usuario_id") @db.Uuid
+  tipo       TipoAcesso
+  sucesso    Boolean
+  ip         String
+  userAgent  String     @map("user_agent")
+  ocorridoEm DateTime   @map("ocorrido_em") @db.Timestamptz(6)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([usuarioId, ocorridoEm(sort: Desc)])
+  @@map("acesso")
+}
+
+enum TipoAcesso {
+  login
+  segundo_fator @map("segundo-fator")
+  logout
+  bloqueio
+
+  @@map("tipo_acesso")
 }

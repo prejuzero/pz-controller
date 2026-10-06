@@ -12,13 +12,20 @@ import {
   ConfigurarSegundoFator,
   VerificarSegundoFator,
 } from '../application/segundo-fator.js';
-import { Autenticar, RegistrarCredencial, ValidarSessao } from '../application/sessoes.js';
+import {
+  Autenticar,
+  ProtecaoDeAcesso,
+  RegistrarCredencial,
+  ValidarSessao,
+} from '../application/sessoes.js';
 
+import { AcessosPostgres } from './acessos-postgres.js';
 import { HasherArgon2 } from './argon2.js';
 import { CredenciaisPostgres } from './credenciais-postgres.js';
 import { SegundoFatorPostgres } from './segundo-fator-postgres.js';
 import { CifraAesGcm, SegredosTotp } from './segundo-fator.js';
 import { SessoesRedis } from './sessoes-redis.js';
+import { TentativasRedis } from './tentativas-redis.js';
 import { GeradorDeTokensSeguro, hashDoToken } from './tokens.js';
 
 import type { Email } from '../domain/credenciais.js';
@@ -32,6 +39,9 @@ const TENANT_B = '01a10e00-0000-7000-8000-0000000d0b01' as Uuid;
 const ANA = '01a10e00-0000-7000-8000-0000000d0a02' as Uuid;
 const BIA = '01a10e00-0000-7000-8000-0000000d0b02' as Uuid;
 const relogio = new FixedClock(Instant.deIso('2026-10-06T12:00:00Z'));
+const CTX = { ip: '203.0.113.7', userAgent: 'teste' };
+const protecao = () =>
+  new ProtecaoDeAcesso(new TentativasRedis(redis), new AcessosPostgres(banco), relogio);
 
 let postgres: BancoDeTeste;
 let conteinerRedis: StartedRedisContainer;
@@ -134,15 +144,19 @@ describe('login ponta a ponta com Argon2id, PostgreSQL e Redis', () => {
       sessoes,
       new GeradorDeTokensSeguro(),
       relogio,
+      protecao(),
     );
 
     expect(
       (await executarNoTenant(TENANT_A, () => registrar.executar(ANA, 'uma senha bem longa'))).ok,
     ).toBe(true);
-    const login = await autenticar.executar({
-      email: 'ANA@exemplo.invalid',
-      senha: 'uma senha bem longa',
-    });
+    const login = await autenticar.executar(
+      {
+        email: 'ANA@exemplo.invalid',
+        senha: 'uma senha bem longa',
+      },
+      CTX,
+    );
     if (!login.ok) throw new Error('login deveria passar');
     expect(login.valor.sessao).toMatchObject({
       usuarioId: ANA,
@@ -159,7 +173,12 @@ describe('login ponta a ponta com Argon2id, PostgreSQL e Redis', () => {
     const validar = new ValidarSessao(sessoes, relogio);
     expect((await validar.executar(login.valor.token)).ok).toBe(true);
     expect(
-      (await autenticar.executar({ email: 'ana@exemplo.invalid', senha: 'senha errada longa' })).ok,
+      (
+        await autenticar.executar(
+          { email: 'ana@exemplo.invalid', senha: 'senha errada longa' },
+          CTX,
+        )
+      ).ok,
     ).toBe(false);
 
     await executarNoTenant(TENANT_A, () => registrar.executar(ANA, 'outra senha bem longa'));
@@ -194,17 +213,25 @@ describe('2FA no PostgreSQL (HU06)', () => {
       );
       if (!ativado.ok) throw new Error('ativar deveria passar');
 
-      const verificar = new VerificarSegundoFator(repositorio, segredos, cifra, relogio);
-      expect((await verificar.executar(sessao, segredos.codigo(segredo, passo))).ok).toBe(false);
+      const verificar = new VerificarSegundoFator(
+        repositorio,
+        segredos,
+        cifra,
+        relogio,
+        protecao(),
+      );
+      expect((await verificar.executar(sessao, segredos.codigo(segredo, passo), CTX)).ok).toBe(
+        false,
+      );
       const proximo = segredos.codigo(segredo, passo + 1);
       const [a, b] = await Promise.all([
-        verificar.executar(sessao, proximo),
-        verificar.executar(sessao, proximo),
+        verificar.executar(sessao, proximo, CTX),
+        verificar.executar(sessao, proximo, CTX),
       ]);
       expect([a.ok, b.ok].filter(Boolean)).toHaveLength(1); // o mesmo código em paralelo: só um passa
       const [codigo] = ativado.valor.codigosDeRecuperacao;
-      expect((await verificar.executar(sessao, String(codigo))).ok).toBe(true);
-      expect((await verificar.executar(sessao, String(codigo))).ok).toBe(false);
+      expect((await verificar.executar(sessao, String(codigo), CTX)).ok).toBe(true);
+      expect((await verificar.executar(sessao, String(codigo), CTX)).ok).toBe(false);
     });
     expect(
       (await new CredenciaisPostgres(banco).localizarPorEmail('bia@exemplo.invalid' as Email))
@@ -218,5 +245,43 @@ describe('2FA no PostgreSQL (HU06)', () => {
     );
     await direto.end();
     expect(rows[0]?.segredo).toMatch(/^v1\./);
+  });
+});
+
+describe('registro de acessos e bloqueio com PostgreSQL e Redis', () => {
+  it('cada tentativa vira acesso no tenant do usuário; os últimos acessos só aparecem no próprio tenant', async () => {
+    const acessos = new AcessosPostgres(banco);
+    const antes = (await executarNoTenant(TENANT_A, () => acessos.ultimos(ANA, 100))).length;
+    const autenticar = new Autenticar(
+      new CredenciaisPostgres(banco),
+      new HasherArgon2(),
+      new SessoesRedis(redis),
+      new GeradorDeTokensSeguro(),
+      relogio,
+      protecao(),
+    );
+    await autenticar.executar({ email: 'ana@exemplo.invalid', senha: 'errada mas longa' }, CTX);
+    const ultimos = await executarNoTenant(TENANT_A, () => acessos.ultimos(ANA, 100));
+    expect(ultimos).toHaveLength(antes + 1);
+    expect(ultimos[0]).toMatchObject({
+      tipo: 'login',
+      sucesso: false,
+      ip: CTX.ip,
+      tenantId: TENANT_A,
+    });
+    expect(await executarNoTenant(TENANT_B, () => acessos.ultimos(ANA, 100))).toEqual([]);
+  });
+
+  it('o contador e o bloqueio no Redis valem para todas as instâncias e expiram sozinhos', async () => {
+    const [a, b] = [new TentativasRedis(redis), new TentativasRedis(redis)];
+    expect(await a.registrarFalha('login:x')).toBe(1);
+    expect(await b.registrarFalha('login:x')).toBe(2);
+    expect(await redis.pttl('pz:tentativas:falhas:login:x')).toBeGreaterThan(23 * 3600 * 1000);
+    const ate = Instant.deEpochMs(Date.now() + 60_000);
+    await a.bloquear('login:x', ate);
+    expect((await b.bloqueadoAte('login:x'))?.epochMs).toBe(ate.epochMs);
+    expect(await redis.pttl('pz:tentativas:bloqueio:login:x')).toBeLessThanOrEqual(60_000);
+    await b.limpar('login:x');
+    expect(await a.bloqueadoAte('login:x')).toBeUndefined();
   });
 });

@@ -5,6 +5,8 @@ import { carregarAmbiente } from '@pz/config/env';
 import { SessaoAtual } from '@pz/contracts';
 import { tenantAtual } from '@pz/db';
 import {
+  AcessosEmMemoria,
+  TentativasEmMemoria,
   CredenciaisEmMemoria,
   HasherArgon2,
   SegredosTotp,
@@ -43,6 +45,7 @@ class RotasDeTeste {
 const sessoes = new SessoesEmMemoria();
 const segundoFator = new SegundoFatorEmMemoria();
 const credenciais = new CredenciaisEmMemoria();
+const acessos = new AcessosEmMemoria();
 let hashDaSenha = '';
 let api: NestFastifyApplication;
 
@@ -64,7 +67,15 @@ beforeAll(async () => {
     }),
     verificadores: [],
     controllersExtras: [RotasDeTeste],
-    identidade: { credenciais, sessoes, segundoFator },
+    identidade: {
+      credenciais,
+      sessoes,
+      segundoFator,
+      tentativas: new TentativasEmMemoria(),
+      acessos,
+    },
+    // Sem limite por IP nesta suíte (muitos logins); o limite tem teste próprio.
+    janelaDeRequisicoes: { registrar: () => Promise.resolve(1) },
   });
   await api.init();
   await api.getHttpAdapter().getInstance().ready();
@@ -307,5 +318,23 @@ describe('2FA na api (HU06)', () => {
       payload: { codigo: 1 },
     });
     expect(resposta.statusCode).toBe(400);
+  });
+});
+
+describe('últimos acessos (HU06)', () => {
+  it('lista os acessos da própria conta, mais recentes primeiro; exige sessão completa', async () => {
+    const parcial = await entrar();
+    expect(
+      (
+        await api.inject({
+          method: 'GET',
+          url: '/v1/auth/acessos',
+          headers: { authorization: `Bearer ${parcial.sessao}` },
+        })
+      ).statusCode,
+    ).toBe(401);
+    const [ultimo] = await acessos.ultimos(USUARIO, 1);
+    expect(ultimo).toMatchObject({ tipo: 'login', sucesso: true, usuarioId: USUARIO });
+    expect(typeof ultimo?.ip).toBe('string');
   });
 });

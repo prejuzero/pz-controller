@@ -43,7 +43,7 @@ export const entrar = definirRota({
   publica: true,
   corpo: Credenciais,
   resposta: { status: 200, corpo: SessaoAtual },
-  erros: [401],
+  erros: [401, 429],
 });
 
 export const sair = definirRota({
@@ -132,6 +132,32 @@ export const verificarSegundoFator = definirRota({
   resposta: { status: 200, corpo: SessaoAtual },
 });
 
+export const AcessosRecentes = nomear(
+  'AcessosRecentes',
+  z.object({
+    itens: z.array(
+      z.object({
+        tipo: z.enum(['login', 'segundo-fator', 'logout', 'bloqueio']),
+        sucesso: z.boolean(),
+        ip: z.string(),
+        userAgent: z.string(),
+        ocorridoEm: z.iso.datetime(),
+      }),
+    ),
+  }),
+);
+export type AcessosRecentes = z.infer<typeof AcessosRecentes.esquema>;
+
+/** Últimos 20 acessos do próprio usuário (Configurações > Segurança). */
+export const listarAcessos = definirRota({
+  id: 'listarAcessos',
+  metodo: 'get',
+  caminho: '/v1/auth/acessos',
+  resumo: 'Últimos acessos da conta (logins, 2FA, saídas e bloqueios).',
+  tag: 'auth',
+  resposta: { status: 200, corpo: AcessosRecentes },
+});
+
 export const ROTAS_AUTH = [
   entrar,
   sair,
@@ -139,4 +165,5 @@ export const ROTAS_AUTH = [
   configurarSegundoFator,
   ativarSegundoFator,
   verificarSegundoFator,
+  listarAcessos,
 ] as const;

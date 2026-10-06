@@ -12,6 +12,7 @@ import { criarLogger, registrarWebhookRecusado } from '@pz/observability';
 
 import { CAIXA_DE_WEBHOOKS, RECEPTORES_DE_WEBHOOK } from '../fichas.js';
 import { Publico } from '../http/acesso.js';
+import { LimitarPorIp } from '../http/limite.js';
 
 import type { RawBodyRequest } from '@nestjs/common';
 import type { WebhookAceito } from '@pz/contracts';
@@ -43,6 +44,7 @@ export class WebhooksController {
 
   @Post(':adaptador')
   @Publico()
+  @LimitarPorIp(300)
   @HttpCode(202)
   async receber(
     @Param('adaptador') adaptador: string,
