@@ -15,7 +15,11 @@ export {
   registrarSituacaoDasFilas,
 } from './metricas.js';
 export type { EstadoCircuito, ResultadoOperacao, SituacaoFila } from './metricas.js';
-export { capturarContextoPropagavel, executarJob } from './propagacao.js';
+export {
+  capturarContextoPropagavel,
+  executarJob,
+  executarNoContextoPropagado,
+} from './propagacao.js';
 export type { ContextoPropagavel, ExecucaoDeJob } from './propagacao.js';
 export { registrarRotaHttp } from './rota-http.js';
 export { MARCADOR_REMOVIDO, sanitizar, sanitizarTexto } from './sanitizacao.js';

@@ -69,3 +69,17 @@ describe('fluxo ponta a ponta: verificação → outbox → relay → consumidor
     ]);
   });
 });
+
+describe('HistoricoEmMemoria', () => {
+  it('com transação sem confirmação (ex.: PostgreSQL), grava na hora', async () => {
+    const historico = new HistoricoEmMemoria();
+    const entrada = {
+      eventoId: gerarUuidV7(relogio),
+      tenantId: gerarUuidV7(relogio),
+      situacao: 'operacional' as const,
+      em: relogio.agora(),
+    };
+    await historico.registrar({}, entrada);
+    expect(historico.entradas()).toEqual([entrada]);
+  });
+});

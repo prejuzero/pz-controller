@@ -57,6 +57,7 @@ describe('boot do worker (processo real)', () => {
       VERSAO: 'boot-teste',
       // Portas sem serviço: o worker sobe mesmo assim e se declara degradada.
       DATABASE_URL: 'postgresql://u:s@127.0.0.1:1/db',
+      DATABASE_URL_SISTEMA: 'postgresql://u:s@127.0.0.1:1/db',
       REDIS_URL: 'redis://127.0.0.1:1',
       S3_REGION: 'us-east-1',
     });

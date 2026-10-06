@@ -79,9 +79,21 @@ export class BancoSistema {
     return this.#prisma.$transaction(trabalho);
   }
 
-  /** Unidade de trabalho do sistema para um uso fixo (ex.: o relay do outbox). */
+  /**
+   * Unidade de trabalho do sistema para um uso fixo e recorrente (ex.: o relay do outbox, que
+   * roda a cada segundo): registrada uma vez ao ser criada; cada execução vai para o nível debug,
+   * para o log não virar ruído.
+   */
   unidade(motivo: string): UnidadeDeTrabalho<Transacao> {
-    return { executar: (trabalho) => this.executarComoSistema(motivo, trabalho) };
+    if (motivo.trim().length === 0)
+      throw new Error('Operação do sistema (BYPASSRLS) exige um motivo.');
+    logger.info({ motivo, acessoGlobal: true }, 'uso recorrente do sistema no banco registrado');
+    return {
+      executar: (trabalho) => {
+        logger.debug({ motivo, acessoGlobal: true }, 'operação do sistema no banco');
+        return this.#prisma.$transaction(trabalho);
+      },
+    };
   }
 
   encerrar(): Promise<void> {

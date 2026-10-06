@@ -49,6 +49,16 @@ export class ConsumidorDePrazos {
 
 Registre a classe na lista de provedores do `WorkerModule`. O `DespachanteDeEventos` encontra os métodos com `@Consome` e garante a entrega única por consumidor (`processarUmaVez`, chave `Classe.metodo`: renomear reprocessa eventos). Um consumidor que falha faz o lote voltar ao outbox e é retentado.
 
-O relay do outbox ainda entrega no próprio processo; o próximo PR da HU10 liga o outbox do Postgres (HU05) à fila `eventos`.
+### Relay do outbox (ADR-004)
+
+A cada `RELAY_INTERVALO_MS` (padrão 1 s), nas instâncias que processam a fila `eventos`:
+
+1. reserva os eventos pendentes do outbox no PostgreSQL como sistema (`FOR UPDATE SKIP LOCKED`: réplicas não pegam o mesmo evento);
+2. publica na fila `eventos` um job `eventos.consumir` por consumidor inscrito, no contexto de trace gravado com o evento;
+3. marca o lote como publicado.
+
+O job roda no tenant do evento, valida o evento contra o contrato em `@pz/contracts` (sem contrato → DLQ) e entrega ao consumidor com deduplicação em `evento_processado`. Se o relay cair depois de publicar, o ID determinístico do job e a deduplicação impedem efeito duplicado. Medido no teste ponta a ponta (`src/eventos/relay.int.test.ts`, Postgres e Redis reais): evento gravado numa requisição chega ao consumidor em menos de 2 s, uma vez, no mesmo trace.
+
+O worker usa `DATABASE_URL` (pz_app, consumo no tenant) e `DATABASE_URL_SISTEMA` (pz_sistema, só o relay e jobs globais). A api não recebe a credencial com BYPASSRLS.
 
 **Injeção sempre com `@Inject(Token)` explícito** (mesmo motivo da api).

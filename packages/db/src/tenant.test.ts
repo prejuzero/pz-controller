@@ -45,7 +45,10 @@ describe('recusas antes de tocar no banco', () => {
 
   it('BancoSistema sem motivo rejeita', async () => {
     const sistema = new BancoSistema({ url: URL_INALCANCAVEL, maxConexoes: 1 });
-    await expect(sistema.unidade('').executar(() => Promise.resolve())).rejects.toThrow('motivo');
+    expect(() => sistema.unidade('')).toThrow('motivo');
+    await expect(sistema.executarComoSistema(' ', () => Promise.resolve())).rejects.toThrow(
+      'motivo',
+    );
     await sistema.encerrar();
   });
 });

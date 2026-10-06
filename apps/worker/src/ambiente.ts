@@ -16,6 +16,8 @@ export const esquemaWorker = esquemaBase
   .extend(esquemaRedis.shape)
   .extend(esquemaArmazenamento.shape)
   .extend({
+    /** Papel pz_sistema (BYPASSRLS): relay do outbox e jobs globais (ADR-003). */
+    DATABASE_URL_SISTEMA: z.url({ protocol: /^postgres(ql)?$/ }),
     /** Porta do servidor de saúde (/health/live e /health/ready). */
     PORT: z.coerce.number().int().min(1).max(65_535).default(3002),
     VERSAO: z.string().min(1).default('dev'),

@@ -4,6 +4,7 @@ import { capturarContextoPropagavel } from '@pz/observability';
 import type { Transacao } from './banco.js';
 import type { Prisma } from './gerado/prisma/client.js';
 import type { EventoDominio, FilaDoRelay, Outbox, RegistroDeProcessamento, Uuid } from '@pz/kernel';
+import type { ContextoPropagavel } from '@pz/observability';
 
 interface LinhaEvento {
   id: string;
@@ -12,7 +13,14 @@ interface LinhaEvento {
   tenant_id: string;
   agregado_id: string;
   payload: unknown;
+  contexto: ContextoPropagavel | null;
   ocorrido_em: Date;
+}
+
+/** Evento reservado pelo relay, com o contexto de trace gravado junto dele. */
+export interface EventoReservado {
+  readonly evento: EventoDominio;
+  readonly contexto: ContextoPropagavel;
 }
 
 function paraEvento(linha: LinhaEvento): EventoDominio {
@@ -69,14 +77,22 @@ export class OutboxPostgres
   }
 
   async reservarPendentes(transacao: Transacao, limite: number): Promise<readonly EventoDominio[]> {
+    return (await this.reservarPendentesComContexto(transacao, limite)).map((item) => item.evento);
+  }
+
+  /** Como `reservarPendentes`, devolvendo também o contexto de trace de cada evento. */
+  async reservarPendentesComContexto(
+    transacao: Transacao,
+    limite: number,
+  ): Promise<readonly EventoReservado[]> {
     const linhas = await transacao.$queryRaw<LinhaEvento[]>`
-      SELECT id, tipo, versao, tenant_id, agregado_id, payload, ocorrido_em
+      SELECT id, tipo, versao, tenant_id, agregado_id, payload, contexto, ocorrido_em
         FROM evento_dominio
        WHERE publicado_em IS NULL
        ORDER BY criado_em, id
        LIMIT ${limite}
        FOR UPDATE SKIP LOCKED`;
-    return linhas.map(paraEvento);
+    return linhas.map((linha) => ({ evento: paraEvento(linha), contexto: linha.contexto ?? {} }));
   }
 
   async marcarPublicados(transacao: Transacao, ids: readonly Uuid[], em: Instant): Promise<void> {

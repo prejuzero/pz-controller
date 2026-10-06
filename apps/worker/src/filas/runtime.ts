@@ -182,7 +182,20 @@ export class Filas {
 
   async #aoFalhar(nome: NomeFila, job: Job, erro: Error): Promise<void> {
     // Retentativas vão para "delayed"; só a falha final (ou irrecuperável) fica em "failed".
-    if (!(await job.isFailed())) return;
+    if (!(await job.isFailed())) {
+      // Toda tentativa que falha fica visível, não só a última (nada falha em silêncio).
+      logger.warn(
+        {
+          fila: nome,
+          jobId: job.id,
+          tipo: job.name,
+          tentativa: job.attemptsMade,
+          erro: erro.message,
+        },
+        'tentativa de job falhou; nova tentativa agendada',
+      );
+      return;
+    }
     await this.#fila(filaDlq(nome)).add(
       'morto',
       {

@@ -5,7 +5,7 @@ import { criarLogger } from '@pz/observability';
 
 import { REGISTRO_DE_PROCESSAMENTO, UNIDADE_DE_TRABALHO } from '../fichas.js';
 
-import type { OnApplicationBootstrap } from '@nestjs/common';
+import type { OnModuleInit } from '@nestjs/common';
 import type {
   EventoDominio,
   RegistroDeProcessamento,
@@ -43,7 +43,7 @@ interface Consumidor {
 
 /** Encontra os métodos com @Consome e entrega cada evento a todos os inscritos, uma vez só. */
 @Injectable()
-export class DespachanteDeEventos implements OnApplicationBootstrap {
+export class DespachanteDeEventos implements OnModuleInit {
   readonly #consumidores = new Map<string, Consumidor[]>();
 
   constructor(
@@ -55,7 +55,9 @@ export class DespachanteDeEventos implements OnApplicationBootstrap {
     private readonly registro: RegistroDeProcessamento<unknown>,
   ) {}
 
-  onApplicationBootstrap(): void {
+  // Na inicialização dos módulos, antes do boot das filas: os consumidores já estão inscritos
+  // quando o relay e o processamento começam.
+  onModuleInit(): void {
     for (const provedor of this.descoberta.getProviders()) {
       const instancia: unknown = provedor.instance;
       if (instancia === null || typeof instancia !== 'object') continue;
@@ -83,7 +85,30 @@ export class DespachanteDeEventos implements OnApplicationBootstrap {
     );
   }
 
-  /** Entrega o evento a cada consumidor inscrito. Lança se algum falhar (a fila tenta de novo). */
+  /** Nomes dos consumidores inscritos no tipo e versão do evento. */
+  consumidoresDe(evento: EventoDominio): readonly string[] {
+    return (this.#consumidores.get(`${evento.tipo}@${String(evento.versao)}`) ?? []).map(
+      (c) => c.nome,
+    );
+  }
+
+  /**
+   * Entrega o evento a um consumidor (job `eventos.consumir`), uma vez só por consumidor.
+   * Consumidor que não existe mais lança: o job vai para a DLQ e a falha fica visível.
+   */
+  consumir(nome: string, evento: EventoDominio): Promise<ResultadoConsumo> {
+    const consumidor = (
+      this.#consumidores.get(`${evento.tipo}@${String(evento.versao)}`) ?? []
+    ).find((c) => c.nome === nome);
+    if (consumidor === undefined) {
+      return Promise.reject(
+        new Error(`consumidor ${nome} não inscrito em ${evento.tipo}@${String(evento.versao)}`),
+      );
+    }
+    return processarUmaVez(this.unidade, this.registro, consumidor.nome, evento, consumidor.tratar);
+  }
+
+  /** Entrega o evento a todos os inscritos no próprio processo (testes e uso local). */
   async despachar(evento: EventoDominio): Promise<ResultadoConsumo[]> {
     const consumidores = this.#consumidores.get(`${evento.tipo}@${String(evento.versao)}`) ?? [];
     const resultados: ResultadoConsumo[] = [];
