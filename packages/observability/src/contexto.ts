@@ -9,6 +9,8 @@ export interface ContextoExecucao {
   readonly requestId?: string;
   readonly tenantId?: string;
   readonly userId?: string;
+  /** Administrador da plataforma acessando o tenant (HU07): userId é o real, tenantId o acessado. */
+  readonly impersonacaoId?: string;
   readonly jobId?: string;
   readonly fila?: string;
 }

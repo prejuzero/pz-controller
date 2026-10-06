@@ -59,7 +59,7 @@ import type {
 } from '@pz/identidade';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 
-function sessaoAtual(sessao: Sessao, permissoes: Iterable<string> = []): SessaoAtual {
+export function sessaoAtual(sessao: Sessao, permissoes: Iterable<string> = []): SessaoAtual {
   const proximoPasso =
     sessao.nivel === 'completo'
       ? null
@@ -72,15 +72,23 @@ function sessaoAtual(sessao: Sessao, permissoes: Iterable<string> = []): SessaoA
     nivel: sessao.nivel,
     proximoPasso,
     permissoes: [...permissoes].sort(),
+    impersonacao:
+      sessao.impersonacao === undefined
+        ? null
+        : {
+            tenantId: sessao.impersonacao.tenantId,
+            motivo: sessao.impersonacao.motivo,
+            expiraEm: sessao.impersonacao.expiraEm.paraIso(),
+          },
   };
 }
 
-function contextoDe(requisicao: FastifyRequest): ContextoDeAcesso {
+export function contextoDe(requisicao: FastifyRequest): ContextoDeAcesso {
   const agente = requisicao.headers['user-agent'];
   return { ip: requisicao.ip, userAgent: typeof agente === 'string' ? agente : '' };
 }
 
-function validar<Saida>(esquema: z.ZodType<Saida>, corpo: unknown): Saida {
+export function validar<Saida>(esquema: z.ZodType<Saida>, corpo: unknown): Saida {
   const resultado = esquema.safeParse(corpo);
   if (resultado.success) return resultado.data;
   throw new Validacao(
@@ -320,7 +328,7 @@ function paraContrato(acesso: Awaited<ReturnType<ConsultarAcessos['executar']>>[
   };
 }
 
-function autenticacao(
+export function autenticacao(
   requisicao: RequisicaoAutenticada,
 ): NonNullable<RequisicaoAutenticada['autenticacao']> {
   // A guarda garante a autenticação em toda rota não pública.

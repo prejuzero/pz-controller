@@ -1,3 +1,4 @@
+import { permissoesNaImpersonacao } from '../domain/impersonacao.js';
 import { ehPermissao } from '../domain/permissoes.js';
 
 import type { Permissao } from '../domain/permissoes.js';
@@ -15,6 +16,8 @@ export type AvisoDePermissaoDesconhecida = (permissao: string) => void;
 /**
  * Permissões da sessão (HU07), lidas a cada requisição: mudar o perfil vale na hora. Sessão sem
  * o 2FA não tem permissão alguma. Permissão do banco fora do catálogo é ignorada e avisada.
+ * Na impersonação, as reais (do tenant de origem) só decidem se ela ainda vale; o que vale é
+ * a leitura (HU07).
  */
 export class ConsultarPermissoes {
   constructor(
@@ -30,6 +33,6 @@ export class ConsultarPermissoes {
       if (ehPermissao(permissao)) validas.add(permissao);
       else this.avisar(permissao);
     }
-    return validas;
+    return sessao.impersonacao === undefined ? validas : permissoesNaImpersonacao(validas);
   }
 }

@@ -1,5 +1,23 @@
 // Gerado por scripts/gerar.ts a partir de openapi.json. Não edite à mão.
 export interface paths {
+    "/v1/admin/impersonacao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Acessa um tenant por até 60 minutos, só para leitura, com motivo auditado. */
+        post: operations["iniciarImpersonacao"];
+        /** Encerra a impersonação em curso (sem efeito se não houver). */
+        delete: operations["encerrarImpersonacao"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/2fa/ativar": {
         parameters: {
             query?: never;
@@ -298,6 +316,15 @@ export interface components {
                 revogadaEm: string | null;
             }[];
         };
+        PedidoDeImpersonacao: {
+            /**
+             * Format: uuid
+             * @description Tenant a acessar (nunca o da plataforma).
+             */
+            tenantId: string;
+            /** @description Por que o acesso é necessário (ex.: número do chamado); vai para a auditoria. */
+            motivo: string;
+        };
         PedidoDeRedefinicaoDeSenha: {
             email: string;
         };
@@ -350,6 +377,17 @@ export interface components {
             proximoPasso: ("configurar-2fa" | "verificar-2fa") | null;
             /** @description Permissões efetivas (catálogo da HU07, ex.: `prazos:ler`), também usadas como escopos OAuth. Vazio sem o 2FA. O portal só oculta ações; a API sempre confere. */
             permissoes: string[];
+            /** @description Impersonação em curso (HU07): o portal mostra a faixa enquanto houver. Ausente ou null fora dela. */
+            impersonacao?: {
+                /**
+                 * Format: uuid
+                 * @description Tenant acessado; as requisições rodam nele, só para leitura.
+                 */
+                tenantId: string;
+                motivo: string;
+                /** Format: date-time */
+                expiraEm: string;
+            } | null;
         };
         SituacaoDaApi: {
             /** @enum {string} */
@@ -384,6 +422,129 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    iniciarImpersonacao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeImpersonacao"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessaoAtual"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    encerrarImpersonacao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso, sem corpo. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
     ativarSegundoFator: {
         parameters: {
             query?: never;

@@ -126,6 +126,7 @@ describe('login (HU06)', () => {
       nivel: 'senha',
       proximoPasso: 'configurar-2fa',
       permissoes: [],
+      impersonacao: null,
     });
     expect(resposta.headers['cache-control']).toBe('no-store');
     expect(cookies.find((c) => c.startsWith('__Host-pz_sessao='))).toMatch(

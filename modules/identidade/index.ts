@@ -112,3 +112,17 @@ export type {
 } from './application/autorizacao.js';
 export { PerfisEmMemoria } from './infra/em-memoria.js';
 export { PerfisPostgres } from './infra/perfis-postgres.js';
+export {
+  DURACAO_DA_IMPERSONACAO_MS,
+  MOTIVO_MAXIMO,
+  MOTIVO_MINIMO,
+  tenantEfetivo,
+} from './domain/impersonacao.js';
+export type { Impersonacao } from './domain/sessao.js';
+export { EncerrarImpersonacao, IniciarImpersonacao } from './application/impersonacao.js';
+export type {
+  DependenciasDaImpersonacao,
+  RepositorioDeTenants,
+} from './application/impersonacao.js';
+export { TenantsEmMemoria } from './infra/em-memoria.js';
+export { TenantsPostgres } from './infra/tenants-postgres.js';

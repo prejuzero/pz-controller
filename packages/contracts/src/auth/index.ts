@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { Uuid } from '../comum.js';
+import { Instante, Uuid } from '../comum.js';
 import { definirRota, nomear } from '../rota.js';
 
 export const Credenciais = nomear(
@@ -29,6 +29,17 @@ export const SessaoAtual = nomear(
       .array(z.string())
       .describe(
         'Permissões efetivas (catálogo da HU07, ex.: `prazos:ler`), também usadas como escopos OAuth. Vazio sem o 2FA. O portal só oculta ações; a API sempre confere.',
+      ),
+    impersonacao: z
+      .object({
+        tenantId: Uuid.describe('Tenant acessado; as requisições rodam nele, só para leitura.'),
+        motivo: z.string(),
+        expiraEm: Instante,
+      })
+      .nullable()
+      .optional()
+      .describe(
+        'Impersonação em curso (HU07): o portal mostra a faixa enquanto houver. Ausente ou null fora dela.',
       ),
   }),
 );
