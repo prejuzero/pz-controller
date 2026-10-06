@@ -39,6 +39,7 @@ beforeAll(async () => {
       DATABASE_URL: 'postgresql://pz_dev:pz_dev_local@127.0.0.1:5432/prejuzero',
       REDIS_URL: 'redis://127.0.0.1:6379',
       S3_REGION: 'us-east-1',
+      CHAVE_CIFRAGEM: randomBytes(32).toString('base64'),
     }),
     verificadores: [],
     caixaDeWebhooks: {

@@ -12,6 +12,8 @@ export interface Sessao {
   readonly usuarioId: Uuid;
   readonly tenantId: Uuid;
   readonly nivel: NivelSessao;
+  /** O usuário já tem 2FA ativo (falta verificar) ou ainda precisa configurar. */
+  readonly segundoFatorAtivo: boolean;
   readonly criadaEm: Instant;
   readonly ultimoUso: Instant;
 }

@@ -4,12 +4,18 @@ import { ROTAS_SAUDE } from './saude/index.js';
 import { ROTAS_WEBHOOKS } from './webhooks/index.js';
 
 export {
+  ativarSegundoFator,
+  CodigoSegundoFator,
+  ConfiguracaoSegundoFator,
+  configurarSegundoFator,
   consultarSessao,
   Credenciais,
   entrar,
   ROTAS_AUTH,
   sair,
+  SegundoFatorAtivado,
   SessaoAtual,
+  verificarSegundoFator,
 } from './auth/index.js';
 export {
   CABECALHO_IDEMPOTENCIA,

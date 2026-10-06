@@ -272,7 +272,10 @@ jobs:
           ${COMPOSE} exec -T redis redis-cli ping | grep -q PONG
           curl -fsS http://127.0.0.1:8025/readyz
       - name: Construir e subir as imagens da api e do worker (HU04)
-        run: ${COMPOSE} --profile apps up -d --build --wait api worker
+        run: |
+          # Chave de cifragem descartável, só deste job (HU06): o compose a lê do .env da raiz.
+          echo "CHAVE_CIFRAGEM=$(openssl rand -base64 32)" > .env
+          ${COMPOSE} --profile apps up -d --build --wait api worker
       - name: Apps prontas com as dependências
         run: |
           curl -fsS http://127.0.0.1:3000/health/ready

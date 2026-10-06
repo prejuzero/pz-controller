@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 
@@ -59,6 +60,7 @@ describe('boot da api (processo real)', () => {
       DATABASE_URL: 'postgresql://u:s@127.0.0.1:1/db',
       REDIS_URL: 'redis://127.0.0.1:1',
       S3_REGION: 'us-east-1',
+      CHAVE_CIFRAGEM: randomBytes(32).toString('base64'),
     });
 
     try {

@@ -57,6 +57,7 @@ export class Autenticar {
       usuarioId: credencial.usuarioId,
       tenantId: credencial.tenantId,
       nivel: 'senha',
+      segundoFatorAtivo: credencial.segundoFatorAtivo,
       criadaEm: agora,
       ultimoUso: agora,
     };
@@ -84,6 +85,31 @@ export class ValidarSessao {
     const usada = registrarUso(sessao, agora);
     await this.sessoes.gravar(token, usada, expiracao(usada));
     return ok(usada);
+  }
+}
+
+/**
+ * Eleva a sessão a `completo` depois do 2FA, trocando o token (o anterior deixa de valer): um
+ * token capturado antes do 2FA não herda o acesso completo.
+ */
+export class ElevarSessao {
+  constructor(
+    private readonly sessoes: ArmazemDeSessoes,
+    private readonly tokens: GeradorDeTokens,
+    private readonly relogio: Clock,
+  ) {}
+
+  async executar(tokenAtual: string, sessao: Sessao): Promise<SessaoCriada> {
+    const elevada: Sessao = {
+      ...sessao,
+      nivel: 'completo',
+      segundoFatorAtivo: true,
+      ultimoUso: this.relogio.agora(),
+    };
+    const token = this.tokens.novoToken();
+    await this.sessoes.remover(tokenAtual);
+    await this.sessoes.gravar(token, elevada, expiracao(elevada));
+    return { token, sessao: elevada };
   }
 }
 

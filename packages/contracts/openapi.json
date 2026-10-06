@@ -11,6 +11,222 @@
     }
   ],
   "paths": {
+    "/v1/auth/2fa/ativar": {
+      "post": {
+        "operationId": "ativarSegundoFator",
+        "summary": "Ativa o 2FA e devolve os códigos de recuperação.",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodigoSegundoFator"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SegundoFatorAtivado"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/2fa/configurar": {
+      "post": {
+        "operationId": "configurarSegundoFator",
+        "summary": "Gera o segredo TOTP e a URI do QR code.",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfiguracaoSegundoFator"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/2fa/verificar": {
+      "post": {
+        "operationId": "verificarSegundoFator",
+        "summary": "Verifica o código do aplicativo ou de recuperação.",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodigoSegundoFator"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessaoAtual"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/auth/entrar": {
       "post": {
         "operationId": "entrar",
@@ -280,6 +496,39 @@
   },
   "components": {
     "schemas": {
+      "CodigoSegundoFator": {
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 16,
+            "description": "6 dígitos do aplicativo ou um código de recuperação (XXXXX-XXXXX)."
+          }
+        },
+        "required": [
+          "codigo"
+        ],
+        "additionalProperties": false
+      },
+      "ConfiguracaoSegundoFator": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string",
+            "description": "URI otpauth:// para o QR code do aplicativo autenticador."
+          },
+          "segredo": {
+            "type": "string",
+            "description": "O mesmo segredo, para digitar manualmente."
+          }
+        },
+        "required": [
+          "uri",
+          "segredo"
+        ],
+        "additionalProperties": false
+      },
       "Credenciais": {
         "type": "object",
         "properties": {
@@ -358,6 +607,28 @@
         ],
         "additionalProperties": false
       },
+      "SegundoFatorAtivado": {
+        "type": "object",
+        "properties": {
+          "sessao": {
+            "$ref": "#/components/schemas/SessaoAtual"
+          },
+          "codigosDeRecuperacao": {
+            "minItems": 10,
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Exibidos só agora: cada um vale uma vez se o celular for perdido."
+          }
+        },
+        "required": [
+          "sessao",
+          "codigosDeRecuperacao"
+        ],
+        "additionalProperties": false
+      },
       "SessaoAtual": {
         "type": "object",
         "properties": {
@@ -378,12 +649,28 @@
               "completo"
             ],
             "description": "`senha`: falta o 2FA; `completo`: senha e 2FA verificados."
+          },
+          "proximoPasso": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "configurar-2fa",
+                  "verificar-2fa"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "O que falta para a sessão ficar completa; null quando já está."
           }
         },
         "required": [
           "usuarioId",
           "tenantId",
-          "nivel"
+          "nivel",
+          "proximoPasso"
         ],
         "additionalProperties": false
       },

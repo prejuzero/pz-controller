@@ -1,3 +1,5 @@
+import { randomBytes } from 'node:crypto';
+
 import { Controller, Get, Post, Query } from '@nestjs/common';
 import { carregarAmbiente } from '@pz/config/env';
 import { ConsultaPaginada, documentoOpenApi, Problema, SituacaoDaApi } from '@pz/contracts';
@@ -56,6 +58,7 @@ const ambiente = carregarAmbiente(esquemaApi, {
   DATABASE_URL: 'postgresql://pz_dev:pz_dev_local@127.0.0.1:5432/prejuzero',
   REDIS_URL: 'redis://127.0.0.1:6379',
   S3_REGION: 'us-east-1',
+  CHAVE_CIFRAGEM: randomBytes(32).toString('base64'),
   VERSAO: 'abc123',
 });
 const relogio = new FixedClock(Instant.deIso('2026-10-05T12:00:00Z'));
