@@ -140,6 +140,25 @@ services:
     depends_on: *app-dependencias
     restart: unless-stopped
 
+  # Portal (HU23): imagem standalone do Next.js; /v1 encaminhado à api pela rede do compose.
+  web:
+    profiles: ['apps']
+    build:
+      context: ../..
+      dockerfile: infra/docker/web.Dockerfile
+      args:
+        VERSAO: local
+    image: prejuzero/web:local
+    environment:
+      API_URL: http://api:3000
+    ports:
+      # 3003 no host: a 3001 fica com o `pnpm dev` do portal e com o Grafana (perfil observability).
+      - '127.0.0.1:${WEB_PORT:-3003}:3001'
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
   # Observabilidade local (opcional): Grafana + Tempo + Loki + Prometheus + coletor OTel em um contêiner.
   # Suba com `pnpm infra:up:obs`. Grafana em http://127.0.0.1:3001
   observabilidade:

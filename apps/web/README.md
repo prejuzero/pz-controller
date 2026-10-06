@@ -1,10 +1,12 @@
 # apps/web
 
-Portal Next.js (App Router, webpack) com Tailwind, `@pz/ui` e TanStack Query. Fala com o back-end só pela API `/v1`, na mesma origem: o Next.js encaminha `/v1/*` para `API_URL` (padrão `http://localhost:3000`), e os cookies `__Host-` da sessão funcionam sem CORS.
+Portal Next.js (App Router, webpack) com Tailwind, `@pz/ui` e TanStack Query. Fala com o back-end só pela API `/v1`, na mesma origem: o `src/proxy.ts` encaminha `/v1/*` para `API_URL`, lida em execução (padrão `http://localhost:3000`), e os cookies `__Host-` da sessão funcionam sem CORS.
 
 ```bash
 pnpm --filter @pz/web dev   # http://localhost:3001 (com a API no ar: pnpm dev sobe tudo)
 ```
+
+Imagem: `infra/docker/web.Dockerfile` (standalone, não-root, `/health/live` e `/health/ready`); `pnpm infra:up:apps` sobe o portal em http://127.0.0.1:3003.
 
 ## Organização
 
@@ -14,7 +16,7 @@ pnpm --filter @pz/web dev   # http://localhost:3001 (com a API no ar: pnpm dev s
 | `src/api/chaves.ts`  | Chaves de cache por recurso (`[recurso, ...escopo]`); invalide `chaves.<recurso>.todas`   |
 | `src/api/<recurso>`  | `queryOptions` e mutações do recurso; `hooks.ts` só os repassa ao React                   |
 | `src/api/cache.ts`   | Erros globais: 401 → `/entrar?motivo=sessao-expirada`; mutação → toast; consulta → página |
-| `src/proxy.ts`       | Rota protegida sem cookie de sessão → `/entrar?retorno=<url>` (só caminhos internos)      |
+| `src/proxy.ts`       | `/v1/*` → `API_URL`; rota protegida sem sessão → `/entrar?retorno=<url>` (só internos)    |
 | `src/i18n`           | next-intl: catálogo em `src/mensagens/pt-BR.json`, fuso `America/Sao_Paulo`, formatação   |
 
 Regras:
