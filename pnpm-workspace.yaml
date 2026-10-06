@@ -11,6 +11,7 @@ allowBuilds:
   '@prisma/engines': false # idem: o motor é baixado sob demanda pelo CLI
   cpu-features: false # otimização nativa opcional do ssh2 (Testcontainers); não usada
   ssh2: false # idem: compilação nativa opcional
+  msgpackr-extract: false # aceleração nativa opcional do msgpackr (BullMQ); funciona em JavaScript puro
 savePrefix: ''
 # Segurança da cadeia de suprimentos
 # Só instala versões publicadas há pelo menos 24 h. Meta: 10080 (7 dias, igual ao cooldown do

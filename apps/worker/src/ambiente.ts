@@ -7,6 +7,8 @@ import {
 } from '@pz/config/env';
 import { z } from 'zod';
 
+import { NOMES_FILAS } from './filas/job.js';
+
 /** Ambiente do worker (ADR-010): validado no boot; faltou algo, o processo não sobe. */
 export const esquemaWorker = esquemaBase
   .extend(esquemaObservabilidade.shape)
@@ -30,7 +32,7 @@ export const esquemaWorker = esquemaBase
           .map((fila) => fila.trim())
           .filter((fila) => fila.length > 0),
       )
-      .pipe(z.array(z.string().regex(/^[a-z][a-z0-9-]*$/, 'nome de fila inválido'))),
+      .pipe(z.array(z.enum(NOMES_FILAS))),
     /** Intervalo do ciclo do relay do outbox. */
     RELAY_INTERVALO_MS: z.coerce.number().int().min(100).default(1_000),
   });

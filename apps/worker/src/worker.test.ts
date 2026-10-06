@@ -31,7 +31,13 @@ afterEach(async () => {
 });
 
 async function subir(outbox = new OutboxEmMemoria()) {
-  worker = await criarWorker({ ambiente, relogio, verificadores: [disponivel], outbox });
+  worker = await criarWorker({
+    ambiente,
+    relogio,
+    verificadores: [disponivel],
+    outbox,
+    filas: false,
+  });
   await worker.init();
   return { worker, outbox };
 }
@@ -39,9 +45,11 @@ async function subir(outbox = new OutboxEmMemoria()) {
 describe('ambiente do worker', () => {
   it('lê WORKER_QUEUES como lista e recusa nomes inválidos', () => {
     expect(
-      carregarAmbiente(esquemaWorker, { ...ambienteBruto(), WORKER_QUEUES: 'captura, email' })
-        .WORKER_QUEUES,
-    ).toEqual(['captura', 'email']);
+      carregarAmbiente(esquemaWorker, {
+        ...ambienteBruto(),
+        WORKER_QUEUES: 'captura, notificacoes',
+      }).WORKER_QUEUES,
+    ).toEqual(['captura', 'notificacoes']);
     expect(carregarAmbiente(esquemaWorker, ambienteBruto()).WORKER_QUEUES).toEqual([]);
     expect(() =>
       carregarAmbiente(esquemaWorker, { ...ambienteBruto(), WORKER_QUEUES: 'Captura!' }),
@@ -167,7 +175,7 @@ describe('servidor de saúde do worker', () => {
 describe('verificadores do ambiente', () => {
   it('sem substituição, monta banco, Redis e (se configurado) o armazenamento', async () => {
     for (const extra of [{}, { S3_ENDPOINT: 'http://127.0.0.1:1' }]) {
-      worker = await criarWorker({ ambiente: { ...ambiente, ...extra }, relogio });
+      worker = await criarWorker({ ambiente: { ...ambiente, ...extra }, relogio, filas: false });
       await worker.init();
       const relatorio = await worker.get(ConsultarSituacao).executar();
       expect(relatorio.dependencias.map((d) => d.dependencia)).toEqual(

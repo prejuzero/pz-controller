@@ -16,10 +16,10 @@ import { registrarJobProcessado } from './metricas.js';
  * O tenantId não viaja aqui: ele é campo obrigatório do próprio job (HU10).
  */
 export interface ContextoPropagavel {
-  readonly traceparent?: string;
-  readonly tracestate?: string;
-  readonly requestId?: string;
-  readonly userId?: string;
+  readonly traceparent?: string | undefined;
+  readonly tracestate?: string | undefined;
+  readonly requestId?: string | undefined;
+  readonly userId?: string | undefined;
 }
 
 /** Captura o contexto atual para gravar junto do evento ou do job. */
