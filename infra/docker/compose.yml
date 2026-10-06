@@ -123,7 +123,10 @@ services:
         PORTA: '3002'
         VERSAO: local
     image: prejuzero/worker:local
-    environment: *app-ambiente
+    environment:
+      <<: *app-ambiente
+      # Só o worker recebe o papel com BYPASSRLS (relay do outbox e jobs globais); a api não.
+      DATABASE_URL_SISTEMA: postgresql://pz_sistema:pz_sistema_local@postgres:5432/${POSTGRES_DB:-prejuzero}
     ports:
       - '127.0.0.1:${WORKER_PORT:-3002}:3002'
     depends_on: *app-dependencias

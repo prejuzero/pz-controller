@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
 import { DiscoveryModule } from '@nestjs/core';
-import { OutboxEmMemoria, SystemClock } from '@pz/kernel';
+import { Banco, BancoSistema, OutboxPostgres } from '@pz/db';
+import { SystemClock } from '@pz/kernel';
+import { criarLogger, registrarErro } from '@pz/observability';
 import {
   ConsultarSituacao,
   HistoricoEmMemoria,
   RegistrarHistoricoDeSituacao,
   VerificadorHttp,
-  VerificadorTcp,
 } from '@pz/saude';
 import { Redis } from 'ioredis';
 
@@ -14,21 +15,26 @@ import { DespachanteDeEventos } from './eventos/consome.js';
 import { RelayDoOutbox } from './eventos/relay.js';
 import {
   AMBIENTE,
-  FILA_DO_RELAY,
+  BANCO,
+  BANCO_SISTEMA,
   FILAS_RUNTIME,
+  FONTE_DO_RELAY,
   REDIS,
   REGISTRO_DE_PROCESSAMENTO,
   RELOGIO,
   UNIDADE_DE_TRABALHO,
+  UNIDADE_DO_RELAY,
   VERIFICADORES,
 } from './fichas.js';
 import { Filas } from './filas/runtime.js';
 import { ServicoDeFilas } from './filas/servico.js';
+import { RecursosDoBanco } from './recursos.js';
 import { ConsumidorDeSituacao } from './saude/consumidor.js';
 
 import type { AmbienteWorker } from './ambiente.js';
+import type { FonteDoRelay } from './eventos/relay.js';
 import type { DynamicModule, Provider } from '@nestjs/common';
-import type { Clock } from '@pz/kernel';
+import type { Clock, OutboxEmMemoria } from '@pz/kernel';
 import type { VerificadorDeDependencia } from '@pz/saude';
 
 export interface OpcoesWorker {
@@ -36,18 +42,20 @@ export interface OpcoesWorker {
   /** Substituições para testes. */
   readonly relogio?: Clock;
   readonly verificadores?: readonly VerificadorDeDependencia[];
+  /** Outbox em memória no lugar do PostgreSQL (testes unitários, sem banco). */
   readonly outbox?: OutboxEmMemoria;
-  /** false nos testes que não sobem Redis. Padrão: true. */
+  /** false nos testes que não sobem Redis: sem filas nem relay. Padrão: true. */
   readonly filas?: boolean;
 }
 
 function verificadoresDoAmbiente(
   ambiente: AmbienteWorker,
+  banco: Banco,
   redis: Redis,
 ): VerificadorDeDependencia[] {
   return [
-    new VerificadorTcp('banco', ambiente.DATABASE_URL),
-    // Redis no protocolo (PING), pela mesma conexão das filas.
+    // Banco e Redis no protocolo de cada um, pelas mesmas conexões do worker.
+    { nome: 'banco', verificar: () => banco.verificar() },
     {
       nome: 'redis',
       verificar: async () => {
@@ -60,32 +68,64 @@ function verificadoresDoAmbiente(
   ];
 }
 
-/** Composição do worker: consumidores de eventos (lista explícita) e relay do outbox. */
+const logger = criarLogger('worker');
+
+/** Outbox em memória com a interface de origem do relay (sem contexto de trace). */
+function fonteEmMemoria(outbox: OutboxEmMemoria): FonteDoRelay<unknown> {
+  return {
+    reservarPendentesComContexto: async (transacao, limite) =>
+      (await outbox.reservarPendentes(transacao as never, limite)).map((evento) => ({
+        evento,
+        contexto: {},
+      })),
+    marcarPublicados: (transacao, ids, em) => outbox.marcarPublicados(transacao as never, ids, em),
+  };
+}
+
+/** Composição do worker: filas, relay do outbox e consumidores de eventos (lista explícita). */
 @Module({})
 export class WorkerModule {
   static registrar(opcoes: OpcoesWorker): DynamicModule {
-    const outbox = opcoes.outbox ?? new OutboxEmMemoria();
+    const { ambiente } = opcoes;
     // lazyConnect: só conecta quando usada; maxRetriesPerRequest null: exigência do BullMQ.
-    const redis = new Redis(opcoes.ambiente.REDIS_URL, {
-      lazyConnect: true,
-      maxRetriesPerRequest: null,
+    const redis = new Redis(ambiente.REDIS_URL, { lazyConnect: true, maxRetriesPerRequest: null });
+    // Sem tratador, o ioredis imprime cada falha de reconexão no console, fora do log estruturado.
+    // Registra pelo logger, no máximo uma vez por minuto (a prontidão já mostra o Redis fora).
+    let ultimoErroRedis = Number.NEGATIVE_INFINITY;
+    redis.on('error', (erro: Error) => {
+      if (performance.now() - ultimoErroRedis < 60_000) return;
+      ultimoErroRedis = performance.now();
+      registrarErro(logger, erro, 'conexão com o Redis indisponível', 'worker.redis');
     });
+    const banco = new Banco({ url: ambiente.DATABASE_URL });
+    const sistema = new BancoSistema({ url: ambiente.DATABASE_URL_SISTEMA, maxConexoes: 4 });
+    const outboxPostgres = new OutboxPostgres();
+    const emMemoria = opcoes.outbox;
+
     const provedores: Provider[] = [
       { provide: REDIS, useValue: redis },
-      { provide: AMBIENTE, useValue: opcoes.ambiente },
+      { provide: BANCO, useValue: banco },
+      { provide: BANCO_SISTEMA, useValue: sistema },
+      { provide: AMBIENTE, useValue: ambiente },
       { provide: RELOGIO, useValue: opcoes.relogio ?? new SystemClock() },
       {
         provide: VERIFICADORES,
-        useValue: opcoes.verificadores ?? verificadoresDoAmbiente(opcoes.ambiente, redis),
+        useValue: opcoes.verificadores ?? verificadoresDoAmbiente(ambiente, banco, redis),
       },
-      { provide: UNIDADE_DE_TRABALHO, useValue: outbox },
-      { provide: FILA_DO_RELAY, useValue: outbox },
-      { provide: REGISTRO_DE_PROCESSAMENTO, useValue: outbox },
+      // Consumo no tenant do evento (pz_app) e deduplicação em evento_processado.
+      { provide: UNIDADE_DE_TRABALHO, useValue: emMemoria ?? banco },
+      { provide: REGISTRO_DE_PROCESSAMENTO, useValue: emMemoria ?? outboxPostgres },
+      // Relay atravessa tenants: papel sistema, com motivo registrado.
+      { provide: UNIDADE_DO_RELAY, useValue: emMemoria ?? sistema.unidade('relay do outbox') },
+      {
+        provide: FONTE_DO_RELAY,
+        useValue: emMemoria === undefined ? outboxPostgres : fonteEmMemoria(emMemoria),
+      },
       {
         provide: ConsultarSituacao,
         inject: [VERIFICADORES, RELOGIO],
         useFactory: (verificadores: VerificadorDeDependencia[], relogio: Clock) =>
-          new ConsultarSituacao(verificadores, relogio, opcoes.ambiente.VERSAO),
+          new ConsultarSituacao(verificadores, relogio, ambiente.VERSAO),
       },
       { provide: HistoricoEmMemoria, useValue: new HistoricoEmMemoria() },
       {
@@ -97,11 +137,11 @@ export class WorkerModule {
         provide: FILAS_RUNTIME,
         inject: [RELOGIO],
         useFactory: (relogio: Clock) =>
-          new Filas({ redis, relogio, filasAtivas: opcoes.ambiente.WORKER_QUEUES }),
+          new Filas({ redis, relogio, filasAtivas: ambiente.WORKER_QUEUES }),
       },
-      ...(opcoes.filas === false ? [] : [ServicoDeFilas]),
       DespachanteDeEventos,
-      RelayDoOutbox,
+      ...(opcoes.filas === false ? [] : [ServicoDeFilas, RelayDoOutbox]),
+      RecursosDoBanco,
       // Consumidores (lista explícita, CLAUDE.md seção 6).
       ConsumidorDeSituacao,
     ];

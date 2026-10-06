@@ -5,7 +5,8 @@
   "description": "Schema Prisma, migrações reversíveis, papéis, RLS e seeds (ADR-003).",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./teste": "./src/teste/postgres.ts"
   },
   "scripts": {
     "gerar": "prisma generate",

@@ -146,6 +146,9 @@ describe('OutboxPostgres (ADR-004) com PostgreSQL real', () => {
     const pendentes = await relay().executar((tx) => tx.eventoDominio.findMany());
     expect(pendentes).toHaveLength(2);
     expect(pendentes[0]?.contexto).toEqual({});
+    const reservados = await relay().executar((tx) => outbox.reservarPendentesComContexto(tx, 10));
+    expect(reservados.map((r) => r.contexto)).toEqual([{}, {}]);
+    expect(reservados[0]?.evento.ocorridoEm.paraIso()).toBe('2026-10-05T12:00:00.000Z');
   });
 
   it('dois relays concorrentes não publicam o mesmo evento duas vezes (SKIP LOCKED)', async () => {

@@ -35,6 +35,31 @@ export function capturarContextoPropagavel(): ContextoPropagavel {
   };
 }
 
+/**
+ * Executa `trabalho` dentro de um contexto propagado (ex.: o gravado junto de um evento no
+ * outbox), sem abrir span: o que for publicado dali (jobs) continua o trace de origem e leva a
+ * mesma correlação (requestId, userId).
+ */
+export function executarNoContextoPropagado<Resultado>(
+  contexto: ContextoPropagavel,
+  trabalho: () => Resultado,
+): Resultado {
+  const { traceparent, tracestate, requestId, userId } = contexto;
+  const portador = {
+    ...(traceparent === undefined ? {} : { traceparent }),
+    ...(tracestate === undefined ? {} : { tracestate }),
+  };
+  return context.with(propagation.extract(ROOT_CONTEXT, portador), () =>
+    executarComContexto(
+      {
+        ...(requestId === undefined ? {} : { requestId }),
+        ...(userId === undefined ? {} : { userId }),
+      },
+      trabalho,
+    ),
+  );
+}
+
 export interface ExecucaoDeJob {
   readonly fila: string;
   readonly jobId: string;

@@ -5,7 +5,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { executarComContexto, obterContexto } from './contexto.js';
 import { NOMES_METRICAS } from './metricas.js';
-import { capturarContextoPropagavel, executarJob } from './propagacao.js';
+import {
+  capturarContextoPropagavel,
+  executarJob,
+  executarNoContextoPropagado,
+} from './propagacao.js';
 import { iniciarTelemetria } from './telemetria.js';
 
 import type { Telemetria } from './telemetria.js';
@@ -130,5 +134,22 @@ describe('propagação do contexto até o job', () => {
 
     const [span] = exportador.getFinishedSpans();
     expect(span?.parentSpanContext).toBeUndefined();
+  });
+
+  it('executarNoContextoPropagado retoma o trace e a correlação para o que for publicado dali', () => {
+    const contexto = trace.getTracer('teste').startActiveSpan('origem', (span) => {
+      const capturado = executarComContexto({ requestId: 'req-9', userId: 'u-9' }, () =>
+        capturarContextoPropagavel(),
+      );
+      span.end();
+      return capturado;
+    });
+
+    const retomado = context.with(ROOT_CONTEXT, () =>
+      executarNoContextoPropagado(contexto, () => capturarContextoPropagavel()),
+    );
+
+    expect(retomado).toEqual(contexto);
+    expect(executarNoContextoPropagado({}, () => obterContexto())).toEqual({});
   });
 });

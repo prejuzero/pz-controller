@@ -5,7 +5,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { esquemaWorker } from './ambiente.js';
 import { DespachanteDeEventos } from './eventos/consome.js';
-import { RelayDoOutbox } from './eventos/relay.js';
 import { criarServidorDeSaude } from './saude/servidor.js';
 import { criarWorker } from './worker.js';
 
@@ -16,6 +15,7 @@ import type { AddressInfo } from 'node:net';
 const ambiente = carregarAmbiente(esquemaWorker, {
   NODE_ENV: 'test',
   DATABASE_URL: 'postgresql://u:s@127.0.0.1:1/db',
+  DATABASE_URL_SISTEMA: 'postgresql://u:s@127.0.0.1:1/db',
   REDIS_URL: 'redis://127.0.0.1:1',
   S3_REGION: 'us-east-1',
   VERSAO: 'abc123',
@@ -60,6 +60,7 @@ describe('ambiente do worker', () => {
 function ambienteBruto() {
   return {
     DATABASE_URL: 'postgresql://u:s@h:5432/d',
+    DATABASE_URL_SISTEMA: 'postgresql://s:s@h:5432/d',
     REDIS_URL: 'redis://h:6379',
     S3_REGION: 'us-east-1',
   };
@@ -73,80 +74,45 @@ describe('@Consome e o despachante', () => {
     );
   });
 
-  it('fluxo ponta a ponta: verificação → outbox → relay → consumidor, uma vez só', async () => {
+  it('verificação → outbox → consumidor inscrito, uma vez só por consumidor', async () => {
     const { worker: app, outbox } = await subir();
-    const registrar = new RegistrarVerificacao(app.get(ConsultarSituacao), outbox, outbox, relogio);
+    const despachante = app.get(DespachanteDeEventos);
     const tenantId = gerarUuidV7(relogio);
-
-    await registrar.executar(tenantId);
-    const relay = app.get(RelayDoOutbox);
-    expect(await relay.executarCiclo()).toBe(1);
-    expect(await relay.executarCiclo()).toBe(0);
-
-    const historico = app.get(HistoricoEmMemoria).entradas();
-    expect(historico).toEqual([expect.objectContaining({ tenantId, situacao: 'operacional' })]);
-
-    // Reentrega do mesmo evento (relay reiniciado): o consumidor não processa de novo.
-    const evento: EventoDominio = {
-      id: historico[0]?.eventoId ?? gerarUuidV7(),
-      tipo: 'SituacaoVerificada',
-      versao: 1,
+    await new RegistrarVerificacao(app.get(ConsultarSituacao), outbox, outbox, relogio).executar(
       tenantId,
-      agregadoId: 'x',
-      ocorridoEm: relogio.agora(),
-      payload: { situacao: 'operacional' },
-    };
-    expect(await app.get(DespachanteDeEventos).despachar(evento)).toEqual(['ignorado']);
-    expect(app.get(HistoricoEmMemoria).entradas()).toHaveLength(1);
+    );
+    const [evento] = outbox.pendentes();
+    if (evento === undefined) throw new Error('evento não gravado');
+
+    expect(despachante.consumidoresDe(evento)).toEqual(['ConsumidorDeSituacao.tratar']);
+    expect(await despachante.consumir('ConsumidorDeSituacao.tratar', evento)).toBe('processado');
+    // Reentrega (relay reiniciado, job repetido): o consumidor não processa de novo.
+    expect(await despachante.consumir('ConsumidorDeSituacao.tratar', evento)).toBe('ignorado');
+    expect(await despachante.despachar(evento)).toEqual(['ignorado']);
+
+    expect(app.get(HistoricoEmMemoria).entradas()).toEqual([
+      expect.objectContaining({ tenantId, situacao: 'operacional' }),
+    ]);
   });
 
-  it('evento sem consumidor inscrito ou de outra versão não é entregue a ninguém', async () => {
+  it('evento sem consumidor inscrito, de outra versão ou consumidor desconhecido', async () => {
     const { worker: app } = await subir();
-    const base = {
+    const despachante = app.get(DespachanteDeEventos);
+    const base: EventoDominio = {
       id: gerarUuidV7(),
+      tipo: 'Desconhecido',
+      versao: 1,
       tenantId: gerarUuidV7(),
       agregadoId: 'x',
       ocorridoEm: relogio.agora(),
       payload: {},
     };
-    expect(
-      await app.get(DespachanteDeEventos).despachar({ ...base, tipo: 'Desconhecido', versao: 1 }),
-    ).toEqual([]);
-    expect(
-      await app
-        .get(DespachanteDeEventos)
-        .despachar({ ...base, tipo: 'SituacaoVerificada', versao: 2 }),
-    ).toEqual([]);
-  });
-
-  it('falha no consumo não derruba o relay: o lote volta e é retentado', async () => {
-    const outbox = new OutboxEmMemoria();
-    const { worker: app } = await subir(outbox);
-    await new RegistrarVerificacao(app.get(ConsultarSituacao), outbox, outbox, relogio).executar(
-      gerarUuidV7(),
+    expect(despachante.consumidoresDe(base)).toEqual([]);
+    expect(await despachante.despachar(base)).toEqual([]);
+    expect(despachante.consumidoresDe({ ...base, tipo: 'SituacaoVerificada', versao: 2 })).toEqual(
+      [],
     );
-    outbox.falharAoMarcarPublicados = true;
-
-    expect(await app.get(RelayDoOutbox).executarCiclo()).toBe(0);
-    expect(outbox.pendentes()).toHaveLength(1);
-
-    outbox.falharAoMarcarPublicados = false;
-    expect(await app.get(RelayDoOutbox).executarCiclo()).toBe(1);
-    expect(app.get(HistoricoEmMemoria).entradas()).toHaveLength(1);
-  });
-
-  it('não roda dois ciclos ao mesmo tempo', async () => {
-    const outbox = new OutboxEmMemoria();
-    const { worker: app } = await subir(outbox);
-    await new RegistrarVerificacao(app.get(ConsultarSituacao), outbox, outbox, relogio).executar(
-      gerarUuidV7(),
-    );
-    const relay = app.get(RelayDoOutbox);
-
-    const resultados = await Promise.all([relay.executarCiclo(), relay.executarCiclo()]);
-
-    expect(resultados).toEqual([1, 0]);
-    expect(app.get(HistoricoEmMemoria).entradas()).toHaveLength(1);
+    await expect(despachante.consumir('Fantasma.tratar', base)).rejects.toThrow('não inscrito');
   });
 });
 
