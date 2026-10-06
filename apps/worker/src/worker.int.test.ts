@@ -10,15 +10,16 @@ import { RedisContainer } from '@testcontainers/redis';
 import { Queue } from 'bullmq';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { esquemaWorker } from '../ambiente.js';
-import { AMBIENTE, FILAS_RUNTIME, FONTE_DO_RELAY, RELOGIO, UNIDADE_DO_RELAY } from '../fichas.js';
-import { idDoJob } from '../filas/job.js';
-import { criarWorker } from '../worker.js';
+import { esquemaWorker } from './ambiente.js';
+import { DespachanteDeEventos } from './eventos/consome.js';
+import { RelayDoOutbox } from './eventos/relay.js';
+import { AMBIENTE, FILAS_RUNTIME, FONTE_DO_RELAY, RELOGIO, UNIDADE_DO_RELAY } from './fichas.js';
+import { limparOutboxJob } from './filas/agendamento.js';
+import { idDoJob } from './filas/job.js';
+import { criarWorker } from './worker.js';
 
-import { DespachanteDeEventos } from './consome.js';
-import { RelayDoOutbox } from './relay.js';
-
-import type { FonteDoRelay } from './relay.js';
+import type { FonteDoRelay } from './eventos/relay.js';
+import type { Filas } from './filas/runtime.js';
 import type { INestApplicationContext } from '@nestjs/common';
 import type { BancoDeTeste } from '@pz/db/teste';
 import type { EventoDominio, Uuid } from '@pz/kernel';
@@ -225,5 +226,49 @@ describe('relay do outbox sob falha e concorrência (HU10)', () => {
     expect(await situacaoNoBanco(eventos.map((e) => e.id))).toEqual(
       eventos.map(() => ({ publicado: true, processados: 1 })),
     );
+  }, 60_000);
+});
+
+describe('jobs recorrentes no worker (HU10)', () => {
+  it('o boot registra a limpeza diária do outbox às 3h de Brasília', async () => {
+    const fila = new Queue('manutencao', { connection: { url: redis.getConnectionUrl() } });
+    // Registrado em segundo plano no boot (não espera o Redis).
+    await esperar(
+      async () => (await fila.getJobScheduler('manutencao.limpar-outbox')) !== undefined,
+    );
+    expect(await fila.getJobScheduler('manutencao.limpar-outbox')).toMatchObject({
+      pattern: '0 3 * * *',
+      tz: 'America/Sao_Paulo',
+    });
+    await fila.close();
+  });
+
+  it('a limpeza remove do banco os eventos publicados há mais de 30 dias', async () => {
+    const [antigo, recente] = [novoEvento('limpeza-antigo'), novoEvento('limpeza-recente')];
+    await gravarNoOutbox([antigo, recente]);
+    const sistema = await postgres.conectar('pz_sistema');
+    await sistema.query(
+      `UPDATE evento_dominio SET publicado_em = now() - interval '31 days' WHERE id = $1`,
+      [antigo.id],
+    );
+    await sistema.query(`UPDATE evento_dominio SET publicado_em = now() WHERE id = $1`, [
+      recente.id,
+    ]);
+
+    // Dispara a execução do job agendado sem esperar as 3h.
+    await worker
+      .get<Filas>(FILAS_RUNTIME)
+      .publicar(limparOutboxJob, {}, { global: true, motivo: 'teste da limpeza' }, 'e2e');
+
+    const existentes = async () =>
+      (
+        await sistema.query<{ id: string }>(
+          'SELECT id FROM evento_dominio WHERE id = ANY($1::uuid[])',
+          [[antigo.id, recente.id]],
+        )
+      ).rows.map((linha) => linha.id);
+    await esperar(async () => !(await existentes()).includes(antigo.id));
+    expect(await existentes()).toEqual([recente.id]);
+    await sistema.end();
   }, 60_000);
 });

@@ -1,14 +1,19 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { registrarSituacaoDasFilas } from '@pz/observability';
+import { limparOutbox } from '@pz/kernel';
+import { criarLogger, registrarErro, registrarSituacaoDasFilas } from '@pz/observability';
 
 import { DespachanteDeEventos } from '../eventos/consome.js';
 import { consumirEvento, desserializarEvento } from '../eventos/job-evento.js';
-import { FILAS_RUNTIME, REDIS } from '../fichas.js';
+import { FILAS_RUNTIME, LIMPEZA_DO_OUTBOX, REDIS, RELOGIO, UNIDADE_DA_LIMPEZA } from '../fichas.js';
 
+import { AGENDAMENTOS, limparOutboxJob, RETENCAO_DO_OUTBOX_MS } from './agendamento.js';
 import { Filas } from './runtime.js';
 
 import type { OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
+import type { Clock, LimpezaDoOutbox, UnidadeDeTrabalho } from '@pz/kernel';
 import type { Redis } from 'ioredis';
+
+const logger = criarLogger('worker.manutencao');
 
 /**
  * Ciclo de vida das filas no worker: registra os tratadores, começa a consumir no boot, publica
@@ -23,6 +28,9 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     @Inject(FILAS_RUNTIME) private readonly filas: Filas,
     @Inject(REDIS) private readonly redis: Redis,
     @Inject(DespachanteDeEventos) private readonly despachante: DespachanteDeEventos,
+    @Inject(UNIDADE_DA_LIMPEZA) private readonly unidadeDaLimpeza: UnidadeDeTrabalho<unknown>,
+    @Inject(LIMPEZA_DO_OUTBOX) private readonly limpeza: LimpezaDoOutbox<unknown>,
+    @Inject(RELOGIO) private readonly relogio: Clock,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -30,7 +38,20 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     this.filas.registrar(consumirEvento, async (dados) => {
       await this.despachante.consumir(dados.consumidor, desserializarEvento(dados.evento));
     });
+    this.filas.registrar(limparOutboxJob, async () => {
+      const removidos = await limparOutbox(this.unidadeDaLimpeza, this.limpeza, this.relogio, {
+        retencaoMs: RETENCAO_DO_OUTBOX_MS,
+        lote: 1_000,
+      });
+      logger.info(removidos, 'limpeza do outbox concluída');
+    });
+    this.filas.validarAgendamentos(AGENDAMENTOS);
     this.filas.iniciar();
+    // Sem esperar o Redis: com ele fora, o worker sobe e a prontidão mostra a falha; os
+    // agendadores são gravados quando a conexão voltar. Falha aqui vira log, métrica e alerta.
+    void this.filas.agendar(AGENDAMENTOS).catch((erro: unknown) => {
+      registrarErro(logger, erro, 'falha ao registrar os jobs recorrentes', 'worker.agendador');
+    });
     this.#cancelarMetricas = registrarSituacaoDasFilas(() => this.filas.situacao());
   }
 

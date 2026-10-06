@@ -14,3 +14,6 @@ export const BANCO_SISTEMA = Symbol('BANCO_SISTEMA');
 /** Relay: unidade de trabalho como sistema e origem dos eventos pendentes com contexto. */
 export const UNIDADE_DO_RELAY = Symbol('UNIDADE_DO_RELAY');
 export const FONTE_DO_RELAY = Symbol('FONTE_DO_RELAY');
+/** Limpeza agendada do outbox: unidade como sistema e a porta de remoção (HU10). */
+export const UNIDADE_DA_LIMPEZA = Symbol('UNIDADE_DA_LIMPEZA');
+export const LIMPEZA_DO_OUTBOX = Symbol('LIMPEZA_DO_OUTBOX');

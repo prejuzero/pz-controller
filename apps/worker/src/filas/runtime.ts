@@ -7,8 +7,10 @@ import {
 } from '@pz/observability';
 import { Queue, UnrecoverableError, Worker } from 'bullmq';
 
+import { FUSO_DO_AGENDADOR } from './agendamento.js';
 import { EnvelopeJob, FILAS, filaDlq, idDoJob, montarEnvelope } from './job.js';
 
+import type { Agendamento } from './agendamento.js';
 import type { DefinicaoJob, Escopo, NomeFila } from './job.js';
 import type { Clock, Uuid } from '@pz/kernel';
 import type { SituacaoFila } from '@pz/observability';
@@ -74,16 +76,84 @@ export class Filas {
     chave: string,
   ): Promise<string> {
     const envelope = montarEnvelope(definicao, dados, escopo, chave, capturarContextoPropagavel());
-    const config = FILAS[definicao.fila];
     const jobId = idDoJob(definicao.tipo, chave);
     await this.#fila(definicao.fila).add(definicao.tipo, envelope, {
       jobId,
-      attempts: config.tentativas,
-      backoff: { type: 'exponential', delay: this.opcoes.atrasoBaseMs ?? config.atrasoBaseMs },
-      removeOnComplete: { age: 7 * 24 * 3600, count: 10_000 },
-      removeOnFail: { age: 30 * 24 * 3600 },
+      ...this.#opcoesDoJob(definicao.fila),
     });
     return jobId;
+  }
+
+  #opcoesDoJob(fila: NomeFila) {
+    const config = FILAS[fila];
+    return {
+      attempts: config.tentativas,
+      backoff: {
+        type: 'exponential' as const,
+        delay: this.opcoes.atrasoBaseMs ?? config.atrasoBaseMs,
+      },
+      removeOnComplete: { age: 7 * 24 * 3600, count: 10_000 },
+      removeOnFail: { age: 30 * 24 * 3600 },
+    };
+  }
+
+  /**
+   * Confere, sem tocar no Redis, que todo agendamento das filas ativas tem tratador. Erro de
+   * programação: deve derrubar o boot, mesmo com o Redis fora do ar. Devolve os das filas ativas.
+   */
+  validarAgendamentos(agendamentos: readonly Agendamento<unknown>[]): Agendamento<unknown>[] {
+    const ativas = this.filasAtivas();
+    const proprios = agendamentos.filter((agendamento) => ativas.includes(agendamento.job.fila));
+    for (const agendamento of proprios) {
+      if (!this.#inscricoes.has(agendamento.job.tipo)) {
+        throw new Error(`Agendamento ${agendamento.id} sem tratador para ${agendamento.job.tipo}`);
+      }
+    }
+    return proprios;
+  }
+
+  /**
+   * Cria ou atualiza os jobs recorrentes das filas ativas (todas as réplicas chamam no boot).
+   * O BullMQ guarda um agendador por ID no Redis e gera uma única execução por horário, com ID
+   * derivado do agendador e do horário: réplicas não duplicam execuções. Agendadores que saíram
+   * do código são removidos, para o código ser a única fonte dos jobs recorrentes.
+   */
+  async agendar(agendamentos: readonly Agendamento<unknown>[]): Promise<void> {
+    const proprios = this.validarAgendamentos(agendamentos);
+    const ativas = this.filasAtivas();
+    for (const agendamento of proprios) {
+      const envelope = montarEnvelope(
+        agendamento.job,
+        agendamento.dados,
+        { global: true, motivo: agendamento.motivo },
+        agendamento.id,
+        {}, // cada execução começa o próprio trace, não o do boot
+      );
+      await this.#fila(agendamento.job.fila).upsertJobScheduler(
+        agendamento.id,
+        { pattern: agendamento.cron, tz: FUSO_DO_AGENDADOR },
+        {
+          name: agendamento.job.tipo,
+          data: envelope,
+          opts: this.#opcoesDoJob(agendamento.job.fila),
+        },
+      );
+    }
+    for (const nome of ativas) {
+      const fila = this.#fila(nome);
+      for (const existente of await fila.getJobSchedulers()) {
+        if (proprios.some((a) => a.id === existente.key && a.job.fila === nome)) continue;
+        await fila.removeJobScheduler(existente.key);
+        logger.warn(
+          { fila: nome, agendamento: existente.key },
+          'agendador fora do código removido',
+        );
+      }
+    }
+    logger.info(
+      { agendamentos: proprios.map((a) => ({ id: a.id, cron: a.cron, fuso: FUSO_DO_AGENDADOR })) },
+      'jobs recorrentes agendados',
+    );
   }
 
   /** Associa um tipo de job ao tratador (que chama um caso de uso). */

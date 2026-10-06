@@ -2,10 +2,12 @@ import { tenantAtual } from '@pz/db';
 import { FixedClock, Instant } from '@pz/kernel';
 import { executarComContexto, obterContexto } from '@pz/observability';
 import { RedisContainer } from '@testcontainers/redis';
+import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import { definirAgendamento } from './agendamento.js';
 import { definirJob, filaDlq } from './job.js';
 import { Filas } from './runtime.js';
 
@@ -252,5 +254,75 @@ describe('runtime de filas (HU10) com Redis real', () => {
     expect(soPrazos.filasAtivas()).toEqual(['prazos']);
     expect(varridos).toBe(0);
     expect(filas({ filasAtivas: [] }).filasAtivas()).toHaveLength(9);
+  });
+});
+
+describe('agendador de jobs recorrentes (HU10) com Redis real', () => {
+  const porSegundo = definirAgendamento({
+    id: 'manutencao.teste-por-segundo',
+    job: varrer,
+    cron: '* * * * * *', // a cada segundo, para o teste caber em poucos segundos
+    dados: {},
+    motivo: 'teste do agendador',
+  });
+
+  it('duas réplicas agendando o mesmo job não duplicam execuções', async () => {
+    const execucoes: string[] = [];
+    const replicas = [
+      filas({ filasAtivas: ['manutencao'] }),
+      filas({ filasAtivas: ['manutencao'] }),
+    ];
+    for (const replica of replicas) {
+      replica.registrar(varrer, (_dados, { jobId }) => {
+        execucoes.push(jobId);
+        return Promise.resolve();
+      });
+    }
+    await Promise.all(replicas.map((replica) => replica.agendar([porSegundo])));
+    const inicio = performance.now();
+    for (const replica of replicas) replica.iniciar();
+
+    await esperar(() => execucoes.length >= 3);
+    await new Promise((resolver) => setTimeout(resolver, 1_500));
+    const segundos = (performance.now() - inicio) / 1000;
+
+    // No máximo uma execução por segundo decorrido (+1 da borda), cada uma num horário distinto.
+    expect(execucoes.length).toBeLessThanOrEqual(Math.ceil(segundos) + 1);
+    const horarios = execucoes.map((id) => id.split(':').at(-1));
+    expect(new Set(horarios).size).toBe(execucoes.length);
+    const fila = new Queue('manutencao', { connection: conectar() });
+    expect(await fila.getJobSchedulers()).toEqual([
+      expect.objectContaining({
+        key: 'manutencao.teste-por-segundo',
+        pattern: '* * * * * *',
+        tz: 'America/Sao_Paulo',
+      }),
+    ]);
+    await fila.close();
+  }, 30_000);
+
+  it('o código é a fonte: agendador que saiu do catálogo é removido no boot', async () => {
+    const antiga = filas({ filasAtivas: ['manutencao'] });
+    antiga.registrar(varrer, () => Promise.resolve());
+    await antiga.agendar([porSegundo]);
+
+    const nova = filas({ filasAtivas: ['manutencao'] });
+    nova.registrar(varrer, () => Promise.resolve());
+    await nova.agendar([]);
+
+    const fila = new Queue('manutencao', { connection: conectar() });
+    expect(await fila.getJobSchedulers()).toEqual([]);
+    await fila.close();
+  });
+
+  it('agendamento sem tratador registrado falha no boot, e de fila inativa é ignorado', async () => {
+    await expect(filas({ filasAtivas: ['manutencao'] }).agendar([porSegundo])).rejects.toThrow(
+      'sem tratador',
+    );
+    // Fila processada por outro serviço (WORKER_QUEUES): quem agenda é ele.
+    await filas({ filasAtivas: ['prazos'] }).agendar([porSegundo]);
+    const fila = new Queue('manutencao', { connection: conectar() });
+    expect(await fila.getJobSchedulers()).toEqual([]);
+    await fila.close();
   });
 });

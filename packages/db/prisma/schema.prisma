@@ -83,5 +83,6 @@ model EventoProcessado {
 
   @@id([consumidor, eventoId])
   @@index([tenantId])
+  @@index([processadoEm])
   @@map("evento_processado")
 }

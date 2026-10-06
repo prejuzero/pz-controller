@@ -3,7 +3,14 @@ import { capturarContextoPropagavel } from '@pz/observability';
 
 import type { Transacao } from './banco.js';
 import type { Prisma } from './gerado/prisma/client.js';
-import type { EventoDominio, FilaDoRelay, Outbox, RegistroDeProcessamento, Uuid } from '@pz/kernel';
+import type {
+  EventoDominio,
+  FilaDoRelay,
+  LimpezaDoOutbox,
+  Outbox,
+  RegistroDeProcessamento,
+  Uuid,
+} from '@pz/kernel';
 import type { ContextoPropagavel } from '@pz/observability';
 
 interface LinhaEvento {
@@ -40,10 +47,15 @@ function paraEvento(linha: LinhaEvento): EventoDominio {
  * - `gravar`: na transação do caso de uso (pz_app, tenant da transação), com o contexto de trace;
  * - `registrarSeNovo`: deduplicação por consumidor em `evento_processado`, no tenant da transação;
  * - `reservarPendentes`/`marcarPublicados`: usados pelo relay como sistema (atravessa tenants),
- *   com `FOR UPDATE SKIP LOCKED` para relays concorrentes não pegarem o mesmo evento.
+ *   com `FOR UPDATE SKIP LOCKED` para relays concorrentes não pegarem o mesmo evento;
+ * - `removerPublicadosAntesDe`/`removerProcessadosAntesDe`: limpeza agendada, também como sistema.
  */
 export class OutboxPostgres
-  implements Outbox<Transacao>, RegistroDeProcessamento<Transacao>, FilaDoRelay<Transacao>
+  implements
+    Outbox<Transacao>,
+    RegistroDeProcessamento<Transacao>,
+    FilaDoRelay<Transacao>,
+    LimpezaDoOutbox<Transacao>
 {
   async gravar(transacao: Transacao, eventos: readonly EventoDominio[]): Promise<void> {
     if (eventos.length === 0) return;
@@ -100,5 +112,35 @@ export class OutboxPostgres
       where: { id: { in: [...ids] } },
       data: { publicadoEm: new Date(em.epochMs) },
     });
+  }
+
+  async removerPublicadosAntesDe(
+    transacao: Transacao,
+    limite: Instant,
+    lote: number,
+  ): Promise<number> {
+    // Só publicados: um pendente antigo é falha do relay (alerta), nunca lixo a apagar.
+    return transacao.$executeRaw`
+      DELETE FROM evento_dominio
+       WHERE id IN (SELECT id FROM evento_dominio
+                     WHERE publicado_em IS NOT NULL AND publicado_em < ${new Date(limite.epochMs)}
+                     ORDER BY publicado_em
+                     LIMIT ${lote}
+                     FOR UPDATE SKIP LOCKED)`;
+  }
+
+  async removerProcessadosAntesDe(
+    transacao: Transacao,
+    limite: Instant,
+    lote: number,
+  ): Promise<number> {
+    return transacao.$executeRaw`
+      DELETE FROM evento_processado
+       WHERE (consumidor, evento_id) IN (
+              SELECT consumidor, evento_id FROM evento_processado
+               WHERE processado_em < ${new Date(limite.epochMs)}
+               ORDER BY processado_em
+               LIMIT ${lote}
+               FOR UPDATE SKIP LOCKED)`;
   }
 }

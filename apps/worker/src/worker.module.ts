@@ -19,9 +19,11 @@ import {
   BANCO_SISTEMA,
   FILAS_RUNTIME,
   FONTE_DO_RELAY,
+  LIMPEZA_DO_OUTBOX,
   REDIS,
   REGISTRO_DE_PROCESSAMENTO,
   RELOGIO,
+  UNIDADE_DA_LIMPEZA,
   UNIDADE_DE_TRABALHO,
   UNIDADE_DO_RELAY,
   VERIFICADORES,
@@ -117,6 +119,9 @@ export class WorkerModule {
       { provide: REGISTRO_DE_PROCESSAMENTO, useValue: emMemoria ?? outboxPostgres },
       // Relay atravessa tenants: papel sistema, com motivo registrado.
       { provide: UNIDADE_DO_RELAY, useValue: emMemoria ?? sistema.unidade('relay do outbox') },
+      // Limpeza diária do outbox: também atravessa tenants (sistema, motivo registrado).
+      { provide: UNIDADE_DA_LIMPEZA, useValue: sistema.unidade('limpeza do outbox') },
+      { provide: LIMPEZA_DO_OUTBOX, useValue: outboxPostgres },
       {
         provide: FONTE_DO_RELAY,
         useValue: emMemoria === undefined ? outboxPostgres : fonteEmMemoria(emMemoria),
