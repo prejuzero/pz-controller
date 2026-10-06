@@ -11,6 +11,11 @@ Calendário forense (HU13): feriados, recessos, portarias e indisponibilidades e
 - Toda inclusão ou revogação vigente grava auditoria e publica `CalendarioAlterado` pelo outbox.
 - Porta do motor: `ConsultarDiasNaoUteis.diasNaoUteis(jurisdicao, inicio, fim)` devolve um item por
   dia e evento, com motivo e fonte. Sábados e domingos são regra do motor (CPC, art. 216).
+- Cache Redis (`CacheDeDiasNaoUteisRedis`) por (tenant, jurisdição, ano), com validade de 24 h.
+  O consumidor de `CalendarioAlterado` no worker incrementa a geração do ano (global ou do tenant)
+  e as entradas antigas deixam de valer. Redis fora: a consulta segue pelo banco e o erro é
+  registrado. Entre a gravação e a entrega do evento pelo outbox há uma janela curta com o cache
+  antigo; o recálculo de prazos disparado pelo mesmo evento deve considerar isso.
 
 Nenhum feriado real é cadastrado pelo código: a carga entra pelo curador. Os testes usam dados
 fictícios (`teste/ficticios.ts`).

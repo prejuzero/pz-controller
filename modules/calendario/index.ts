@@ -7,6 +7,7 @@ export {
   EntradaDiasNaoUteis,
   EntradaDoEvento,
   EntradaRevogacao,
+  InvalidarCacheDoCalendario,
   MAXIMO_DIAS_POR_CONSULTA,
   ProporEventoDoCalendario,
   RevogarEventoDoCalendario,
@@ -27,6 +28,8 @@ export {
 } from './application/importacao.js';
 export type { LinhaDaPrevia, ResultadoDaImportacao } from './application/importacao.js';
 export type {
+  AlteracaoDoCalendario,
+  CacheDeDiasNaoUteis,
   FiltroDoCalendario,
   RepositorioDeEventosGlobais,
   RepositorioDeFeriadosLocais,
@@ -36,4 +39,5 @@ export type { DiaNaoUtil, Jurisdicao } from './domain/dias-nao-uteis.js';
 export { ABRANGENCIAS, TIPOS_DE_EVENTO } from './domain/evento.js';
 export type { Abrangencia, Autor, CalendarioAlterado, TipoDeEvento } from './domain/evento.js';
 export { EventosGlobaisEmMemoria, FeriadosLocaisEmMemoria } from './infra/em-memoria.js';
+export { CacheDeDiasNaoUteisRedis } from './infra/cache-redis.js';
 export { EventosGlobaisPostgres, FeriadosLocaisPostgres } from './infra/calendario-postgres.js';
