@@ -6,6 +6,9 @@ export const TIPOS_DE_AUDITORIA = [
   'identidade.sessao-revogada',
   'identidade.conta-bloqueada',
   'identidade.redefinicao-de-senha-solicitada',
+  'prazos.tipo-de-ato-cadastrado',
+  'prazos.versao-da-tabela-proposta',
+  'prazos.versao-da-tabela-aprovada',
 ] as const;
 export const TipoDeAuditoria = z.enum(TIPOS_DE_AUDITORIA);
 export type TipoDeAuditoria = z.infer<typeof TipoDeAuditoria>;

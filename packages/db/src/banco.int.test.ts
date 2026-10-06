@@ -57,7 +57,9 @@ describe('migrações', () => {
         'evento_dominio',
         'evento_processado',
         'sessao_dispositivo',
+        'tabela_prazo',
         'tenant',
+        'tipo_ato',
         'usuario',
         'webhook_recebido',
       ]);
@@ -76,7 +78,9 @@ describe('migrações', () => {
         'evento_dominio',
         'evento_processado',
         'sessao_dispositivo',
+        'tabela_prazo',
         'tenant',
+        'tipo_ato',
         'usuario',
         'webhook_recebido',
       ]);
