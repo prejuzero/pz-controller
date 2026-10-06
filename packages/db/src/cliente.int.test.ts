@@ -1,4 +1,11 @@
-import { FixedClock, gerarUuidV7, Instant, processarUmaVez, publicarPendentes } from '@pz/kernel';
+import {
+  FixedClock,
+  gerarUuidV7,
+  Instant,
+  limparOutbox,
+  processarUmaVez,
+  publicarPendentes,
+} from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { Banco, BancoSistema } from './banco.js';
@@ -52,7 +59,7 @@ function evento(tenantId: Uuid, tipo = 'PrazoConfirmado'): EventoDominio {
   };
 }
 
-async function limparOutbox(): Promise<void> {
+async function esvaziarOutbox(): Promise<void> {
   await sistema.executarComoSistema('limpar outbox entre testes', async (tx) => {
     await tx.eventoProcessado.deleteMany();
     await tx.eventoDominio.deleteMany();
@@ -129,7 +136,7 @@ describe('OutboxPostgres (ADR-004) com PostgreSQL real', () => {
   const relay = () => sistema.unidade('relay do outbox (teste)');
 
   it('transação revertida não grava evento; confirmada grava com o contexto', async () => {
-    await limparOutbox();
+    await esvaziarOutbox();
     await expect(
       executarNoTenant(TENANT_A, () =>
         banco.executar(async (tx) => {
@@ -152,7 +159,7 @@ describe('OutboxPostgres (ADR-004) com PostgreSQL real', () => {
   });
 
   it('dois relays concorrentes não publicam o mesmo evento duas vezes (SKIP LOCKED)', async () => {
-    await limparOutbox();
+    await esvaziarOutbox();
     const eventos = Array.from({ length: 20 }, (_, i) => evento(i % 2 === 0 ? TENANT_A : TENANT_B));
     for (const tenant of [TENANT_A, TENANT_B]) {
       await executarNoTenant(tenant, () =>
@@ -184,7 +191,7 @@ describe('OutboxPostgres (ADR-004) com PostgreSQL real', () => {
   });
 
   it('relay que cai entre publicar e marcar republica, e o consumidor processa uma vez só', async () => {
-    await limparOutbox();
+    await esvaziarOutbox();
     const confirmado = evento(TENANT_A);
     await executarNoTenant(TENANT_A, () => banco.executar((tx) => outbox.gravar(tx, [confirmado])));
     let efeitos = 0;
@@ -227,7 +234,7 @@ describe('OutboxPostgres (ADR-004) com PostgreSQL real', () => {
   });
 
   it('o mesmo consumidor processando o mesmo evento em paralelo: um processa, o outro ignora', async () => {
-    await limparOutbox();
+    await esvaziarOutbox();
     const confirmado = evento(TENANT_B);
     let efeitos = 0;
     const consumir = () =>
@@ -249,5 +256,64 @@ describe('OutboxPostgres (ADR-004) com PostgreSQL real', () => {
       banco.executar((tx) => tx.eventoProcessado.findMany()),
     );
     expect(processadosVistosPorA.every((p) => p.tenantId === TENANT_A)).toBe(true);
+  });
+});
+
+describe('limpeza do outbox (HU10) com PostgreSQL real', () => {
+  const DIA_MS = 24 * 3600 * 1000;
+  const diasAtras = (dias: number) => new Date(relogio.agora().maisMs(-dias * DIA_MS).epochMs);
+
+  it('remove publicados e deduplicação além de 30 dias, de todos os tenants; pendentes ficam', async () => {
+    await esvaziarOutbox();
+    const [antigoA, antigoB, recente, pendenteAntigo] = [
+      evento(TENANT_A),
+      evento(TENANT_B),
+      evento(TENANT_A),
+      evento(TENANT_B),
+    ];
+    for (const item of [antigoA, antigoB, recente, pendenteAntigo]) {
+      await executarNoTenant(item.tenantId, () =>
+        banco.executar(async (tx) => {
+          await outbox.gravar(tx, [item]);
+          await outbox.registrarSeNovo(tx, 'consumidor-teste', item.id);
+        }),
+      );
+    }
+    await sistema.executarComoSistema('envelhecer o outbox no teste', async (tx) => {
+      await tx.eventoDominio.updateMany({
+        where: { id: { in: [antigoA.id, antigoB.id] } },
+        data: { publicadoEm: diasAtras(31), criadoEm: diasAtras(31) },
+      });
+      await tx.eventoDominio.update({
+        where: { id: recente.id },
+        data: { publicadoEm: diasAtras(29) },
+      });
+      await tx.eventoDominio.update({
+        where: { id: pendenteAntigo.id },
+        data: { criadoEm: diasAtras(90) },
+      });
+      await tx.eventoProcessado.updateMany({
+        where: { eventoId: { in: [antigoA.id, antigoB.id] } },
+        data: { processadoEm: diasAtras(31) },
+      });
+    });
+
+    // Lote de 1: atravessa os dois tenants em várias transações curtas.
+    const resultado = await limparOutbox(sistema.unidade('limpeza do outbox'), outbox, relogio, {
+      retencaoMs: 30 * DIA_MS,
+      lote: 1,
+    });
+
+    expect(resultado).toEqual({ eventos: 2, processados: 2 });
+    const restantes = await sistema.executarComoSistema('conferir a limpeza', async (tx) => ({
+      eventos: (await tx.eventoDominio.findMany({ select: { id: true } })).map((e) => e.id).sort(),
+      processados: (await tx.eventoProcessado.findMany({ select: { eventoId: true } }))
+        .map((p) => p.eventoId)
+        .sort(),
+    }));
+    expect(restantes).toEqual({
+      eventos: [recente.id, pendenteAntigo.id].sort(),
+      processados: [recente.id, pendenteAntigo.id].sort(),
+    });
   });
 });

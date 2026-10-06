@@ -82,3 +82,51 @@ export function processarUmaVez<Transacao, Evento extends EventoDominio>(
     return 'processado';
   });
 }
+
+/** Remoção dos registros antigos do outbox (eventos publicados e deduplicação). */
+export interface LimpezaDoOutbox<Transacao> {
+  /** Remove até `lote` eventos publicados antes de `limite`. Pendentes nunca são removidos. */
+  removerPublicadosAntesDe(transacao: Transacao, limite: Instant, lote: number): Promise<number>;
+  /** Remove até `lote` registros de processamento anteriores a `limite`. */
+  removerProcessadosAntesDe(transacao: Transacao, limite: Instant, lote: number): Promise<number>;
+}
+
+export interface ResultadoLimpeza {
+  readonly eventos: number;
+  readonly processados: number;
+}
+
+/**
+ * Remove o que passou da retenção, em lotes, cada um na sua transação (locks curtos, sem
+ * travar o relay). O registro de processamento pode sair junto: é gravado depois da publicação,
+ * então um registro mais antigo que a retenção é de um evento que também já saiu.
+ */
+export async function limparOutbox<Transacao>(
+  unidade: UnidadeDeTrabalho<Transacao>,
+  limpeza: LimpezaDoOutbox<Transacao>,
+  relogio: Clock,
+  opcoes: { readonly retencaoMs: number; readonly lote: number },
+): Promise<ResultadoLimpeza> {
+  if (opcoes.retencaoMs <= 0) throw new Error('A retenção do outbox deve ser positiva.');
+  if (opcoes.lote <= 0) throw new Error('O lote da limpeza do outbox deve ser positivo.');
+  const limite = relogio.agora().maisMs(-opcoes.retencaoMs);
+
+  const emLotes = async (
+    remover: (transacao: Transacao, limite: Instant, lote: number) => Promise<number>,
+  ): Promise<number> => {
+    let total = 0;
+    for (;;) {
+      const removidos = await unidade.executar((transacao) =>
+        remover(transacao, limite, opcoes.lote),
+      );
+      total += removidos;
+      if (removidos < opcoes.lote) return total;
+    }
+  };
+
+  const eventos = await emLotes((tx, em, lote) => limpeza.removerPublicadosAntesDe(tx, em, lote));
+  const processados = await emLotes((tx, em, lote) =>
+    limpeza.removerProcessadosAntesDe(tx, em, lote),
+  );
+  return { eventos, processados };
+}

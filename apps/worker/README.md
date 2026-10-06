@@ -57,8 +57,16 @@ A cada `RELAY_INTERVALO_MS` (padrão 1 s), nas instâncias que processam a fila 
 2. publica na fila `eventos` um job `eventos.consumir` por consumidor inscrito, no contexto de trace gravado com o evento;
 3. marca o lote como publicado.
 
-O job roda no tenant do evento, valida o evento contra o contrato em `@pz/contracts` (sem contrato → DLQ) e entrega ao consumidor com deduplicação em `evento_processado`. Se o relay cair depois de publicar, o ID determinístico do job e a deduplicação impedem efeito duplicado. Medido no teste ponta a ponta (`src/eventos/relay.int.test.ts`, Postgres e Redis reais): evento gravado numa requisição chega ao consumidor em menos de 2 s, uma vez, no mesmo trace.
+O job roda no tenant do evento, valida o evento contra o contrato em `@pz/contracts` (sem contrato → DLQ) e entrega ao consumidor com deduplicação em `evento_processado`. Se o relay cair depois de publicar, o ID determinístico do job e a deduplicação impedem efeito duplicado. Medido no teste ponta a ponta (`src/worker.int.test.ts`, Postgres e Redis reais): evento gravado numa requisição chega ao consumidor em menos de 2 s, uma vez, no mesmo trace.
 
 O worker usa `DATABASE_URL` (pz_app, consumo no tenant) e `DATABASE_URL_SISTEMA` (pz_sistema, só o relay e jobs globais). A api não recebe a credencial com BYPASSRLS.
+
+### Jobs recorrentes (agendador)
+
+Declarados em código, em `src/filas/agendamento.ts` (`AGENDAMENTOS`), com cron no fuso `America/Sao_Paulo`. No boot, cada réplica cria ou atualiza no Redis os agendadores das filas que processa (`upsertJobScheduler`). O BullMQ gera uma única execução por horário, com ID derivado do agendador e do horário, então réplicas não duplicam execuções. Agendador que saiu do catálogo é removido no boot seguinte. Todo job recorrente é global, com motivo; o que for por tenant, o tratador distribui em jobs de tenant.
+
+| Agendamento                | Quando           | O que faz                                                                                                     |
+| -------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------- |
+| `manutencao.limpar-outbox` | diário, 3h (BRT) | remove eventos publicados e registros de deduplicação com mais de 30 dias, em lotes de 1.000; pendentes ficam |
 
 **Injeção sempre com `@Inject(Token)` explícito** (mesmo motivo da api).

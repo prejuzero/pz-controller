@@ -12,12 +12,14 @@ export {
 } from './erros.js';
 export type { CategoriaErro, ProblemaValidacao } from './erros.js';
 export { Instant } from './instant.js';
-export { processarUmaVez, publicarPendentes } from './outbox.js';
+export { limparOutbox, processarUmaVez, publicarPendentes } from './outbox.js';
 export type {
   FilaDoRelay,
+  LimpezaDoOutbox,
   Outbox,
   RegistroDeProcessamento,
   ResultadoConsumo,
+  ResultadoLimpeza,
   UnidadeDeTrabalho,
 } from './outbox.js';
 export { OutboxEmMemoria, TransacaoEmMemoria } from './outbox-em-memoria.js';
