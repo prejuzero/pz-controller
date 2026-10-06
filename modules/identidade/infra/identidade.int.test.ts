@@ -1,3 +1,5 @@
+import { randomBytes } from 'node:crypto';
+
 import { Banco, BancoSistema, executarNoTenant } from '@pz/db';
 import { subirBancoDeTeste } from '@pz/db/teste';
 import { FixedClock, gerarUuidV7, Instant } from '@pz/kernel';
@@ -5,10 +7,17 @@ import { RedisContainer } from '@testcontainers/redis';
 import { Redis } from 'ioredis';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import {
+  AtivarSegundoFator,
+  ConfigurarSegundoFator,
+  VerificarSegundoFator,
+} from '../application/segundo-fator.js';
 import { Autenticar, RegistrarCredencial, ValidarSessao } from '../application/sessoes.js';
 
 import { HasherArgon2 } from './argon2.js';
 import { CredenciaisPostgres } from './credenciais-postgres.js';
+import { SegundoFatorPostgres } from './segundo-fator-postgres.js';
+import { CifraAesGcm, SegredosTotp } from './segundo-fator.js';
 import { SessoesRedis } from './sessoes-redis.js';
 import { GeradorDeTokensSeguro, hashDoToken } from './tokens.js';
 
@@ -69,6 +78,7 @@ describe('credenciais no PostgreSQL (HU06)', () => {
       usuarioId: BIA,
       tenantId: TENANT_B,
       senhaHash: null,
+      segundoFatorAtivo: false,
     });
     expect(
       await credenciais().localizarPorEmail('ninguem@exemplo.invalid' as Email),
@@ -154,5 +164,59 @@ describe('login ponta a ponta com Argon2id, PostgreSQL e Redis', () => {
 
     await executarNoTenant(TENANT_A, () => registrar.executar(ANA, 'outra senha bem longa'));
     expect((await validar.executar(login.valor.token)).ok).toBe(false);
+  });
+});
+
+describe('2FA no PostgreSQL (HU06)', () => {
+  it('ativa com o segredo cifrado, o login passa a pedir verificação, passo e código de recuperação valem uma vez', async () => {
+    const repositorio = new SegundoFatorPostgres(banco);
+    const segredos = new SegredosTotp();
+    const cifra = new CifraAesGcm(randomBytes(32).toString('base64'));
+    const sessao = {
+      id: gerarUuidV7(),
+      usuarioId: BIA,
+      tenantId: TENANT_B,
+      nivel: 'senha' as const,
+      segundoFatorAtivo: false,
+      criadaEm: relogio.agora(),
+      ultimoUso: relogio.agora(),
+    };
+    const passo = Math.floor(relogio.agora().epochMs / 30_000);
+    await executarNoTenant(TENANT_B, async () => {
+      const configurado = await new ConfigurarSegundoFator(repositorio, segredos, cifra).executar(
+        sessao,
+      );
+      if (!configurado.ok) throw new Error('configurar deveria passar');
+      const { segredo } = configurado.valor;
+      const ativado = await new AtivarSegundoFator(repositorio, segredos, cifra, relogio).executar(
+        sessao,
+        segredos.codigo(segredo, passo),
+      );
+      if (!ativado.ok) throw new Error('ativar deveria passar');
+
+      const verificar = new VerificarSegundoFator(repositorio, segredos, cifra, relogio);
+      expect((await verificar.executar(sessao, segredos.codigo(segredo, passo))).ok).toBe(false);
+      const proximo = segredos.codigo(segredo, passo + 1);
+      const [a, b] = await Promise.all([
+        verificar.executar(sessao, proximo),
+        verificar.executar(sessao, proximo),
+      ]);
+      expect([a.ok, b.ok].filter(Boolean)).toHaveLength(1); // o mesmo código em paralelo: só um passa
+      const [codigo] = ativado.valor.codigosDeRecuperacao;
+      expect((await verificar.executar(sessao, String(codigo))).ok).toBe(true);
+      expect((await verificar.executar(sessao, String(codigo))).ok).toBe(false);
+    });
+    expect(
+      (await new CredenciaisPostgres(banco).localizarPorEmail('bia@exemplo.invalid' as Email))
+        ?.segundoFatorAtivo,
+    ).toBe(true);
+    // O segredo não fica em claro no banco.
+    const direto = await postgres.conectar('pz_sistema');
+    const { rows } = await direto.query<{ segredo: string }>(
+      'SELECT totp_segredo_cifrado AS segredo FROM usuario WHERE id = $1',
+      [BIA],
+    );
+    await direto.end();
+    expect(rows[0]?.segredo).toMatch(/^v1\./);
   });
 });

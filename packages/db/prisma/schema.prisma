@@ -38,14 +38,19 @@ model Tenant {
 
 /// Usuário do portal. Identidade, CPF, 2FA e perfis chegam na HU06.
 model Usuario {
-  id           String   @id @db.Uuid
-  tenantId     String   @map("tenant_id") @db.Uuid
-  nome         String
-  email        String
+  id                 String    @id @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  nome               String
+  email              String
   /// Hash Argon2id em formato PHC; null = ainda sem senha (HU06).
-  senhaHash String?  @map("senha_hash")
-  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
-  atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+  senhaHash          String?   @map("senha_hash")
+  /// 2FA TOTP: segredo cifrado (AES-256-GCM), ativação, último passo aceito e códigos de recuperação (hash).
+  totpSegredoCifrado String?   @map("totp_segredo_cifrado")
+  totpAtivoEm        DateTime? @map("totp_ativo_em") @db.Timestamptz(6)
+  totpUltimoPasso    BigInt?   @map("totp_ultimo_passo")
+  codigosRecuperacao String[]  @default([]) @map("codigos_recuperacao")
+  criadoEm           DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm       DateTime  @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 

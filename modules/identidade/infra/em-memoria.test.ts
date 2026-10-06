@@ -14,11 +14,13 @@ describe('dublês em memória (testes das apps)', () => {
       usuarioId: ana,
       tenantId: tenant,
       senhaHash: null,
+      segundoFatorAtivo: false,
     });
     credenciais.cadastrar('bia@x.invalid' as Email, {
       usuarioId: bia,
       tenantId: tenant,
       senhaHash: null,
+      segundoFatorAtivo: false,
     });
     await credenciais.definirSenha(ana, 'hash');
     expect((await credenciais.localizarPorEmail('ana@x.invalid' as Email))?.senhaHash).toBe('hash');
@@ -34,6 +36,7 @@ describe('dublês em memória (testes das apps)', () => {
       usuarioId,
       tenantId: gerarUuidV7(),
       nivel: 'senha',
+      segundoFatorAtivo: false,
       criadaEm: agora,
       ultimoUso: agora,
     });

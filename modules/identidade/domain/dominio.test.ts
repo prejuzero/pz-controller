@@ -21,6 +21,7 @@ const sessao: Sessao = {
   usuarioId: gerarUuidV7(relogio),
   tenantId: gerarUuidV7(relogio),
   nivel: 'senha',
+  segundoFatorAtivo: false,
   criadaEm: inicio,
   ultimoUso: inicio,
 };

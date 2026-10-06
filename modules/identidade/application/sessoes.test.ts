@@ -69,6 +69,7 @@ function montar() {
     usuarioId: USUARIO,
     tenantId: TENANT,
     senhaHash: 'hash:senha correta longa',
+    segundoFatorAtivo: false,
   });
   const hasher = new Hasher();
   const sessoes = new Sessoes();
@@ -106,6 +107,7 @@ describe('autenticar', () => {
       usuarioId: gerarUuidV7(),
       tenantId: TENANT,
       senhaHash: null,
+      segundoFatorAtivo: false,
     });
     const tentativas = [
       { email: 'ninguem@exemplo.com', senha: 'qualquer senha longa' },

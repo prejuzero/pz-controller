@@ -12,6 +12,7 @@ interface SessaoSerializada {
   usuarioId: string;
   tenantId: string;
   nivel: NivelSessao;
+  segundoFatorAtivo: boolean;
   criadaEm: number;
   ultimoUso: number;
 }
@@ -41,6 +42,7 @@ export class SessoesRedis implements ArmazemDeSessoes {
       usuarioId: sessao.usuarioId,
       tenantId: sessao.tenantId,
       nivel: sessao.nivel,
+      segundoFatorAtivo: sessao.segundoFatorAtivo,
       criadaEm: sessao.criadaEm.epochMs,
       ultimoUso: sessao.ultimoUso.epochMs,
     };
@@ -61,6 +63,7 @@ export class SessoesRedis implements ArmazemDeSessoes {
       usuarioId: dados.usuarioId as Uuid,
       tenantId: dados.tenantId as Uuid,
       nivel: dados.nivel,
+      segundoFatorAtivo: dados.segundoFatorAtivo,
       criadaEm: Instant.deEpochMs(dados.criadaEm),
       ultimoUso: Instant.deEpochMs(dados.ultimoUso),
     };

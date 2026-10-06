@@ -1,8 +1,16 @@
+import { randomBytes } from 'node:crypto';
+
 import { Controller, Get, Post } from '@nestjs/common';
 import { carregarAmbiente } from '@pz/config/env';
 import { SessaoAtual } from '@pz/contracts';
 import { tenantAtual } from '@pz/db';
-import { CredenciaisEmMemoria, HasherArgon2, SessoesEmMemoria } from '@pz/identidade';
+import {
+  CredenciaisEmMemoria,
+  HasherArgon2,
+  SegredosTotp,
+  SegundoFatorEmMemoria,
+  SessoesEmMemoria,
+} from '@pz/identidade';
 import { gerarUuidV7 } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -33,25 +41,30 @@ class RotasDeTeste {
 }
 
 const sessoes = new SessoesEmMemoria();
+const segundoFator = new SegundoFatorEmMemoria();
+const credenciais = new CredenciaisEmMemoria();
+let hashDaSenha = '';
 let api: NestFastifyApplication;
 
 beforeAll(async () => {
-  const credenciais = new CredenciaisEmMemoria();
   credenciais.cadastrar('ana@exemplo.invalid' as Email, {
     usuarioId: USUARIO,
     tenantId: TENANT,
-    senhaHash: await new HasherArgon2().gerar(SENHA),
+    senhaHash: (hashDaSenha = await new HasherArgon2().gerar(SENHA)),
+    segundoFatorAtivo: false,
   });
+  segundoFator.cadastrar(USUARIO, 'ana@exemplo.invalid');
   api = await criarApi({
     ambiente: carregarAmbiente(esquemaApi, {
       NODE_ENV: 'test',
       DATABASE_URL: 'postgresql://pz_dev:pz_dev_local@127.0.0.1:5432/prejuzero',
       REDIS_URL: 'redis://127.0.0.1:6379',
       S3_REGION: 'us-east-1',
+      CHAVE_CIFRAGEM: randomBytes(32).toString('base64'),
     }),
     verificadores: [],
     controllersExtras: [RotasDeTeste],
-    identidade: { credenciais, sessoes },
+    identidade: { credenciais, sessoes, segundoFator },
   });
   await api.init();
   await api.getHttpAdapter().getInstance().ready();
@@ -84,6 +97,7 @@ describe('login (HU06)', () => {
       usuarioId: USUARIO,
       tenantId: TENANT,
       nivel: 'senha',
+      proximoPasso: 'configurar-2fa',
     });
     expect(resposta.headers['cache-control']).toBe('no-store');
     expect(cookies.find((c) => c.startsWith('__Host-pz_sessao='))).toMatch(
@@ -196,5 +210,102 @@ describe('guarda: cookie com CSRF, Bearer e nível da sessão', () => {
     expect(
       (await api.inject({ method: 'GET', url: '/v1/auth/eu', headers: { cookie } })).statusCode,
     ).toBe(401);
+  });
+});
+
+describe('2FA na api (HU06)', () => {
+  const segredos = new SegredosTotp();
+  const passo = () => Math.floor(Date.now() / 30_000);
+
+  it('configurar → ativar eleva a sessão com novo token; depois do próximo login, verificar', async () => {
+    const { sessao, csrf } = await entrar();
+    const cookie = `__Host-pz_sessao=${sessao}; __Host-pz_csrf=${csrf}`;
+    const cabecalhos = { cookie, 'x-csrf-token': csrf };
+
+    const configurado = await api.inject({
+      method: 'POST',
+      url: '/v1/auth/2fa/configurar',
+      headers: cabecalhos,
+    });
+    expect(configurado.statusCode).toBe(200);
+    const { segredo, uri } = configurado.json<{ segredo: string; uri: string }>();
+    expect(uri).toMatch(/^otpauth:\/\/totp\//);
+
+    const errado = await api.inject({
+      method: 'POST',
+      url: '/v1/auth/2fa/ativar',
+      headers: cabecalhos,
+      payload: { codigo: '000000' },
+    });
+    expect(errado.statusCode).toBe(401);
+
+    const ativado = await api.inject({
+      method: 'POST',
+      url: '/v1/auth/2fa/ativar',
+      headers: cabecalhos,
+      payload: { codigo: segredos.codigo(segredo, passo()) },
+    });
+    expect(ativado.statusCode).toBe(200);
+    expect(ativado.json()).toMatchObject({ sessao: { nivel: 'completo', proximoPasso: null } });
+    const novoToken = ([] as string[])
+      .concat(ativado.headers['set-cookie'] ?? [])
+      .find((c) => c.startsWith('__Host-pz_sessao='))
+      ?.split(';')[0];
+    // O token anterior ao 2FA deixou de valer; o novo acessa rotas completas.
+    expect(
+      (await api.inject({ method: 'GET', url: '/v1/auth/eu', headers: { cookie } })).statusCode,
+    ).toBe(401);
+    const bearer = String(novoToken).split('=')[1] ?? '';
+    const completa = await api.inject({
+      method: 'POST',
+      url: '/v1/teste-auth/completa',
+      headers: { authorization: `Bearer ${bearer}` },
+    });
+    expect(completa.statusCode).toBe(201);
+
+    // No banco, a função de login lê o 2FA ativo; o dublê em memória precisa ser avisado.
+    credenciais.cadastrar('ana@exemplo.invalid' as Email, {
+      usuarioId: USUARIO,
+      tenantId: TENANT,
+      senhaHash: hashDaSenha,
+      segundoFatorAtivo: true,
+    });
+    // Novo login: agora pede verificar; o código do mesmo passo já foi usado na ativação.
+    const login = await entrar();
+    expect(login.resposta.json()).toMatchObject({ proximoPasso: 'verificar-2fa' });
+    const auth2 = { authorization: `Bearer ${login.sessao}` };
+    const reuso = await api.inject({
+      method: 'POST',
+      url: '/v1/auth/2fa/verificar',
+      headers: auth2,
+      payload: { codigo: segredos.codigo(segredo, passo()) },
+    });
+    expect(reuso.statusCode).toBe(401);
+    const proximo = await api.inject({
+      method: 'POST',
+      url: '/v1/auth/2fa/verificar',
+      headers: auth2,
+      payload: { codigo: segredos.codigo(segredo, passo() + 1) },
+    });
+    expect(proximo.statusCode).toBe(200);
+    expect(proximo.json()).toMatchObject({ nivel: 'completo' });
+
+    const reconfigurar = await api.inject({
+      method: 'POST',
+      url: '/v1/auth/2fa/configurar',
+      headers: auth2,
+    });
+    expect(reconfigurar.statusCode).toBe(401); // o token de antes da verificação já foi trocado
+  });
+
+  it('corpo inválido: 400', async () => {
+    const { sessao } = await entrar();
+    const resposta = await api.inject({
+      method: 'POST',
+      url: '/v1/auth/2fa/verificar',
+      headers: { authorization: `Bearer ${sessao}` },
+      payload: { codigo: 1 },
+    });
+    expect(resposta.statusCode).toBe(400);
   });
 });

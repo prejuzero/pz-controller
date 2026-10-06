@@ -2,13 +2,20 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { Banco, WebhooksPostgres } from '@pz/db';
 import {
+  AtivarSegundoFator,
   Autenticar,
+  CifraAesGcm,
+  ConfigurarSegundoFator,
   CredenciaisPostgres,
+  ElevarSessao,
   EncerrarSessao,
   GeradorDeTokensSeguro,
   HasherArgon2,
+  SegredosTotp,
+  SegundoFatorPostgres,
   SessoesRedis,
   ValidarSessao,
+  VerificarSegundoFator,
 } from '@pz/identidade';
 import { SystemClock } from '@pz/kernel';
 import { criarLogger, registrarErro } from '@pz/observability';
@@ -33,7 +40,11 @@ import { WebhooksController } from './webhooks/webhooks.controller.js';
 import type { AmbienteApi } from './ambiente.js';
 import type { CaixaDeWebhooks } from './webhooks/webhooks.controller.js';
 import type { DynamicModule, Provider, Type } from '@nestjs/common';
-import type { ArmazemDeSessoes, RepositorioDeCredenciais } from '@pz/identidade';
+import type {
+  ArmazemDeSessoes,
+  RepositorioDeCredenciais,
+  RepositorioDeSegundoFator,
+} from '@pz/identidade';
 import type { ReceptorWebhook } from '@pz/integracoes';
 import type { Clock } from '@pz/kernel';
 import type { VerificadorDeDependencia } from '@pz/saude';
@@ -51,6 +62,7 @@ export interface OpcoesApi {
   readonly identidade?: {
     readonly credenciais: RepositorioDeCredenciais;
     readonly sessoes: ArmazemDeSessoes;
+    readonly segundoFator: RepositorioDeSegundoFator;
   };
 }
 
@@ -102,6 +114,11 @@ export class AppModule {
     const webhooks = new WebhooksPostgres();
     const credenciais = opcoes.identidade?.credenciais ?? new CredenciaisPostgres(recursos.banco);
     const sessoes = opcoes.identidade?.sessoes ?? new SessoesRedis(recursos.redis);
+    const segundoFator =
+      opcoes.identidade?.segundoFator ?? new SegundoFatorPostgres(recursos.banco);
+    const segredos = new SegredosTotp();
+    const cifra = new CifraAesGcm(opcoes.ambiente.CHAVE_CIFRAGEM);
+    const tokens = new GeradorDeTokensSeguro();
     const provedores: Provider[] = [
       { provide: RecursosDaApi, useValue: recursos },
       { provide: AMBIENTE, useValue: opcoes.ambiente },
@@ -146,6 +163,27 @@ export class AppModule {
         useFactory: (relogio: Clock) => new ValidarSessao(sessoes, relogio),
       },
       { provide: EncerrarSessao, useValue: new EncerrarSessao(sessoes) },
+      {
+        provide: ConfigurarSegundoFator,
+        useValue: new ConfigurarSegundoFator(segundoFator, segredos, cifra),
+      },
+      {
+        provide: AtivarSegundoFator,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new AtivarSegundoFator(segundoFator, segredos, cifra, relogio),
+      },
+      {
+        provide: VerificarSegundoFator,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new VerificarSegundoFator(segundoFator, segredos, cifra, relogio),
+      },
+      {
+        provide: ElevarSessao,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) => new ElevarSessao(sessoes, tokens, relogio),
+      },
       { provide: APP_INTERCEPTOR, useClass: ContextoDoUsuario },
       { provide: RECEPTORES_DE_WEBHOOK, useValue: opcoes.receptoresDeWebhook ?? new Map() },
       { provide: APP_GUARD, useClass: GuardaDeAcesso },

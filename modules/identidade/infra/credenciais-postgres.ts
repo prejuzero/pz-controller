@@ -15,8 +15,14 @@ export class CredenciaisPostgres implements RepositorioDeCredenciais {
     const [linha] = await this.banco.executarSemTenant(
       'login: localizar credencial',
       (tx) =>
-        tx.$queryRaw<{ usuario_id: string; tenant_id: string; senha_hash: string | null }[]>`
-        SELECT usuario_id, tenant_id, senha_hash FROM pz_localizar_credencial(${email})`,
+        tx.$queryRaw<
+          {
+            usuario_id: string;
+            tenant_id: string;
+            senha_hash: string | null;
+            segundo_fator_ativo: boolean;
+          }[]
+        >`SELECT usuario_id, tenant_id, senha_hash, segundo_fator_ativo FROM pz_localizar_credencial(${email})`,
     );
     return linha === undefined
       ? undefined
@@ -24,6 +30,7 @@ export class CredenciaisPostgres implements RepositorioDeCredenciais {
           usuarioId: linha.usuario_id as Uuid,
           tenantId: linha.tenant_id as Uuid,
           senhaHash: linha.senha_hash,
+          segundoFatorAtivo: linha.segundo_fator_ativo,
         };
   }
 
