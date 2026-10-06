@@ -369,5 +369,21 @@ describe('e-mails de segurança pelo worker (HU06)', () => {
     expect(enviados).toHaveLength(1);
     expect(enviados[0]?.para).toEqual(['e2e@exemplo.invalid']);
     expect(enviados[0]?.texto).toContain('/redefinir-senha#token=token-do-link');
+    // O mesmo evento entrou na trilha de auditoria do tenant (HU08), sem o token.
+    const sistema = await postgres.conectar('pz_sistema');
+    await esperar(
+      async () =>
+        ((
+          await sistema.query('SELECT 1 FROM evento_auditoria WHERE entidade_id = $1', [
+            USUARIO_E2E,
+          ])
+        ).rowCount ?? 0) === 1,
+    );
+    const { rows } = await sistema.query<{ tipo: string; depois: unknown }>(
+      'SELECT tipo, depois FROM evento_auditoria WHERE entidade_id = $1',
+      [USUARIO_E2E],
+    );
+    await sistema.end();
+    expect(rows).toEqual([{ tipo: 'identidade.redefinicao-de-senha-solicitada', depois: null }]);
   }, 60_000);
 });

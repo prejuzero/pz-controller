@@ -17,6 +17,7 @@
     "@nestjs/common": "12.1.2",
     "@nestjs/core": "12.1.2",
     "@pz/adapter-smtp": "workspace:*",
+    "@pz/auditoria": "workspace:*",
     "@pz/config": "workspace:*",
     "@pz/contracts": "workspace:*",
     "@pz/db": "workspace:*",

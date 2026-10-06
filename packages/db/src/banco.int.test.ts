@@ -46,12 +46,13 @@ describe('migrações', () => {
       const tabelas = async () =>
         (
           await migrador.query<{ tablename: string }>(
-            "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> '_prisma_migrations' ORDER BY 1",
+            "SELECT c.relname AS tablename FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public' WHERE c.relkind IN ('r', 'p') AND NOT c.relispartition AND c.relname <> '_prisma_migrations' ORDER BY 1",
           )
         ).rows.map((linha) => linha.tablename);
 
       expect(await tabelas()).toEqual([
         'acesso',
+        'evento_auditoria',
         'evento_dominio',
         'evento_processado',
         'sessao_dispositivo',
@@ -69,6 +70,7 @@ describe('migrações', () => {
       await banco.migrar();
       expect(await tabelas()).toEqual([
         'acesso',
+        'evento_auditoria',
         'evento_dominio',
         'evento_processado',
         'sessao_dispositivo',
@@ -96,7 +98,7 @@ describe('RLS (ADR-003)', () => {
                (SELECT count(*)::int FROM pg_policies p WHERE p.tablename = c.relname) AS politicas
           FROM pg_class c
           JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
-         WHERE c.relkind IN ('r', 'p')
+         WHERE c.relkind IN ('r', 'p') AND NOT c.relispartition
            AND (c.relname = 'tenant' OR EXISTS (
                  SELECT 1 FROM information_schema.columns col
                   WHERE col.table_schema = 'public' AND col.table_name = c.relname
@@ -105,6 +107,7 @@ describe('RLS (ADR-003)', () => {
 
       expect(rows.map((linha) => linha.tabela)).toEqual([
         'acesso',
+        'evento_auditoria',
         'evento_dominio',
         'evento_processado',
         'sessao_dispositivo',

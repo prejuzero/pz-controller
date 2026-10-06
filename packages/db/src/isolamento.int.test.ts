@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   criarLinha,
   tabelasDeNegocio,
+  TABELAS_SO_INSERCAO,
   tabelasSemIsolamento,
   valoresDeLinhaNova,
 } from './teste/isolamento.js';
@@ -104,7 +105,7 @@ describe('cobertura da suíte', () => {
 
 describe('isolamento por tabela (gerado do catálogo)', () => {
   it('o tenant A não lê, atualiza nem apaga dados do tenant B', async () => {
-    for (const tabela of tabelas) {
+    for (const tabela of tabelas.filter((t) => !TABELAS_SO_INSERCAO.includes(t))) {
       const resultado = await noTenant('pz_app', TENANT_A, async (c) => ({
         visiveisDeB: (await c.query(`SELECT 1 FROM ${tabela} WHERE tenant_id = $1`, [TENANT_B]))
           .rowCount,
@@ -128,6 +129,27 @@ describe('isolamento por tabela (gerado do catálogo)', () => {
     }
   });
 
+  it('tabelas só de inserção: A não lê dados de B, e UPDATE/DELETE são recusados para qualquer papel', async () => {
+    for (const tabela of TABELAS_SO_INSERCAO.filter((t) => tabelas.includes(t))) {
+      const visiveis = await noTenant('pz_app', TENANT_A, (c) =>
+        c.query(`SELECT 1 FROM ${tabela} WHERE tenant_id = $1`, [TENANT_B]),
+      );
+      expect(visiveis.rowCount, tabela).toBe(0);
+      for (const papel of ['pz_app', 'pz_sistema', 'pz_leitura'] as const) {
+        for (const comando of [
+          `UPDATE ${tabela} SET tenant_id = tenant_id`,
+          `DELETE FROM ${tabela}`,
+          `TRUNCATE ${tabela}`,
+        ]) {
+          await expect(
+            noTenant(papel, TENANT_A, (c) => c.query(comando)),
+            `${papel}: ${comando}`,
+          ).rejects.toThrow(/permission denied|imutável/);
+        }
+      }
+    }
+  });
+
   it('INSERT com tenant alheio falha (WITH CHECK)', async () => {
     for (const tabela of tabelas) {
       const valores = await valoresDeLinhaNova(cliente('pz_sistema'), tabela, TENANT_B);
@@ -139,7 +161,7 @@ describe('isolamento por tabela (gerado do catálogo)', () => {
   });
 
   it('mover uma linha para outro tenant falha (WITH CHECK)', async () => {
-    for (const tabela of tabelas) {
+    for (const tabela of tabelas.filter((t) => !TABELAS_SO_INSERCAO.includes(t))) {
       await expect(
         noTenant('pz_app', TENANT_A, (c) =>
           c.query(`UPDATE ${tabela} SET tenant_id = $1`, [TENANT_B]),

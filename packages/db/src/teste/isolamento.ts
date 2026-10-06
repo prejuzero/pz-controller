@@ -23,7 +23,7 @@ export async function tabelasDeNegocio(cliente: pg.Client): Promise<SituacaoRls[
              WHERE p.schemaname = 'public' AND p.tablename = c.relname) AS politicas
       FROM pg_class c
       JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
-     WHERE c.relkind IN ('r', 'p')
+     WHERE c.relkind IN ('r', 'p') AND NOT c.relispartition
        AND (c.relname = 'tenant' OR EXISTS (
              SELECT 1 FROM information_schema.columns col
               WHERE col.table_schema = 'public' AND col.table_name = c.relname
@@ -147,3 +147,9 @@ export async function valoresDeLinhaNova(
   }
   return valores;
 }
+
+/**
+ * Tabelas só de inserção (ADR-006): UPDATE e DELETE são recusados para todos os papéis da
+ * aplicação, uma garantia mais forte que o RLS (que só filtra o tenant).
+ */
+export const TABELAS_SO_INSERCAO: readonly string[] = ['evento_auditoria'];
