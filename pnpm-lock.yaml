@@ -282,6 +282,9 @@ importers:
       '@nestjs/core':
         specifier: 12.1.2
         version: 12.1.2(@nestjs/common@12.1.2(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@10.2.2))(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@pz/adapter-smtp':
+        specifier: workspace:*
+        version: link:../../packages/adapters/smtp
       '@pz/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -291,6 +294,12 @@ importers:
       '@pz/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@pz/identidade':
+        specifier: workspace:*
+        version: link:../../modules/identidade
+      '@pz/integracoes':
+        specifier: workspace:*
+        version: link:../../packages/integracoes
       '@pz/kernel':
         specifier: workspace:*
         version: link:../../packages/kernel
@@ -355,6 +364,9 @@ importers:
       '@pz/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@pz/integracoes':
+        specifier: workspace:*
+        version: link:../../packages/integracoes
       '@pz/kernel':
         specifier: workspace:*
         version: link:../../packages/kernel

@@ -1,5 +1,10 @@
 import { Body, Controller, Get, HttpCode, Inject, Post, Req, Res } from '@nestjs/common';
-import { CodigoSegundoFator, Credenciais } from '@pz/contracts';
+import {
+  CodigoSegundoFator,
+  Credenciais,
+  PedidoDeRedefinicaoDeSenha,
+  RedefinicaoDeSenha,
+} from '@pz/contracts';
 import {
   AtivarSegundoFator,
   Autenticar,
@@ -7,6 +12,8 @@ import {
   ConsultarAcessos,
   ElevarSessao,
   EncerrarSessao,
+  RedefinirSenha,
+  SolicitarRedefinicaoDeSenha,
   VerificarSegundoFator,
 } from '@pz/identidade';
 import { Validacao } from '@pz/kernel';
@@ -75,6 +82,9 @@ export class AuthController {
     @Inject(VerificarSegundoFator) private readonly verificar: VerificarSegundoFator,
     @Inject(ElevarSessao) private readonly elevar: ElevarSessao,
     @Inject(ConsultarAcessos) private readonly consultarAcessos: ConsultarAcessos,
+    @Inject(SolicitarRedefinicaoDeSenha)
+    private readonly solicitarRedefinicao: SolicitarRedefinicaoDeSenha,
+    @Inject(RedefinirSenha) private readonly redefinir: RedefinirSenha,
   ) {}
 
   @Post('entrar')
@@ -113,6 +123,26 @@ export class AuthController {
   eu(@Req() requisicao: RequisicaoAutenticada): SessaoAtual | undefined {
     const sessao = requisicao.autenticacao?.sessao;
     return sessao === undefined ? undefined : sessaoAtual(sessao);
+  }
+
+  @Post('senha/esqueci')
+  @Publico()
+  @LimitarPorIp(5)
+  @HttpCode(204)
+  async esqueci(@Body() corpo: unknown): Promise<void> {
+    await this.solicitarRedefinicao.executar(
+      validar(PedidoDeRedefinicaoDeSenha.esquema, corpo).email,
+    );
+  }
+
+  @Post('senha/redefinir')
+  @Publico()
+  @LimitarPorIp(5)
+  @HttpCode(204)
+  async redefinirSenha(@Body() corpo: unknown): Promise<void> {
+    const { token, novaSenha } = validar(RedefinicaoDeSenha.esquema, corpo);
+    const resultado = await this.redefinir.executar(token, novaSenha);
+    if (!resultado.ok) throw resultado.erro;
   }
 
   @Get('acessos')

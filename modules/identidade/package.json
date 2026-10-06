@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@pz/db": "workspace:*",
+    "@pz/integracoes": "workspace:*",
     "@pz/kernel": "workspace:*",
     "ioredis": "5.11.1"
   },

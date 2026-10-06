@@ -4,6 +4,10 @@ import { ROTAS_SAUDE } from './saude/index.js';
 import { ROTAS_WEBHOOKS } from './webhooks/index.js';
 
 export {
+  PedidoDeRedefinicaoDeSenha,
+  RedefinicaoDeSenha,
+  redefinirSenha,
+  solicitarRedefinicaoDeSenha,
   AcessosRecentes,
   listarAcessos,
   ativarSegundoFator,
@@ -31,7 +35,14 @@ export {
   Problema,
   Uuid,
 } from './comum.js';
-export { catalogoDeEventos, definirEvento, EVENTOS, SituacaoVerificada } from './eventos/index.js';
+export {
+  catalogoDeEventos,
+  ContaBloqueada,
+  definirEvento,
+  EVENTOS,
+  RedefinicaoDeSenhaSolicitada,
+  SituacaoVerificada,
+} from './eventos/index.js';
 export type { ContratoEvento } from './eventos/index.js';
 export { gerarOpenApi } from './openapi.js';
 export type { OpcoesOpenApi } from './openapi.js';

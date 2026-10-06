@@ -50,8 +50,29 @@ export {
   SegundoFatorEmMemoria,
   SessoesEmMemoria,
   TentativasEmMemoria,
+  PublicadorEmMemoria,
+  RedefinicoesEmMemoria,
 } from './infra/em-memoria.js';
 export { AcessosPostgres } from './infra/acessos-postgres.js';
 export { TentativasRedis } from './infra/tentativas-redis.js';
 export { CifraAesGcm, SegredosTotp } from './infra/segundo-fator.js';
 export { SegundoFatorPostgres } from './infra/segundo-fator-postgres.js';
+export { EnviarAvisosDeSeguranca } from './application/avisos.js';
+export type { EmailsDosUsuarios } from './application/avisos.js';
+export {
+  RedefinirSenha,
+  SolicitarRedefinicaoDeSenha,
+  VALIDADE_DA_REDEFINICAO_MS,
+} from './application/redefinicao.js';
+export type {
+  ArmazemDeRedefinicoes,
+  NoTenant,
+  PedidoDeRedefinicao,
+  PublicadorDeEventos,
+} from './application/redefinicao.js';
+export {
+  EmailsDosUsuariosPostgres,
+  noTenantDoBanco,
+  PublicadorOutbox,
+  RedefinicoesRedis,
+} from './infra/redefinicao.js';

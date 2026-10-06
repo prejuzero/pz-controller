@@ -58,6 +58,9 @@ describe('boot do worker (processo real)', () => {
       // Portas sem serviço: o worker sobe mesmo assim e se declara degradada.
       DATABASE_URL: 'postgresql://u:s@127.0.0.1:1/db',
       DATABASE_URL_SISTEMA: 'postgresql://u:s@127.0.0.1:1/db',
+      SMTP_HOST: '127.0.0.1',
+      SMTP_PORT: '1025',
+      CHAVE_CIFRAGEM: 'MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=',
       REDIS_URL: 'redis://127.0.0.1:1',
       S3_REGION: 'us-east-1',
     });

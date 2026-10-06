@@ -158,6 +158,45 @@ export const listarAcessos = definirRota({
   resposta: { status: 200, corpo: AcessosRecentes },
 });
 
+export const PedidoDeRedefinicaoDeSenha = nomear(
+  'PedidoDeRedefinicaoDeSenha',
+  z.object({ email: z.string().min(1).max(254) }),
+);
+
+export const RedefinicaoDeSenha = nomear(
+  'RedefinicaoDeSenha',
+  z.object({
+    token: z.string().min(20).max(200).describe('Token do link enviado por e-mail.'),
+    novaSenha: z.string().min(1).max(512),
+  }),
+);
+
+/** Sempre 204, exista ou não o e-mail (não revela contas). O link vale 30 min, uma vez. */
+export const solicitarRedefinicaoDeSenha = definirRota({
+  id: 'solicitarRedefinicaoDeSenha',
+  metodo: 'post',
+  caminho: '/v1/auth/senha/esqueci',
+  resumo: 'Envia o link de redefinição de senha, se o e-mail tiver conta.',
+  tag: 'auth',
+  publica: true,
+  corpo: PedidoDeRedefinicaoDeSenha,
+  resposta: { status: 204, corpo: null },
+  erros: [429],
+});
+
+/** Troca a senha com o token do e-mail; revoga todas as sessões e desbloqueia o login. */
+export const redefinirSenha = definirRota({
+  id: 'redefinirSenha',
+  metodo: 'post',
+  caminho: '/v1/auth/senha/redefinir',
+  resumo: 'Define a nova senha com o token recebido por e-mail.',
+  tag: 'auth',
+  publica: true,
+  corpo: RedefinicaoDeSenha,
+  resposta: { status: 204, corpo: null },
+  erros: [401, 429],
+});
+
 export const ROTAS_AUTH = [
   entrar,
   sair,
@@ -166,4 +205,6 @@ export const ROTAS_AUTH = [
   ativarSegundoFator,
   verificarSegundoFator,
   listarAcessos,
+  solicitarRedefinicaoDeSenha,
+  redefinirSenha,
 ] as const;

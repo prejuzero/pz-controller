@@ -6,6 +6,12 @@ import {
   Autenticar,
   CifraAesGcm,
   AcessosPostgres,
+  noTenantDoBanco,
+  PublicadorOutbox,
+  RedefinicoesRedis,
+  RedefinirSenha,
+  RegistrarCredencial,
+  SolicitarRedefinicaoDeSenha,
   ConfigurarSegundoFator,
   ConsultarAcessos,
   CredenciaisPostgres,
@@ -48,6 +54,8 @@ import type { JanelaDeRequisicoes } from './http/limite.js';
 import type { CaixaDeWebhooks } from './webhooks/webhooks.controller.js';
 import type { DynamicModule, Provider, Type } from '@nestjs/common';
 import type {
+  ArmazemDeRedefinicoes,
+  PublicadorDeEventos,
   ArmazemDeSessoes,
   ControleDeTentativas,
   RegistroDeAcessos,
@@ -74,6 +82,8 @@ export interface OpcoesApi {
     readonly segundoFator: RepositorioDeSegundoFator;
     readonly tentativas: ControleDeTentativas;
     readonly acessos: RegistroDeAcessos;
+    readonly publicador?: PublicadorDeEventos;
+    readonly redefinicoes?: ArmazemDeRedefinicoes;
   };
   readonly janelaDeRequisicoes?: JanelaDeRequisicoes;
 }
@@ -133,6 +143,9 @@ export class AppModule {
     const tokens = new GeradorDeTokensSeguro();
     const acessos = opcoes.identidade?.acessos ?? new AcessosPostgres(recursos.banco);
     const tentativas = opcoes.identidade?.tentativas ?? new TentativasRedis(recursos.redis);
+    const publicador = opcoes.identidade?.publicador ?? new PublicadorOutbox(recursos.banco);
+    const redefinicoes = opcoes.identidade?.redefinicoes ?? new RedefinicoesRedis(recursos.redis);
+    const hasher = new HasherArgon2();
     const provedores: Provider[] = [
       { provide: RecursosDaApi, useValue: recursos },
       { provide: AMBIENTE, useValue: opcoes.ambiente },
@@ -162,7 +175,8 @@ export class AppModule {
       {
         provide: ProtecaoDeAcesso,
         inject: [RELOGIO],
-        useFactory: (relogio: Clock) => new ProtecaoDeAcesso(tentativas, acessos, relogio),
+        useFactory: (relogio: Clock) =>
+          new ProtecaoDeAcesso(tentativas, acessos, relogio, publicador),
       },
       {
         provide: Autenticar,
@@ -171,6 +185,28 @@ export class AppModule {
           new Autenticar(credenciais, new HasherArgon2(), sessoes, tokens, relogio, protecao),
       },
       { provide: ConsultarAcessos, useValue: new ConsultarAcessos(acessos) },
+      {
+        provide: SolicitarRedefinicaoDeSenha,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new SolicitarRedefinicaoDeSenha(
+            credenciais,
+            redefinicoes,
+            tokens,
+            cifra,
+            publicador,
+            relogio,
+          ),
+      },
+      {
+        provide: RedefinirSenha,
+        useValue: new RedefinirSenha(
+          redefinicoes,
+          new RegistrarCredencial(credenciais, hasher, sessoes),
+          tentativas,
+          noTenantDoBanco,
+        ),
+      },
       {
         provide: JANELA_DE_REQUISICOES,
         useValue: opcoes.janelaDeRequisicoes ?? new JanelaRedis(recursos.redis),

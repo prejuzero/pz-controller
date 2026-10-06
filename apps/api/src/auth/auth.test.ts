@@ -5,6 +5,9 @@ import { carregarAmbiente } from '@pz/config/env';
 import { SessaoAtual } from '@pz/contracts';
 import { tenantAtual } from '@pz/db';
 import {
+  CifraAesGcm,
+  PublicadorEmMemoria,
+  RedefinicoesEmMemoria,
   AcessosEmMemoria,
   TentativasEmMemoria,
   CredenciaisEmMemoria,
@@ -27,6 +30,8 @@ import type { Email } from '@pz/identidade';
 const USUARIO = gerarUuidV7();
 const TENANT = gerarUuidV7();
 const SENHA = 'senha de teste bem longa';
+const CHAVE = randomBytes(32).toString('base64');
+const publicador = new PublicadorEmMemoria();
 
 @Controller('v1/teste-auth')
 class RotasDeTeste {
@@ -63,11 +68,13 @@ beforeAll(async () => {
       DATABASE_URL: 'postgresql://pz_dev:pz_dev_local@127.0.0.1:5432/prejuzero',
       REDIS_URL: 'redis://127.0.0.1:6379',
       S3_REGION: 'us-east-1',
-      CHAVE_CIFRAGEM: randomBytes(32).toString('base64'),
+      CHAVE_CIFRAGEM: CHAVE,
     }),
     verificadores: [],
     controllersExtras: [RotasDeTeste],
     identidade: {
+      publicador,
+      redefinicoes: new RedefinicoesEmMemoria(),
       credenciais,
       sessoes,
       segundoFator,
@@ -336,5 +343,32 @@ describe('últimos acessos (HU06)', () => {
     const [ultimo] = await acessos.ultimos(USUARIO, 1);
     expect(ultimo).toMatchObject({ tipo: 'login', sucesso: true, usuarioId: USUARIO });
     expect(typeof ultimo?.ip).toBe('string');
+  });
+});
+
+describe('recuperação de senha na api (HU06)', () => {
+  const pedir = (email: string) =>
+    api.inject({ method: 'POST', url: '/v1/auth/senha/esqueci', payload: { email } });
+
+  it('esqueci: 204 exista ou não o e-mail; o link redefine uma vez e o login usa a senha nova', async () => {
+    expect((await pedir('ninguem@exemplo.invalid')).statusCode).toBe(204);
+    const antes = publicador.publicados.length;
+    expect((await pedir('ana@exemplo.invalid')).statusCode).toBe(204);
+    expect(publicador.publicados).toHaveLength(antes + 1);
+    const evento = publicador.publicados.at(-1) as { payload: { tokenCifrado: string } };
+    const token = new CifraAesGcm(CHAVE).decifrar(evento.payload.tokenCifrado);
+
+    const redefinir = (novaSenha: string) =>
+      api.inject({
+        method: 'POST',
+        url: '/v1/auth/senha/redefinir',
+        payload: { token, novaSenha },
+      });
+    expect((await redefinir('curta')).statusCode).toBe(400);
+    expect((await redefinir('senha nova de teste longa')).statusCode).toBe(204);
+    expect((await redefinir('outra senha de teste longa')).statusCode).toBe(401);
+    expect(
+      (await entrar('ana@exemplo.invalid', 'senha nova de teste longa')).resposta.statusCode,
+    ).toBe(200);
   });
 });

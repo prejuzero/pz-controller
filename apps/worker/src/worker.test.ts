@@ -16,6 +16,9 @@ const ambiente = carregarAmbiente(esquemaWorker, {
   NODE_ENV: 'test',
   DATABASE_URL: 'postgresql://u:s@127.0.0.1:1/db',
   DATABASE_URL_SISTEMA: 'postgresql://u:s@127.0.0.1:1/db',
+  SMTP_HOST: '127.0.0.1',
+  SMTP_PORT: '1025',
+  CHAVE_CIFRAGEM: 'MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=',
   REDIS_URL: 'redis://127.0.0.1:1',
   S3_REGION: 'us-east-1',
   VERSAO: 'abc123',
@@ -63,6 +66,9 @@ function ambienteBruto() {
     DATABASE_URL_SISTEMA: 'postgresql://s:s@h:5432/d',
     REDIS_URL: 'redis://h:6379',
     S3_REGION: 'us-east-1',
+    SMTP_HOST: 'h',
+    SMTP_PORT: '1025',
+    CHAVE_CIFRAGEM: 'MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=',
   };
 }
 
@@ -70,7 +76,11 @@ describe('@Consome e o despachante', () => {
   it('inscreve os consumidores declarados por tipo e versão', async () => {
     const { worker: app } = await subir();
     expect(app.get(DespachanteDeEventos).inscritos()).toEqual(
-      new Map([['SituacaoVerificada@1', ['ConsumidorDeSituacao.tratar']]]),
+      new Map([
+        ['SituacaoVerificada@1', ['ConsumidorDeSituacao.tratar']],
+        ['RedefinicaoDeSenhaSolicitada@1', ['ConsumidorDeAvisosDeIdentidade.redefinicao']],
+        ['ContaBloqueada@1', ['ConsumidorDeAvisosDeIdentidade.bloqueio']],
+      ]),
     );
   });
 

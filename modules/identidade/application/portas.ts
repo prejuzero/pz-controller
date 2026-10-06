@@ -1,6 +1,6 @@
 import type { Email } from '../domain/credenciais.js';
 import type { Sessao } from '../domain/sessao.js';
-import type { Instant, Uuid } from '@pz/kernel';
+import type { EventoDominio, Instant, Uuid } from '@pz/kernel';
 
 export interface CredencialArmazenada {
   readonly usuarioId: Uuid;
@@ -106,4 +106,9 @@ export interface RegistroDeAcessos {
   registrar(acesso: Acesso): Promise<void>;
   /** Últimos acessos do usuário, no tenant do contexto. */
   ultimos(usuarioId: Uuid, limite: number): Promise<Acesso[]>;
+}
+
+/** Grava eventos no outbox, no tenant informado (a requisição pode não ter sessão). */
+export interface PublicadorDeEventos {
+  publicar(tenantId: Uuid, eventos: readonly EventoDominio[]): Promise<void>;
 }
