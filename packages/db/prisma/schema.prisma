@@ -34,6 +34,7 @@ model Tenant {
   eventosProcessados EventoProcessado[]
   acessos            Acesso[]
   dispositivos       SessaoDispositivo[]
+  auditoria          EventoAuditoria[]
 
   @@map("tenant")
 }
@@ -168,4 +169,32 @@ model SessaoDispositivo {
   @@index([tenantId])
   @@index([usuarioId])
   @@map("sessao_dispositivo")
+}
+
+/// Trilha de auditoria imutável (HU08, ADR-006): só INSERT, cadeia SHA-256 por tenant.
+/// Particionada por mês no banco (pg_partman); o Prisma vê a tabela-mãe.
+model EventoAuditoria {
+  id            String   @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  sequencia     BigInt
+  tipo          String
+  entidade      String
+  entidadeId    String   @map("entidade_id")
+  usuarioId     String?  @map("usuario_id") @db.Uuid
+  usuarioRealId String?  @map("usuario_real_id") @db.Uuid
+  canal         String
+  ip            String?
+  userAgent     String?  @map("user_agent")
+  antes         Json?    @db.JsonB
+  depois        Json?    @db.JsonB
+  criadoEm      DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  hashAnterior  String   @map("hash_anterior")
+  hash          String
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@id([id, criadoEm])
+  @@index([tenantId, entidade, entidadeId, criadoEm], map: "evento_auditoria_entidade_idx")
+  @@index([tenantId, sequencia], map: "evento_auditoria_sequencia_idx")
+  @@map("evento_auditoria")
 }

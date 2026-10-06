@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DiscoveryModule } from '@nestjs/core';
 import { DESCRITOR_SMTP, ProvedorEmailSmtp } from '@pz/adapter-smtp';
+import { AuditarEvento, TrilhaPostgres } from '@pz/auditoria';
 import { Banco, BancoSistema, OutboxPostgres } from '@pz/db';
 import { CifraAesGcm, EmailsDosUsuariosPostgres, EnviarAvisosDeSeguranca } from '@pz/identidade';
 import { RegistroDeAdaptadores } from '@pz/integracoes';
@@ -14,6 +15,7 @@ import {
 } from '@pz/saude';
 import { Redis } from 'ioredis';
 
+import { ConsumidorDeAuditoria } from './auditoria/consumidor.js';
 import { DespachanteDeEventos } from './eventos/consome.js';
 import { RelayDoOutbox } from './eventos/relay.js';
 import {
@@ -187,6 +189,8 @@ export class WorkerModule {
       // Consumidores (lista explícita, CLAUDE.md seção 6).
       ConsumidorDeSituacao,
       ConsumidorDeAvisosDeIdentidade,
+      ConsumidorDeAuditoria,
+      { provide: AuditarEvento, useValue: new AuditarEvento(new TrilhaPostgres()) },
       {
         provide: EnviarAvisosDeSeguranca,
         inject: [RELOGIO],

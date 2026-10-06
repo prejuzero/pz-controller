@@ -78,8 +78,19 @@ describe('@Consome e o despachante', () => {
     expect(app.get(DespachanteDeEventos).inscritos()).toEqual(
       new Map([
         ['SituacaoVerificada@1', ['ConsumidorDeSituacao.tratar']],
-        ['RedefinicaoDeSenhaSolicitada@1', ['ConsumidorDeAvisosDeIdentidade.redefinicao']],
-        ['ContaBloqueada@1', ['ConsumidorDeAvisosDeIdentidade.bloqueio']],
+        [
+          'RedefinicaoDeSenhaSolicitada@1',
+          [
+            'ConsumidorDeAvisosDeIdentidade.redefinicao',
+            'ConsumidorDeAuditoria.redefinicaoSolicitada',
+          ],
+        ],
+        [
+          'ContaBloqueada@1',
+          ['ConsumidorDeAvisosDeIdentidade.bloqueio', 'ConsumidorDeAuditoria.contaBloqueada'],
+        ],
+        ['DispositivoRegistrado@1', ['ConsumidorDeAuditoria.dispositivoRegistrado']],
+        ['SessaoRevogada@1', ['ConsumidorDeAuditoria.sessaoRevogada']],
       ]),
     );
   });
