@@ -75,9 +75,9 @@ async function proximoCodigo(page: Page, segredo: string, ultimoPasso: number): 
 }
 
 /** Senha → 2FA (ativa no primeiro acesso, verifica nos seguintes) → destino. */
-export async function entrar(page: Page): Promise<void> {
+export async function entrar(page: Page, senha = SENHA): Promise<void> {
   await page.getByLabel('E-mail').fill(EMAIL);
-  await page.getByLabel(/^Senha/).fill(SENHA);
+  await page.getByLabel(/^Senha/).fill(senha);
   await page.getByRole('button', { name: 'Entrar' }).click();
   await page.waitForURL(/\/entrar\/2fa/);
 
