@@ -8,9 +8,39 @@
     "sessaoExpirada": "Sua sessão expirou. Entre novamente para continuar de onde parou.",
     "emBreve": "O formulário de entrada chega com as telas de acesso (HU06)."
   },
-  "inicio": {
-    "titulo": "Início",
+  "menu": {
+    "marca": "PrejuZero",
+    "principal": "Menu principal",
+    "dashboard": "Dashboard",
+    "prazos": "Prazos",
+    "publicacoes": "Publicações",
+    "busca": "Busca",
+    "processos": "Processos",
+    "calendario": "Calendário",
+    "relatorios": "Relatórios",
+    "configuracoes": "Configurações",
+    "mais": "Mais",
+    "fechar": "Fechar",
+    "recolher": "Recolher menu",
+    "expandir": "Expandir menu",
+    "pularParaConteudo": "Pular para o conteúdo"
+  },
+  "cabecalho": {
+    "marca": "PrejuZero",
+    "buscaRapida": "Buscar processo, parte ou publicação",
+    "menuUsuario": "Menu do usuário",
+    "minhaConta": "Minha conta",
+    "configuracoes": "Configurações",
     "sair": "Sair"
+  },
+  "avisos": {
+    "rotulo": "Avisos",
+    "impersonacao": "Você está acessando outro escritório só para leitura. Motivo: {motivo}. Expira em {expiraEm}.",
+    "capturaAtrasada": "A captura de publicações está atrasada. Confira as intimações manualmente até a normalização.",
+    "cienciaPendente": "{quantidade, plural, one {# intimação aguarda} other {# intimações aguardam}} confirmação de ciência."
+  },
+  "secao": {
+    "emConstrucao": "Esta seção chega nas próximas entregas."
   },
   "erros": {
     "inesperado": "Algo deu errado",
