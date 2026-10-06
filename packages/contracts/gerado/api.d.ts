@@ -348,6 +348,8 @@ export interface components {
             nivel: "senha" | "completo";
             /** @description O que falta para a sessão ficar completa; null quando já está. */
             proximoPasso: ("configurar-2fa" | "verificar-2fa") | null;
+            /** @description Permissões efetivas (catálogo da HU07, ex.: `prazos:ler`), também usadas como escopos OAuth. Vazio sem o 2FA. O portal só oculta ações; a API sempre confere. */
+            permissoes: string[];
         };
         SituacaoDaApi: {
             /** @enum {string} */

@@ -100,6 +100,9 @@ async function valorPara(cliente: pg.Client, coluna: Coluna): Promise<unknown> {
   }
 }
 
+/** Tabelas globais referenciadas por tabelas de negócio: usa uma linha que a migração já semeou. */
+const LINHAS_GLOBAIS: Readonly<Record<string, string>> = { perfil: 'advogado' };
+
 /**
  * Insere uma linha válida na tabela para o tenant, criando antes as linhas referenciadas por
  * chave estrangeira (no mesmo tenant). Usa um cliente com BYPASSRLS (pz_sistema).
@@ -115,6 +118,8 @@ export async function criarLinha(
   for (const coluna of await colunasObrigatorias(cliente, tabela)) {
     if (coluna.nome === 'tenant_id') valores[coluna.nome] = tenantId;
     else if (coluna.referencia === 'tenant') valores[coluna.nome] = tenantId;
+    else if (coluna.referencia !== null && coluna.referencia in LINHAS_GLOBAIS)
+      valores[coluna.nome] = LINHAS_GLOBAIS[coluna.referencia];
     else if (coluna.referencia !== null) {
       const pai = await criarLinha(cliente, coluna.referencia, tenantId, profundidade + 1);
       valores[coluna.nome] = pai.id;
@@ -141,6 +146,8 @@ export async function valoresDeLinhaNova(
   for (const coluna of await colunasObrigatorias(cliente, tabela)) {
     if (coluna.nome === 'tenant_id' || coluna.referencia === 'tenant')
       valores[coluna.nome] = tenantId;
+    else if (coluna.referencia !== null && coluna.referencia in LINHAS_GLOBAIS)
+      valores[coluna.nome] = LINHAS_GLOBAIS[coluna.referencia];
     else if (coluna.referencia !== null) {
       valores[coluna.nome] = (await criarLinha(cliente, coluna.referencia, tenantId)).id;
     } else valores[coluna.nome] = await valorPara(cliente, coluna);

@@ -20,7 +20,9 @@ import {
   SolicitarRedefinicaoDeSenha,
   ConfigurarSegundoFator,
   ConsultarAcessos,
+  ConsultarPermissoes,
   CredenciaisPostgres,
+  PerfisPostgres,
   ElevarSessao,
   EncerrarSessao,
   ProtecaoDeAcesso,
@@ -68,6 +70,7 @@ import type {
   ControleDeTentativas,
   RegistroDeAcessos,
   RepositorioDeCredenciais,
+  RepositorioDePerfis,
   RepositorioDeSegundoFator,
 } from '@pz/identidade';
 import type { ReceptorWebhook } from '@pz/integracoes';
@@ -94,6 +97,7 @@ export interface OpcoesApi {
     readonly redefinicoes?: ArmazemDeRedefinicoes;
     readonly dispositivos?: RepositorioDeDispositivos;
     readonly renovacoes?: ArmazemDeRenovacoes;
+    readonly perfis?: RepositorioDePerfis;
   };
   readonly janelaDeRequisicoes?: JanelaDeRequisicoes;
 }
@@ -159,6 +163,7 @@ export class AppModule {
     const dispositivos =
       opcoes.identidade?.dispositivos ?? new DispositivosPostgres(recursos.banco);
     const renovacoes = opcoes.identidade?.renovacoes ?? new RenovacoesRedis(recursos.redis);
+    const perfis = opcoes.identidade?.perfis ?? new PerfisPostgres(recursos.banco);
     const provedores: Provider[] = [
       { provide: RecursosDaApi, useValue: recursos },
       { provide: AMBIENTE, useValue: opcoes.ambiente },
@@ -198,6 +203,17 @@ export class AppModule {
           new Autenticar(credenciais, new HasherArgon2(), sessoes, tokens, relogio, protecao),
       },
       { provide: ConsultarAcessos, useValue: new ConsultarAcessos(acessos) },
+      {
+        provide: ConsultarPermissoes,
+        useValue: new ConsultarPermissoes(perfis, (permissao) => {
+          registrarErro(
+            logger,
+            new Error(`Permissão fora do catálogo concedida por perfil: ${permissao}`),
+            'perfil concede permissão desconhecida (ignorada)',
+            'api.permissoes',
+          );
+        }),
+      },
       {
         provide: RegistrarDispositivo,
         inject: [RELOGIO],

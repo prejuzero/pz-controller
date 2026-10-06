@@ -56,11 +56,14 @@ describe('migrações', () => {
         'evento_auditoria',
         'evento_dominio',
         'evento_processado',
+        'perfil',
+        'perfil_permissao',
         'sessao_dispositivo',
         'tabela_prazo',
         'tenant',
         'tipo_ato',
         'usuario',
+        'usuario_perfil',
         'webhook_recebido',
       ]);
 
@@ -77,11 +80,14 @@ describe('migrações', () => {
         'evento_auditoria',
         'evento_dominio',
         'evento_processado',
+        'perfil',
+        'perfil_permissao',
         'sessao_dispositivo',
         'tabela_prazo',
         'tenant',
         'tipo_ato',
         'usuario',
+        'usuario_perfil',
         'webhook_recebido',
       ]);
     } finally {
@@ -120,6 +126,7 @@ describe('RLS (ADR-003)', () => {
         'sessao_dispositivo',
         'tenant',
         'usuario',
+        'usuario_perfil',
       ]);
       for (const linha of rows) {
         expect(linha, linha.tabela).toMatchObject({ ativo: true, forcado: true });
