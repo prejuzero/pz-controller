@@ -39,6 +39,7 @@ model Tenant {
   perfis             UsuarioPerfil[]
   auditoria          EventoAuditoria[]
   verificacao        AuditoriaVerificacao?
+  feriadosLocais     FeriadoLocal[]
 
   @@map("tenant")
 }
@@ -323,4 +324,89 @@ model UsuarioPerfil {
   @@id([usuarioId, perfil])
   @@index([tenantId])
   @@map("usuario_perfil")
+}
+
+enum AbrangenciaCalendario {
+  nacional
+  uf
+  municipio
+  tribunal
+  comarca
+
+  @@map("abrangencia_calendario")
+}
+
+enum TipoEventoCalendario {
+  feriado
+  recesso
+  portaria
+  indisponibilidade
+
+  @@map("tipo_evento_calendario")
+}
+
+enum StatusEventoCalendario {
+  rascunho
+  aprovado
+
+  @@map("status_evento_calendario")
+}
+
+/// Calendário forense global (HU13): mantido pelo curador, só vale aprovado por outra pessoa.
+/// Sem tenant_id; aprovação e revogação protegidas por trigger no banco.
+model EventoCalendario {
+  id              String                 @id @db.Uuid
+  abrangencia     AbrangenciaCalendario
+  uf              String?                @db.Char(2)
+  municipioIbge   String?                @map("municipio_ibge") @db.Char(7)
+  tribunal        String?
+  comarca         String?
+  tipo            TipoEventoCalendario
+  dataInicio      DateTime               @map("data_inicio") @db.Date
+  dataFim         DateTime               @map("data_fim") @db.Date
+  descricao       String
+  atoNormativo    String                 @map("ato_normativo")
+  urlAto          String                 @map("url_ato")
+  status          StatusEventoCalendario
+  propostoPor     String                 @map("proposto_por") @db.Uuid
+  propostoEm      DateTime               @map("proposto_em") @db.Timestamptz(6)
+  aprovadoPor     String?                @map("aprovado_por") @db.Uuid
+  aprovadoEm      DateTime?              @map("aprovado_em") @db.Timestamptz(6)
+  revogadoPor     String?                @map("revogado_por") @db.Uuid
+  revogadoEm      DateTime?              @map("revogado_em") @db.Timestamptz(6)
+  motivoRevogacao String?                @map("motivo_revogacao")
+  criadoEm        DateTime               @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm    DateTime               @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  @@index([abrangencia, dataInicio])
+  @@index([tribunal])
+  @@map("evento_calendario")
+}
+
+/// Feriado local cadastrado pelo próprio escritório (HU13), com RLS. Só pode ser revogado.
+model FeriadoLocal {
+  id            String                @id @db.Uuid
+  tenantId      String                @map("tenant_id") @db.Uuid
+  abrangencia   AbrangenciaCalendario
+  uf            String?               @db.Char(2)
+  municipioIbge String?               @map("municipio_ibge") @db.Char(7)
+  tribunal      String?
+  comarca       String?
+  tipo          TipoEventoCalendario
+  dataInicio    DateTime              @map("data_inicio") @db.Date
+  dataFim       DateTime              @map("data_fim") @db.Date
+  descricao     String
+  atoNormativo  String                @map("ato_normativo")
+  urlAto        String                @map("url_ato")
+  cadastradoPor String                @map("cadastrado_por") @db.Uuid
+  cadastradoEm  DateTime              @map("cadastrado_em") @db.Timestamptz(6)
+  revogadoPor   String?               @map("revogado_por") @db.Uuid
+  revogadoEm    DateTime?             @map("revogado_em") @db.Timestamptz(6)
+  criadoEm      DateTime              @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm  DateTime              @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, dataInicio])
+  @@map("feriado_local")
 }

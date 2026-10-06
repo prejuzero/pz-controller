@@ -12,6 +12,11 @@ export const TIPOS_DE_AUDITORIA = [
   'prazos.tipo-de-ato-cadastrado',
   'prazos.versao-da-tabela-proposta',
   'prazos.versao-da-tabela-aprovada',
+  'calendario.evento-proposto',
+  'calendario.evento-aprovado',
+  'calendario.evento-revogado',
+  'calendario.feriado-local-cadastrado',
+  'calendario.feriado-local-revogado',
 ] as const;
 export const TipoDeAuditoria = z.enum(TIPOS_DE_AUDITORIA);
 export type TipoDeAuditoria = z.infer<typeof TipoDeAuditoria>;
