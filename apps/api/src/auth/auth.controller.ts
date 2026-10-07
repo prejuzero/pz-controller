@@ -35,6 +35,7 @@ import {
   VerificarSegundoFator,
 } from '@pz/identidade';
 import { Validacao } from '@pz/kernel';
+import { ConsultarTermosPendentes } from '@pz/termos';
 import { z } from 'zod';
 
 import { PermiteSessaoParcial, Publico, RequerPermissao } from '../http/acesso.js';
@@ -59,13 +60,19 @@ import type {
 } from '@pz/identidade';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 
-export function sessaoAtual(sessao: Sessao, permissoes: Iterable<string> = []): SessaoAtual {
+export function sessaoAtual(
+  sessao: Sessao,
+  permissoes: Iterable<string> = [],
+  termosPendentes = false,
+): SessaoAtual {
   const proximoPasso =
-    sessao.nivel === 'completo'
-      ? null
-      : sessao.segundoFatorAtivo
+    sessao.nivel !== 'completo'
+      ? sessao.segundoFatorAtivo
         ? 'verificar-2fa'
-        : 'configurar-2fa';
+        : 'configurar-2fa'
+      : termosPendentes
+        ? 'aceitar-termos'
+        : null;
   return {
     usuarioId: sessao.usuarioId,
     tenantId: sessao.tenantId,
@@ -124,6 +131,7 @@ export class AuthController {
     @Inject(ListarDispositivos) private readonly listarDispositivos: ListarDispositivos,
     @Inject(RevogarDispositivo) private readonly revogarDispositivo: RevogarDispositivo,
     @Inject(ConsultarPermissoes) private readonly consultarPermissoes: ConsultarPermissoes,
+    @Inject(ConsultarTermosPendentes) private readonly termos: ConsultarTermosPendentes<unknown>,
   ) {}
 
   @Post('entrar')
@@ -161,7 +169,9 @@ export class AuthController {
   @PermiteSessaoParcial()
   eu(@Req() requisicao: RequisicaoAutenticada): SessaoAtual | undefined {
     const atual = requisicao.autenticacao;
-    return atual === undefined ? undefined : sessaoAtual(atual.sessao, atual.permissoes);
+    return atual === undefined
+      ? undefined
+      : sessaoAtual(atual.sessao, atual.permissoes, atual.termosPendentes);
   }
 
   @Post('senha/esqueci')
@@ -281,7 +291,11 @@ export class AuthController {
     const elevada = await this.elevar.executar(token, sessao);
     emitirSessao(resposta, elevada);
     return {
-      sessao: sessaoAtual(elevada.sessao, await this.consultarPermissoes.executar(elevada.sessao)),
+      sessao: sessaoAtual(
+        elevada.sessao,
+        await this.consultarPermissoes.executar(elevada.sessao),
+        await this.#termosPendentes(elevada.sessao),
+      ),
       codigosDeRecuperacao: resultado.valor.codigosDeRecuperacao,
     };
   }
@@ -304,7 +318,20 @@ export class AuthController {
     if (!resultado.ok) throw resultado.erro;
     const elevada = await this.elevar.executar(token, sessao);
     emitirSessao(resposta, elevada);
-    return sessaoAtual(elevada.sessao, await this.consultarPermissoes.executar(elevada.sessao));
+    return sessaoAtual(
+      elevada.sessao,
+      await this.consultarPermissoes.executar(elevada.sessao),
+      await this.#termosPendentes(elevada.sessao),
+    );
+  }
+
+  async #termosPendentes(sessao: Sessao): Promise<boolean> {
+    const pendentes = await this.termos.executar({
+      tenantId: sessao.tenantId,
+      usuarioId: sessao.usuarioId,
+      sessaoIniciadaEm: sessao.criadaEm,
+    });
+    return pendentes.length > 0;
   }
 }
 

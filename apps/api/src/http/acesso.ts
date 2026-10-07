@@ -7,6 +7,8 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { concede, ConsultarPermissoes, ValidarSessao } from '@pz/identidade';
+import { Proibido } from '@pz/kernel';
+import { ConsultarTermosPendentes } from '@pz/termos';
 
 import {
   CABECALHO_CSRF,
@@ -23,6 +25,7 @@ import type { FastifyRequest } from 'fastify';
 const CHAVE_PUBLICO = 'pz:publico';
 const CHAVE_PARCIAL = 'pz:sessao-parcial';
 const CHAVE_PERMISSOES = 'pz:permissoes';
+const CHAVE_TERMOS = 'pz:termos-pendentes';
 const METODOS_SEGUROS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 /** Rota sem autenticação (CLAUDE.md, seção 12). Toda rota declara isto ou @RequerPermissao. */
@@ -31,6 +34,10 @@ export const Publico = (): MethodDecorator & ClassDecorator => SetMetadata(CHAVE
 /** Rota que aceita sessão sem o 2FA concluído (ex.: consultar a sessão, sair, verificar 2FA). */
 export const PermiteSessaoParcial = (): MethodDecorator & ClassDecorator =>
   SetMetadata(CHAVE_PARCIAL, true);
+
+/** Rota usável com documento legal pendente de aceite (HU38): consultar e aceitar os termos. */
+export const PermiteTermosPendentes = (): MethodDecorator & ClassDecorator =>
+  SetMetadata(CHAVE_TERMOS, true);
 
 /**
  * Permissões exigidas pela rota (HU07), todas necessárias. Vêm do catálogo do módulo identidade;
@@ -44,10 +51,16 @@ export const RequerPermissao = (
 export function declaracaoDeAcesso(
   refletor: Reflector,
   alvos: Parameters<Reflector['getAllAndOverride']>[1],
-): { publica: boolean; parcial: boolean; permissoes: readonly Permissao[] | undefined } {
+): {
+  publica: boolean;
+  parcial: boolean;
+  termos: boolean;
+  permissoes: readonly Permissao[] | undefined;
+} {
   return {
     publica: refletor.getAllAndOverride<boolean | undefined>(CHAVE_PUBLICO, alvos) === true,
     parcial: refletor.getAllAndOverride<boolean | undefined>(CHAVE_PARCIAL, alvos) === true,
+    termos: refletor.getAllAndOverride<boolean | undefined>(CHAVE_TERMOS, alvos) === true,
     permissoes: refletor.getAllAndOverride<readonly Permissao[] | undefined>(
       CHAVE_PERMISSOES,
       alvos,
@@ -61,6 +74,8 @@ export interface Autenticacao {
   readonly modo: 'cookie' | 'bearer';
   /** Permissões efetivas, lidas a cada requisição (vazio sem o 2FA). */
   readonly permissoes: ReadonlySet<Permissao>;
+  /** Há documento legal vigente no início da sessão ainda não aceito (HU38). */
+  readonly termosPendentes: boolean;
 }
 
 export type RequisicaoAutenticada = FastifyRequest & { autenticacao?: Autenticacao };
@@ -71,7 +86,9 @@ export type RequisicaoAutenticada = FastifyRequest & { autenticacao?: Autenticac
  * `Authorization: Bearer` (app, MCP, integradores; sem CSRF). A mesma sessão e a mesma
  * identidade nos dois modos. Sem o 2FA, só as rotas marcadas com @PermiteSessaoParcial().
  * Com sessão completa, a rota exige as permissões de @RequerPermissao (HU07); rota autenticada
- * sem essa declaração nem @PermiteSessaoParcial é negada (403).
+ * sem essa declaração nem @PermiteSessaoParcial é negada (403). Com documento legal pendente de
+ * aceite (HU38), só as rotas parciais e as de @PermiteTermosPendentes: as demais respondem 403
+ * `termos-pendentes` até o aceite (impersonação, só leitura, não é bloqueada).
  */
 @Injectable()
 export class GuardaDeAcesso implements CanActivate {
@@ -79,6 +96,8 @@ export class GuardaDeAcesso implements CanActivate {
     @Inject(Reflector) private readonly refletor: Reflector,
     @Inject(ValidarSessao) private readonly validar: ValidarSessao,
     @Inject(ConsultarPermissoes) private readonly consultarPermissoes: ConsultarPermissoes,
+    @Inject(ConsultarTermosPendentes)
+    private readonly termos: ConsultarTermosPendentes<unknown>,
   ) {}
 
   async canActivate(contexto: ExecutionContext): Promise<boolean> {
@@ -110,7 +129,20 @@ export class GuardaDeAcesso implements CanActivate {
     if (!declaracao.parcial && !concede(permissoes, declaracao.permissoes ?? [])) {
       throw new ForbiddenException('Você não tem permissão para esta operação.');
     }
-    requisicao.autenticacao = { token, sessao, modo, permissoes };
+    const termosPendentes =
+      sessao.nivel === 'completo' &&
+      sessao.impersonacao === undefined &&
+      (
+        await this.termos.executar({
+          tenantId: sessao.tenantId,
+          usuarioId: sessao.usuarioId,
+          sessaoIniciadaEm: sessao.criadaEm,
+        })
+      ).length > 0;
+    if (termosPendentes && !declaracao.parcial && !declaracao.termos) {
+      throw new Proibido('termos-pendentes', 'Aceite os termos atualizados para continuar.');
+    }
+    requisicao.autenticacao = { token, sessao, modo, permissoes, termosPendentes };
     return true;
   }
 }

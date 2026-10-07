@@ -42,13 +42,16 @@ export function urlEntrar(retorno: string, motivo?: MotivoEntrar): string {
   return consulta === '' ? ROTA_ENTRAR : `${ROTA_ENTRAR}?${consulta}`;
 }
 
-/** Depois da senha ou do 2FA: falta um passo da sessão → tela do 2FA; senão, volta ao destino. */
+/**
+ * Depois da senha ou do 2FA: falta o 2FA → tela do 2FA; senão, volta ao destino. Termos
+ * pendentes (HU38) seguem para o destino até a tela de aceite (PZ-225); a API já bloqueia.
+ */
 export function destinoAposEntrar(
-  proximoPasso: 'configurar-2fa' | 'verificar-2fa' | null,
+  proximoPasso: 'configurar-2fa' | 'verificar-2fa' | 'aceitar-termos' | null,
   retorno: string | null | undefined,
 ): string {
   const destino = retornoSeguro(retorno);
-  if (proximoPasso === null) return destino;
+  if (proximoPasso === null || proximoPasso === 'aceitar-termos') return destino;
   return destino === '/'
     ? ROTA_SEGUNDO_FATOR
     : `${ROTA_SEGUNDO_FATOR}?${new URLSearchParams({ retorno: destino }).toString()}`;

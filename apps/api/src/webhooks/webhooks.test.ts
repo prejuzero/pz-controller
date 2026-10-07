@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { esquemaApi } from '../ambiente.js';
 import { criarApi } from '../app.js';
+import { termosEmMemoria } from '../termos/termos-de-teste.js';
 
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import type { WebhookParaGravar } from '@pz/db';
@@ -34,6 +35,7 @@ let api: NestFastifyApplication;
 
 beforeAll(async () => {
   api = await criarApi({
+    termos: termosEmMemoria().dependencias,
     ambiente: carregarAmbiente(esquemaApi, {
       NODE_ENV: 'test',
       DATABASE_URL: 'postgresql://pz_dev:pz_dev_local@127.0.0.1:5432/prejuzero',

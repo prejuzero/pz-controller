@@ -21,6 +21,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { esquemaApi } from '../ambiente.js';
 import { criarApi } from '../app.js';
 import { RequerPermissao } from '../http/acesso.js';
+import { termosEmMemoria } from '../termos/termos-de-teste.js';
 
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import type { EntradaDeAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
@@ -68,6 +69,7 @@ beforeAll(async () => {
   tenants.cadastrar(ESCRITORIO, 'escritorio');
   perfis.atribuir(ADMIN, 'admin_plataforma');
   api = await criarApi({
+    termos: termosEmMemoria().dependencias,
     ambiente: carregarAmbiente(esquemaApi, {
       NODE_ENV: 'test',
       DATABASE_URL: 'postgresql://pz_dev:pz_dev_local@127.0.0.1:5432/prejuzero',

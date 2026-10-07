@@ -43,6 +43,7 @@ model Tenant {
   advogados          Advogado[]
   notificacoes       Notificacao[]
   assinaturasDeAlvo  AlvoAssinante[]
+  aceitesDocumentos  AceiteDocumento[]
   preferencias       PreferenciaNotificacao[]
   consentimentos     ConsentimentoCanal[]
   destinosPush       DestinoPush[]
@@ -676,4 +677,46 @@ model AlvoAssinante {
   @@id([tenantId, alvoId, referencia])
   @@index([alvoId])
   @@map("alvo_assinante")
+}
+
+enum TipoDocumentoLegal {
+  termos
+  privacidade
+  cobertura
+
+  @@map("tipo_documento_legal")
+}
+
+/// Documento legal versionado (HU38): global, só de inserção.
+model DocumentoLegal {
+  id          String             @id @db.Uuid
+  tipo        TipoDocumentoLegal
+  versao      String
+  conteudo    String
+  publicadoEm DateTime           @map("publicado_em") @db.Timestamptz(6)
+  criadoEm    DateTime           @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  aceites AceiteDocumento[]
+
+  @@unique([tipo, versao])
+  @@index([tipo, publicadoEm])
+  @@map("documento_legal")
+}
+
+/// Aceite de um documento legal (HU38): por tenant (RLS), prova com IP e navegador.
+model AceiteDocumento {
+  tenantId     String   @map("tenant_id") @db.Uuid
+  usuarioId    String   @map("usuario_id") @db.Uuid
+  documentoId  String   @map("documento_id") @db.Uuid
+  aceitoEm     DateTime @map("aceito_em") @db.Timestamptz(6)
+  ip           String
+  userAgent    String   @map("user_agent")
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  documento DocumentoLegal @relation(fields: [documentoId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@id([tenantId, usuarioId, documentoId])
+  @@map("aceite_documento")
 }
