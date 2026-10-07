@@ -36,6 +36,10 @@ export const CATALOGO_DE_PERMISSOES = {
     descricao: 'Exportar todos os dados do escritório (LGPD; responsável pelo escritório).',
     leitura: false,
   },
+  'escritorio:encerrar': {
+    descricao: 'Pedir ou cancelar o encerramento da conta do escritório (LGPD; responsável).',
+    leitura: false,
+  },
   'curadoria:tabela-prazos': {
     descricao: 'Manter a taxonomia de atos e propor e aprovar a tabela de prazos (curador).',
     leitura: false,

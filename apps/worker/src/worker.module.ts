@@ -26,6 +26,7 @@ import {
   CifraAesGcm,
   EmailsDosUsuariosPostgres,
   EnviarAvisosDeSeguranca,
+  SessoesRedis,
 } from '@pz/identidade';
 import { RegistroDeAdaptadores } from '@pz/integracoes';
 import { SystemClock } from '@pz/kernel';
@@ -37,7 +38,12 @@ import {
   SupressaoPostgres,
 } from '@pz/notificacoes';
 import { criarLogger, registrarErro } from '@pz/observability';
-import { ExportacoesPostgres, GerarExportacao } from '@pz/privacidade';
+import {
+  EfetivarEncerramentos,
+  ExportacoesPostgres,
+  GerarExportacao,
+  OperacoesDeEncerramentoPostgres,
+} from '@pz/privacidade';
 import {
   ConsultarSituacao,
   HistoricoEmMemoria,
@@ -87,6 +93,7 @@ import type { DestinoWorm } from '@pz/auditoria';
 import type { CacheDeDiasNaoUteis } from '@pz/calendario';
 import type { ArmazenamentoArquivos, FontePublicacoes, ProvedorEmail } from '@pz/integracoes';
 import type { Clock, OutboxEmMemoria, Uuid } from '@pz/kernel';
+import type { EncerradorDeSessoes } from '@pz/privacidade';
 import type { VerificadorDeDependencia } from '@pz/saude';
 
 export interface OpcoesWorker {
@@ -106,6 +113,8 @@ export interface OpcoesWorker {
   readonly worm?: DestinoWorm;
   /** Cache do calendário no lugar do Redis (testes). */
   readonly cacheDoCalendario?: CacheDeDiasNaoUteis;
+  /** Sessões no lugar do Redis, para o encerramento de conta (testes). */
+  readonly sessoes?: EncerradorDeSessoes;
   /** Armazenamento das exportações LGPD no lugar do S3 (testes). */
   readonly arquivos?: ArmazenamentoArquivos;
   /** Fonte de publicações no lugar do DJEN (testes, sem rede). */
@@ -364,6 +373,20 @@ export class WorkerModule {
       ConsumidorDoCalendario,
       ConsumidorDaCaptura,
       ConsumidorDaPrivacidade,
+      {
+        // Atravessa tenants: papel sistema, com motivo; a função do banco faz a exclusão (HU38).
+        provide: EfetivarEncerramentos,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new EfetivarEncerramentos(
+            sistema.unidade('privacidade: efetivação de encerramentos vencidos'),
+            new OperacoesDeEncerramentoPostgres(),
+            new TrilhaPostgres(),
+            opcoes.sessoes ?? new SessoesRedis(redis),
+            opcoes.arquivos ?? arquivosDoAmbiente(ambiente, relogio),
+            relogio,
+          ),
+      },
       {
         // Cada módulo exporta só as próprias tabelas; a composição junta as fontes (HU38).
         provide: GerarExportacao,

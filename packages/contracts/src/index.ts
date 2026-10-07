@@ -141,7 +141,11 @@ export {
 export { formatarNumeroCnj, lerNumeroCnj, TRIBUNAIS, tribunalDoNumero } from './cnj.js';
 export { OrigemIa } from './ia.js';
 export {
+  cancelarEncerramento,
+  consultarEncerramento,
   consultarExportacao,
+  EncerramentoDaConta,
+  solicitarEncerramento,
   ExportacaoDeDados,
   ExportacaoSolicitada,
   PedidoDeExportacao,

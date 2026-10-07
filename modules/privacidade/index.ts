@@ -13,5 +13,23 @@ export type {
 } from './application/portas.js';
 export { ESCOPOS_DE_EXPORTACAO, paraCsv, paraJson } from './domain/exportacao.js';
 export type { EscopoDeExportacao, SecaoExportada, ValorExportado } from './domain/exportacao.js';
+export {
+  CancelarEncerramento,
+  ConsultarEncerramento,
+  EfetivarEncerramentos,
+  SolicitarEncerramento,
+} from './application/encerramento.js';
+export type { EncerramentoListado, ResponsavelPeloEscritorio } from './application/encerramento.js';
+export type {
+  EncerradorDeSessoes,
+  OperacoesDeEncerramento,
+  RepositorioDeEncerramentos,
+} from './application/portas.js';
+export { CARENCIA_DO_ENCERRAMENTO_DIAS, situacaoDoEncerramento } from './domain/encerramento.js';
+export type { Encerramento, SituacaoDoEncerramento } from './domain/encerramento.js';
+export {
+  EncerramentosPostgres,
+  OperacoesDeEncerramentoPostgres,
+} from './infra/encerramento-postgres.js';
 export { ExportacoesEmMemoria } from './infra/em-memoria.js';
 export { ExportacoesPostgres } from './infra/exportacoes-postgres.js';

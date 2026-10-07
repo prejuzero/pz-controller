@@ -18,6 +18,8 @@ import { esquemaApi } from '../ambiente.js';
 import { criarApi } from '../app.js';
 import { termosEmMemoria } from '../termos/termos-de-teste.js';
 
+import { EncerramentosEmTeste } from './encerramentos-de-teste.js';
+
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import type { CodigoPerfil } from '@pz/identidade';
 import type { ArmazenamentoArquivos } from '@pz/integracoes';
@@ -72,6 +74,7 @@ beforeAll(async () => {
       trilha: { registrar: () => Promise.resolve() },
       outbox: unidadeDaPrivacidade,
       armazenamento,
+      encerramentos: new EncerramentosEmTeste(),
     },
     ambiente: carregarAmbiente(esquemaApi, {
       NODE_ENV: 'test',
@@ -157,5 +160,23 @@ describe('exportação de dados (HU38)', () => {
     expect(
       (await pedir('ana', 'POST', '/v1/privacidade/exportacoes', { escopo: 'tudo' })).statusCode,
     ).toBe(400);
+  });
+});
+
+describe('encerramento da conta (HU38)', () => {
+  it('responsável pede, consulta e cancela; sem a permissão é 403', async () => {
+    expect((await pedir('caio', 'GET', '/v1/privacidade/encerramento')).json()).toMatchObject({
+      situacao: 'nenhum',
+    });
+    const pedido = await pedir('caio', 'POST', '/v1/privacidade/encerramento');
+    expect(pedido.statusCode).toBe(202);
+    expect(pedido.json()).toMatchObject({ situacao: 'em-carencia' });
+    expect((await pedir('caio', 'POST', '/v1/privacidade/encerramento/cancelar')).statusCode).toBe(
+      204,
+    );
+    expect((await pedir('caio', 'POST', '/v1/privacidade/encerramento/cancelar')).statusCode).toBe(
+      404,
+    );
+    expect((await pedir('ana', 'POST', '/v1/privacidade/encerramento')).statusCode).toBe(403);
   });
 });

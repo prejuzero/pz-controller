@@ -124,6 +124,10 @@ const COLUNAS_FIXAS: Readonly<Record<string, Record<string, unknown>>> = {
     compromisso: 'a'.repeat(64),
     pseudonimizado_em: null,
   },
+  encerramento_conta: {
+    solicitado_em: () => new Date('2026-10-07T12:00:00Z'),
+    efetivar_em: () => new Date('2026-11-06T12:00:00Z'),
+  },
   documento_legal: { versao: () => `${String(randomInt(1, 1e6))}.0`, conteudo: 'FICTÍCIO' },
   alvo_monitoramento: {
     tipo: 'processo',
@@ -213,4 +217,5 @@ export const TABELAS_SEM_DELETE: readonly string[] = [
   'notificacao',
   'consentimento_canal',
   'processo',
+  'encerramento_conta',
 ];
