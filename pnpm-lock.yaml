@@ -1207,6 +1207,9 @@ importers:
         specifier: 4.6.5
         version: 4.6.5
     devDependencies:
+      '@opentelemetry/sdk-trace-node':
+        specifier: 2.11.0
+        version: 2.11.0(@opentelemetry/api@1.9.1)
       '@pz/config':
         specifier: workspace:*
         version: link:../config
