@@ -142,6 +142,19 @@ export const DiasNaoUteis = nomear(
 );
 export type DiasNaoUteis = z.infer<typeof DiasNaoUteis.esquema>;
 
+export const DiasNaoUteisDoProcesso = nomear(
+  'DiasNaoUteisDoProcesso',
+  DiasNaoUteis.esquema.extend({
+    jurisdicao: z.object(Jurisdicao).describe('Jurisdição resolvida a partir do processo.'),
+    lacunas: z
+      .array(z.enum(['tribunal', 'uf', 'municipio', 'comarca']))
+      .describe(
+        'Níveis que o processo não informa: feriados desses níveis não entram e a tela deve avisar.',
+      ),
+  }),
+);
+export type DiasNaoUteisDoProcesso = z.infer<typeof DiasNaoUteisDoProcesso.esquema>;
+
 const comId = z.object({ id: Uuid });
 
 /** Calendário global (HU13): exige `curadoria:calendario` (perfil curador, tenant plataforma). */
@@ -240,6 +253,18 @@ export const consultarDiasNaoUteis = definirRota({
   resposta: { status: 200, corpo: DiasNaoUteis },
 });
 
+export const consultarDiasNaoUteisDoProcesso = definirRota({
+  id: 'consultarDiasNaoUteisDoProcesso',
+  metodo: 'get',
+  caminho: '/v1/processos/{id}/dias-nao-uteis',
+  resumo: 'Dias sem contagem na jurisdição do processo (tribunal, UF e comarca), com as lacunas.',
+  tag: 'calendario',
+  parametrosDeCaminho: comId,
+  consulta: z.object({ inicio: DataCivil, fim: DataCivil }),
+  resposta: { status: 200, corpo: DiasNaoUteisDoProcesso },
+  erros: [404],
+});
+
 export const ROTAS_CALENDARIO = [
   listarCalendarioGlobal,
   proporEventoDoCalendario,
@@ -250,4 +275,5 @@ export const ROTAS_CALENDARIO = [
   cadastrarFeriadoLocal,
   revogarFeriadoLocal,
   consultarDiasNaoUteis,
+  consultarDiasNaoUteisDoProcesso,
 ] as const;

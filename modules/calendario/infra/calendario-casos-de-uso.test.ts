@@ -1,4 +1,4 @@
-import { gerarUuidV7, LocalDate, OutboxEmMemoria } from '@pz/kernel';
+import { gerarUuidV7, LocalDate, OutboxEmMemoria, Validacao } from '@pz/kernel';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -6,6 +6,7 @@ import {
   CadastrarFeriadoLocal,
   ConsultarCalendario,
   ConsultarDiasNaoUteis,
+  ConsultarDiasNaoUteisDoProcesso,
   InvalidarCacheDoCalendario,
   ProporEventoDoCalendario,
   RevogarEventoDoCalendario,
@@ -320,5 +321,60 @@ describe('cache de diasNaoUteis por (jurisdição, ano) (HU13)', () => {
   it('InvalidarCacheDoCalendario recusa evento malformado (vai para a DLQ)', async () => {
     const invalidar = new InvalidarCacheDoCalendario(new CacheFalso());
     await expect(invalidar.executar({ tenantId: 'x', payload: {} })).rejects.toThrow();
+  });
+});
+
+describe('diasNaoUteis pelo processo (HU13)', () => {
+  // Processos e eventos FICTÍCIOS; a sigla e a UF vêm da tabela de tribunais do kernel.
+  const PROCESSO = gerarUuidV7(relogio());
+  const localizar = (id: string) =>
+    Promise.resolve(
+      id === PROCESSO ? { tribunal: 'TJSP', comarca: 'Comarca Fictícia' } : undefined,
+    );
+
+  it('resolve tribunal, UF e comarca do processo e devolve as lacunas', async () => {
+    await aprovado({ abrangencia: 'uf', uf: 'SP', inicio: '2030-03-10', fim: '2030-03-10' });
+    await aprovado({ abrangencia: 'uf', uf: 'RJ', inicio: '2030-03-11', fim: '2030-03-11' });
+    await aprovado({
+      abrangencia: 'comarca',
+      tribunal: 'TJSP',
+      comarca: 'Comarca Fictícia',
+      inicio: '2030-03-12',
+      fim: '2030-03-12',
+    });
+    await aprovado({
+      abrangencia: 'municipio',
+      uf: 'SP',
+      municipioIbge: '3550308',
+      inicio: '2030-03-13',
+      fim: '2030-03-13',
+    });
+    const consulta = new ConsultarDiasNaoUteisDoProcesso(localizar, dias);
+
+    const r = await consulta.executar({
+      processoId: PROCESSO,
+      inicio: '2030-03-01',
+      fim: '2030-03-31',
+    });
+    if (!r.ok) throw r.erro;
+    expect(r.valor.jurisdicao).toEqual({ tribunal: 'TJSP', uf: 'SP', comarca: 'Comarca Fictícia' });
+    expect(r.valor.lacunas).toEqual(['municipio']);
+    expect(r.valor.dias.map((d) => d.data.paraIso())).toEqual(['2030-03-10', '2030-03-12']);
+  });
+
+  it('processo inexistente é 404; entrada inválida é validação', async () => {
+    const consulta = new ConsultarDiasNaoUteisDoProcesso(localizar, dias);
+    const outro = await consulta.executar({
+      processoId: gerarUuidV7(relogio()),
+      inicio: '2030-03-01',
+      fim: '2030-03-31',
+    });
+    expect(!outro.ok && outro.erro.codigo).toBe('processo-inexistente');
+    const invertido = await consulta.executar({
+      processoId: PROCESSO,
+      inicio: '2030-03-02',
+      fim: '2030-03-01',
+    });
+    expect(!invertido.ok && invertido.erro).toBeInstanceOf(Validacao);
   });
 });

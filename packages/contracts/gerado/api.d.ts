@@ -623,6 +623,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/processos/{id}/dias-nao-uteis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dias sem contagem na jurisdição do processo (tribunal, UF e comarca), com as lacunas. */
+        get: operations["consultarDiasNaoUteisDoProcesso"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/saude": {
         parameters: {
             query?: never;
@@ -759,6 +776,36 @@ export interface components {
                     urlAto: string;
                 };
             }[];
+        };
+        DiasNaoUteisDoProcesso: {
+            itens: {
+                /** Format: date */
+                data: string;
+                /** @enum {string} */
+                tipo: "feriado" | "recesso" | "portaria" | "indisponibilidade";
+                motivo: string;
+                fonte: {
+                    /** @enum {string} */
+                    origem: "global" | "local";
+                    /** Format: uuid */
+                    eventoId: string;
+                    atoNormativo: string;
+                    urlAto: string;
+                };
+            }[];
+            /** @description Jurisdição resolvida a partir do processo. */
+            jurisdicao: {
+                /** @description Sigla da UF. */
+                uf?: string;
+                /** @description Código IBGE do município. */
+                municipioIbge?: string;
+                /** @description Sigla do tribunal (ex.: TJSP). */
+                tribunal?: string;
+                /** @description Comarca, dentro do tribunal. */
+                comarca?: string;
+            };
+            /** @description Níveis que o processo não informa: feriados desses níveis não entram e a tela deve avisar. */
+            lacunas: ("tribunal" | "uf" | "municipio" | "comarca")[];
         };
         DispositivosDaConta: {
             itens: {
@@ -4083,6 +4130,76 @@ export interface operations {
             };
             /** @description Regra de negócio violada. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    consultarDiasNaoUteisDoProcesso: {
+        parameters: {
+            query: {
+                inicio: string;
+                fim: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiasNaoUteisDoProcesso"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

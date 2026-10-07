@@ -4,7 +4,9 @@ export {
   CadastrarFeriadoLocal,
   ConsultarCalendario,
   ConsultarDiasNaoUteis,
+  ConsultarDiasNaoUteisDoProcesso,
   EntradaDiasNaoUteis,
+  EntradaDiasNaoUteisDoProcesso,
   EntradaDoEvento,
   EntradaRevogacao,
   InvalidarCacheDoCalendario,
@@ -15,6 +17,7 @@ export {
 } from './application/calendario.js';
 export type {
   AutorEmAcao,
+  DiasNaoUteisDoProcesso,
   EventoGlobalListado,
   EventoListado,
   FeriadoLocalListado,
@@ -31,11 +34,18 @@ export type {
   AlteracaoDoCalendario,
   CacheDeDiasNaoUteis,
   FiltroDoCalendario,
+  LocalizadorDeProcesso,
   RepositorioDeEventosGlobais,
   RepositorioDeFeriadosLocais,
 } from './application/portas.js';
 export { diasNaoUteis } from './domain/dias-nao-uteis.js';
 export type { DiaNaoUtil, Jurisdicao } from './domain/dias-nao-uteis.js';
+export { jurisdicaoDoProcesso, LACUNAS_DA_JURISDICAO } from './domain/jurisdicao-do-processo.js';
+export type {
+  JurisdicaoResolvida,
+  LacunaDaJurisdicao,
+  LocalDoProcesso,
+} from './domain/jurisdicao-do-processo.js';
 export { ABRANGENCIAS, TIPOS_DE_EVENTO } from './domain/evento.js';
 export type { Abrangencia, Autor, CalendarioAlterado, TipoDeEvento } from './domain/evento.js';
 export { EventosGlobaisEmMemoria, FeriadosLocaisEmMemoria } from './infra/em-memoria.js';
