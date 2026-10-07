@@ -7,7 +7,6 @@ import {
   Notificar,
   RegistrarDesfechosDeEntrega,
 } from '../application/notificacoes.js';
-import { renderizar } from '../application/templates.js';
 import { ConsentimentoCanal } from '../domain/consentimento.js';
 
 import { ConsentimentosEmMemoria, NotificacoesEmMemoria } from './em-memoria.js';
@@ -164,19 +163,16 @@ describe('notificações (HU30)', () => {
     await expect(outbox.executar((tx) => enviar.executar(tx, id))).rejects.toThrow('sem enviador');
   });
 
-  it('templates: texto e HTML, HTML escapado, lembrete com o vencimento recebido', () => {
-    const intimacao = renderizar('nova-intimacao', {
-      numeroProcesso: '<1>',
-      link: 'https://app.exemplo.invalid/x',
-    });
-    expect(intimacao.html).toContain('&#60;1&#62;');
-    expect(intimacao.texto).toContain('https://app.exemplo.invalid/x');
-    const lembrete = renderizar('lembrete-prazo', {
-      numeroProcesso: '1',
-      vencimento: '15/10/2026',
-      link: 'https://app.exemplo.invalid/x',
-    });
-    expect(lembrete.assunto).toBe('Prazo do processo 1 vence em 15/10/2026');
+  it('template retirado: a notificação pedida em outra versão vai para a DLQ com o motivo', async () => {
+    const r = await pedir(pedido());
+    if (!r.ok || !r.valor.solicitada) throw new Error('não solicitada');
+    const id = r.valor.notificacaoId;
+    const antiga = repositorio.todas().find((n) => n.id === id);
+    if (antiga === undefined) throw new Error('sem notificação');
+    Object.assign(antiga, { versaoTemplate: 1 });
+    await expect(outbox.executar((tx) => enviar.executar(tx, id))).rejects.toThrow(
+      'v1 não está mais disponível',
+    );
   });
 
   describe('desfechos de entrega (webhook)', () => {

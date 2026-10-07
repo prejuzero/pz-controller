@@ -122,14 +122,17 @@ export class EnviarNotificacao<Transacao> {
     const notificacao = await this.notificacoes.buscar(transacao, notificacaoId);
     if (notificacao === undefined) throw new Error(`Notificação ${notificacaoId} não encontrada`);
     if (notificacao.enviada) return;
-    const { canal, tipo, dados, chave, destinatarios } = notificacao.estado;
+    const { canal, tipo, dados, chave, destinatarios, versaoTemplate } = notificacao.estado;
+    // A notificação sai na versão em que foi pedida; versão retirada vai para a DLQ com o motivo.
+    if (versaoTemplate !== TEMPLATES[tipo].versao)
+      throw new Error(`Template ${tipo} v${String(versaoTemplate)} não está mais disponível`);
     const enviador = this.enviadores[canal];
     // Nada falha em silêncio: sem enviador o evento vai para a DLQ com o motivo.
     if (enviador === undefined) throw new Error(`Canal ${canal} sem enviador configurado`);
     const resultado = await enviador.enviar({
       idempotencia: chave,
       destinatarios,
-      mensagem: renderizar(tipo, dados, canal, enviador.capacidades),
+      mensagem: await renderizar(tipo, dados, canal, enviador.capacidades),
     });
     notificacao.registrarEnvio(resultado.idExterno, this.relogio.agora());
     await this.notificacoes.registrarEnvio(transacao, notificacao);
