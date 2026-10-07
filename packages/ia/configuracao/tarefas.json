@@ -1,0 +1,27 @@
+{
+  "versao": "2026-10-07.1",
+  "tarefas": {
+    "classificar-ato": {
+      "descricao": "Classifica o tipo de ato de uma publicação na taxonomia única (HU21). Nunca devolve data.",
+      "modelos": [
+        { "provedor": "anthropic", "modelo": "claude-sonnet-5-5" },
+        { "provedor": "anthropic", "modelo": "claude-opus-5-5" }
+      ],
+      "temperatura": 0,
+      "maxTokensSaida": 1024,
+      "cachePrompt": true,
+      "lote": true
+    },
+    "resumir-publicacao": {
+      "descricao": "Resume o teor de uma publicação para o advogado (sugestão identificada como IA).",
+      "modelos": [
+        { "provedor": "anthropic", "modelo": "claude-haiku-4-5-20251001" },
+        { "provedor": "anthropic", "modelo": "claude-sonnet-5-5" }
+      ],
+      "temperatura": 0.2,
+      "maxTokensSaida": 800,
+      "cachePrompt": true,
+      "lote": false
+    }
+  }
+}
