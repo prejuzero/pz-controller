@@ -1,0 +1,33 @@
+{
+  "name": "@pz/notificacoes",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Módulo notificacoes: notificações multicanal (HU30).",
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "scripts": {
+    "lint": "eslint --max-warnings=0 .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --coverage",
+    "test:int": "vitest run --config vitest.int.config.ts"
+  },
+  "dependencies": {
+    "@pz/auditoria": "workspace:*",
+    "@pz/db": "workspace:*",
+    "@pz/integracoes": "workspace:*",
+    "@pz/kernel": "workspace:*",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@pz/config": "workspace:*",
+    "@types/node": "24.19.1",
+    "@vitest/coverage-v8": "5.0.3",
+    "eslint": "10.12.0",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3",
+    "fast-check": "4.10.2",
+    "testcontainers": "12.2.0"
+  }
+}

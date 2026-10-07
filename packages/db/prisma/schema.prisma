@@ -41,6 +41,8 @@ model Tenant {
   verificacao        AuditoriaVerificacao?
   feriadosLocais     FeriadoLocal[]
   advogados          Advogado[]
+  notificacoes       Notificacao[]
+  preferencias       PreferenciaNotificacao[]
   oabs               Oab[]
 
   @@map("tenant")
@@ -462,4 +464,70 @@ model Oab {
 
   @@index([tenantId, advogadoId])
   @@map("oab")
+}
+
+enum CanalNotificacao {
+  email
+  push
+  whatsapp
+  sms
+
+  @@map("canal_notificacao")
+}
+
+/// Notificação enviada (HU30): uma linha por envio, com chave de idempotência única.
+model Notificacao {
+  id                String           @id @db.Uuid
+  tenantId          String           @map("tenant_id") @db.Uuid
+  usuarioId         String           @map("usuario_id") @db.Uuid
+  prazoId           String?          @map("prazo_id") @db.Uuid
+  canal             CanalNotificacao
+  tipo              String
+  chaveIdempotencia String           @unique @map("chave_idempotencia")
+  template          String
+  versaoTemplate    Int              @map("versao_template")
+  destinatarios     String[]
+  /// Dados do template; mínimos, sem partes nem teor (CLAUDE.md, seção 10).
+  dados             Json
+  enviadaEm         DateTime?        @map("enviada_em") @db.Timestamptz(6)
+  entregueEm        DateTime?        @map("entregue_em") @db.Timestamptz(6)
+  abertaEm          DateTime?        @map("aberta_em") @db.Timestamptz(6)
+  rejeitadaEm       DateTime?        @map("rejeitada_em") @db.Timestamptz(6)
+  motivoRejeicao    String?          @map("motivo_rejeicao")
+  idExterno         String?          @unique @map("id_externo")
+  criadoEm          DateTime         @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm      DateTime         @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, usuarioId, criadoEm])
+  @@map("notificacao")
+}
+
+/// Preferência por tipo e canal (HU30); sem linha, vale o padrão do tipo.
+model PreferenciaNotificacao {
+  tenantId      String           @map("tenant_id") @db.Uuid
+  usuarioId     String           @map("usuario_id") @db.Uuid
+  tipo          String
+  canal         CanalNotificacao
+  ativo         Boolean
+  horarioResumo DateTime?        @map("horario_resumo") @db.Time(6)
+  antecedencias Int[]            @default([])
+  criadoEm      DateTime         @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm  DateTime         @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@id([usuarioId, tipo, canal])
+  @@index([tenantId])
+  @@map("preferencia_notificacao")
+}
+
+/// Endereço que rejeitou ou marcou spam (HU30): global, não recebe de nenhum tenant.
+model Supressao {
+  email    String   @id
+  motivo   String
+  criadaEm DateTime @default(now()) @map("criada_em") @db.Timestamptz(6)
+
+  @@map("supressao")
 }

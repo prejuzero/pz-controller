@@ -88,6 +88,17 @@ export const OabRemovida = definirEvento(
   }),
 );
 
+/** Notificação pedida (HU30): o worker renderiza o template e envia pelo canal. */
+export const NotificacaoSolicitada = definirEvento(
+  'NotificacaoSolicitada',
+  1,
+  z.object({
+    notificacaoId: z.uuid(),
+    canal: z.enum(['email', 'push', 'whatsapp', 'sms']),
+    tipo: z.string().min(1),
+  }),
+);
+
 export const EVENTOS = catalogoDeEventos(
   SituacaoVerificada,
   RedefinicaoDeSenhaSolicitada,
@@ -97,4 +108,5 @@ export const EVENTOS = catalogoDeEventos(
   OabAdicionada,
   OabRemovida,
   VerificacaoDeEmailSolicitada,
+  NotificacaoSolicitada,
 );

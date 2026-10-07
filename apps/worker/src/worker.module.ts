@@ -14,6 +14,7 @@ import { Banco, BancoSistema, OutboxPostgres } from '@pz/db';
 import { CifraAesGcm, EmailsDosUsuariosPostgres, EnviarAvisosDeSeguranca } from '@pz/identidade';
 import { RegistroDeAdaptadores } from '@pz/integracoes';
 import { SystemClock } from '@pz/kernel';
+import { EnviarNotificacao, NotificacoesPostgres } from '@pz/notificacoes';
 import { criarLogger, registrarErro } from '@pz/observability';
 import {
   ConsultarSituacao,
@@ -48,6 +49,7 @@ import { Filas } from './filas/runtime.js';
 import { ServicoDeFilas } from './filas/servico.js';
 import { ConsumidorDeAvisosDeIdentidade } from './identidade/consumidor.js';
 import { RelayDeWebhooks } from './integracoes/webhooks.js';
+import { ConsumidorDeNotificacoes } from './notificacoes/consumidor.js';
 import { RecursosDoBanco } from './recursos.js';
 import { ConsumidorDeSituacao } from './saude/consumidor.js';
 
@@ -246,6 +248,7 @@ export class WorkerModule {
       // Consumidores (lista explícita, CLAUDE.md seção 6).
       ConsumidorDeSituacao,
       ConsumidorDeAvisosDeIdentidade,
+      ConsumidorDeNotificacoes,
       ConsumidorDeAuditoria,
       ConsumidorDoCalendario,
       {
@@ -280,6 +283,23 @@ export class WorkerModule {
             new CifraAesGcm(ambiente.CHAVE_CIFRAGEM),
             ambiente.PORTAL_URL,
           ),
+      },
+      {
+        provide: EnviarNotificacao,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) => {
+          const email = opcoes.email ?? emailDoAmbiente(ambiente, relogio);
+          return new EnviarNotificacao(
+            new NotificacoesPostgres(),
+            {
+              email: {
+                enviar: ({ idempotencia, destinatarios, mensagem }) =>
+                  email.enviar({ idempotencia, para: [...destinatarios], ...mensagem }),
+              },
+            },
+            relogio,
+          );
+        },
       },
     ];
     return { module: WorkerModule, imports: [DiscoveryModule], providers: provedores };

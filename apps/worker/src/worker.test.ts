@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { esquemaWorker } from './ambiente.js';
 import { DespachanteDeEventos } from './eventos/consome.js';
+import { ConsumidorDeNotificacoes } from './notificacoes/consumidor.js';
 import { criarServidorDeSaude } from './saude/servidor.js';
 import { criarWorker } from './worker.js';
 
@@ -104,6 +105,7 @@ describe('@Consome e o despachante', () => {
         ['DispositivoRegistrado@1', ['ConsumidorDeAuditoria.dispositivoRegistrado']],
         ['SessaoRevogada@1', ['ConsumidorDeAuditoria.sessaoRevogada']],
         ['CalendarioAlterado@1', ['ConsumidorDoCalendario.alterado']],
+        ['NotificacaoSolicitada@1', ['ConsumidorDeNotificacoes.solicitada']],
       ]),
     );
   });
@@ -200,5 +202,64 @@ describe('verificadores do ambiente', () => {
       await worker.close();
       worker = undefined;
     }
+  });
+});
+
+describe('notificações (HU30)', () => {
+  it('NotificacaoSolicitada envia pelo ProvedorEmail com a chave de idempotência', async () => {
+    const enviados: { idempotencia: string; para: string[] }[] = [];
+    worker = await criarWorker({
+      ambiente,
+      relogio,
+      verificadores: [disponivel],
+      outbox: new OutboxEmMemoria(),
+      filas: false,
+      cacheDoCalendario,
+      email: {
+        enviar: (email) => {
+          enviados.push({ idempotencia: email.idempotencia, para: email.para });
+          return Promise.resolve({ idExterno: 'ext-1', aceitoEm: relogio.agora() });
+        },
+        saude: () => Promise.resolve({ estado: 'operacional', verificadoEm: relogio.agora() }),
+      },
+    });
+    await worker.init();
+    const id = gerarUuidV7(relogio);
+    const atualizados: unknown[] = [];
+    // Transação falsa no formato do Prisma: só o que o repositório usa.
+    const transacao = {
+      notificacao: {
+        findUnique: () =>
+          Promise.resolve({
+            id,
+            tenantId: id,
+            usuarioId: id,
+            prazoId: null,
+            canal: 'email',
+            tipo: 'nova-intimacao',
+            chaveIdempotencia: 'chave-1',
+            versaoTemplate: 1,
+            destinatarios: ['ana@exemplo.invalid'],
+            dados: { numeroProcesso: '1', link: 'https://app.exemplo.invalid/x' },
+            enviadaEm: null,
+            idExterno: null,
+          }),
+        update: (args: unknown) => {
+          atualizados.push(args);
+          return Promise.resolve({});
+        },
+      },
+    };
+    await worker.get(ConsumidorDeNotificacoes).solicitada(transacao as never, {
+      id,
+      tipo: 'NotificacaoSolicitada',
+      versao: 1,
+      tenantId: id,
+      agregadoId: id,
+      ocorridoEm: relogio.agora(),
+      payload: { notificacaoId: id, canal: 'email', tipo: 'nova-intimacao' },
+    });
+    expect(enviados).toEqual([{ idempotencia: 'chave-1', para: ['ana@exemplo.invalid'] }]);
+    expect(atualizados).toHaveLength(1);
   });
 });
