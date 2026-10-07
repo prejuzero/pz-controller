@@ -139,5 +139,107 @@
       "mcp": "Assistente de IA",
       "integrador": "Integração"
     }
+  },
+  "calendario": {
+    "titulo": "Calendário forense",
+    "descricaoCuradoria": "Feriados, recessos, portarias e indisponibilidades que valem para todos os escritórios. Cada evento só passa a contar depois de aprovado por outro curador.",
+    "descricaoEscritorio": "A consulta dos dias sem contagem por jurisdição chega nas próximas entregas. Os feriados do seu escritório ficam em Configurações > Feriados locais.",
+    "irFeriadosLocais": "Ir para Feriados locais",
+    "ano": "Ano",
+    "filtroAbrangencia": "Abrangência",
+    "todas": "Todas",
+    "novoEvento": "Novo evento",
+    "importarCsv": "Importar CSV",
+    "vazio": "Nenhum evento neste ano.",
+    "colunas": {
+      "periodo": "Período",
+      "abrangencia": "Abrangência",
+      "local": "Local",
+      "tipo": "Tipo",
+      "descricao": "Descrição",
+      "ato": "Ato normativo",
+      "situacao": "Situação",
+      "acoes": "Ações"
+    },
+    "abrangencias": {
+      "nacional": "Nacional",
+      "uf": "Estadual",
+      "municipio": "Municipal",
+      "tribunal": "Tribunal",
+      "comarca": "Comarca"
+    },
+    "tipos": {
+      "feriado": "Feriado",
+      "recesso": "Recesso",
+      "portaria": "Portaria (suspensão)",
+      "indisponibilidade": "Indisponibilidade"
+    },
+    "situacoes": {
+      "rascunho": "Aguardando aprovação",
+      "aprovado": "Aprovado",
+      "revogado": "Revogado"
+    },
+    "campos": {
+      "abrangencia": "Abrangência",
+      "uf": "UF",
+      "municipioIbge": "Código IBGE do município",
+      "tribunal": "Tribunal (sigla)",
+      "comarca": "Comarca",
+      "tipo": "Tipo",
+      "inicio": "Início",
+      "fim": "Fim (inclusivo)",
+      "descricao": "Descrição",
+      "atoNormativo": "Ato normativo (com artigo)",
+      "urlAto": "Link da fonte oficial"
+    },
+    "ajudaUf": "Sigla com duas letras, ex.: SP.",
+    "ajudaIbge": "Sete dígitos, ex.: 3550308.",
+    "ajudaAto": "Lei, resolução ou portaria com o dispositivo. Sem fundamento oficial, não cadastre.",
+    "ajudaUrl": "Endereço HTTPS do diário oficial, do planalto.gov.br ou do site do tribunal.",
+    "avisoRecalculo": "Ao salvar, os prazos afetados por este período serão recalculados e voltarão para conferência.",
+    "salvar": "Salvar",
+    "propor": "Propor evento",
+    "proposto": "Evento proposto. Ele vale depois da aprovação de outro curador.",
+    "cancelar": "Cancelar",
+    "aprovar": "Aprovar",
+    "aprovarTitulo": "Aprovar este evento?",
+    "aprovarDescricao": "Confira o ato normativo e o período na fonte oficial antes de aprovar. Os prazos afetados serão recalculados.",
+    "aprovado": "Evento aprovado.",
+    "revogar": "Revogar",
+    "revogarTitulo": "Revogar este evento?",
+    "revogarDescricao": "O evento deixa de valer e os prazos afetados são recalculados. O motivo vai para a trilha de auditoria.",
+    "motivo": "Motivo",
+    "ajudaMotivo": "Pelo menos 10 caracteres.",
+    "revogado": "Evento revogado.",
+    "importar": {
+      "titulo": "Importar eventos por CSV",
+      "descricao": "Cabeçalho: abrangencia;uf;municipioIbge;tribunal;comarca;tipo;inicio;fim;descricao;atoNormativo;urlAto (separador ; ou ,). Os eventos entram como rascunho e precisam de aprovação.",
+      "arquivo": "Arquivo CSV",
+      "conteudo": "Conteúdo do CSV",
+      "validar": "Validar",
+      "gravar": "Gravar rascunhos",
+      "semProblemas": "{linhas, plural, one {# linha válida} other {# linhas válidas}}. Confira e grave os rascunhos.",
+      "comProblemas": "Corrija as linhas abaixo e valide de novo. Nada foi gravado.",
+      "linha": "Linha {linha}",
+      "gravados": "{total, plural, one {# rascunho gravado} other {# rascunhos gravados}}."
+    }
+  },
+  "feriadosLocais": {
+    "titulo": "Feriados locais",
+    "descricao": "Feriados e suspensões da sua comarca ou do seu tribunal que ainda não estão no calendário oficial do PrejuZero. Valem só para o seu escritório.",
+    "novo": "Novo feriado local",
+    "cadastrar": "Cadastrar",
+    "cadastrado": "Feriado local cadastrado.",
+    "vazio": "Nenhum feriado local neste ano.",
+    "revogarTitulo": "Revogar este feriado local?",
+    "revogarDescricao": "Ele deixa de valer para o escritório e os prazos afetados são recalculados.",
+    "revogado": "Feriado local revogado."
+  },
+  "configuracoes": {
+    "titulo": "Configurações",
+    "seguranca": "Segurança",
+    "segurancaDescricao": "Verificação em duas etapas, sessões ativas e últimos acessos.",
+    "feriadosLocais": "Feriados locais",
+    "feriadosLocaisDescricao": "Feriados e suspensões da sua comarca que valem para o escritório."
   }
 }
