@@ -122,6 +122,18 @@ export const NotificacaoRejeitada = definirEvento(
   }),
 );
 
+/** Consentimento de um canal (push, WhatsApp, SMS) concedido ou revogado (HU30); sem o destino. */
+export const ConsentimentoCanalAlterado = definirEvento(
+  'ConsentimentoCanalAlterado',
+  1,
+  z.object({
+    consentimentoId: z.uuid(),
+    usuarioId: z.uuid(),
+    canal: z.enum(['push', 'whatsapp', 'sms']),
+    situacao: z.enum(['concedido', 'revogado']),
+  }),
+);
+
 export const EVENTOS = catalogoDeEventos(
   SituacaoVerificada,
   RedefinicaoDeSenhaSolicitada,
@@ -134,4 +146,5 @@ export const EVENTOS = catalogoDeEventos(
   NotificacaoSolicitada,
   NotificacaoEntregue,
   NotificacaoRejeitada,
+  ConsentimentoCanalAlterado,
 );

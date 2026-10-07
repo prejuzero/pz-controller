@@ -16,9 +16,32 @@ export type {
   DestinosDoUsuario,
   EnviadorDeCanal,
   ListaDeSupressao,
+  DestinoPushNovo,
   PreferenciasDeNotificacao,
+  RepositorioDeConsentimentos,
+  RepositorioDeDestinosPush,
   RepositorioDeNotificacoes,
 } from './application/portas.js';
+export {
+  CANAIS_COM_CONSENTIMENTO,
+  exigeConsentimento,
+  ORIGENS_DO_CONSENTIMENTO,
+} from './domain/consentimento.js';
+export type {
+  CanalComConsentimento,
+  ConsentimentoCanalAlterado,
+  OrigemDoConsentimento,
+} from './domain/consentimento.js';
+export {
+  ConcederConsentimento,
+  DesativarDestinoPush,
+  ListarConsentimentos,
+  PedidoDeConsentimento,
+  PedidoDeDestinoPush,
+  RegistrarDestinoPush,
+  RevogarConsentimento,
+} from './application/consentimentos.js';
+export type { AutorDoConsentimento, ConsentimentoListado } from './application/consentimentos.js';
 export { renderizar, TEMPLATES } from './application/templates.js';
 export type { MensagemRenderizada } from './application/templates.js';
 export { CANAIS, chaveDeIdempotencia, TIPOS_DE_NOTIFICACAO } from './domain/notificacao.js';
@@ -30,7 +53,8 @@ export type {
   NotificacaoSolicitada,
   TipoDeNotificacao,
 } from './domain/notificacao.js';
-export { NotificacoesEmMemoria } from './infra/em-memoria.js';
+export { ConsentimentosEmMemoria, NotificacoesEmMemoria } from './infra/em-memoria.js';
+export { ConsentimentosPostgres, DestinosPushPostgres } from './infra/consentimentos-postgres.js';
 export {
   NotificacoesPostgres,
   PreferenciasPostgres,

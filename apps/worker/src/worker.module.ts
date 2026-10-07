@@ -344,7 +344,13 @@ export class WorkerModule {
             {
               email: {
                 enviar: ({ idempotencia, destinatarios, mensagem }) =>
-                  email.enviar({ idempotencia, para: [...destinatarios], ...mensagem }),
+                  email.enviar({
+                    idempotencia,
+                    para: [...destinatarios],
+                    assunto: mensagem.assunto,
+                    html: mensagem.html,
+                    texto: mensagem.texto,
+                  }),
               },
             },
             relogio,

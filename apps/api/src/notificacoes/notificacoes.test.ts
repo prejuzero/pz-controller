@@ -10,7 +10,7 @@ import {
   TentativasEmMemoria,
 } from '@pz/identidade';
 import { FixedClock, gerarUuidV7, Instant, OutboxEmMemoria } from '@pz/kernel';
-import { ConsultarAvisosDeEntrega, NotificacoesEmMemoria } from '@pz/notificacoes';
+import { ConsentimentosEmMemoria, NotificacoesEmMemoria } from '@pz/notificacoes';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { esquemaApi } from '../ambiente.js';
@@ -18,11 +18,13 @@ import { criarApi } from '../app.js';
 
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import type { CodigoPerfil } from '@pz/identidade';
+import type { TransacaoEmMemoria, Uuid } from '@pz/kernel';
 
 /** Avisos de entrega do portal (HU30). Dados FICTÍCIOS (e-mails .invalid). */
 const relogio = new FixedClock(Instant.deIso('2026-10-07T12:00:00Z'));
 const sessoes = new SessoesEmMemoria();
 const perfis = new PerfisEmMemoria();
+const auditados: string[] = [];
 let api: NestFastifyApplication;
 
 beforeAll(async () => {
@@ -46,17 +48,29 @@ beforeAll(async () => {
       perfis,
     },
     janelaDeRequisicoes: { registrar: () => Promise.resolve(1) },
-    avisosDeEntrega: (r) =>
-      new ConsultarAvisosDeEntrega(
-        outbox,
-        new NotificacoesEmMemoria(),
-        { emails: () => Promise.resolve({ principal: 'ana@exemplo.invalid', copias: [] }) },
-        {
+    notificacoes: () => {
+      const consentimentos = new ConsentimentosEmMemoria();
+      return {
+        unidade: outbox,
+        notificacoes: new NotificacoesEmMemoria(),
+        destinos: {
+          emails: () => Promise.resolve({ principal: 'ana@exemplo.invalid', copias: [] }),
+        },
+        supressao: {
           suprimidos: (_tx, emails) => Promise.resolve(new Set(emails)),
           suprimir: () => Promise.resolve(),
         },
-        r,
-      ),
+        consentimentos,
+        push: consentimentos,
+        trilha: {
+          registrar: (tx, entrada) => {
+            (tx as TransacaoEmMemoria).aoConfirmar(() => auditados.push(entrada.tipo));
+            return Promise.resolve();
+          },
+        },
+        outbox,
+      };
+    },
   });
   await api.init();
   await api.getHttpAdapter().getInstance().ready();
@@ -66,7 +80,7 @@ afterAll(async () => {
   await api.close();
 });
 
-async function sessaoCom(perfil: CodigoPerfil): Promise<string> {
+async function sessaoCom(perfil: CodigoPerfil, dispositivoId?: Uuid): Promise<string> {
   const usuarioId = gerarUuidV7();
   perfis.atribuir(usuarioId, perfil);
   const token = randomBytes(32).toString('base64url');
@@ -78,9 +92,23 @@ async function sessaoCom(perfil: CodigoPerfil): Promise<string> {
     segundoFatorAtivo: true,
     criadaEm: relogio.agora(),
     ultimoUso: relogio.agora(),
+    ...(dispositivoId === undefined ? {} : { dispositivoId }),
   });
   return token;
 }
+
+const pedir = (
+  token: string,
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  url: string,
+  payload?: object,
+) =>
+  api.inject({
+    method,
+    url,
+    headers: { authorization: `Bearer ${token}` },
+    ...(payload === undefined ? {} : { payload }),
+  });
 
 const consultar = (token?: string) =>
   api.inject({
@@ -103,5 +131,49 @@ describe('avisos de entrega pela API (HU30)', () => {
 
   it('sem sessão, 401', async () => {
     expect((await consultar()).statusCode).toBe(401);
+  });
+
+  it('consentimentos: concede (idempotente), lista, revoga; e-mail e telefone inválido, 400', async () => {
+    const token = await sessaoCom('advogado');
+    const url = '/v1/notificacoes/consentimentos';
+    const pedido = { canal: 'sms', destino: '+5511987654321' };
+    const criado = await pedir(token, 'POST', url, pedido);
+    expect(criado.statusCode).toBe(201);
+    const { id } = criado.json<{ id: string }>();
+    expect((await pedir(token, 'POST', url, pedido)).json<{ id: string }>().id).toBe(id);
+    expect((await pedir(token, 'GET', url)).json<{ itens: unknown[] }>().itens).toHaveLength(1);
+    expect((await pedir(token, 'POST', url, { canal: 'email', destino: 'a@b.c' })).statusCode).toBe(
+      400,
+    );
+    expect((await pedir(token, 'POST', url, { canal: 'sms', destino: '119' })).statusCode).toBe(
+      400,
+    );
+    expect((await pedir(token, 'DELETE', `${url}/${id}`)).statusCode).toBe(204);
+    expect((await pedir(token, 'GET', url)).json<{ itens: unknown[] }>().itens).toHaveLength(0);
+    expect((await pedir(token, 'DELETE', `${url}/x`)).statusCode).toBe(400);
+    const outro = await sessaoCom('advogado');
+    const alheio = await pedir(token, 'POST', url, pedido);
+    const idAlheio = alheio.json<{ id: string }>().id;
+    expect((await pedir(outro, 'DELETE', `${url}/${idAlheio}`)).statusCode).toBe(404);
+  });
+
+  it('destino de push: só na sessão de um dispositivo; desativar é idempotente', async () => {
+    const url = '/v1/notificacoes/destino-push';
+    const corpo = { plataforma: 'android', token: 'token-ficticio' };
+    const portal = await sessaoCom('advogado');
+    expect((await pedir(portal, 'PUT', url, corpo)).statusCode).toBe(400);
+    const dispositivoId = gerarUuidV7();
+    const app = await sessaoCom('advogado', dispositivoId);
+    const r = await pedir(app, 'PUT', url, corpo);
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toMatchObject({ dispositivoId });
+    expect((await pedir(app, 'DELETE', url)).statusCode).toBe(204);
+    expect((await pedir(app, 'DELETE', url)).statusCode).toBe(204);
+    expect(auditados).toEqual(
+      expect.arrayContaining([
+        'notificacoes.destino-push-registrado',
+        'notificacoes.destino-push-desativado',
+      ]),
+    );
   });
 });

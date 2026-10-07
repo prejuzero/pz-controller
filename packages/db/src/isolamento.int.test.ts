@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   criarLinha,
   tabelasDeNegocio,
+  TABELAS_SEM_DELETE,
   TABELAS_SO_INSERCAO,
   tabelasSemIsolamento,
   valoresDeLinhaNova,
@@ -117,9 +118,15 @@ describe('isolamento por tabela (gerado do catálogo)', () => {
             TENANT_B,
           ])
         ).rowCount,
-        apagadasDeB: (await c.query(`DELETE FROM ${tabela} WHERE tenant_id = $1`, [TENANT_B]))
-          .rowCount,
+        apagadasDeB: TABELAS_SEM_DELETE.includes(tabela)
+          ? 0
+          : (await c.query(`DELETE FROM ${tabela} WHERE tenant_id = $1`, [TENANT_B])).rowCount,
       }));
+      if (TABELAS_SEM_DELETE.includes(tabela))
+        await expect(
+          noTenant('pz_app', TENANT_A, (c) => c.query(`DELETE FROM ${tabela}`)),
+          tabela,
+        ).rejects.toThrow(/permission denied/);
       expect(resultado, tabela).toEqual({
         visiveisDeB: 0,
         todasDeA: true,

@@ -1,6 +1,7 @@
 import { err, ok, Validacao } from '@pz/kernel';
 import { z } from 'zod';
 
+import { exigeConsentimento } from '../domain/consentimento.js';
 import { Notificacao, TIPOS_DE_NOTIFICACAO } from '../domain/notificacao.js';
 
 import { renderizar, TEMPLATES } from './templates.js';
@@ -10,6 +11,7 @@ import type {
   EnviadorDeCanal,
   ListaDeSupressao,
   PreferenciasDeNotificacao,
+  RepositorioDeConsentimentos,
   RepositorioDeNotificacoes,
 } from './portas.js';
 import type { Canal, MotivoDeRejeicao } from '../domain/notificacao.js';
@@ -36,8 +38,9 @@ export type ResultadoDoPedido =
     };
 
 /**
- * Pede uma notificação (HU30): resolve preferência e destinatários (sem os suprimidos), valida os
- * dados no template e grava a notificação e o evento na mesma transação; o worker envia.
+ * Pede uma notificação (HU30): resolve preferência e destinatários, valida os dados no template e
+ * grava a notificação e o evento na mesma transação; o worker envia. No e-mail, os endereços do
+ * usuário sem os suprimidos; nos outros canais, só destinos com consentimento ativo (ADR-015).
  * Canal novo = novo enviador e opção nas preferências, sem mudar este caso de uso.
  */
 export class Notificar<Transacao> {
@@ -46,6 +49,7 @@ export class Notificar<Transacao> {
     private readonly preferencias: PreferenciasDeNotificacao<Transacao>,
     private readonly destinos: DestinosDoUsuario<Transacao>,
     private readonly supressao: ListaDeSupressao<Transacao>,
+    private readonly consentimentos: RepositorioDeConsentimentos<Transacao>,
     private readonly outbox: Outbox<Transacao>,
     private readonly relogio: Clock,
   ) {}
@@ -64,16 +68,9 @@ export class Notificar<Transacao> {
     const uid = usuarioId as Uuid;
     if ((await this.preferencias.ativo(transacao, uid, tipo, canal)) === false)
       return ok({ solicitada: false, motivo: 'desativada' });
-    const { principal, copias } = await this.destinos.emails(transacao, uid);
-    const todos = [
-      ...new Set(
-        [principal, ...copias]
-          .filter((e): e is string => e !== undefined)
-          .map((e) => e.trim().toLowerCase()),
-      ),
-    ];
-    const suprimidos = await this.supressao.suprimidos(transacao, todos);
-    const destinatarios = todos.filter((e) => !suprimidos.has(e));
+    const destinatarios = exigeConsentimento(canal)
+      ? [...new Set(await this.consentimentos.enderecos(transacao, uid, canal))]
+      : await this.#emails(transacao, uid);
     if (destinatarios.length === 0) return ok({ solicitada: false, motivo: 'sem-destinatario' });
 
     const notificacao = Notificacao.solicitar(
@@ -94,6 +91,19 @@ export class Notificar<Transacao> {
       return ok({ solicitada: false, motivo: 'ja-solicitada' });
     await this.outbox.gravar(transacao, notificacao.retirarEventos());
     return ok({ solicitada: true, notificacaoId: notificacao.id });
+  }
+
+  async #emails(transacao: Transacao, usuarioId: Uuid): Promise<string[]> {
+    const { principal, copias } = await this.destinos.emails(transacao, usuarioId);
+    const todos = [
+      ...new Set(
+        [principal, ...copias]
+          .filter((e): e is string => e !== undefined)
+          .map((e) => e.trim().toLowerCase()),
+      ),
+    ];
+    const suprimidos = await this.supressao.suprimidos(transacao, todos);
+    return todos.filter((e) => !suprimidos.has(e));
   }
 }
 
@@ -119,7 +129,7 @@ export class EnviarNotificacao<Transacao> {
     const resultado = await enviador.enviar({
       idempotencia: chave,
       destinatarios,
-      mensagem: renderizar(tipo, dados),
+      mensagem: renderizar(tipo, dados, canal, enviador.capacidades),
     });
     notificacao.registrarEnvio(resultado.idExterno, this.relogio.agora());
     await this.notificacoes.registrarEnvio(transacao, notificacao);

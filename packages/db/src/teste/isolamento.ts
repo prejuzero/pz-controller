@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 
 import type pg from 'pg';
 
@@ -70,6 +70,9 @@ async function valorPara(cliente: pg.Client, coluna: Coluna): Promise<unknown> {
     case 'text':
     case 'character varying':
       return `teste-${randomUUID()}`;
+    // CHAR(n): cabe em qualquer tamanho; colunas com formato próprio vão em COLUNAS_FIXAS.
+    case 'character':
+      return 'X';
     case 'integer':
     case 'bigint':
     case 'smallint':
@@ -80,6 +83,8 @@ async function valorPara(cliente: pg.Client, coluna: Coluna): Promise<unknown> {
     case 'jsonb':
     case 'json':
       return {};
+    case 'ARRAY':
+      return [];
     case 'timestamp with time zone':
     case 'timestamp without time zone':
     case 'date':
@@ -103,9 +108,15 @@ async function valorPara(cliente: pg.Client, coluna: Coluna): Promise<unknown> {
 /** Tabelas globais referenciadas por tabelas de negócio: usa uma linha que a migração já semeou. */
 const LINHAS_GLOBAIS: Readonly<Record<string, string>> = { perfil: 'advogado' };
 
-/** Colunas com valor fixo para a linha satisfazer as CHECKs da tabela (dados fictícios). */
+/**
+ * Colunas com valor fixo (ou gerado, se função) para a linha satisfazer as CHECKs e chaves únicas
+ * da tabela (dados fictícios).
+ */
 const COLUNAS_FIXAS: Readonly<Record<string, Record<string, unknown>>> = {
   feriado_local: { abrangencia: 'uf', uf: 'XA' },
+  advogado: { cpf: () => String(randomInt(1e10, 1e11 - 1)).padStart(11, '0') },
+  oab: { uf: 'XA' },
+  consentimento_canal: { canal: 'push', origem: 'app' },
 };
 
 /**
@@ -130,7 +141,7 @@ export async function criarLinha(
       valores[coluna.nome] = pai.id;
     } else valores[coluna.nome] = await valorPara(cliente, coluna);
   }
-  Object.assign(valores, COLUNAS_FIXAS[tabela]);
+  aplicarFixas(tabela, valores);
   const nomes = Object.keys(valores);
   const { rows } = await cliente.query<Record<string, unknown>>(
     `INSERT INTO ${tabela} (${nomes.map((n) => `"${n}"`).join(', ')})
@@ -158,7 +169,13 @@ export async function valoresDeLinhaNova(
       valores[coluna.nome] = (await criarLinha(cliente, coluna.referencia, tenantId)).id;
     } else valores[coluna.nome] = await valorPara(cliente, coluna);
   }
-  return Object.assign(valores, COLUNAS_FIXAS[tabela]);
+  return aplicarFixas(tabela, valores);
+}
+
+function aplicarFixas(tabela: string, valores: Record<string, unknown>): Record<string, unknown> {
+  for (const [nome, valor] of Object.entries(COLUNAS_FIXAS[tabela] ?? {}))
+    valores[nome] = typeof valor === 'function' ? (valor as () => unknown)() : valor;
+  return valores;
 }
 
 /**
@@ -167,3 +184,11 @@ export async function valoresDeLinhaNova(
  * só a revogação, controlada por trigger; qualquer outro UPDATE é recusado (HU13).
  */
 export const TABELAS_SO_INSERCAO: readonly string[] = ['evento_auditoria', 'feriado_local'];
+
+/** Tabelas sem DELETE para a aplicação (o registro fica: remoção vira estado, LGPD e prova). */
+export const TABELAS_SEM_DELETE: readonly string[] = [
+  'advogado',
+  'oab',
+  'notificacao',
+  'consentimento_canal',
+];

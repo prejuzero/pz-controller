@@ -99,6 +99,7 @@ export {
 export {
   CalendarioAlterado,
   catalogoDeEventos,
+  ConsentimentoCanalAlterado,
   ContaBloqueada,
   definirEvento,
   EVENTOS,
@@ -108,7 +109,17 @@ export {
 export type { ContratoEvento } from './eventos/index.js';
 export {
   AvisosDeEntrega,
+  concederConsentimento,
+  ConsentimentoDoCanal,
+  ConsentimentosDoUsuario,
   consultarAvisosDeEntrega,
+  desativarDestinoPush,
+  DestinoPushRegistrado,
+  listarConsentimentos,
+  PedidoDeConsentimento,
+  PedidoDeDestinoPush,
+  registrarDestinoPush,
+  revogarConsentimento,
   ROTAS_NOTIFICACOES,
 } from './notificacoes/index.js';
 export { gerarOpenApi } from './openapi.js';
