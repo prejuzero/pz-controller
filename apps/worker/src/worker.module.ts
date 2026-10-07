@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DiscoveryModule } from '@nestjs/core';
+import { DESCRITOR_DJEN, FontePublicacoesDjen } from '@pz/adapter-djen';
 import { ArmazenamentoS3 } from '@pz/adapter-s3';
 import { criarProvedorEmailSes, DESCRITOR_SES, WebhooksSes } from '@pz/adapter-ses';
 import { DESCRITOR_SMTP, ProvedorEmailSmtp } from '@pz/adapter-smtp';
@@ -11,6 +12,13 @@ import {
   VerificarIntegridade,
 } from '@pz/auditoria';
 import { CacheDeDiasNaoUteisRedis, InvalidarCacheDoCalendario } from '@pz/calendario';
+import {
+  AssinaturasPostgres,
+  CapturaPostgres,
+  ExecutarCaptura,
+  ManterAssinaturas,
+  PlanejarCaptura,
+} from '@pz/captura';
 import { Banco, BancoSistema, OutboxPostgres } from '@pz/db';
 import { CifraAesGcm, EmailsDosUsuariosPostgres, EnviarAvisosDeSeguranca } from '@pz/identidade';
 import { RegistroDeAdaptadores } from '@pz/integracoes';
@@ -32,6 +40,7 @@ import { Redis } from 'ioredis';
 
 import { ConsumidorDeAuditoria } from './auditoria/consumidor.js';
 import { ConsumidorDoCalendario } from './calendario/consumidor.js';
+import { ConsumidorDaCaptura } from './captura/consumidor.js';
 import { DespachanteDeEventos } from './eventos/consome.js';
 import { RelayDoOutbox } from './eventos/relay.js';
 import {
@@ -66,7 +75,7 @@ import type { ProcessadorDeWebhook } from './integracoes/webhooks.js';
 import type { DynamicModule, Provider } from '@nestjs/common';
 import type { DestinoWorm } from '@pz/auditoria';
 import type { CacheDeDiasNaoUteis } from '@pz/calendario';
-import type { ProvedorEmail } from '@pz/integracoes';
+import type { FontePublicacoes, ProvedorEmail } from '@pz/integracoes';
 import type { Clock, OutboxEmMemoria, Uuid } from '@pz/kernel';
 import type { VerificadorDeDependencia } from '@pz/saude';
 
@@ -87,6 +96,8 @@ export interface OpcoesWorker {
   readonly worm?: DestinoWorm;
   /** Cache do calendário no lugar do Redis (testes). */
   readonly cacheDoCalendario?: CacheDeDiasNaoUteis;
+  /** Fonte de publicações no lugar do DJEN (testes, sem rede). */
+  readonly fonteDePublicacoes?: FontePublicacoes;
 }
 
 function verificadoresDoAmbiente(
@@ -202,6 +213,20 @@ function emailDoAmbiente(ambiente: AmbienteWorker, relogio: Clock): ProvedorEmai
   return registro.obter('provedor-email');
 }
 
+/**
+ * Fonte de publicações pelo registro de adaptadores (resiliência, cota e saúde padrão, ADR-005).
+ * O adaptador sai de CAPTURA_FONTE: trocar de fonte é configuração (HU17).
+ */
+function fonteDoAmbiente(ambiente: AmbienteWorker, relogio: Clock): FontePublicacoes {
+  const registro = new RegistroDeAdaptadores(
+    { padrao: { 'fonte-publicacoes': ambiente.CAPTURA_FONTE } },
+    { relogio },
+  );
+  registro.registrar(DESCRITOR_DJEN, () => new FontePublicacoesDjen({ relogio }));
+  registro.validar();
+  return registro.obter('fonte-publicacoes');
+}
+
 /** Processadores de webhook por adaptador; o do SES só com tópico SNS configurado. */
 function processadoresDoAmbiente(
   ambiente: AmbienteWorker,
@@ -301,6 +326,39 @@ export class WorkerModule {
       ConsumidorDeNotificacoes,
       ConsumidorDeAuditoria,
       ConsumidorDoCalendario,
+      ConsumidorDaCaptura,
+      {
+        provide: ManterAssinaturas,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) => new ManterAssinaturas(new AssinaturasPostgres(), relogio),
+      },
+      {
+        // Alvos são globais: planejamento e entrega atravessam tenants (sistema, com motivo).
+        provide: PlanejarCaptura,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new PlanejarCaptura(
+            sistema.unidade('captura: planejamento'),
+            new CapturaPostgres(),
+            relogio,
+            {
+              diasIniciais: ambiente.CAPTURA_DIAS_INICIAIS,
+            },
+          ),
+      },
+      {
+        provide: ExecutarCaptura,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new ExecutarCaptura(
+            sistema.unidade('captura: entrega aos tenants assinantes'),
+            new CapturaPostgres(),
+            opcoes.fonteDePublicacoes ?? fonteDoAmbiente(ambiente, relogio),
+            outboxPostgres,
+            relogio,
+            ambiente.CAPTURA_FONTE,
+          ),
+      },
       {
         provide: InvalidarCacheDoCalendario,
         useValue: new InvalidarCacheDoCalendario(

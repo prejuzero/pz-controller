@@ -138,6 +138,9 @@ describe('@Consome e o despachante', () => {
         ['CalendarioAlterado@1', ['ConsumidorDoCalendario.alterado']],
         ['NotificacaoSolicitada@1', ['ConsumidorDeNotificacoes.solicitada']],
         ['NotificacaoRejeitada@1', ['ConsumidorDeAuditoria.notificacaoRejeitada']],
+        ['OabAdicionada@1', ['ConsumidorDaCaptura.oabAdicionada']],
+        ['OabRemovida@1', ['ConsumidorDaCaptura.oabRemovida']],
+        ['ProcessoMonitorado@1', ['ConsumidorDaCaptura.processoMonitorado']],
       ]),
     );
   });
