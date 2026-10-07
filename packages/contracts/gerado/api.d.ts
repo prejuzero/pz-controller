@@ -428,6 +428,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/notificacoes/consentimentos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Consentimentos ativos do usuário por canal (push, WhatsApp, SMS). */
+        get: operations["listarConsentimentos"];
+        put?: never;
+        /** Registra o consentimento para receber avisos num canal e destino. */
+        post: operations["concederConsentimento"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/notificacoes/consentimentos/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoga o consentimento de um canal. */
+        delete: operations["revogarConsentimento"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/notificacoes/destino-push": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Registra ou atualiza o token de push do dispositivo da sessão. */
+        put: operations["registrarDestinoPush"];
+        post?: never;
+        /** Desativa o push do dispositivo da sessão. */
+        delete: operations["desativarDestinoPush"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/oabs": {
         parameters: {
             query?: never;
@@ -556,9 +609,30 @@ export interface components {
             /** @description O mesmo segredo, para digitar manualmente. */
             segredo: string;
         };
+        ConsentimentoDoCanal: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            canal: "push" | "whatsapp" | "sms";
+            destino: string;
+            /** Format: date-time */
+            concedidoEm: string;
+            /** @enum {string} */
+            origem: "portal" | "app" | "mcp" | "integrador";
+        };
+        ConsentimentosDoUsuario: {
+            /** @description Só os ativos. */
+            itens: components["schemas"]["ConsentimentoDoCanal"][];
+        };
         Credenciais: {
             email: string;
             senha: string;
+        };
+        DestinoPushRegistrado: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            dispositivoId: string;
         };
         DiasNaoUteis: {
             itens: {
@@ -676,6 +750,32 @@ export interface components {
             oabsSuplementares?: components["schemas"]["PedidoDeOab"][];
             /** @description Recebem cópia das notificações. */
             emailsAdicionais?: string[];
+        };
+        /** @description O e-mail não entra: segue a base legal do serviço contratado. */
+        PedidoDeConsentimento: {
+            /** @constant */
+            canal: "push";
+            /**
+             * Format: uuid
+             * @description ID do dispositivo (app).
+             */
+            destino: string;
+        } | {
+            /** @constant */
+            canal: "whatsapp";
+            /** @description Telefone E.164 (+5511...). */
+            destino: string;
+        } | {
+            /** @constant */
+            canal: "sms";
+            /** @description Telefone E.164 (+5511...). */
+            destino: string;
+        };
+        PedidoDeDestinoPush: {
+            /** @enum {string} */
+            plataforma: "ios" | "android" | "web";
+            /** @description Token de push do sistema do aparelho. */
+            token: string;
         };
         PedidoDeEventoDoCalendario: {
             /**
@@ -2522,6 +2622,292 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AvisosDeEntrega"];
                 };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarConsentimentos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentimentosDoUsuario"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    concederConsentimento: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeConsentimento"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentimentoDoCanal"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    revogarConsentimento: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso, sem corpo. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    registrarDestinoPush: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeDestinoPush"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DestinoPushRegistrado"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    desativarDestinoPush: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso, sem corpo. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Não autenticado. */
             401: {

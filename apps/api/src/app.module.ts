@@ -70,8 +70,15 @@ import {
 } from '@pz/identidade';
 import { SystemClock } from '@pz/kernel';
 import {
+  ConcederConsentimento,
+  ConsentimentosPostgres,
   ConsultarAvisosDeEntrega,
+  DesativarDestinoPush,
+  DestinosPushPostgres,
+  ListarConsentimentos,
   NotificacoesPostgres,
+  RegistrarDestinoPush,
+  RevogarConsentimento,
   SupressaoPostgres,
 } from '@pz/notificacoes';
 import { criarLogger, registrarErro } from '@pz/observability';
@@ -134,7 +141,13 @@ import type {
 } from '@pz/identidade';
 import type { ReceptorWebhook } from '@pz/integracoes';
 import type { Clock, Outbox, UnidadeDeTrabalho } from '@pz/kernel';
-import type { DestinosDoUsuario } from '@pz/notificacoes';
+import type {
+  DestinosDoUsuario,
+  ListaDeSupressao,
+  RepositorioDeConsentimentos,
+  RepositorioDeDestinosPush,
+  RepositorioDeNotificacoes,
+} from '@pz/notificacoes';
 import type { VerificadorDeDependencia } from '@pz/saude';
 import type { Queue } from 'bullmq';
 
@@ -173,7 +186,7 @@ export interface OpcoesApi {
   /** Cadastro do advogado (HU11); nos testes, repositórios em memória. */
   readonly cadastro?: (relogio: Clock) => DependenciasDoCadastro;
   /** Avisos de entrega do portal (HU30); nos testes, repositórios em memória. */
-  readonly avisosDeEntrega?: (relogio: Clock) => ConsultarAvisosDeEntrega<unknown>;
+  readonly notificacoes?: (relogio: Clock) => DependenciasDeNotificacoes;
   readonly filas?: {
     readonly reprocessamento: DependenciasDoReprocessamento<unknown>;
     readonly painel: readonly Queue[];
@@ -324,6 +337,46 @@ function provedoresDoCadastro(criar: (relogio: Clock) => DependenciasDoCadastro)
   ];
 }
 
+interface DependenciasDeNotificacoes {
+  readonly unidade: UnidadeDeTrabalho<unknown>;
+  readonly notificacoes: RepositorioDeNotificacoes<unknown>;
+  readonly destinos: DestinosDoUsuario<unknown>;
+  readonly supressao: ListaDeSupressao<unknown>;
+  readonly consentimentos: RepositorioDeConsentimentos<unknown>;
+  readonly push: RepositorioDeDestinosPush<unknown>;
+  readonly trilha: TrilhaDeAuditoria<unknown>;
+  readonly outbox: Outbox<unknown>;
+}
+
+/** Casos de uso das notificações (HU30): avisos de entrega, consentimentos e push. */
+function provedoresDeNotificacoes(
+  criar: (relogio: Clock) => DependenciasDeNotificacoes,
+): Provider[] {
+  const DEPENDENCIAS = Symbol('dependencias das notificacoes');
+  const caso = <T>(
+    classe: Type<T>,
+    montar: (d: DependenciasDeNotificacoes, r: Clock) => T,
+  ): Provider => ({ provide: classe, inject: [DEPENDENCIAS, RELOGIO], useFactory: montar });
+  return [
+    { provide: DEPENDENCIAS, inject: [RELOGIO], useFactory: criar },
+    caso(
+      ConsultarAvisosDeEntrega,
+      (d, r) => new ConsultarAvisosDeEntrega(d.unidade, d.notificacoes, d.destinos, d.supressao, r),
+    ),
+    caso(ListarConsentimentos, (d) => new ListarConsentimentos(d.unidade, d.consentimentos)),
+    caso(
+      ConcederConsentimento,
+      (d, r) => new ConcederConsentimento(d.unidade, d.consentimentos, d.trilha, d.outbox, r),
+    ),
+    caso(
+      RevogarConsentimento,
+      (d, r) => new RevogarConsentimento(d.unidade, d.consentimentos, d.trilha, d.outbox, r),
+    ),
+    caso(RegistrarDestinoPush, (d, r) => new RegistrarDestinoPush(d.unidade, d.push, d.trilha, r)),
+    caso(DesativarDestinoPush, (d) => new DesativarDestinoPush(d.unidade, d.push, d.trilha)),
+  ];
+}
+
 /**
  * Composição da api (CLAUDE.md, seção 6): só liga módulos, controllers e infraestrutura HTTP.
  * Módulos entram por lista explícita.
@@ -399,9 +452,9 @@ export class AppModule {
         trilha: new TrilhaPostgres(),
         outbox: new OutboxPostgres(),
       }));
-    const avisosDeEntrega =
-      opcoes.avisosDeEntrega ??
-      ((relogio: Clock) => {
+    const notificacoes =
+      opcoes.notificacoes ??
+      ((relogio: Clock): DependenciasDeNotificacoes => {
         // Destinos pelas APIs públicas: e-mail da conta (identidade) e cópias (cadastro).
         const contas = new EmailsDosUsuariosPostgres();
         const advogados = new AdvogadosPostgres(relogio);
@@ -415,17 +468,20 @@ export class AppModule {
             };
           },
         };
-        return new ConsultarAvisosDeEntrega(
-          recursos.banco,
-          new NotificacoesPostgres(),
+        return {
+          unidade: recursos.banco,
+          notificacoes: new NotificacoesPostgres(),
           destinos,
-          new SupressaoPostgres(),
-          relogio,
-        );
+          supressao: new SupressaoPostgres(),
+          consentimentos: new ConsentimentosPostgres(),
+          push: new DestinosPushPostgres(),
+          trilha: new TrilhaPostgres(),
+          outbox: new OutboxPostgres(),
+        };
       });
     const provedores: Provider[] = [
       { provide: RecursosDaApi, useValue: recursos },
-      { provide: ConsultarAvisosDeEntrega, inject: [RELOGIO], useFactory: avisosDeEntrega },
+      ...provedoresDeNotificacoes(notificacoes),
       { provide: AMBIENTE, useValue: opcoes.ambiente },
       { provide: RELOGIO, useValue: opcoes.relogio ?? new SystemClock() },
       {

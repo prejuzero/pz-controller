@@ -1,14 +1,21 @@
+import { TrilhaPostgres } from '@pz/auditoria';
 import { Banco, BancoSistema, executarNoTenant, OutboxPostgres } from '@pz/db';
 import { subirBancoDeTeste } from '@pz/db/teste';
 import { FixedClock, gerarUuidV7, Instant } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
+  ConcederConsentimento,
+  RegistrarDestinoPush,
+  RevogarConsentimento,
+} from '../application/consentimentos.js';
+import {
   EnviarNotificacao,
   Notificar,
   RegistrarDesfechosDeEntrega,
 } from '../application/notificacoes.js';
 
+import { ConsentimentosPostgres, DestinosPushPostgres } from './consentimentos-postgres.js';
 import {
   NotificacoesPostgres,
   PreferenciasPostgres,
@@ -56,6 +63,7 @@ beforeAll(async () => {
         Promise.resolve({ principal: 'ana@exemplo.invalid', copias: ['rejeitou@exemplo.invalid'] }),
     },
     new SupressaoPostgres(),
+    new ConsentimentosPostgres(),
     new OutboxPostgres(),
     relogio,
   );
@@ -187,5 +195,86 @@ describe('notificações no PostgreSQL (HU30)', () => {
     const desde = Instant.deIso('2026-10-01T00:00:00Z');
     expect(await noTenant(TENANT, (tx) => repositorio.usuariosComRejeicaoDesde(tx, desde))).toBe(1);
     expect(await noTenant(OUTRO, (tx) => repositorio.usuariosComRejeicaoDesde(tx, desde))).toBe(0);
+  });
+
+  it('push só para dispositivo consentido; revogação, RLS, trilha e consentimento sem DELETE', async () => {
+    const unidade = { executar: <T>(t: (tx: Transacao) => Promise<T>) => noTenant(TENANT, t) };
+    const consentimentos = new ConsentimentosPostgres();
+    const trilha = new TrilhaPostgres();
+    const DISPOSITIVO = gerarUuidV7();
+    const autor = {
+      tenantId: TENANT,
+      usuarioId: USUARIO,
+      origem: 'app' as const,
+      dispositivoId: DISPOSITIVO,
+    };
+    const registrar = new RegistrarDestinoPush(
+      unidade,
+      new DestinosPushPostgres(),
+      trilha,
+      relogio,
+    );
+    expect((await registrar.executar(autor, { plataforma: 'android', token: 'token-1' })).ok).toBe(
+      true,
+    );
+    expect((await registrar.executar(autor, { plataforma: 'android', token: 'token-2' })).ok).toBe(
+      true,
+    );
+
+    const pedirPush = (janela: string) =>
+      noTenant(TENANT, (tx) => notificar.executar(tx, { ...pedido, janela }, 'push'));
+    const sem = await pedirPush('2026-10-09');
+    expect(sem.ok && sem.valor).toEqual({ solicitada: false, motivo: 'sem-destinatario' });
+
+    const conceder = new ConcederConsentimento(
+      unidade,
+      consentimentos,
+      trilha,
+      new OutboxPostgres(),
+      relogio,
+    );
+    const c = await conceder.executar(autor, { canal: 'push', destino: DISPOSITIVO });
+    if (!c.ok) throw c.erro;
+    const repetido = await conceder.executar(autor, { canal: 'push', destino: DISPOSITIVO });
+    expect(repetido.ok && repetido.valor.id).toBe(c.valor.id);
+    const r = await pedirPush('2026-10-10');
+    if (!r.ok || !r.valor.solicitada) throw new Error('não solicitada');
+    const notificacaoId = r.valor.notificacaoId;
+    const gravada = await noTenant(TENANT, (tx) =>
+      tx.notificacao.findUniqueOrThrow({ where: { id: notificacaoId } }),
+    );
+    expect(gravada.destinatarios).toEqual(['token-2']);
+
+    const revogar = new RevogarConsentimento(
+      unidade,
+      consentimentos,
+      trilha,
+      new OutboxPostgres(),
+      relogio,
+    );
+    expect((await revogar.executar(autor, c.valor.id)).ok).toBe(true);
+    expect(await noTenant(TENANT, (tx) => consentimentos.enderecos(tx, USUARIO, 'push'))).toEqual(
+      [],
+    );
+    expect(await noTenant(OUTRO, (tx) => tx.consentimentoCanal.count())).toBe(0);
+    expect(await noTenant(OUTRO, (tx) => tx.destinoPush.count())).toBe(0);
+    await expect(noTenant(TENANT, (tx) => tx.consentimentoCanal.deleteMany({}))).rejects.toThrow();
+    const registros = await noTenant(TENANT, (tx) =>
+      tx.eventoAuditoria.findMany({
+        where: { tipo: { startsWith: 'notificacoes.' } },
+        select: { tipo: true, depois: true },
+      }),
+    );
+    expect(registros.map((e) => e.tipo).sort()).toEqual([
+      'notificacoes.consentimento-concedido',
+      'notificacoes.consentimento-revogado',
+      'notificacoes.destino-push-registrado',
+      'notificacoes.destino-push-registrado',
+    ]);
+    expect(JSON.stringify(registros)).not.toContain('token-');
+    const eventos = await noTenant(TENANT, (tx) =>
+      tx.eventoDominio.count({ where: { tipo: 'ConsentimentoCanalAlterado' } }),
+    );
+    expect(eventos).toBe(2);
   });
 });

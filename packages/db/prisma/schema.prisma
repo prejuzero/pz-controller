@@ -43,6 +43,8 @@ model Tenant {
   advogados          Advogado[]
   notificacoes       Notificacao[]
   preferencias       PreferenciaNotificacao[]
+  consentimentos     ConsentimentoCanal[]
+  destinosPush       DestinoPush[]
   oabs               Oab[]
 
   @@map("tenant")
@@ -521,6 +523,53 @@ model PreferenciaNotificacao {
   @@id([usuarioId, tipo, canal])
   @@index([tenantId])
   @@map("preferencia_notificacao")
+}
+
+/// Consentimento por canal (HU30, ADR-015): fora do e-mail, só envia com consentimento ativo.
+/// Um ativo por usuário, canal e destino (índice parcial na migração); revogar não apaga.
+model ConsentimentoCanal {
+  id           String           @id @db.Uuid
+  tenantId     String           @map("tenant_id") @db.Uuid
+  usuarioId    String           @map("usuario_id") @db.Uuid
+  canal        CanalNotificacao
+  /// Push: ID do dispositivo; WhatsApp e SMS: telefone E.164.
+  destino      String
+  concedidoEm  DateTime         @map("concedido_em") @db.Timestamptz(6)
+  revogadoEm   DateTime?        @map("revogado_em") @db.Timestamptz(6)
+  origem       String
+  criadoEm     DateTime         @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime         @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@map("consentimento_canal")
+}
+
+enum PlataformaPush {
+  ios
+  android
+  web
+
+  @@map("plataforma_push")
+}
+
+/// Destino de push de um dispositivo (HU30): o token do sistema do aparelho, um por dispositivo.
+model DestinoPush {
+  id            String         @id @db.Uuid
+  tenantId      String         @map("tenant_id") @db.Uuid
+  usuarioId     String         @map("usuario_id") @db.Uuid
+  dispositivoId String         @unique @map("dispositivo_id") @db.Uuid
+  plataforma    PlataformaPush
+  token         String
+  ativo         Boolean
+  criadoEm      DateTime       @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm  DateTime       @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, usuarioId])
+  @@map("destino_push")
 }
 
 /// Endereço que rejeitou ou marcou spam (HU30): global, não recebe de nenhum tenant.

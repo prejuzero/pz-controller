@@ -2072,6 +2072,329 @@
         }
       }
     },
+    "/v1/notificacoes/consentimentos": {
+      "get": {
+        "operationId": "listarConsentimentos",
+        "summary": "Consentimentos ativos do usuário por canal (push, WhatsApp, SMS).",
+        "tags": [
+          "notificacoes"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentimentosDoUsuario"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "concederConsentimento",
+        "summary": "Registra o consentimento para receber avisos num canal e destino.",
+        "tags": [
+          "notificacoes"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeConsentimento"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentimentoDoCanal"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/notificacoes/consentimentos/{id}": {
+      "delete": {
+        "operationId": "revogarConsentimento",
+        "summary": "Revoga o consentimento de um canal.",
+        "tags": [
+          "notificacoes"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Sucesso, sem corpo."
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/notificacoes/destino-push": {
+      "put": {
+        "operationId": "registrarDestinoPush",
+        "summary": "Registra ou atualiza o token de push do dispositivo da sessão.",
+        "tags": [
+          "notificacoes"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeDestinoPush"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DestinoPushRegistrado"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "desativarDestinoPush",
+        "summary": "Desativa o push do dispositivo da sessão.",
+        "tags": [
+          "notificacoes"
+        ],
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Sucesso, sem corpo."
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/oabs": {
       "post": {
         "operationId": "adicionarOab",
@@ -2667,6 +2990,65 @@
         ],
         "additionalProperties": false
       },
+      "ConsentimentoDoCanal": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "canal": {
+            "type": "string",
+            "enum": [
+              "push",
+              "whatsapp",
+              "sms"
+            ]
+          },
+          "destino": {
+            "type": "string"
+          },
+          "concedidoEm": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "origem": {
+            "type": "string",
+            "enum": [
+              "portal",
+              "app",
+              "mcp",
+              "integrador"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "canal",
+          "destino",
+          "concedidoEm",
+          "origem"
+        ],
+        "additionalProperties": false
+      },
+      "ConsentimentosDoUsuario": {
+        "type": "object",
+        "properties": {
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsentimentoDoCanal"
+            },
+            "description": "Só os ativos."
+          }
+        },
+        "required": [
+          "itens"
+        ],
+        "additionalProperties": false
+      },
       "Credenciais": {
         "type": "object",
         "properties": {
@@ -2684,6 +3066,26 @@
         "required": [
           "email",
           "senha"
+        ],
+        "additionalProperties": false
+      },
+      "DestinoPushRegistrado": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "dispositivoId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "id",
+          "dispositivoId"
         ],
         "additionalProperties": false
       },
@@ -3235,6 +3637,93 @@
           "senha",
           "celular",
           "oabPrincipal"
+        ],
+        "additionalProperties": false
+      },
+      "PedidoDeConsentimento": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "canal": {
+                "type": "string",
+                "const": "push"
+              },
+              "destino": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                "description": "ID do dispositivo (app)."
+              }
+            },
+            "required": [
+              "canal",
+              "destino"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "canal": {
+                "type": "string",
+                "const": "whatsapp"
+              },
+              "destino": {
+                "type": "string",
+                "pattern": "^\\+[1-9]\\d{7,14}$",
+                "description": "Telefone E.164 (+5511...)."
+              }
+            },
+            "required": [
+              "canal",
+              "destino"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "canal": {
+                "type": "string",
+                "const": "sms"
+              },
+              "destino": {
+                "type": "string",
+                "pattern": "^\\+[1-9]\\d{7,14}$",
+                "description": "Telefone E.164 (+5511...)."
+              }
+            },
+            "required": [
+              "canal",
+              "destino"
+            ],
+            "additionalProperties": false
+          }
+        ],
+        "description": "O e-mail não entra: segue a base legal do serviço contratado."
+      },
+      "PedidoDeDestinoPush": {
+        "type": "object",
+        "properties": {
+          "plataforma": {
+            "type": "string",
+            "enum": [
+              "ios",
+              "android",
+              "web"
+            ]
+          },
+          "token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096,
+            "description": "Token de push do sistema do aparelho."
+          }
+        },
+        "required": [
+          "plataforma",
+          "token"
         ],
         "additionalProperties": false
       },

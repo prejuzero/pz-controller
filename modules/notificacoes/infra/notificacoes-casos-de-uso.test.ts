@@ -8,8 +8,9 @@ import {
   RegistrarDesfechosDeEntrega,
 } from '../application/notificacoes.js';
 import { renderizar } from '../application/templates.js';
+import { ConsentimentoCanal } from '../domain/consentimento.js';
 
-import { NotificacoesEmMemoria } from './em-memoria.js';
+import { ConsentimentosEmMemoria, NotificacoesEmMemoria } from './em-memoria.js';
 
 import type { EnviadorDeCanal } from '../application/portas.js';
 import type { EventoEntrega } from '@pz/integracoes';
@@ -34,6 +35,7 @@ const pedido = (parcial: Record<string, unknown> = {}) => ({
 describe('notificações (HU30)', () => {
   let outbox: OutboxEmMemoria;
   let repositorio: NotificacoesEmMemoria;
+  let consentimentos: ConsentimentosEmMemoria;
   let ativo: boolean | undefined;
   let suprimidos: Set<string>;
   let suprimidosPor: string[];
@@ -45,6 +47,7 @@ describe('notificações (HU30)', () => {
   beforeEach(() => {
     outbox = new OutboxEmMemoria();
     repositorio = new NotificacoesEmMemoria();
+    consentimentos = new ConsentimentosEmMemoria();
     ativo = undefined;
     suprimidos = new Set();
     suprimidosPor = [];
@@ -77,6 +80,7 @@ describe('notificações (HU30)', () => {
           return Promise.resolve();
         },
       },
+      consentimentos,
       outbox,
       relogio,
     );
@@ -143,6 +147,17 @@ describe('notificações (HU30)', () => {
     await expect(outbox.executar((tx) => enviar.executar(tx, gerarUuidV7()))).rejects.toThrow(
       'não encontrada',
     );
+    const sms = ConsentimentoCanal.conceder(
+      {
+        tenantId: TENANT,
+        usuarioId: USUARIO,
+        canal: 'sms',
+        destino: '+5511900000000',
+        origem: 'portal',
+      },
+      relogio,
+    );
+    await outbox.executar((tx) => consentimentos.inserir(tx, sms));
     const r = await outbox.executar((tx) => notificar.executar(tx, pedido(), 'sms'));
     if (!r.ok || !r.valor.solicitada) throw new Error('não solicitada');
     const id = r.valor.notificacaoId;

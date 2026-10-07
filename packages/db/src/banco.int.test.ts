@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { reverterUltimaMigracao } from './migracoes.js';
@@ -52,15 +54,22 @@ describe('migrações', () => {
 
       expect(await tabelas()).toEqual([
         'acesso',
+        'advogado',
         'auditoria_verificacao',
+        'consentimento_canal',
+        'destino_push',
         'evento_auditoria',
         'evento_calendario',
         'evento_dominio',
         'evento_processado',
         'feriado_local',
+        'notificacao',
+        'oab',
         'perfil',
         'perfil_permissao',
+        'preferencia_notificacao',
         'sessao_dispositivo',
+        'supressao',
         'tabela_prazo',
         'tenant',
         'tipo_ato',
@@ -78,15 +87,22 @@ describe('migrações', () => {
       await banco.migrar();
       expect(await tabelas()).toEqual([
         'acesso',
+        'advogado',
         'auditoria_verificacao',
+        'consentimento_canal',
+        'destino_push',
         'evento_auditoria',
         'evento_calendario',
         'evento_dominio',
         'evento_processado',
         'feriado_local',
+        'notificacao',
+        'oab',
         'perfil',
         'perfil_permissao',
+        'preferencia_notificacao',
         'sessao_dispositivo',
+        'supressao',
         'tabela_prazo',
         'tenant',
         'tipo_ato',
@@ -123,11 +139,17 @@ describe('RLS (ADR-003)', () => {
 
       expect(rows.map((linha) => linha.tabela)).toEqual([
         'acesso',
+        'advogado',
         'auditoria_verificacao',
+        'consentimento_canal',
+        'destino_push',
         'evento_auditoria',
         'evento_dominio',
         'evento_processado',
         'feriado_local',
+        'notificacao',
+        'oab',
+        'preferencia_notificacao',
         'sessao_dispositivo',
         'tenant',
         'usuario',
@@ -212,12 +234,13 @@ describe('RLS (ADR-003)', () => {
 
       await expect(comoTenant(app, 'nao-e-uuid', () => usuarios(app))).rejects.toThrow(/uuid/);
 
-      // A aplicação não cria tenants (cadastro é do cliente sistema, HU06).
+      // A aplicação só cria o próprio tenant autônomo (cadastro público, HU11); escritório não.
+      const novo = randomUUID();
       await expect(
-        comoTenant(app, TENANT_A, () =>
-          app.query(`INSERT INTO tenant (id, nome, tipo) VALUES ($1, 'X', 'autonomo')`, [TENANT_A]),
+        comoTenant(app, novo, () =>
+          app.query(`INSERT INTO tenant (id, nome, tipo) VALUES ($1, 'X', 'escritorio')`, [novo]),
         ),
-      ).rejects.toThrow(/permission denied/);
+      ).rejects.toThrow(/row-level security/);
     } finally {
       await Promise.all([sistema.end(), app.end(), migrador.end()]);
     }

@@ -23,6 +23,10 @@ export const TIPOS_DE_AUDITORIA = [
   'cadastro.oab-removida',
   'identidade.email-verificado',
   'notificacoes.notificacao-rejeitada',
+  'notificacoes.consentimento-concedido',
+  'notificacoes.consentimento-revogado',
+  'notificacoes.destino-push-registrado',
+  'notificacoes.destino-push-desativado',
 ] as const;
 export const TipoDeAuditoria = z.enum(TIPOS_DE_AUDITORIA);
 export type TipoDeAuditoria = z.infer<typeof TipoDeAuditoria>;
