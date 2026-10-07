@@ -16,3 +16,5 @@ Sem credencial. `urlBase` só muda em teste. Nada de segredo por ambiente.
 
 - Unitários: normalização, classificação, paginação e mapeamento.
 - Contrato (`pnpm test:int`): `verificarContratoFontePublicacoes` contra um servidor local com `fixtures/`, respostas reais de 07/10/2026 **anonimizadas** (nomes, OAB, processos, teor, links e hashes fictícios). Sem rede externa.
+- Resiliência pelo registro (`resiliencia.int.test.ts`): 429 passageiro espera e retoma; 5xx persistente abre o circuito e as chamadas seguintes são recusadas sem tocar a fonte.
+- Fumaça contra a API real (`pnpm --filter @pz/adapter-djen fumaca`): só a consulta de saúde, que valida o formato da resposta. Roda toda segunda no workflow `fumaca-djen.yml`, sem bloquear merge.

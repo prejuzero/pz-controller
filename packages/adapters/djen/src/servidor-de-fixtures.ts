@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 /**
  * Servidor local que responde como a API do DJEN a partir das fixtures gravadas (respostas reais
  * de 07/10/2026, anonimizadas: nomes, OAB, números de processo, teor e links fictícios). Só para
- * testes: o CI nunca acessa a rede externa. Prefixos `/limite` e `/invalido` simulam falhas.
+ * testes: o CI nunca acessa a rede externa. Prefixos simulam falhas: `/limite` (429 sempre),
+ * `/instavel` (429 na primeira chamada, depois normal), `/fora` (503 sempre) e `/invalido`.
  */
 const fixture = (nome: string) =>
   JSON.parse(
@@ -17,7 +18,7 @@ const fixture = (nome: string) =>
 
 export interface ServidorDeFixtures {
   readonly url: string;
-  /** Consultas recebidas, para conferir paginação e filtros. */
+  /** Consultas recebidas (todas, inclusive as que simulam falha): paginação, filtros e chamadas. */
   readonly consultas: URLSearchParams[];
   encerrar(): Promise<void>;
 }
@@ -26,8 +27,11 @@ export async function subirServidorDeFixtures(): Promise<ServidorDeFixtures> {
   const porOab = fixture('oab.json');
   const porProcesso = fixture('processo.json');
   const consultas: URLSearchParams[] = [];
+  let instavelJaRecusou = false;
   const servidor: Server = createServer((pedido, resposta) => {
     const url = new URL(pedido.url ?? '/', 'http://localhost');
+    const q = url.searchParams;
+    consultas.push(q);
     const json = (status: number, corpo: unknown, cabecalhos: Record<string, string> = {}) => {
       resposta.writeHead(status, { 'content-type': 'application/json', ...cabecalhos });
       resposta.end(JSON.stringify(corpo));
@@ -36,16 +40,24 @@ export async function subirServidorDeFixtures(): Promise<ServidorDeFixtures> {
       json(429, { message: 'Too Many Requests' }, { 'retry-after': '60' });
       return;
     }
+    if (url.pathname.startsWith('/instavel/') && !instavelJaRecusou) {
+      instavelJaRecusou = true;
+      json(429, { message: 'Too Many Requests' });
+      return;
+    }
+    if (url.pathname.startsWith('/fora/')) {
+      json(503, { message: 'Service Unavailable' });
+      return;
+    }
     if (url.pathname.startsWith('/invalido/')) {
       json(200, { status: 'success', items: 'não é lista' });
       return;
     }
-    if (url.pathname !== '/api/v1/comunicacao') {
+    const caminho = url.pathname.replace(/^\/instavel/, '');
+    if (caminho !== '/api/v1/comunicacao') {
       json(404, { message: 'Not Found' });
       return;
     }
-    const q = url.searchParams;
-    consultas.push(q);
     const base =
       q.get('numeroOab') === '123456' && q.get('ufOab') === 'SP'
         ? porOab

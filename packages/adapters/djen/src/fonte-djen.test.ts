@@ -37,7 +37,15 @@ describe('normalizarTeor (HU17)', () => {
       normalizarTeor(
         '<p>Processo&nbsp;&nbsp;1</p>\r\n\r\n<br/>  Prazo&#58; 5 dias &amp; &#x41;&eacute;\t fim ',
       ),
-    ).toBe('Processo 1\nPrazo: 5 dias & A&eacute; fim');
+    ).toBe('Processo 1\nPrazo: 5 dias & Aé fim');
+  });
+
+  it('caracteres especiais: acentos e símbolos por entidade nomeada ou numérica', () => {
+    expect(
+      normalizarTeor(
+        'Cita&ccedil;&atilde;o &Agrave; R&Eacute;: art. 5&ordm;, &sect; 1&ordf; &ndash; &ldquo;prazo&rdquo; &#233; &copy;',
+      ),
+    ).toBe('Citação À RÉ: art. 5º, § 1ª – “prazo” é &copy;');
   });
 
   it('propriedade: idempotente e o hash não depende de espaços extras', () => {
