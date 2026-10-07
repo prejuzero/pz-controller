@@ -62,3 +62,12 @@ export interface OperacoesDeEncerramento<Transacao> {
 export interface EncerradorDeSessoes {
   removerTodasDoUsuario(usuarioId: Uuid): Promise<void>;
 }
+
+/** Retenção (papel sistema): expurgos pelas funções do banco, que conferem os prazos. */
+export interface OperacoesDeRetencao<Transacao> {
+  encerradosAntesDe(transacao: Transacao, limite: Instant): Promise<Uuid[]>;
+  entrarNoTenant(transacao: Transacao, tenantId: Uuid): Promise<void>;
+  expurgarProvas(transacao: Transacao, tenantId: Uuid, dias: number): Promise<void>;
+  /** Registros de acesso anteriores ao limite, em todos os tenants. */
+  expurgarAcessos(transacao: Transacao, limite: Instant): Promise<number>;
+}

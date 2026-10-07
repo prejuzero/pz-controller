@@ -39,10 +39,12 @@ import {
 } from '@pz/notificacoes';
 import { criarLogger, registrarErro } from '@pz/observability';
 import {
+  AplicarRetencao,
   EfetivarEncerramentos,
   ExportacoesPostgres,
   GerarExportacao,
   OperacoesDeEncerramentoPostgres,
+  OperacoesDeRetencaoPostgres,
 } from '@pz/privacidade';
 import {
   ConsultarSituacao,
@@ -373,6 +375,21 @@ export class WorkerModule {
       ConsumidorDoCalendario,
       ConsumidorDaCaptura,
       ConsumidorDaPrivacidade,
+      {
+        provide: AplicarRetencao,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new AplicarRetencao(
+            sistema.unidade('privacidade: retenção de acessos e provas'),
+            new OperacoesDeRetencaoPostgres(),
+            new TrilhaPostgres(),
+            relogio,
+            {
+              acessosDias: ambiente.RETENCAO_ACESSOS_DIAS,
+              provasDias: ambiente.RETENCAO_PROVAS_DIAS,
+            },
+          ),
+      },
       {
         // Atravessa tenants: papel sistema, com motivo; a função do banco faz a exclusão (HU38).
         provide: EfetivarEncerramentos,

@@ -1,6 +1,10 @@
 import { Instant } from '@pz/kernel';
 
-import type { OperacoesDeEncerramento, RepositorioDeEncerramentos } from '../application/portas.js';
+import type {
+  OperacoesDeEncerramento,
+  OperacoesDeRetencao,
+  RepositorioDeEncerramentos,
+} from '../application/portas.js';
 import type { Encerramento } from '../domain/encerramento.js';
 import type { Transacao } from '@pz/db';
 import type { Uuid } from '@pz/kernel';
@@ -71,5 +75,31 @@ export class OperacoesDeEncerramentoPostgres implements OperacoesDeEncerramento<
 
   async efetivar(tx: Transacao, tenantId: Uuid): Promise<void> {
     await tx.$executeRaw`SELECT pz_efetivar_encerramento(${tenantId}::uuid)`;
+  }
+}
+
+/** Retenção como sistema: as funções do banco conferem prazo e situação do tenant. */
+export class OperacoesDeRetencaoPostgres implements OperacoesDeRetencao<Transacao> {
+  async encerradosAntesDe(tx: Transacao, limite: Instant): Promise<Uuid[]> {
+    const linhas = await tx.tenant.findMany({
+      where: { encerradoEm: { lt: new Date(limite.epochMs) }, usuarios: { some: {} } },
+      select: { id: true },
+    });
+    return linhas.map((l) => l.id as Uuid);
+  }
+
+  async entrarNoTenant(tx: Transacao, tenantId: Uuid): Promise<void> {
+    await tx.$queryRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
+  }
+
+  async expurgarProvas(tx: Transacao, tenantId: Uuid, dias: number): Promise<void> {
+    await tx.$executeRaw`SELECT pz_expurgar_provas(${tenantId}::uuid, ${dias}::integer)`;
+  }
+
+  async expurgarAcessos(tx: Transacao, limite: Instant): Promise<number> {
+    const { count } = await tx.acesso.deleteMany({
+      where: { ocorridoEm: { lt: new Date(limite.epochMs) } },
+    });
+    return count;
   }
 }
