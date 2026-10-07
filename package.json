@@ -17,7 +17,7 @@
     "lint:raiz": "eslint --max-warnings=0 \"*.{js,mjs,cjs,ts}\"",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "test:int": "turbo run test:int",
+    "test:int": "turbo run test:int --concurrency=1",
     "depcruise": "depcruise apps modules packages --config .dependency-cruiser.cjs",
     "gen:module": "node packages/config/src/gerar-modulo.mjs",
     "db:migrate": "pnpm --filter @pz/db migrar",
