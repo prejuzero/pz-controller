@@ -88,6 +88,33 @@ export const OabRemovida = definirEvento(
   }),
 );
 
+const Cobertura = z.enum(['automatica', 'parcial', 'manual']);
+
+/** Processo entrou no monitoramento (HU12), pelo advogado ou pela captura. */
+export const ProcessoMonitorado = definirEvento(
+  'ProcessoMonitorado',
+  1,
+  z.object({
+    processoId: z.uuid(),
+    numeroCnj: z.string().regex(/^\d{20}$/),
+    tribunal: z.string().nullable(),
+    origem: z.enum(['manual', 'captura']),
+  }),
+);
+
+/** Cobertura do processo mudou (HU12, RF91): a captura e os lembretes de conferência reagem. */
+export const CoberturaAlterada = definirEvento(
+  'CoberturaAlterada',
+  1,
+  z.object({
+    processoId: z.uuid(),
+    numeroCnj: z.string().regex(/^\d{20}$/),
+    antes: Cobertura,
+    depois: Cobertura,
+    motivo: z.string().nullable(),
+  }),
+);
+
 /** Notificação pedida (HU30): o worker renderiza o template e envia pelo canal. */
 export const NotificacaoSolicitada = definirEvento(
   'NotificacaoSolicitada',
@@ -142,6 +169,8 @@ export const EVENTOS = catalogoDeEventos(
   AdvogadoCadastrado,
   OabAdicionada,
   OabRemovida,
+  ProcessoMonitorado,
+  CoberturaAlterada,
   VerificacaoDeEmailSolicitada,
   NotificacaoSolicitada,
   NotificacaoEntregue,

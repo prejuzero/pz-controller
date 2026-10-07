@@ -394,6 +394,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/clientes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista os clientes do escritório, do mais novo para o mais antigo. */
+        get: operations["listarClientes"];
+        put?: never;
+        /** Cadastra um cliente. */
+        post: operations["cadastrarCliente"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/clientes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Um cliente do escritório. */
+        get: operations["consultarCliente"];
+        put?: never;
+        post?: never;
+        /** Remove um cliente sem processos vinculados. */
+        delete: operations["removerCliente"];
+        options?: never;
+        head?: never;
+        /** Altera nome ou documento do cliente. */
+        patch: operations["atualizarCliente"];
+        trace?: never;
+    };
     "/v1/email/verificar": {
         parameters: {
             query?: never;
@@ -533,6 +570,59 @@ export interface paths {
         patch: operations["atualizarPerfil"];
         trace?: never;
     };
+    "/v1/processos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista os processos monitorados, do mais novo para o mais antigo. */
+        get: operations["listarProcessos"];
+        put?: never;
+        /** Cadastra um processo pelo número CNJ; o tribunal é deduzido do número. */
+        post: operations["cadastrarProcesso"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/processos/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Um processo do escritório. */
+        get: operations["consultarProcesso"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Altera órgão, comarca, cliente ou sigilo do processo. */
+        patch: operations["atualizarProcesso"];
+        trace?: never;
+    };
+    "/v1/processos/{id}/cobertura": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Marca a cobertura do processo (automática, parcial ou manual), com motivo. */
+        put: operations["alterarCobertura"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/saude": {
         parameters: {
             query?: never;
@@ -582,11 +672,23 @@ export interface components {
                 ocorridoEm: string;
             }[];
         };
+        AlteracaoDoCliente: {
+            nome?: string;
+            /** @description CPF ou CNPJ, com ou sem máscara. */
+            documento?: string | null;
+        };
         AlteracaoDoPerfil: {
             nome?: string;
             celular?: string;
             /** @description Recebem cópia das notificações. */
             emailsAdicionais?: string[];
+        };
+        AlteracaoDoProcesso: {
+            orgao?: string | null;
+            comarca?: string | null;
+            sigiloso?: boolean;
+            /** @description Nulo desvincula o cliente. */
+            clienteId?: string | null;
         };
         AvisosDeEntrega: {
             /** @description E-mails do usuário que rejeitaram mensagens (bounce) ou marcaram spam: não recebem notificações até serem trocados ou liberados pelo suporte. */
@@ -598,6 +700,13 @@ export interface components {
             /** Format: uuid */
             usuarioId: string;
             perfil: components["schemas"]["PerfilDoAdvogado"];
+        };
+        ClienteDoTenant: {
+            /** Format: uuid */
+            id: string;
+            nome: string;
+            /** @description CPF ou CNPJ sem pontuação. */
+            documento: string | null;
         };
         CodigoSegundoFator: {
             /** @description 6 dígitos do aplicativo ou um código de recuperação (XXXXX-XXXXX). */
@@ -737,6 +846,16 @@ export interface components {
             /** @enum {string} */
             tipo: "principal" | "suplementar";
         };
+        PaginaDeClientes: {
+            itens: components["schemas"]["ClienteDoTenant"][];
+            /** @description Nulo quando não há mais páginas. */
+            proximoCursor: string | null;
+        };
+        PaginaDeProcessos: {
+            itens: components["schemas"]["ProcessoDoTenant"][];
+            /** @description Nulo quando não há mais páginas. */
+            proximoCursor: string | null;
+        };
         PedidoDeCadastro: {
             nome: string;
             /** @description Com ou sem máscara. */
@@ -750,6 +869,20 @@ export interface components {
             oabsSuplementares?: components["schemas"]["PedidoDeOab"][];
             /** @description Recebem cópia das notificações. */
             emailsAdicionais?: string[];
+        };
+        PedidoDeCliente: {
+            nome: string;
+            /** @description CPF ou CNPJ, com ou sem máscara. */
+            documento?: string | null;
+        };
+        PedidoDeCobertura: {
+            /**
+             * @description Automática: as fontes públicas trazem as intimações; parcial ou manual: conferir no painel do tribunal.
+             * @enum {string}
+             */
+            cobertura: "automatica" | "parcial" | "manual";
+            /** @description Obrigatório quando a cobertura não é automática. */
+            motivo?: string | null;
         };
         /** @description O e-mail não entra: segue a base legal do serviço contratado. */
         PedidoDeConsentimento: {
@@ -833,6 +966,21 @@ export interface components {
             /** @description Seccional (UF). */
             uf: string;
         };
+        PedidoDeProcesso: {
+            /** @description Com ou sem pontuação; dígito verificado. */
+            numeroCnj: string;
+            orgao?: string | null;
+            comarca?: string | null;
+            sigiloso?: boolean;
+            /**
+             * @description Automática: as fontes públicas trazem as intimações; parcial ou manual: conferir no painel do tribunal.
+             * @enum {string}
+             */
+            cobertura?: "automatica" | "parcial" | "manual";
+            /** @description Obrigatório quando a cobertura não é automática. */
+            motivoCobertura?: string | null;
+            clienteId?: string | null;
+        };
         PedidoDeRedefinicaoDeSenha: {
             email: string;
         };
@@ -884,6 +1032,26 @@ export interface components {
                 mensagem: string;
             }[];
             requestId?: string;
+        };
+        ProcessoDoTenant: {
+            /** Format: uuid */
+            id: string;
+            /** @description Com a máscara do CNJ (NNNNNNN-DD.AAAA.J.TR.OOOO). */
+            numeroCnj: string;
+            /** @description Sigla deduzida do número; nula se desconhecida. */
+            tribunal: string | null;
+            /** @description Ramo da Justiça deduzido do tribunal. */
+            ramo: string | null;
+            orgao: string | null;
+            comarca: string | null;
+            sigiloso: boolean;
+            /**
+             * @description Automática: as fontes públicas trazem as intimações; parcial ou manual: conferir no painel do tribunal.
+             * @enum {string}
+             */
+            cobertura: "automatica" | "parcial" | "manual";
+            motivoCobertura: string | null;
+            clienteId: string | null;
         };
         RedefinicaoDeSenha: {
             /** @description Token do link enviado por e-mail. */
@@ -2547,6 +2715,341 @@ export interface operations {
             };
         };
     };
+    listarClientes: {
+        parameters: {
+            query?: {
+                /** @description Cursor devolvido na página anterior. */
+                cursor?: string;
+                /** @description Quantidade de itens por página. */
+                limite?: number;
+                /** @description Parte do nome. */
+                nome?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginaDeClientes"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    cadastrarCliente: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeCliente"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClienteDoTenant"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    consultarCliente: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClienteDoTenant"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    removerCliente: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso, sem corpo. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Regra de negócio violada. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    atualizarCliente: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlteracaoDoCliente"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClienteDoTenant"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
     verificarEmail: {
         parameters: {
             query?: never;
@@ -3206,6 +3709,380 @@ export interface operations {
             };
             /** @description Não encontrado. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarProcessos: {
+        parameters: {
+            query?: {
+                /** @description Cursor devolvido na página anterior. */
+                cursor?: string;
+                /** @description Quantidade de itens por página. */
+                limite?: number;
+                /** @description Número CNJ completo ou parcial. */
+                numero?: string;
+                clienteId?: string;
+                /** @description Sigla (ex.: TJSP). */
+                tribunal?: string;
+                /** @description Automática: as fontes públicas trazem as intimações; parcial ou manual: conferir no painel do tribunal. */
+                cobertura?: "automatica" | "parcial" | "manual";
+                sigiloso?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginaDeProcessos"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    cadastrarProcesso: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeProcesso"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcessoDoTenant"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Regra de negócio violada. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    consultarProcesso: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcessoDoTenant"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    atualizarProcesso: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlteracaoDoProcesso"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcessoDoTenant"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    alterarCobertura: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeCobertura"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcessoDoTenant"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Regra de negócio violada. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

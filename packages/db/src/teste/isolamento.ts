@@ -117,6 +117,11 @@ const COLUNAS_FIXAS: Readonly<Record<string, Record<string, unknown>>> = {
   advogado: { cpf: () => String(randomInt(1e10, 1e11 - 1)).padStart(11, '0') },
   oab: { uf: 'XA' },
   consentimento_canal: { canal: 'push', origem: 'app' },
+  cliente: { documento: null },
+  processo: {
+    numero_cnj: () => String(randomInt(1e10, 1e11 - 1)).padStart(20, '0'),
+    cliente_id: null,
+  },
 };
 
 /**
@@ -191,4 +196,5 @@ export const TABELAS_SEM_DELETE: readonly string[] = [
   'oab',
   'notificacao',
   'consentimento_canal',
+  'processo',
 ];

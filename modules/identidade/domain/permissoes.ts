@@ -12,6 +12,11 @@ export const CATALOGO_DE_PERMISSOES = {
   'prazos:ler': { descricao: 'Consultar prazos e a memória de cálculo.', leitura: true },
   'prazos:confirmar': { descricao: 'Confirmar prazos sugeridos.', leitura: false },
   'prazos:ajustar': { descricao: 'Ajustar a data de um prazo, com justificativa.', leitura: false },
+  'processos:ler': { descricao: 'Consultar processos e clientes.', leitura: true },
+  'processos:gerir': {
+    descricao: 'Cadastrar processos e clientes e marcar sigilo e cobertura.',
+    leitura: false,
+  },
   'publicacoes:ler': { descricao: 'Consultar publicações e intimações.', leitura: true },
   'calendario:ler': { descricao: 'Consultar o calendário forense.', leitura: true },
   'calendario:gerir': { descricao: 'Informar feriados locais e suspensões.', leitura: false },

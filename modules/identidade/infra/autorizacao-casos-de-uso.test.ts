@@ -31,6 +31,7 @@ describe('ConsultarPermissoes', () => {
       'calendario:ler',
       'conta:gerir',
       'prazos:ler',
+      'processos:ler',
       'publicacoes:ler',
     ]);
   });

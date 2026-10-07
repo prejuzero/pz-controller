@@ -101,3 +101,45 @@ export class Celular {
     return ok(new Celular(numero));
   }
 }
+
+/**
+ * CNPJ com os dois dígitos verificadores (módulo 11, pesos 2 a 9 da direita para a esquerda).
+ * Aceita o formato alfanumérico da IN RFB nº 2.229/2024: as 12 primeiras posições podem ter
+ * letras, que valem o código ASCII menos 48 no cálculo; os verificadores são sempre dígitos.
+ */
+function cnpjConfere(cnpj: string): boolean {
+  if (!/^[0-9A-Z]{12}\d{2}$/.test(cnpj) || /^(\d)\1{13}$/.test(cnpj)) return false;
+  const valores = Array.from(cnpj, (c) => c.charCodeAt(0) - 48);
+  const dv = (quantos: number) => {
+    const soma = valores
+      .slice(0, quantos)
+      .reduce((total, v, i) => total + v * (((quantos - 1 - i) % 8) + 2), 0);
+    const resto = soma % 11;
+    return resto < 2 ? 0 : 11 - resto;
+  };
+  return dv(12) === valores[12] && dv(13) === valores[13];
+}
+
+/** Documento do cliente: CPF (pessoa física) ou CNPJ (pessoa jurídica), sem pontuação. */
+export class Documento {
+  private constructor(
+    readonly valor: string,
+    readonly tipo: 'cpf' | 'cnpj',
+  ) {}
+
+  static de(texto: string, campo = 'documento'): Result<Documento, Validacao> {
+    const limpo = texto.toUpperCase().replace(/[.\-/\s]/g, '');
+    if (/^\d{11}$/.test(limpo)) {
+      const cpf = Cpf.de(limpo, campo);
+      return cpf.ok ? ok(new Documento(cpf.valor.valor, 'cpf')) : cpf;
+    }
+    return cnpjConfere(limpo)
+      ? ok(new Documento(limpo, 'cnpj'))
+      : invalido(campo, 'CPF ou CNPJ inválido.');
+  }
+}
+
+/** Para a auditoria: CPF só com os dígitos do meio; CNPJ é dado de pessoa jurídica e fica inteiro. */
+export function mascararDocumento(documento: string): string {
+  return documento.length === 11 ? mascararCpf(documento) : documento;
+}
