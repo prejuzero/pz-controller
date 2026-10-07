@@ -25,6 +25,17 @@ export class ConsumidorDeAvisosDeIdentidade {
     return this.avisos.redefinicaoSolicitada(transacao, evento);
   }
 
+  @Consome('VerificacaoDeEmailSolicitada', { versao: 1 })
+  verificacaoDeEmail(
+    transacao: Transacao,
+    evento: EventoDominio<
+      'VerificacaoDeEmailSolicitada',
+      { usuarioId: Uuid; tokenCifrado: string }
+    >,
+  ): Promise<void> {
+    return this.avisos.verificacaoDeEmailSolicitada(transacao, evento);
+  }
+
   @Consome('ContaBloqueada', { versao: 1 })
   bloqueio(
     transacao: Transacao,

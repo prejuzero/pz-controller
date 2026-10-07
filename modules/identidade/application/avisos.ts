@@ -42,6 +42,25 @@ export class EnviarAvisosDeSeguranca<Transacao> {
     });
   }
 
+  async verificacaoDeEmailSolicitada(
+    transacao: Transacao,
+    evento: EventoDominio<
+      'VerificacaoDeEmailSolicitada',
+      { usuarioId: Uuid; tokenCifrado: string }
+    >,
+  ): Promise<void> {
+    const para = await this.emails.emailDe(transacao, evento.payload.usuarioId);
+    if (para === undefined) return;
+    const link = `${this.urlDoPortal}/verificar-email#token=${this.cifra.decifrar(evento.payload.tokenCifrado)}`;
+    await this.email.enviar({
+      idempotencia: evento.id,
+      para: [para],
+      assunto: 'Confirme o seu e-mail no PrejuZero',
+      texto: `Bem-vindo ao PrejuZero. Para confirmar que este e-mail é seu, acesse em até 24 horas: ${link}\n\nSe você não se cadastrou, ignore esta mensagem.`,
+      html: `<p>Bem-vindo ao PrejuZero.</p><p><a href="${escapar(link)}">Confirmar o meu e-mail</a> (válido por 24 horas).</p><p>Se você não se cadastrou, ignore esta mensagem.</p>`,
+    });
+  }
+
   async contaBloqueada(
     transacao: Transacao,
     evento: EventoDominio<

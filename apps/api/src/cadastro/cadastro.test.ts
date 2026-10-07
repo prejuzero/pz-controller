@@ -6,6 +6,7 @@ import {
   AcessosEmMemoria,
   CredenciaisEmMemoria,
   PerfisEmMemoria,
+  RedefinicoesEmMemoria,
   SegundoFatorEmMemoria,
   SessoesEmMemoria,
   TentativasEmMemoria,
@@ -58,6 +59,7 @@ beforeAll(async () => {
     relogio,
     verificadores: [],
     identidade: {
+      verificacoesDeEmail: new RedefinicoesEmMemoria(),
       credenciais: new CredenciaisEmMemoria(),
       sessoes,
       segundoFator: new SegundoFatorEmMemoria(),
@@ -77,6 +79,18 @@ beforeAll(async () => {
           (tx as TransacaoEmMemoria).aoConfirmar(() => emails.add(conta.email));
           return Promise.resolve(ok(undefined));
         },
+      },
+      verificacao: {
+        preparar: (conta) =>
+          Promise.resolve({
+            id: gerarUuidV7(),
+            tipo: 'VerificacaoDeEmailSolicitada',
+            versao: 1,
+            tenantId: conta.tenantId,
+            agregadoId: conta.usuarioId,
+            ocorridoEm: r.agora(),
+            payload: {},
+          }),
       },
       advogados: new AdvogadosEmMemoria(r),
       trilha: {
@@ -137,6 +151,17 @@ describe('cadastro pela API (HU11)', () => {
     expect((await pedir('DELETE', `/v1/oabs/${id}`)).statusCode).toBe(204);
     expect((await pedir('DELETE', `/v1/oabs/${id}`)).statusCode).toBe(404);
     expect((await pedir('DELETE', '/v1/oabs/nao-e-uuid')).statusCode).toBe(400);
+  });
+
+  it('verificação do e-mail: token desconhecido é 401; sem token, 400', async () => {
+    const r = await api.inject({
+      method: 'POST',
+      url: '/v1/email/verificar',
+      payload: { token: 'x' },
+    });
+    expect(r.statusCode).toBe(401);
+    const vazio = await api.inject({ method: 'POST', url: '/v1/email/verificar', payload: {} });
+    expect(vazio.statusCode).toBe(400);
   });
 
   it('sem sessão, perfil e OABs exigem autenticação', async () => {

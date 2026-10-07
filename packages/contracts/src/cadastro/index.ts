@@ -68,6 +68,24 @@ export type AlteracaoDoPerfil = z.infer<typeof AlteracaoDoPerfil.esquema>;
 
 export const PedidoDeOab = nomear('PedidoDeOab', Inscricao);
 
+export const PedidoDeVerificacaoDeEmail = nomear(
+  'PedidoDeVerificacaoDeEmail',
+  z.object({ token: z.string().min(1).max(200).describe('Token do link enviado por e-mail.') }),
+);
+
+/** Confirma o e-mail com o token do link de boas-vindas (HU11). */
+export const verificarEmail = definirRota({
+  id: 'verificarEmail',
+  metodo: 'post',
+  caminho: '/v1/email/verificar',
+  resumo: 'Confirma o e-mail do usuário com o token do link (uso único, 24 h).',
+  tag: 'cadastro',
+  publica: true,
+  corpo: PedidoDeVerificacaoDeEmail,
+  resposta: { status: 204, corpo: null },
+  erros: [401, 429],
+});
+
 /** Cadastro público (HU11): cria o tenant autônomo, a conta e o advogado numa transação. */
 export const cadastrarAdvogado = definirRota({
   id: 'cadastrarAdvogado',
@@ -132,4 +150,5 @@ export const ROTAS_CADASTRO = [
   atualizarPerfil,
   adicionarOab,
   removerOab,
+  verificarEmail,
 ] as const;

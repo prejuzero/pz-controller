@@ -1,7 +1,17 @@
+import { randomBytes } from 'node:crypto';
+
 import { TrilhaPostgres } from '@pz/auditoria';
 import { Banco, BancoSistema, executarNoTenant, OutboxPostgres } from '@pz/db';
 import { subirBancoDeTeste } from '@pz/db/teste';
-import { ContasPostgres, CriarConta, HasherArgon2 } from '@pz/identidade';
+import {
+  ContasPostgres,
+  CriarConta,
+  GeradorDeTokensSeguro,
+  HasherArgon2,
+  RedefinicoesEmMemoria,
+  SolicitarVerificacaoDeEmail,
+  CifraAesGcm,
+} from '@pz/identidade';
 import { FixedClock, gerarUuidV7, Instant } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -17,6 +27,7 @@ import { AdvogadosPostgres } from './advogados-postgres.js';
 import type { AutorDoCadastro } from '../application/cadastro.js';
 import type { Transacao } from '@pz/db';
 import type { BancoDeTeste } from '@pz/db/teste';
+import type { Email } from '@pz/identidade';
 import type { Uuid } from '@pz/kernel';
 
 // Dados FICTÍCIOS: CPFs gerados, OABs e e-mails inventados.
@@ -61,7 +72,25 @@ beforeAll(async () => {
       executarNoTenant(tenantId, () => banco.executar(trabalho)),
   };
   const contas = new CriarConta(new HasherArgon2(), new ContasPostgres());
-  cadastrar = new CadastrarAdvogado(noTenant, contas, advogados, trilha, outbox, relogio);
+  const solicitar = new SolicitarVerificacaoDeEmail(
+    new RedefinicoesEmMemoria(),
+    new GeradorDeTokensSeguro(),
+    new CifraAesGcm(randomBytes(32).toString('base64')),
+    relogio,
+  );
+  const verificacao = {
+    preparar: (conta: { usuarioId: Uuid; tenantId: Uuid; email: string }) =>
+      solicitar.preparar({ ...conta, email: conta.email as Email }),
+  };
+  cadastrar = new CadastrarAdvogado(
+    noTenant,
+    contas,
+    verificacao,
+    advogados,
+    trilha,
+    outbox,
+    relogio,
+  );
   consultar = new ConsultarPerfil(banco, advogados);
   adicionar = new AdicionarOab(banco, advogados, trilha, outbox);
   remover = new RemoverOab(banco, advogados, trilha, outbox);
@@ -96,6 +125,7 @@ describe('cadastro no PostgreSQL (HU11)', () => {
       'AdvogadoCadastrado',
       'OabAdicionada',
       'OabAdicionada',
+      'VerificacaoDeEmailSolicitada',
     ]);
     const perfil = await executarNoTenant(ana.tenantId, () => consultar.executar(ana.usuarioId));
     expect(perfil.ok && perfil.valor.oabs).toHaveLength(2);

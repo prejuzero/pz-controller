@@ -56,6 +56,9 @@ import {
   HasherArgon2,
   ContasPostgres,
   CriarConta,
+  SolicitarVerificacaoDeEmail,
+  VerificacaoDeEmailPostgres,
+  VerificarEmail,
   SegredosTotp,
   SegundoFatorPostgres,
   SessoesRedis,
@@ -95,13 +98,19 @@ import type { CaixaDeWebhooks } from './webhooks/webhooks.controller.js';
 import type { DynamicModule, Provider, Type } from '@nestjs/common';
 import type { DependenciasDoReprocessamento } from '@pz/administracao';
 import type { TrilhaDeAuditoria } from '@pz/auditoria';
-import type { CriadorDeConta, RepositorioDeAdvogados, UnidadeNoTenant } from '@pz/cadastro';
+import type {
+  CriadorDeConta,
+  PreparadorDeVerificacao,
+  RepositorioDeAdvogados,
+  UnidadeNoTenant,
+} from '@pz/cadastro';
 import type {
   CacheDeDiasNaoUteis,
   RepositorioDeEventosGlobais,
   RepositorioDeFeriadosLocais,
 } from '@pz/calendario';
 import type {
+  Email,
   DependenciasDaImpersonacao,
   ArmazemDeRenovacoes,
   RepositorioDeDispositivos,
@@ -137,6 +146,7 @@ export interface OpcoesApi {
     readonly acessos: RegistroDeAcessos;
     readonly publicador?: PublicadorDeEventos;
     readonly redefinicoes?: ArmazemDeRedefinicoes;
+    readonly verificacoesDeEmail?: ArmazemDeRedefinicoes;
     readonly dispositivos?: RepositorioDeDispositivos;
     readonly renovacoes?: ArmazemDeRenovacoes;
     readonly perfis?: RepositorioDePerfis;
@@ -263,6 +273,7 @@ interface DependenciasDoCadastro {
   readonly noTenant: UnidadeNoTenant<unknown>;
   readonly unidade: UnidadeDeTrabalho<unknown>;
   readonly contas: CriadorDeConta<unknown>;
+  readonly verificacao: PreparadorDeVerificacao;
   readonly advogados: RepositorioDeAdvogados<unknown>;
   readonly trilha: TrilhaDeAuditoria<unknown>;
   readonly outbox: Outbox<unknown>;
@@ -283,7 +294,16 @@ function provedoresDoCadastro(criar: (relogio: Clock) => DependenciasDoCadastro)
     { provide: DEPENDENCIAS, inject: [RELOGIO], useFactory: criar },
     caso(
       CadastrarAdvogado,
-      (d, r) => new CadastrarAdvogado(d.noTenant, d.contas, d.advogados, d.trilha, d.outbox, r),
+      (d, r) =>
+        new CadastrarAdvogado(
+          d.noTenant,
+          d.contas,
+          d.verificacao,
+          d.advogados,
+          d.trilha,
+          d.outbox,
+          r,
+        ),
     ),
     caso(ConsultarPerfil, (d) => new ConsultarPerfil(d.unidade, d.advogados)),
     caso(AtualizarPerfil, (d) => new AtualizarPerfil(d.unidade, d.advogados, d.trilha)),
@@ -333,6 +353,10 @@ export class AppModule {
         registrarErro(logger, erro, 'cache do calendário indisponível', 'calendario.cache');
       }),
     };
+    // Tokens de verificação de e-mail (HU11): mesmo armazém da redefinição, outro prefixo.
+    const verificacoesDeEmail =
+      opcoes.identidade?.verificacoesDeEmail ??
+      new RedefinicoesRedis(recursos.redis, 'pz:verificacao-email:');
     const cadastro =
       opcoes.cadastro ??
       ((relogio: Clock): DependenciasDoCadastro => ({
@@ -342,6 +366,13 @@ export class AppModule {
         },
         unidade: recursos.banco,
         contas: new CriarConta(hasher, new ContasPostgres()),
+        verificacao: {
+          preparar: (conta) =>
+            new SolicitarVerificacaoDeEmail(verificacoesDeEmail, tokens, cifra, relogio).preparar({
+              ...conta,
+              email: conta.email as Email,
+            }),
+        },
         advogados: new AdvogadosPostgres(relogio),
         trilha: new TrilhaPostgres(),
         outbox: new OutboxPostgres(),
@@ -501,6 +532,19 @@ export class AppModule {
       { provide: FILAS_DO_PAINEL, useValue: filas.painel },
       ...provedoresDoCalendario(calendario),
       ...provedoresDoCadastro(cadastro),
+      {
+        provide: VerificarEmail,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new VerificarEmail(
+            verificacoesDeEmail,
+            recursos.banco,
+            new VerificacaoDeEmailPostgres(),
+            new TrilhaPostgres(),
+            noTenantDoBanco,
+            relogio,
+          ),
+      },
       { provide: APP_INTERCEPTOR, useClass: ContextoDoUsuario },
       { provide: RECEPTORES_DE_WEBHOOK, useValue: opcoes.receptoresDeWebhook ?? new Map() },
       // Ordem importa: o limite por IP vem antes da autenticação.

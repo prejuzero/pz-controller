@@ -1954,6 +1954,72 @@
         }
       }
     },
+    "/v1/email/verificar": {
+      "post": {
+        "operationId": "verificarEmail",
+        "summary": "Confirma o e-mail do usuário com o token do link (uso único, 24 h).",
+        "tags": [
+          "cadastro"
+        ],
+        "security": [],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeVerificacaoDeEmail"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Sucesso, sem corpo."
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições excedido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/oabs": {
       "post": {
         "operationId": "adicionarOab",
@@ -3320,6 +3386,21 @@
         "required": [
           "tipoCliente",
           "nomeDispositivo"
+        ],
+        "additionalProperties": false
+      },
+      "PedidoDeVerificacaoDeEmail": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Token do link enviado por e-mail."
+          }
+        },
+        "required": [
+          "token"
         ],
         "additionalProperties": false
       },

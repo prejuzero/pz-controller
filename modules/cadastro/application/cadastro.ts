@@ -4,7 +4,12 @@ import { z } from 'zod';
 import { Advogado, MAXIMO_DE_EMAILS_ADICIONAIS, MAXIMO_DE_OABS } from '../domain/advogado.js';
 import { Celular, Cpf, lerUf, mascararCpf, NumeroOab } from '../domain/valores.js';
 
-import type { CriadorDeConta, RepositorioDeAdvogados, UnidadeNoTenant } from './portas.js';
+import type {
+  CriadorDeConta,
+  PreparadorDeVerificacao,
+  RepositorioDeAdvogados,
+  UnidadeNoTenant,
+} from './portas.js';
 import type { EstadoDoAdvogado, Oab } from '../domain/advogado.js';
 import type { Uf } from '../domain/valores.js';
 import type { OrigemDaAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
@@ -124,6 +129,7 @@ export class CadastrarAdvogado<Transacao> {
   constructor(
     private readonly unidade: UnidadeNoTenant<Transacao>,
     private readonly contas: CriadorDeConta<Transacao>,
+    private readonly verificacao: PreparadorDeVerificacao,
     private readonly advogados: RepositorioDeAdvogados<Transacao>,
     private readonly trilha: TrilhaDeAuditoria<Transacao>,
     private readonly outbox: Outbox<Transacao>,
@@ -177,6 +183,12 @@ export class CadastrarAdvogado<Transacao> {
     if (!cadastro.ok) return cadastro;
     const advogado = cadastro.valor;
     const perfil = perfilListado(advogado.estado);
+    // Token guardado antes da transação: se ela desfizer, o token órfão só expira.
+    const verificacao = await this.verificacao.preparar({
+      usuarioId,
+      tenantId,
+      email: conta.valor.email,
+    });
 
     try {
       await this.unidade.executar(tenantId, async (transacao) => {
@@ -201,7 +213,7 @@ export class CadastrarAdvogado<Transacao> {
           },
           { canal: 'portal', usuarioId, ...origem },
         );
-        await this.outbox.gravar(transacao, advogado.retirarEventos());
+        await this.outbox.gravar(transacao, [...advogado.retirarEventos(), verificacao]);
       });
     } catch (erro) {
       if (erro instanceof Desfazer) return err(erro.erro);

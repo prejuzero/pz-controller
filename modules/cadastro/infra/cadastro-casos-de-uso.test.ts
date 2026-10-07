@@ -77,7 +77,27 @@ describe('cadastro do advogado (HU11)', () => {
         return outbox.executar(trabalho);
       },
     };
-    cadastrar = new CadastrarAdvogado(noTenant, contas, advogados, trilha, outbox, relogio);
+    const verificacao = {
+      preparar: (conta: { usuarioId: Uuid; tenantId: Uuid }) =>
+        Promise.resolve({
+          id: conta.usuarioId,
+          tipo: 'VerificacaoDeEmailSolicitada',
+          versao: 1,
+          tenantId: conta.tenantId,
+          agregadoId: conta.usuarioId,
+          ocorridoEm: relogio.agora(),
+          payload: {},
+        }),
+    };
+    cadastrar = new CadastrarAdvogado(
+      noTenant,
+      contas,
+      verificacao,
+      advogados,
+      trilha,
+      outbox,
+      relogio,
+    );
   });
 
   async function cadastrado(): Promise<AutorDoCadastro> {
@@ -105,6 +125,7 @@ describe('cadastro do advogado (HU11)', () => {
       'AdvogadoCadastrado',
       'OabAdicionada',
       'OabAdicionada',
+      'VerificacaoDeEmailSolicitada',
     ]);
   });
 

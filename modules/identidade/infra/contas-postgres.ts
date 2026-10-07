@@ -1,5 +1,7 @@
 import type { ContaNova, RepositorioDeContas } from '../application/contas.js';
+import type { RepositorioDeVerificacaoDeEmail } from '../application/verificacao-email.js';
 import type { Transacao } from '@pz/db';
+import type { Instant, Uuid } from '@pz/kernel';
 
 /**
  * Conta nova no PostgreSQL (HU11), como pz_app no tenant novo da transação: a política
@@ -28,5 +30,15 @@ export class ContasPostgres implements RepositorioDeContas<Transacao> {
       data: { tenantId: conta.tenantId, usuarioId: conta.usuarioId, perfil: 'advogado' },
     });
     return true;
+  }
+}
+
+/** E-mail verificado (HU11), como pz_app no tenant do contexto. */
+export class VerificacaoDeEmailPostgres implements RepositorioDeVerificacaoDeEmail<Transacao> {
+  async marcarVerificado(tx: Transacao, usuarioId: Uuid, em: Instant): Promise<void> {
+    await tx.usuario.update({
+      where: { id: usuarioId },
+      data: { emailVerificadoEm: new Date(em.epochMs) },
+    });
   }
 }

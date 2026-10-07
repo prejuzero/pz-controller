@@ -96,6 +96,7 @@ describe('@Consome e o despachante', () => {
             'ConsumidorDeAuditoria.redefinicaoSolicitada',
           ],
         ],
+        ['VerificacaoDeEmailSolicitada@1', ['ConsumidorDeAvisosDeIdentidade.verificacaoDeEmail']],
         [
           'ContaBloqueada@1',
           ['ConsumidorDeAvisosDeIdentidade.bloqueio', 'ConsumidorDeAuditoria.contaBloqueada'],
