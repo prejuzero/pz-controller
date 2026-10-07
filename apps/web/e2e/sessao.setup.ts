@@ -1,6 +1,6 @@
 import { expect, test as setup } from '@playwright/test';
 
-import { entrar, ESTADO_SESSAO } from './apoio';
+import { CURADOR_1, entrar, ESTADO_CURADOR, ESTADO_SESSAO, SENHA } from './apoio';
 
 // Smoke do acesso (HU06): login com ativação do 2FA obrigatório; a sessão serve aos demais testes.
 setup('entra com senha e ativa o 2FA', async ({ page }) => {
@@ -9,4 +9,14 @@ setup('entra com senha e ativa o 2FA', async ({ page }) => {
   await entrar(page);
   await expect(page).toHaveURL('/');
   await page.context().storageState({ path: ESTADO_SESSAO });
+});
+
+// Curadoria (HU15): sessão do primeiro curador fictício, no tenant plataforma.
+setup('curador entra e ativa o 2FA', async ({ browser }) => {
+  const contexto = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+  const page = await contexto.newPage();
+  await page.goto('/entrar');
+  await entrar(page, SENHA, CURADOR_1);
+  await contexto.storageState({ path: ESTADO_CURADOR });
+  await contexto.close();
 });
