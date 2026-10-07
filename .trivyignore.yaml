@@ -1,5 +1,17 @@
 # Exceções do Trivy na varredura de `infra/` (caminhos relativos a essa pasta). Toda exceção precisa de justificativa.
 misconfigurations:
+  - id: DS-0002
+    paths:
+      - 'docker/ui-visual.Dockerfile'
+    statement: >-
+      Imagem só dos testes visuais e do E2E (Playwright), nunca publicada nem implantada. Roda como
+      root para gravar capturas e relatórios no checkout montado, cujo dono no runner do CI não é o
+      usuário node da imagem.
+  - id: DS-0026
+    paths:
+      - 'docker/ui-visual.Dockerfile'
+    statement: >-
+      Container efêmero que executa uma bateria de testes e termina; não há serviço para checar saúde.
   - id: AWS-0132
     paths:
       - 'terraform/modulos/plataforma/main.tf'

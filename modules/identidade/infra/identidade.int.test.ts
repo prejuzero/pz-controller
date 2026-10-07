@@ -300,7 +300,8 @@ describe('registro de acessos e bloqueio com PostgreSQL e Redis', () => {
     const ate = Instant.deEpochMs(Date.now() + 60_000);
     await a.bloquear('login:x', ate);
     expect((await b.bloqueadoAte('login:x'))?.epochMs).toBe(ate.epochMs);
-    expect(await redis.pttl('pz:tentativas:bloqueio:login:x')).toBeLessThanOrEqual(60_000);
+    // Expiração absoluta (PXAT) no instante do bloqueio, sem depender do relógio do container.
+    expect(await redis.pexpiretime('pz:tentativas:bloqueio:login:x')).toBe(ate.epochMs);
     await b.limpar('login:x');
     expect(await a.bloqueadoAte('login:x')).toBeUndefined();
   });
@@ -463,7 +464,7 @@ describe('perfis e permissões no PostgreSQL (HU07)', () => {
             tx.usuarioPerfil.create({ data: { tenantId: TENANT_B, usuarioId: BIA, perfil } }),
           ),
         ),
-      ).rejects.toThrow(new RegExp(perfil));
+      ).rejects.toThrow(perfil);
     },
   );
 });
