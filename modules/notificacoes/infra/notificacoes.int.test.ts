@@ -3,7 +3,11 @@ import { subirBancoDeTeste } from '@pz/db/teste';
 import { FixedClock, gerarUuidV7, Instant } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { EnviarNotificacao, Notificar } from '../application/notificacoes.js';
+import {
+  EnviarNotificacao,
+  Notificar,
+  RegistrarDesfechosDeEntrega,
+} from '../application/notificacoes.js';
 
 import {
   NotificacoesPostgres,
@@ -24,6 +28,7 @@ let postgres: BancoDeTeste;
 let banco: Banco;
 let notificar: Notificar<Transacao>;
 let enviar: EnviarNotificacao<Transacao>;
+let sistemaDosWebhooks: BancoSistema;
 const enviados: string[] = [];
 
 beforeAll(async () => {
@@ -39,6 +44,7 @@ beforeAll(async () => {
     });
     await tx.supressao.create({ data: { email: 'rejeitou@exemplo.invalid', motivo: 'bounce' } });
   });
+  sistemaDosWebhooks = new BancoSistema({ url: postgres.url('pz_sistema') });
   await sistema.encerrar();
   banco = new Banco({ url: postgres.url('pz_app'), maxConexoes: 5 });
   const repositorio = new NotificacoesPostgres();
@@ -68,6 +74,7 @@ beforeAll(async () => {
 }, 120_000);
 
 afterAll(async () => {
+  await sistemaDosWebhooks.encerrar();
   await banco.encerrar();
   await postgres.parar();
 });
@@ -124,5 +131,55 @@ describe('notificações no PostgreSQL (HU30)', () => {
     );
     expect(r.ok && r.valor).toEqual({ solicitada: false, motivo: 'desativada' });
     await expect(noTenant(TENANT, (tx) => tx.notificacao.deleteMany({}))).rejects.toThrow();
+  });
+
+  it('desfecho pelo webhook (transação global): supressão, rejeição e evento no tenant', async () => {
+    const desfechos = new RegistrarDesfechosDeEntrega(
+      new NotificacoesPostgres(),
+      new SupressaoPostgres(),
+      new OutboxPostgres(),
+      relogio,
+    );
+    const idExterno = `ext-lembrete-prazo:-:${USUARIO}:email:2026-10-07`;
+    const em = Instant.deIso('2026-10-07T12:05:00Z');
+    const aplicar = () =>
+      sistemaDosWebhooks.executarComoSistema('webhook de teste', (tx) =>
+        desfechos.executar(tx, [
+          { idExterno, tipo: 'entregue', ocorridoEm: em },
+          {
+            idExterno,
+            tipo: 'rejeitado',
+            ocorridoEm: em,
+            motivo: 'Permanent/General',
+            destinatarios: ['Ana@Exemplo.invalid'],
+          },
+        ]),
+      );
+    expect(await aplicar()).toEqual({ rejeicoes: ['bounce'], semNotificacao: 0 });
+    expect(await aplicar()).toEqual({ rejeicoes: [], semNotificacao: 0 });
+
+    const gravada = await noTenant(TENANT, (tx) =>
+      tx.notificacao.findUniqueOrThrow({ where: { idExterno } }),
+    );
+    expect(gravada.entregueEm?.toISOString()).toBe('2026-10-07T12:05:00.000Z');
+    expect(gravada.motivoRejeicao).toBe('bounce: Permanent/General');
+    const eventos = await noTenant(TENANT, (tx) =>
+      tx.eventoDominio.findMany({
+        where: { tipo: { in: ['NotificacaoEntregue', 'NotificacaoRejeitada'] } },
+      }),
+    );
+    expect(eventos.map((e) => e.tipo).sort()).toEqual([
+      'NotificacaoEntregue',
+      'NotificacaoRejeitada',
+    ]);
+    const r = await noTenant(TENANT, (tx) =>
+      notificar.executar(tx, {
+        ...pedido,
+        tipo: 'nova-intimacao',
+        dados: { numeroProcesso: '1', link: 'https://app.exemplo.invalid/x' },
+      }),
+    );
+    // Os dois endereços estão suprimidos agora (rejeitou antes; ana pelo bounce).
+    expect(r.ok && r.valor).toEqual({ solicitada: false, motivo: 'sem-destinatario' });
   });
 });

@@ -1,12 +1,17 @@
 import { FixedClock, gerarUuidV7, Instant, OutboxEmMemoria } from '@pz/kernel';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { EnviarNotificacao, Notificar } from '../application/notificacoes.js';
+import {
+  EnviarNotificacao,
+  Notificar,
+  RegistrarDesfechosDeEntrega,
+} from '../application/notificacoes.js';
 import { renderizar } from '../application/templates.js';
 
 import { NotificacoesEmMemoria } from './em-memoria.js';
 
 import type { EnviadorDeCanal } from '../application/portas.js';
+import type { EventoEntrega } from '@pz/integracoes';
 import type { TransacaoEmMemoria } from '@pz/kernel';
 
 // Dados FICTÍCIOS (número de processo inventado, e-mails reservados .invalid).
@@ -30,15 +35,18 @@ describe('notificações (HU30)', () => {
   let repositorio: NotificacoesEmMemoria;
   let ativo: boolean | undefined;
   let suprimidos: Set<string>;
+  let suprimidosPor: string[];
   let enviados: { idempotencia: string; destinatarios: readonly string[]; assunto: string }[];
   let notificar: Notificar<TransacaoEmMemoria>;
   let enviar: EnviarNotificacao<TransacaoEmMemoria>;
+  let desfechos: RegistrarDesfechosDeEntrega<TransacaoEmMemoria>;
 
   beforeEach(() => {
     outbox = new OutboxEmMemoria();
     repositorio = new NotificacoesEmMemoria();
     ativo = undefined;
     suprimidos = new Set();
+    suprimidosPor = [];
     enviados = [];
     const email: EnviadorDeCanal = {
       enviar: ({ idempotencia, destinatarios, mensagem }) => {
@@ -62,11 +70,29 @@ describe('notificações (HU30)', () => {
       {
         suprimidos: (_tx, emails) =>
           Promise.resolve(new Set(emails.filter((e) => suprimidos.has(e)))),
+        suprimir: (_tx, emails, motivo) => {
+          for (const e of emails) suprimidos.add(e);
+          suprimidosPor.push(motivo);
+          return Promise.resolve();
+        },
       },
       outbox,
       relogio,
     );
     enviar = new EnviarNotificacao(repositorio, { email }, relogio);
+    desfechos = new RegistrarDesfechosDeEntrega(
+      repositorio,
+      {
+        suprimidos: () => Promise.resolve(new Set()),
+        suprimir: (_tx, emails, motivo) => {
+          for (const e of emails) suprimidos.add(e);
+          suprimidosPor.push(motivo);
+          return Promise.resolve();
+        },
+      },
+      outbox,
+      relogio,
+    );
   });
 
   const pedir = (entrada: unknown) => outbox.executar((tx) => notificar.executar(tx, entrada));
@@ -135,5 +161,72 @@ describe('notificações (HU30)', () => {
       link: 'https://app.exemplo.invalid/x',
     });
     expect(lembrete.assunto).toBe('Prazo do processo 1 vence em 15/10/2026');
+  });
+
+  describe('desfechos de entrega (webhook)', () => {
+    const em = Instant.deIso('2026-10-07T12:05:00Z');
+    const evento = (tipo: EventoEntrega['tipo'], extra: Partial<EventoEntrega> = {}) => ({
+      idExterno: 'ext-1',
+      tipo,
+      ocorridoEm: em,
+      ...extra,
+    });
+    let antes = 0;
+    const novos = () => outbox.pendentes().slice(antes);
+    const aplicar = (eventos: EventoEntrega[]) =>
+      outbox.executar((tx) => desfechos.executar(tx, eventos));
+
+    beforeEach(async () => {
+      const r = await pedir(pedido());
+      if (!r.ok || !r.valor.solicitada) throw new Error('não solicitada');
+      const id = r.valor.notificacaoId;
+      await outbox.executar((tx) => enviar.executar(tx, id));
+      antes = outbox.pendentes().length;
+    });
+
+    it('entrega e abertura gravadas uma vez; só a entrega gera evento', async () => {
+      const resumo = await aplicar([
+        evento('entregue'),
+        evento('entregue'),
+        evento('aberto'),
+        evento('clicado'),
+      ]);
+      expect(resumo).toEqual({ rejeicoes: [], semNotificacao: 0 });
+      expect(repositorio.todas()[0]).toMatchObject({ entregueEm: em, abertaEm: em });
+      expect(novos().map((e) => e.tipo)).toEqual(['NotificacaoEntregue']);
+    });
+
+    it('rejeição permanente: supressão, desfecho e evento uma vez, mesmo repetida', async () => {
+      const bounce = evento('rejeitado', {
+        motivo: 'Permanent/General',
+        destinatarios: [' Ana@Exemplo.invalid '],
+      });
+      expect(await aplicar([bounce, bounce])).toEqual({ rejeicoes: ['bounce'], semNotificacao: 0 });
+      expect(suprimidos).toEqual(new Set(['ana@exemplo.invalid']));
+      expect(repositorio.todas()[0]).toMatchObject({
+        rejeitadaEm: em,
+        motivoRejeicao: 'bounce: Permanent/General',
+      });
+      const [rejeitada] = novos();
+      expect(rejeitada).toMatchObject({
+        tipo: 'NotificacaoRejeitada',
+        tenantId: TENANT,
+        payload: { usuarioId: USUARIO, motivo: 'bounce', detalhe: 'Permanent/General' },
+      });
+      expect(novos()).toHaveLength(1);
+    });
+
+    it('reclamação suprime como spam; falha não suprime; envio desconhecido só suprime', async () => {
+      expect(
+        await aplicar([
+          evento('falhou', { idExterno: 'ext-1' }),
+          evento('reclamacao', { idExterno: 'outro', destinatarios: ['bia@exemplo.invalid'] }),
+          evento('rejeitado', { idExterno: 'outro' }),
+        ]),
+      ).toEqual({ rejeicoes: ['falha'], semNotificacao: 2 });
+      expect(suprimidos).toEqual(new Set(['bia@exemplo.invalid']));
+      expect(suprimidosPor).toEqual(['spam']);
+      expect(repositorio.todas()[0]?.motivoRejeicao).toBe('falha');
+    });
   });
 });

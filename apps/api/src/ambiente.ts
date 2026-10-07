@@ -2,6 +2,7 @@ import {
   esquemaArmazenamento,
   esquemaBanco,
   esquemaBase,
+  esquemaEmail,
   esquemaObservabilidade,
   esquemaRedis,
 } from '@pz/config/env';
@@ -13,6 +14,7 @@ export const esquemaApi = esquemaBase
   .extend(esquemaBanco.shape)
   .extend(esquemaRedis.shape)
   .extend(esquemaArmazenamento.shape)
+  .extend(esquemaEmail.shape)
   .extend({
     PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
     /** Versão implantada (SHA do commit), gravada na imagem pelo build. */

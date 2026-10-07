@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { DESCRITOR_SES, WebhooksSes } from '@pz/adapter-ses';
 import { FilaDeMortosBullMq, ReprocessarJobMorto } from '@pz/administracao';
 import { TrilhaPostgres } from '@pz/auditoria';
 import {
@@ -316,6 +317,16 @@ function provedoresDoCadastro(criar: (relogio: Clock) => DependenciasDoCadastro)
  * Composição da api (CLAUDE.md, seção 6): só liga módulos, controllers e infraestrutura HTTP.
  * Módulos entram por lista explícita.
  */
+
+/** Webhooks de entrada por adaptador; sem tópico SNS configurado, `/v1/webhooks/ses` é 404. */
+function receptoresDoAmbiente(ambiente: AmbienteApi): ReadonlyMap<string, ReceptorWebhook> {
+  const receptores = new Map<string, ReceptorWebhook>();
+  if (ambiente.SES_TOPICOS_SNS.length > 0) {
+    receptores.set(DESCRITOR_SES.id, new WebhooksSes({ topicos: ambiente.SES_TOPICOS_SNS }));
+  }
+  return receptores;
+}
+
 @Module({})
 export class AppModule {
   static registrar(opcoes: OpcoesApi): DynamicModule {
@@ -546,7 +557,10 @@ export class AppModule {
           ),
       },
       { provide: APP_INTERCEPTOR, useClass: ContextoDoUsuario },
-      { provide: RECEPTORES_DE_WEBHOOK, useValue: opcoes.receptoresDeWebhook ?? new Map() },
+      {
+        provide: RECEPTORES_DE_WEBHOOK,
+        useValue: opcoes.receptoresDeWebhook ?? receptoresDoAmbiente(opcoes.ambiente),
+      },
       // Ordem importa: o limite por IP vem antes da autenticação.
       { provide: APP_GUARD, useClass: GuardaDeLimite },
       { provide: APP_GUARD, useClass: GuardaDeAcesso },

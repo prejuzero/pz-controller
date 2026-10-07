@@ -54,6 +54,26 @@ function opcional<Esquema extends z.ZodType>(esquema: Esquema) {
   return z.preprocess((valor) => (valor === '' ? undefined : valor), esquema.optional());
 }
 
+/** Provedor de e-mail e webhooks de entrega (HU30, ADR-005): trocar de provedor é configuração. */
+export const esquemaEmail = z.object({
+  EMAIL_PROVEDOR: z.enum(['smtp', 'ses']).default('smtp'),
+  SES_REGIAO: z.string().min(1).default('sa-east-1'),
+  /** Credenciais SMTP do SES; obrigatórias com EMAIL_PROVEDOR=ses (conferido no boot). */
+  SES_SMTP_USUARIO: opcional(z.string().min(1)),
+  SES_SMTP_SENHA: opcional(z.string().min(1)),
+  /** Tópicos SNS aceitos em /v1/webhooks/ses, separados por vírgula; vazio desliga a rota. */
+  SES_TOPICOS_SNS: z
+    .string()
+    .optional()
+    .transform((valor) =>
+      (valor ?? '')
+        .split(',')
+        .map((topico) => topico.trim())
+        .filter((topico) => topico.length > 0),
+    )
+    .pipe(z.array(z.string().regex(/^arn:aws:sns:[a-z0-9-]+:\d{12}:[\w-]+$/))),
+});
+
 export const esquemaObservabilidade = z.object({
   OTEL_EXPORTER_OTLP_ENDPOINT: opcional(z.url({ protocol: /^https?$/ })),
   /** Sem DSN, a captura de erros no Sentry fica desligada (ADR-011). */

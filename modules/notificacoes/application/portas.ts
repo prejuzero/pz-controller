@@ -9,6 +9,9 @@ export interface RepositorioDeNotificacoes<Transacao> {
   inserir(transacao: Transacao, notificacao: Notificacao): Promise<boolean>;
   buscar(transacao: Transacao, id: Uuid): Promise<Notificacao | undefined>;
   registrarEnvio(transacao: Transacao, notificacao: Notificacao): Promise<void>;
+  /** Pelo ID do envio no provedor; a transação do webhook é global (tenant ainda desconhecido). */
+  buscarPorIdExterno(transacao: Transacao, idExterno: string): Promise<Notificacao | undefined>;
+  registrarDesfecho(transacao: Transacao, notificacao: Notificacao): Promise<void>;
 }
 
 /** Porta: preferência do usuário; `undefined` = sem escolha, vale o padrão (ativo). */
@@ -32,6 +35,12 @@ export interface DestinosDoUsuario<Transacao> {
 /** Porta: endereços que rejeitaram ou marcaram spam (globais, HU30). */
 export interface ListaDeSupressao<Transacao> {
   suprimidos(transacao: Transacao, emails: readonly string[]): Promise<ReadonlySet<string>>;
+  /** Inclui os endereços (repetido não muda nada: o primeiro motivo vale). */
+  suprimir(
+    transacao: Transacao,
+    emails: readonly string[],
+    motivo: 'bounce' | 'spam',
+  ): Promise<void>;
 }
 
 /** Envio num canal (e-mail sobre o ProvedorEmail; push, WhatsApp e SMS sobre CanalNotificacao). */

@@ -99,6 +99,29 @@ export const NotificacaoSolicitada = definirEvento(
   }),
 );
 
+const DaNotificacao = z.object({
+  notificacaoId: z.uuid(),
+  usuarioId: z.uuid(),
+  canal: z.enum(['email', 'push', 'whatsapp', 'sms']),
+  tipo: z.string().min(1),
+});
+
+/** O provedor confirmou a entrega (webhook, HU30). */
+export const NotificacaoEntregue = definirEvento('NotificacaoEntregue', 1, DaNotificacao);
+
+/**
+ * A notificação não chegou (HU30): endereço rejeitado (bounce), marcada como spam ou falha do
+ * envio. Bounce e spam já entraram na lista de supressão; gera aviso ao usuário e ao administrador.
+ */
+export const NotificacaoRejeitada = definirEvento(
+  'NotificacaoRejeitada',
+  1,
+  DaNotificacao.extend({
+    motivo: z.enum(['bounce', 'spam', 'falha']),
+    detalhe: z.string().max(500).optional(),
+  }),
+);
+
 export const EVENTOS = catalogoDeEventos(
   SituacaoVerificada,
   RedefinicaoDeSenhaSolicitada,
@@ -109,4 +132,6 @@ export const EVENTOS = catalogoDeEventos(
   OabRemovida,
   VerificacaoDeEmailSolicitada,
   NotificacaoSolicitada,
+  NotificacaoEntregue,
+  NotificacaoRejeitada,
 );
