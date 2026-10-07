@@ -5,6 +5,7 @@ import { createContext, useContext } from 'react';
 
 import { permite, type Exigencia } from '../permissoes';
 
+import { consultasCalendario, mutacoesCalendario } from './calendario';
 import { consultasSessao, mutacoesSessao } from './sessao';
 
 import type { ClienteApi } from './cliente';
@@ -54,3 +55,18 @@ export const useSolicitarRedefinicao = () => useMutation(useMutacoesSessao().sol
 export const useRedefinirSenha = () => useMutation(useMutacoesSessao().redefinirSenha);
 export const useRevogarDispositivo = () => useMutation(useMutacoesSessao().revogarDispositivo);
 export const useSair = () => useMutation(useMutacoesSessao().sair);
+
+function useMutacoesCalendario() {
+  return mutacoesCalendario(useApi(), useQueryClient());
+}
+
+export const useCalendarioGlobal = (ano: number) =>
+  useQuery(consultasCalendario(useApi()).global(ano));
+export const useFeriadosLocais = (ano: number) =>
+  useQuery(consultasCalendario(useApi()).locais(ano));
+export const useProporEvento = () => useMutation(useMutacoesCalendario().propor);
+export const useAprovarEvento = () => useMutation(useMutacoesCalendario().aprovar);
+export const useRevogarEvento = () => useMutation(useMutacoesCalendario().revogar);
+export const useImportarCalendario = () => useMutation(useMutacoesCalendario().importar);
+export const useCadastrarFeriadoLocal = () => useMutation(useMutacoesCalendario().cadastrarLocal);
+export const useRevogarFeriadoLocal = () => useMutation(useMutacoesCalendario().revogarLocal);

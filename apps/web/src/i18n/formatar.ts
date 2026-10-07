@@ -21,3 +21,10 @@ export function formatarInstante(valor: string, fuso: string = FUSO_PADRAO): str
     timeZone: fuso,
   }).format(instante);
 }
+
+/** Ano civil de um instante no fuso de exibição (ex.: o ano padrão dos filtros do calendário). */
+export function anoNoFuso(instante: Date, fuso: string = FUSO_PADRAO): number {
+  return Number(
+    new Intl.DateTimeFormat('en', { year: 'numeric', timeZone: fuso }).format(instante),
+  );
+}

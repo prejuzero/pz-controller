@@ -20,10 +20,22 @@ describe('permissoes', () => {
     expect(permite(['prazos:ler'], 'prazos')).toBe(false);
   });
 
+  it('{ algum } concede com qualquer uma das permissões', () => {
+    const calendario = { algum: ['calendario:ler', 'curadoria:calendario'] };
+    expect(permite(['curadoria:calendario'], calendario)).toBe(true);
+    expect(permite(['calendario:ler'], calendario)).toBe(true);
+    expect(permite(['prazos:ler'], calendario)).toBe(false);
+    expect(permite(['prazos:ler'], { algum: [] })).toBe(false);
+  });
+
   it('mantém itens sem permissão e oculta os não concedidos', () => {
     const itens = [{ id: 'a' }, { id: 'b', permissao: 'prazos:ler' }, { id: 'c', permissao: 'x' }];
     expect(filtrarPermitidos(itens, ['prazos:ler']).map((i) => i.id)).toEqual(['a', 'b']);
     expect(filtrarPermitidos(itens, []).map((i) => i.id)).toEqual(['a']);
     expect(filtrarPermitidos([{ permissao: 1 }], ['1'])).toEqual([]);
+    expect(filtrarPermitidos([{ permissao: { algum: [1] } }], ['1'])).toEqual([]);
+    expect(filtrarPermitidos([{ permissao: null }], [])).toEqual([]);
+    expect(filtrarPermitidos([{ permissao: ['a', 'b'] }], ['a', 'b'])).toHaveLength(1);
+    expect(filtrarPermitidos([{ permissao: { algum: ['a'] } }], ['a'])).toHaveLength(1);
   });
 });

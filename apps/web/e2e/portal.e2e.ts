@@ -58,9 +58,18 @@ test.describe('acessibilidade (axe)', () => {
     });
   }
 
-  test('sem violações em /configuracoes/seguranca', async ({ page }) => {
-    await page.goto('/configuracoes/seguranca');
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  for (const rota of ['/configuracoes/seguranca', '/configuracoes/feriados-locais']) {
+    test(`sem violações em ${rota}`, async ({ page }) => {
+      await page.goto(rota);
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      await semViolacoes(page);
+    });
+  }
+
+  test('sem violações no formulário de feriado local', async ({ page }) => {
+    await page.goto('/configuracoes/feriados-locais');
+    await page.getByRole('button', { name: 'Novo feriado local' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
     await semViolacoes(page);
   });
 

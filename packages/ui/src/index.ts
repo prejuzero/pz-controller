@@ -2,7 +2,13 @@ export { cn } from './utilitarios.js';
 export { definirTema } from './tema.js';
 export { mensagens } from './mensagens.js';
 export { Botao, variantesBotao, type BotaoProps } from './componentes/botao.js';
-export { Campo, type CampoProps } from './componentes/campo.js';
+export {
+  Campo,
+  classesEntrada,
+  EnvoltorioCampo,
+  type CampoProps,
+  type RotuloCampoProps,
+} from './componentes/campo.js';
 export { Selecao, type OpcaoSelecao, type SelecaoProps } from './componentes/selecao.js';
 export { SeletorData, formatarDataBr, type SeletorDataProps } from './componentes/seletor-data.js';
 export {
