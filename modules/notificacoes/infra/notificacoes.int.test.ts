@@ -181,5 +181,11 @@ describe('notificações no PostgreSQL (HU30)', () => {
     );
     // Os dois endereços estão suprimidos agora (rejeitou antes; ana pelo bounce).
     expect(r.ok && r.valor).toEqual({ solicitada: false, motivo: 'sem-destinatario' });
+
+    // Aviso à equipe: só o tenant da rejeição a enxerga (RLS).
+    const repositorio = new NotificacoesPostgres();
+    const desde = Instant.deIso('2026-10-01T00:00:00Z');
+    expect(await noTenant(TENANT, (tx) => repositorio.usuariosComRejeicaoDesde(tx, desde))).toBe(1);
+    expect(await noTenant(OUTRO, (tx) => repositorio.usuariosComRejeicaoDesde(tx, desde))).toBe(0);
   });
 });

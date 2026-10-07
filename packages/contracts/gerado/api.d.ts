@@ -411,6 +411,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/notificacoes/avisos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** E-mails do usuário rejeitados e, para quem administra, colegas com rejeição recente. */
+        get: operations["consultarAvisosDeEntrega"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/oabs": {
         parameters: {
             query?: never;
@@ -517,6 +534,12 @@ export interface components {
             celular?: string;
             /** @description Recebem cópia das notificações. */
             emailsAdicionais?: string[];
+        };
+        AvisosDeEntrega: {
+            /** @description E-mails do usuário que rejeitaram mensagens (bounce) ou marcaram spam: não recebem notificações até serem trocados ou liberados pelo suporte. */
+            emailsRejeitados: string[];
+            /** @description Usuários do escritório com notificação rejeitada nos últimos 7 dias; null para quem não administra a equipe (`usuarios:gerir`). */
+            usuariosDaEquipeComRejeicao: number | null;
         };
         CadastroRealizado: {
             /** Format: uuid */
@@ -2464,6 +2487,53 @@ export interface operations {
             };
             /** @description Limite de requisições excedido. */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    consultarAvisosDeEntrega: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AvisosDeEntrega"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

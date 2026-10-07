@@ -92,7 +92,10 @@
     "rotulo": "Avisos",
     "impersonacao": "Você está acessando outro escritório só para leitura. Motivo: {motivo}. Expira em {expiraEm}.",
     "capturaAtrasada": "A captura de publicações está atrasada. Confira as intimações manualmente até a normalização.",
-    "cienciaPendente": "{quantidade, plural, one {# intimação aguarda} other {# intimações aguardam}} confirmação de ciência."
+    "cienciaPendente": "{quantidade, plural, one {# intimação aguarda} other {# intimações aguardam}} confirmação de ciência.",
+    "emailRejeitado": "Não conseguimos entregar e-mails para {emails}. Enquanto isso, você não recebe avisos de prazo por e-mail.",
+    "emailRejeitadoAcao": "Revisar e-mails no perfil",
+    "equipeComRejeicao": "{quantidade, plural, one {# pessoa da equipe teve} other {# pessoas da equipe tiveram}} e-mails rejeitados nos últimos 7 dias."
   },
   "secao": {
     "emConstrucao": "Esta seção chega nas próximas entregas."

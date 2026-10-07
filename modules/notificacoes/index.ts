@@ -1,11 +1,17 @@
 // API pública do módulo notificacoes (CLAUDE.md, seção 6): outros módulos e as apps só usam o que está aqui.
 export {
+  ConsultarAvisosDeEntrega,
   EnviarNotificacao,
+  JANELA_DO_AVISO_A_EQUIPE_MS,
   Notificar,
   PedidoDeNotificacao,
   RegistrarDesfechosDeEntrega,
 } from './application/notificacoes.js';
-export type { ResultadoDoPedido, ResumoDosDesfechos } from './application/notificacoes.js';
+export type {
+  AvisosDeEntrega,
+  ResultadoDoPedido,
+  ResumoDosDesfechos,
+} from './application/notificacoes.js';
 export type {
   DestinosDoUsuario,
   EnviadorDeCanal,

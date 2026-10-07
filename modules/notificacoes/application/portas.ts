@@ -1,7 +1,7 @@
 import type { MensagemRenderizada } from './templates.js';
 import type { Canal, Notificacao, TipoDeNotificacao } from '../domain/notificacao.js';
 import type { ResultadoEnvio } from '@pz/integracoes';
-import type { Uuid } from '@pz/kernel';
+import type { Instant, Uuid } from '@pz/kernel';
 
 /** Porta: notificações do tenant da transação (tabela `notificacao`, RLS). */
 export interface RepositorioDeNotificacoes<Transacao> {
@@ -12,6 +12,8 @@ export interface RepositorioDeNotificacoes<Transacao> {
   /** Pelo ID do envio no provedor; a transação do webhook é global (tenant ainda desconhecido). */
   buscarPorIdExterno(transacao: Transacao, idExterno: string): Promise<Notificacao | undefined>;
   registrarDesfecho(transacao: Transacao, notificacao: Notificacao): Promise<void>;
+  /** Quantos usuários do tenant tiveram notificação rejeitada desde o instante (aviso à equipe). */
+  usuariosComRejeicaoDesde(transacao: Transacao, desde: Instant): Promise<number>;
 }
 
 /** Porta: preferência do usuário; `undefined` = sem escolha, vale o padrão (ativo). */
@@ -29,7 +31,10 @@ export interface PreferenciasDeNotificacao<Transacao> {
  * identidade e ao cadastro pelas APIs públicas deles.
  */
 export interface DestinosDoUsuario<Transacao> {
-  emails(transacao: Transacao, usuarioId: Uuid): Promise<{ principal?: string; copias: string[] }>;
+  emails(
+    transacao: Transacao,
+    usuarioId: Uuid,
+  ): Promise<{ principal?: string; copias: readonly string[] }>;
 }
 
 /** Porta: endereços que rejeitaram ou marcaram spam (globais, HU30). */

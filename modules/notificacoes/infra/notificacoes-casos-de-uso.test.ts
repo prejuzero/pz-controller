@@ -2,6 +2,7 @@ import { FixedClock, gerarUuidV7, Instant, OutboxEmMemoria } from '@pz/kernel';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
+  ConsultarAvisosDeEntrega,
   EnviarNotificacao,
   Notificar,
   RegistrarDesfechosDeEntrega,
@@ -227,6 +228,33 @@ describe('notificações (HU30)', () => {
       expect(suprimidos).toEqual(new Set(['bia@exemplo.invalid']));
       expect(suprimidosPor).toEqual(['spam']);
       expect(repositorio.todas()[0]?.motivoRejeicao).toBe('falha');
+    });
+
+    it('avisos: e-mails suprimidos do usuário e, para quem administra, colegas na janela', async () => {
+      await aplicar([evento('rejeitado', { destinatarios: ['ana@exemplo.invalid'] })]);
+      const avisos = (agora: string) =>
+        new ConsultarAvisosDeEntrega(
+          outbox,
+          repositorio,
+          {
+            emails: () =>
+              Promise.resolve({ principal: 'Ana@Exemplo.invalid', copias: ['c@exemplo.invalid'] }),
+          },
+          {
+            suprimidos: (_tx, emails) =>
+              Promise.resolve(new Set(emails.filter((e) => suprimidos.has(e)))),
+            suprimir: () => Promise.resolve(),
+          },
+          new FixedClock(Instant.deIso(agora)),
+        );
+      const hoje = avisos('2026-10-08T00:00:00Z');
+      expect(await hoje.executar(USUARIO, true)).toEqual({
+        emailsRejeitados: ['ana@exemplo.invalid'],
+        usuariosDaEquipeComRejeicao: 1,
+      });
+      expect((await hoje.executar(USUARIO, false)).usuariosDaEquipeComRejeicao).toBeNull();
+      const depois = await avisos('2026-10-15T12:05:01Z').executar(USUARIO, true);
+      expect(depois.usuariosDaEquipeComRejeicao).toBe(0);
     });
   });
 });
