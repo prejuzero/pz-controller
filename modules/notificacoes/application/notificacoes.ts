@@ -12,7 +12,8 @@ import type {
   PreferenciasDeNotificacao,
   RepositorioDeNotificacoes,
 } from './portas.js';
-import type { Canal } from '../domain/notificacao.js';
+import type { Canal, MotivoDeRejeicao } from '../domain/notificacao.js';
+import type { EventoEntrega } from '@pz/integracoes';
 import type { Clock, Outbox, Result, Uuid } from '@pz/kernel';
 
 export const PedidoDeNotificacao = z
@@ -124,6 +125,59 @@ export class EnviarNotificacao<Transacao> {
     await this.notificacoes.registrarEnvio(transacao, notificacao);
   }
 }
+
+export interface ResumoDosDesfechos {
+  /** Rejeições novas (já gravadas e com evento), para métrica e alerta ao administrador. */
+  readonly rejeicoes: readonly MotivoDeRejeicao[];
+  /** Desfechos de envios fora da tabela de notificações (ex.: avisos de segurança). */
+  readonly semNotificacao: number;
+}
+
+/**
+ * Aplica os eventos de entrega do provedor (webhook, HU30). Rejeição permanente e reclamação
+ * entram na lista de supressão mesmo sem notificação correspondente; a notificação recebe o
+ * desfecho e publica NotificacaoEntregue ou NotificacaoRejeitada. Idempotente.
+ */
+export class RegistrarDesfechosDeEntrega<Transacao> {
+  constructor(
+    private readonly notificacoes: RepositorioDeNotificacoes<Transacao>,
+    private readonly supressao: ListaDeSupressao<Transacao>,
+    private readonly outbox: Outbox<Transacao>,
+    private readonly relogio: Clock,
+  ) {}
+
+  async executar(
+    transacao: Transacao,
+    eventos: readonly EventoEntrega[],
+  ): Promise<ResumoDosDesfechos> {
+    const rejeicoes: MotivoDeRejeicao[] = [];
+    let semNotificacao = 0;
+    for (const evento of eventos) {
+      const motivoDeSupressao = SUPRIME[evento.tipo];
+      if (motivoDeSupressao !== undefined && evento.destinatarios !== undefined) {
+        const emails = evento.destinatarios.map((e) => e.trim().toLowerCase());
+        await this.supressao.suprimir(transacao, emails, motivoDeSupressao);
+      }
+      const notificacao = await this.notificacoes.buscarPorIdExterno(transacao, evento.idExterno);
+      if (notificacao === undefined) {
+        semNotificacao += 1;
+        continue;
+      }
+      if (!notificacao.registrarDesfecho(evento, this.relogio)) continue;
+      await this.notificacoes.registrarDesfecho(transacao, notificacao);
+      const novos = notificacao.retirarEventos();
+      for (const e of novos)
+        if (e.tipo === 'NotificacaoRejeitada') rejeicoes.push(e.payload.motivo);
+      await this.outbox.gravar(transacao, novos);
+    }
+    return { rejeicoes, semNotificacao };
+  }
+}
+
+const SUPRIME: Partial<Record<EventoEntrega['tipo'], 'bounce' | 'spam'>> = {
+  rejeitado: 'bounce',
+  reclamacao: 'spam',
+};
 
 function problemas(erro: z.ZodError, prefixo?: string): Validacao {
   return new Validacao(

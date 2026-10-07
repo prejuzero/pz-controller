@@ -16,8 +16,14 @@ import type { Clock, UnidadeDeTrabalho } from '@pz/kernel';
 const logger = criarLogger('worker.webhooks');
 const webhooks = new WebhooksPostgres();
 
-/** Trata o webhook de um adaptador (ex.: eventos de entrega de e-mail, HU30). Idempotente. */
-export type ProcessadorDeWebhook = (webhook: WebhookPendente) => Promise<void>;
+/**
+ * Trata o webhook de um adaptador (ex.: eventos de entrega de e-mail, HU30) na transação global
+ * que o marca como processado: o efeito e a marca são confirmados juntos. Idempotente.
+ */
+export type ProcessadorDeWebhook = (
+  transacao: Transacao,
+  webhook: WebhookPendente,
+) => Promise<void>;
 
 export const processarWebhook = definirJob({
   fila: 'integracoes',
@@ -40,7 +46,7 @@ export async function tratarWebhook(
     if (processador === undefined) {
       throw new UnrecoverableError(`nenhum processador de webhook para ${webhook.adaptador}`);
     }
-    await processador(webhook);
+    await processador(tx, webhook);
     await webhooks.marcarProcessado(tx, id, relogio.agora());
   });
 }

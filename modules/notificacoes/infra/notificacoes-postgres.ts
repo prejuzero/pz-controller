@@ -39,20 +39,24 @@ export class NotificacoesPostgres implements RepositorioDeNotificacoes<Transacao
 
   async buscar(tx: Transacao, id: Uuid): Promise<Notificacao | undefined> {
     const l = await tx.notificacao.findUnique({ where: { id } });
-    if (l === null) return undefined;
-    return Notificacao.restaurar({
-      id: l.id as Uuid,
-      tenantId: l.tenantId as Uuid,
-      usuarioId: l.usuarioId as Uuid,
-      ...(l.prazoId === null ? {} : { prazoId: l.prazoId as Uuid }),
-      canal: l.canal,
-      tipo: l.tipo as TipoDeNotificacao,
-      chave: l.chaveIdempotencia,
-      versaoTemplate: l.versaoTemplate,
-      destinatarios: l.destinatarios,
-      dados: l.dados,
-      ...(l.enviadaEm === null ? {} : { enviadaEm: Instant.deEpochMs(l.enviadaEm.getTime()) }),
-      ...(l.idExterno === null ? {} : { idExterno: l.idExterno }),
+    return l === null ? undefined : restaurar(l);
+  }
+
+  async buscarPorIdExterno(tx: Transacao, idExterno: string): Promise<Notificacao | undefined> {
+    const l = await tx.notificacao.findUnique({ where: { idExterno } });
+    return l === null ? undefined : restaurar(l);
+  }
+
+  async registrarDesfecho(tx: Transacao, notificacao: Notificacao): Promise<void> {
+    const { id, entregueEm, abertaEm, rejeitadaEm, motivoRejeicao } = notificacao.estado;
+    await tx.notificacao.update({
+      where: { id },
+      data: {
+        entregueEm: data(entregueEm),
+        abertaEm: data(abertaEm),
+        rejeitadaEm: data(rejeitadaEm),
+        motivoRejeicao: motivoRejeicao ?? null,
+      },
     });
   }
 
@@ -60,12 +64,44 @@ export class NotificacoesPostgres implements RepositorioDeNotificacoes<Transacao
     const { id, idExterno, enviadaEm } = notificacao.estado;
     await tx.notificacao.update({
       where: { id },
-      data: {
-        idExterno: idExterno ?? null,
-        enviadaEm: enviadaEm === undefined ? null : new Date(enviadaEm.epochMs),
-      },
+      data: { idExterno: idExterno ?? null, enviadaEm: data(enviadaEm) },
     });
   }
+}
+
+function data(instante: Instant | undefined): Date | null {
+  return instante === undefined ? null : new Date(instante.epochMs);
+}
+
+function instante(valor: Date | null): Instant | undefined {
+  return valor === null ? undefined : Instant.deEpochMs(valor.getTime());
+}
+
+type LinhaNotificacao = NonNullable<Awaited<ReturnType<Transacao['notificacao']['findUnique']>>>;
+
+function restaurar(l: LinhaNotificacao): Notificacao {
+  const enviadaEm = instante(l.enviadaEm);
+  const entregueEm = instante(l.entregueEm);
+  const abertaEm = instante(l.abertaEm);
+  const rejeitadaEm = instante(l.rejeitadaEm);
+  return Notificacao.restaurar({
+    id: l.id as Uuid,
+    tenantId: l.tenantId as Uuid,
+    usuarioId: l.usuarioId as Uuid,
+    ...(l.prazoId === null ? {} : { prazoId: l.prazoId as Uuid }),
+    canal: l.canal,
+    tipo: l.tipo as TipoDeNotificacao,
+    chave: l.chaveIdempotencia,
+    versaoTemplate: l.versaoTemplate,
+    destinatarios: l.destinatarios,
+    dados: l.dados,
+    ...(enviadaEm === undefined ? {} : { enviadaEm }),
+    ...(l.idExterno === null ? {} : { idExterno: l.idExterno }),
+    ...(entregueEm === undefined ? {} : { entregueEm }),
+    ...(abertaEm === undefined ? {} : { abertaEm }),
+    ...(rejeitadaEm === undefined ? {} : { rejeitadaEm }),
+    ...(l.motivoRejeicao === null ? {} : { motivoRejeicao: l.motivoRejeicao }),
+  });
 }
 
 export class PreferenciasPostgres implements PreferenciasDeNotificacao<Transacao> {
@@ -91,5 +127,17 @@ export class SupressaoPostgres implements ListaDeSupressao<Transacao> {
       select: { email: true },
     });
     return new Set(linhas.map((l) => l.email));
+  }
+
+  async suprimir(
+    tx: Transacao,
+    emails: readonly string[],
+    motivo: 'bounce' | 'spam',
+  ): Promise<void> {
+    if (emails.length === 0) return;
+    await tx.supressao.createMany({
+      data: emails.map((e) => ({ email: e.toLowerCase(), motivo })),
+      skipDuplicates: true,
+    });
   }
 }

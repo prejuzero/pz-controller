@@ -6,6 +6,7 @@ import {
   esquemaArmazenamento,
   esquemaBanco,
   esquemaBase,
+  esquemaEmail,
   esquemaObservabilidade,
   esquemaRedis,
   esquemaSmtp,
@@ -125,5 +126,22 @@ describe('carregarAmbiente', () => {
       carregarAmbiente(esquemaBase, 'texto' as unknown as Record<string, string>),
     );
     expect(erro.problemas[0]).toMatch(/^\(raiz\)/);
+  });
+
+  it('e-mail: SMTP por padrão; SES com tópicos SNS em lista e ARN validado', () => {
+    expect(carregarAmbiente(esquemaEmail, {})).toMatchObject({
+      EMAIL_PROVEDOR: 'smtp',
+      SES_TOPICOS_SNS: [],
+    });
+    const ses = carregarAmbiente(esquemaEmail, {
+      EMAIL_PROVEDOR: 'ses',
+      SES_SMTP_USUARIO: '',
+      SES_TOPICOS_SNS: ' arn:aws:sns:sa-east-1:000000000000:pz-entregas , ',
+    });
+    expect(ses.SES_SMTP_USUARIO).toBeUndefined();
+    expect(ses.SES_TOPICOS_SNS).toEqual(['arn:aws:sns:sa-east-1:000000000000:pz-entregas']);
+    expect(() => carregarAmbiente(esquemaEmail, { SES_TOPICOS_SNS: 'qualquer' })).toThrow(
+      ErroConfiguracao,
+    );
   });
 });

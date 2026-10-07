@@ -6,7 +6,10 @@ import { Consome } from '../eventos/consome.js';
 import type { Transacao } from '@pz/db';
 import type { EventoDominio } from '@pz/kernel';
 
-/** Leva à trilha de auditoria os eventos de identidade (HU08), na transação do consumo. */
+/**
+ * Leva à trilha de auditoria os eventos de identidade (HU08) e as rejeições de notificação
+ * (HU30), na transação do consumo.
+ */
 @Injectable()
 export class ConsumidorDeAuditoria {
   constructor(@Inject(AuditarEvento) private readonly auditar: AuditarEvento<Transacao>) {}
@@ -28,6 +31,11 @@ export class ConsumidorDeAuditoria {
 
   @Consome('RedefinicaoDeSenhaSolicitada', { versao: 1 })
   redefinicaoSolicitada(tx: Transacao, evento: EventoDominio): Promise<void> {
+    return this.auditar.executar(tx, evento);
+  }
+
+  @Consome('NotificacaoRejeitada', { versao: 1 })
+  notificacaoRejeitada(tx: Transacao, evento: EventoDominio): Promise<void> {
     return this.auditar.executar(tx, evento);
   }
 }

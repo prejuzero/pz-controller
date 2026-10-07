@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DiscoveryModule } from '@nestjs/core';
 import { ArmazenamentoS3 } from '@pz/adapter-s3';
+import { criarProvedorEmailSes, DESCRITOR_SES, WebhooksSes } from '@pz/adapter-ses';
 import { DESCRITOR_SMTP, ProvedorEmailSmtp } from '@pz/adapter-smtp';
 import {
   AuditarEvento,
@@ -14,7 +15,12 @@ import { Banco, BancoSistema, OutboxPostgres } from '@pz/db';
 import { CifraAesGcm, EmailsDosUsuariosPostgres, EnviarAvisosDeSeguranca } from '@pz/identidade';
 import { RegistroDeAdaptadores } from '@pz/integracoes';
 import { SystemClock } from '@pz/kernel';
-import { EnviarNotificacao, NotificacoesPostgres } from '@pz/notificacoes';
+import {
+  EnviarNotificacao,
+  NotificacoesPostgres,
+  RegistrarDesfechosDeEntrega,
+  SupressaoPostgres,
+} from '@pz/notificacoes';
 import { criarLogger, registrarErro } from '@pz/observability';
 import {
   ConsultarSituacao,
@@ -50,6 +56,7 @@ import { ServicoDeFilas } from './filas/servico.js';
 import { ConsumidorDeAvisosDeIdentidade } from './identidade/consumidor.js';
 import { RelayDeWebhooks } from './integracoes/webhooks.js';
 import { ConsumidorDeNotificacoes } from './notificacoes/consumidor.js';
+import { processadorDeEntregas } from './notificacoes/entregas.js';
 import { RecursosDoBanco } from './recursos.js';
 import { ConsumidorDeSituacao } from './saude/consumidor.js';
 
@@ -158,9 +165,15 @@ function wormDoAmbiente(ambiente: AmbienteWorker, relogio: Clock): DestinoWorm {
   };
 }
 
-/** E-mail pelo registro de adaptadores (resiliência, telemetria e saúde padrão, ADR-005). */
+/**
+ * E-mail pelo registro de adaptadores (resiliência, telemetria e saúde padrão, ADR-005). O
+ * provedor sai de EMAIL_PROVEDOR: trocar SMTP por SES é configuração, não código (HU30).
+ */
 function emailDoAmbiente(ambiente: AmbienteWorker, relogio: Clock): ProvedorEmail {
-  const registro = new RegistroDeAdaptadores({ padrao: { 'provedor-email': 'smtp' } }, { relogio });
+  const registro = new RegistroDeAdaptadores(
+    { padrao: { 'provedor-email': ambiente.EMAIL_PROVEDOR } },
+    { relogio },
+  );
   registro.registrar(
     DESCRITOR_SMTP,
     () =>
@@ -175,8 +188,40 @@ function emailDoAmbiente(ambiente: AmbienteWorker, relogio: Clock): ProvedorEmai
         relogio,
       ),
   );
+  registro.registrar(DESCRITOR_SES, () => {
+    const { SES_SMTP_USUARIO: usuario, SES_SMTP_SENHA: senha } = ambiente;
+    if (usuario === undefined || senha === undefined) {
+      throw new Error('EMAIL_PROVEDOR=ses exige SES_SMTP_USUARIO e SES_SMTP_SENHA');
+    }
+    return criarProvedorEmailSes(
+      { regiao: ambiente.SES_REGIAO, usuario, senha, remetente: ambiente.EMAIL_REMETENTE },
+      relogio,
+    );
+  });
   registro.validar();
   return registro.obter('provedor-email');
+}
+
+/** Processadores de webhook por adaptador; o do SES só com tópico SNS configurado. */
+function processadoresDoAmbiente(
+  ambiente: AmbienteWorker,
+  relogio: Clock,
+): ReadonlyMap<string, ProcessadorDeWebhook> {
+  const processadores = new Map<string, ProcessadorDeWebhook>();
+  if (ambiente.SES_TOPICOS_SNS.length > 0) {
+    const ses = new WebhooksSes({ topicos: ambiente.SES_TOPICOS_SNS });
+    const desfechos = new RegistrarDesfechosDeEntrega(
+      new NotificacoesPostgres(),
+      new SupressaoPostgres(),
+      new OutboxPostgres(),
+      relogio,
+    );
+    processadores.set(
+      DESCRITOR_SES.id,
+      processadorDeEntregas((webhook) => ses.interpretar(webhook), desfechos),
+    );
+  }
+  return processadores;
 }
 
 /** Composição do worker: filas, relay do outbox e consumidores de eventos (lista explícita). */
@@ -219,7 +264,12 @@ export class WorkerModule {
       { provide: LIMPEZA_DO_OUTBOX, useValue: outboxPostgres },
       // Webhooks de entrada: tabela global, lida e processada como sistema.
       { provide: UNIDADE_DOS_WEBHOOKS, useValue: sistema.unidade('webhooks de entrada') },
-      { provide: PROCESSADORES_DE_WEBHOOK, useValue: opcoes.processadoresDeWebhook ?? new Map() },
+      {
+        provide: PROCESSADORES_DE_WEBHOOK,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          opcoes.processadoresDeWebhook ?? processadoresDoAmbiente(ambiente, relogio),
+      },
       {
         provide: FONTE_DO_RELAY,
         useValue: emMemoria === undefined ? outboxPostgres : fonteEmMemoria(emMemoria),

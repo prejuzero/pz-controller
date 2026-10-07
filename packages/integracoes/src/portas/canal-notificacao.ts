@@ -46,6 +46,8 @@ export const EventoEntrega = z
     tipo: z.enum(['entregue', 'aberto', 'clicado', 'rejeitado', 'reclamacao', 'falhou']),
     ocorridoEm: Instante,
     motivo: z.string().max(500).optional(),
+    /** Endereços afetados (ex.: os que rejeitaram), para a lista de supressão. */
+    destinatarios: z.array(z.string().min(1)).max(50).optional(),
   })
   .strict();
 export type EventoEntrega = z.infer<typeof EventoEntrega>;

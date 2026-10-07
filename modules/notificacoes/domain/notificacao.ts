@@ -20,12 +20,42 @@ export interface EstadoDaNotificacao {
   readonly dados: unknown;
   readonly enviadaEm?: Instant;
   readonly idExterno?: string;
+  readonly entregueEm?: Instant;
+  readonly abertaEm?: Instant;
+  readonly rejeitadaEm?: Instant;
+  readonly motivoRejeicao?: string;
 }
+
+/** Desfecho informado pelo provedor (webhook de entrega), já no modelo canônico. */
+export interface DesfechoDeEntrega {
+  readonly tipo: 'entregue' | 'aberto' | 'clicado' | 'rejeitado' | 'reclamacao' | 'falhou';
+  readonly ocorridoEm: Instant;
+  readonly motivo?: string | undefined;
+}
+
+/** Por que a notificação não chegou: endereço inexistente, marcada como spam ou falha do envio. */
+export type MotivoDeRejeicao = 'bounce' | 'spam' | 'falha';
 
 export type NotificacaoSolicitada = EventoDominio<
   'NotificacaoSolicitada',
   { notificacaoId: Uuid; canal: Canal; tipo: TipoDeNotificacao }
 >;
+export type NotificacaoEntregue = EventoDominio<
+  'NotificacaoEntregue',
+  { notificacaoId: Uuid; usuarioId: Uuid; canal: Canal; tipo: TipoDeNotificacao }
+>;
+export type NotificacaoRejeitada = EventoDominio<
+  'NotificacaoRejeitada',
+  {
+    notificacaoId: Uuid;
+    usuarioId: Uuid;
+    canal: Canal;
+    tipo: TipoDeNotificacao;
+    motivo: MotivoDeRejeicao;
+    detalhe?: string;
+  }
+>;
+type EventoDaNotificacao = NotificacaoSolicitada | NotificacaoEntregue | NotificacaoRejeitada;
 
 /**
  * Chave de idempotência (HU30): o mesmo tipo, prazo, destinatário, canal e janela geram uma
@@ -42,7 +72,7 @@ export function chaveDeIdempotencia(p: {
 }
 
 /** Uma notificação num canal: nasce solicitada, é enviada uma vez (ADR-004). */
-export class Notificacao extends AggregateRoot<NotificacaoSolicitada> {
+export class Notificacao extends AggregateRoot<EventoDaNotificacao> {
   private constructor(private estadoAtual: EstadoDaNotificacao) {
     super(estadoAtual.id);
   }
@@ -56,7 +86,17 @@ export class Notificacao extends AggregateRoot<NotificacaoSolicitada> {
   }
 
   static solicitar(
-    dados: Omit<EstadoDaNotificacao, 'id' | 'chave' | 'enviadaEm' | 'idExterno'> & {
+    dados: Omit<
+      EstadoDaNotificacao,
+      | 'id'
+      | 'chave'
+      | 'enviadaEm'
+      | 'idExterno'
+      | 'entregueEm'
+      | 'abertaEm'
+      | 'rejeitadaEm'
+      | 'motivoRejeicao'
+    > & {
       janela: string;
     },
     relogio: Clock,
@@ -86,4 +126,64 @@ export class Notificacao extends AggregateRoot<NotificacaoSolicitada> {
   registrarEnvio(idExterno: string, em: Instant): void {
     this.estadoAtual = { ...this.estadoAtual, idExterno, enviadaEm: em };
   }
+
+  /**
+   * Aplica o desfecho do provedor (HU30). Idempotente: o mesmo desfecho repetido não muda nada
+   * nem gera evento de novo. Devolve se houve mudança.
+   */
+  registrarDesfecho(desfecho: DesfechoDeEntrega, relogio: Clock): boolean {
+    const e = this.estadoAtual;
+    switch (desfecho.tipo) {
+      case 'entregue': {
+        if (e.entregueEm !== undefined) return false;
+        this.estadoAtual = { ...e, entregueEm: desfecho.ocorridoEm };
+        const { evento, payload } = this.#base(relogio);
+        this.registrarEvento({ ...evento, tipo: 'NotificacaoEntregue', payload });
+        return true;
+      }
+      case 'aberto':
+      case 'clicado':
+        if (e.abertaEm !== undefined) return false;
+        this.estadoAtual = { ...e, abertaEm: desfecho.ocorridoEm };
+        return true;
+      default: {
+        if (e.rejeitadaEm !== undefined) return false;
+        const motivo = MOTIVOS[desfecho.tipo];
+        const detalhe = desfecho.motivo?.slice(0, 500);
+        this.estadoAtual = {
+          ...e,
+          rejeitadaEm: desfecho.ocorridoEm,
+          motivoRejeicao: detalhe === undefined ? motivo : `${motivo}: ${detalhe}`,
+        };
+        const { evento, payload } = this.#base(relogio);
+        this.registrarEvento({
+          ...evento,
+          tipo: 'NotificacaoRejeitada',
+          payload: { ...payload, motivo, ...(detalhe === undefined ? {} : { detalhe }) },
+        });
+        return true;
+      }
+    }
+  }
+
+  #base(relogio: Clock) {
+    const { id, tenantId, usuarioId, canal, tipo } = this.estadoAtual;
+    return {
+      evento: {
+        id: gerarUuidV7(relogio),
+        versao: 1,
+        tenantId,
+        agregadoId: id,
+        ocorridoEm: relogio.agora(),
+      },
+      payload: { notificacaoId: id, usuarioId, canal, tipo },
+    };
+  }
 }
+
+/** Rejeição permanente e reclamação suprimem o endereço; falha do envio não (HU30). */
+const MOTIVOS: Record<'rejeitado' | 'reclamacao' | 'falhou', MotivoDeRejeicao> = {
+  rejeitado: 'bounce',
+  reclamacao: 'spam',
+  falhou: 'falha',
+};

@@ -143,7 +143,7 @@ beforeAll(async () => {
     processadoresDeWebhook: new Map([
       [
         'teste',
-        (webhook) => {
+        (_tx, webhook) => {
           webhooksProcessados.push(webhook.idExterno);
           return Promise.resolve();
         },

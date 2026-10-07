@@ -1,10 +1,12 @@
 import { carregarAmbiente } from '@pz/config/env';
 import { FixedClock, gerarUuidV7, Instant, OutboxEmMemoria } from '@pz/kernel';
+import { EnviarNotificacao } from '@pz/notificacoes';
 import { ConsultarSituacao, HistoricoEmMemoria, RegistrarVerificacao } from '@pz/saude';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { esquemaWorker } from './ambiente.js';
 import { DespachanteDeEventos } from './eventos/consome.js';
+import { PROCESSADORES_DE_WEBHOOK } from './fichas.js';
 import { ConsumidorDeNotificacoes } from './notificacoes/consumidor.js';
 import { criarServidorDeSaude } from './saude/servidor.js';
 import { criarWorker } from './worker.js';
@@ -44,9 +46,9 @@ const cacheDoCalendario: CacheDeDiasNaoUteis = {
   },
 };
 
-async function subir(outbox = new OutboxEmMemoria()) {
+async function subir(outbox = new OutboxEmMemoria(), ajustes: Partial<typeof ambiente> = {}) {
   worker = await criarWorker({
-    ambiente,
+    ambiente: { ...ambiente, ...ajustes },
     relogio,
     verificadores: [disponivel],
     outbox,
@@ -56,6 +58,34 @@ async function subir(outbox = new OutboxEmMemoria()) {
   await worker.init();
   return { worker, outbox };
 }
+
+describe('e-mail e webhooks de entrega pela configuração (HU30)', () => {
+  const TOPICO = 'arn:aws:sns:sa-east-1:000000000000:pz-entregas';
+
+  it('SMTP sem tópico: nenhum processador de webhook', async () => {
+    const { worker: app } = await subir();
+    expect([...app.get<ReadonlyMap<string, unknown>>(PROCESSADORES_DE_WEBHOOK).keys()]).toEqual([]);
+  });
+
+  it('SES com credenciais e tópico SNS: envio pelo SES e processador do webhook ses', async () => {
+    const { worker: app } = await subir(new OutboxEmMemoria(), {
+      EMAIL_PROVEDOR: 'ses',
+      SES_SMTP_USUARIO: 'usuario-teste',
+      SES_SMTP_SENHA: 'senha-teste',
+      SES_TOPICOS_SNS: [TOPICO],
+    });
+    expect([...app.get<ReadonlyMap<string, unknown>>(PROCESSADORES_DE_WEBHOOK).keys()]).toEqual([
+      'ses',
+    ]);
+    expect(app.get(EnviarNotificacao)).toBeInstanceOf(EnviarNotificacao);
+  });
+
+  it('SES sem credenciais não sobe', async () => {
+    await expect(subir(new OutboxEmMemoria(), { EMAIL_PROVEDOR: 'ses' })).rejects.toThrow(
+      'SES_SMTP_USUARIO',
+    );
+  });
+});
 
 describe('ambiente do worker', () => {
   it('lê WORKER_QUEUES como lista e recusa nomes inválidos', () => {
@@ -106,6 +136,7 @@ describe('@Consome e o despachante', () => {
         ['SessaoRevogada@1', ['ConsumidorDeAuditoria.sessaoRevogada']],
         ['CalendarioAlterado@1', ['ConsumidorDoCalendario.alterado']],
         ['NotificacaoSolicitada@1', ['ConsumidorDeNotificacoes.solicitada']],
+        ['NotificacaoRejeitada@1', ['ConsumidorDeAuditoria.notificacaoRejeitada']],
       ]),
     );
   });
@@ -243,6 +274,10 @@ describe('notificações (HU30)', () => {
             dados: { numeroProcesso: '1', link: 'https://app.exemplo.invalid/x' },
             enviadaEm: null,
             idExterno: null,
+            entregueEm: null,
+            abertaEm: null,
+            rejeitadaEm: null,
+            motivoRejeicao: null,
           }),
         update: (args: unknown) => {
           atualizados.push(args);

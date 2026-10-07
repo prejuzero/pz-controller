@@ -2,6 +2,7 @@ import {
   esquemaArmazenamento,
   esquemaBanco,
   esquemaBase,
+  esquemaEmail,
   esquemaObservabilidade,
   esquemaRedis,
   esquemaSmtp,
@@ -17,6 +18,7 @@ export const esquemaWorker = esquemaBase
   .extend(esquemaRedis.shape)
   .extend(esquemaArmazenamento.shape)
   .extend(esquemaSmtp.shape)
+  .extend(esquemaEmail.shape)
   .extend({
     /** Papel pz_sistema (BYPASSRLS): relay do outbox e jobs globais (ADR-003). */
     DATABASE_URL_SISTEMA: z.url({ protocol: /^postgres(ql)?$/ }),
