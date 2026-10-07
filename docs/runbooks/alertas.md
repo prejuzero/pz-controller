@@ -2,13 +2,16 @@
 
 Alertas iniciais do PrejuZero (HU03, ADR-011), definidos como código em [infra/docker/observabilidade](/infra/docker/observabilidade). Todo alerta chega por e-mail (`ALERTAS_EMAIL`, padrão `prejuzero@gmail.com`) e no canal do Discord da equipe, e traz o link para a seção correspondente abaixo.
 
-| Alerta                                   | Dispara quando                                       | Severidade |
-| ---------------------------------------- | ---------------------------------------------------- | ---------- |
-| API com mais de 1% de erros 5xx          | 5xx acima de 1% das requisições por 5 minutos        | crítica    |
-| Fila sem progresso há mais de 15 minutos | job mais antigo aguardando há mais de 15 minutos     | crítica    |
-| Fila com jobs na DLQ                     | qualquer job na DLQ                                  | crítica    |
-| Adaptador de integração degradado        | circuit breaker aberto por 1 minuto                  | alta       |
-| Rejeição de e-mail                       | qualquer rejeição do provedor nos últimos 15 minutos | alta       |
+| Alerta                                   | Dispara quando                                        | Severidade |
+| ---------------------------------------- | ----------------------------------------------------- | ---------- |
+| API com mais de 1% de erros 5xx          | 5xx acima de 1% das requisições por 5 minutos         | crítica    |
+| Fila sem progresso há mais de 15 minutos | job mais antigo aguardando há mais de 15 minutos      | crítica    |
+| Fila com jobs na DLQ                     | qualquer job na DLQ                                   | crítica    |
+| Adaptador de integração degradado        | circuit breaker aberto por 1 minuto                   | alta       |
+| Rejeição de e-mail                       | qualquer rejeição do provedor nos últimos 15 minutos  | alta       |
+| Orçamento de IA acima de 80%             | uso mensal de uma tarefa passou de 80% num escritório | média      |
+| Salto em saídas inválidas da IA          | mais de 5% das respostas recusadas em 30 minutos      | alta       |
+| IA sem modelo disponível                 | todos os modelos de uma tarefa falharam               | crítica    |
 
 Primeiro passo em todos: abrir o dashboard da área no Grafana (pasta **PrejuZero**) e o trace de um caso com erro no Tempo, filtrando pelo `requestId` ou `trace_id` dos logs.
 
@@ -43,6 +46,24 @@ Primeiro passo em todos: abrir o dashboard da área no Grafana (pasta **PrejuZer
 1. No dashboard **PrejuZero · E-mail**, veja o motivo (bounce ou reclamação).
 2. Bounce: confira o endereço do destinatário; reclamação: revise o conteúdo e a frequência.
 3. Notificação de prazo não entregue precisa de outro canal até o endereço ser corrigido.
+
+## ia-orcamento
+
+1. No dashboard **PrejuZero · IA**, veja a tarefa e o consumo de tokens; no Tempo, filtre os spans `ia <tarefa>` por `pz.tenant_id` para achar o escritório.
+2. Uso legítimo (volume de publicações): ajuste `orcamentoMensalTokens` em `packages/ia/configuracao/tarefas.json` por PR. Uso anômalo (laço, reprocessamento): pare o job de origem.
+3. Ao esgotar, a tarefa recusa a chamada e a funcionalidade cai no fluxo manual ("a confirmar"): avise o escritório.
+
+## ia-saidas-invalidas
+
+1. No dashboard **PrejuZero · IA**, confira a tarefa e o modelo; no Tempo, abra spans com `pz.ia.validacao = saida-invalida` e veja a versão do prompt (`pz.ia.versao_prompt`).
+2. Mudou prompt, modelo ou configuração recentemente? Reverta o PR e rode a avaliação.
+3. Saídas recusadas vão para revisão manual: nada é aplicado automaticamente. Acompanhe a fila de revisão.
+
+## ia-provedor-indisponivel
+
+1. Veja o dashboard **PrejuZero · Integrações** (circuito do provedor de IA) e a página de status do provedor.
+2. Confirme que há fallback configurado para a tarefa em `tarefas.json` (outro modelo ou provedor).
+3. Enquanto durar, as publicações ficam sem classificação automática ("a confirmar"): informe os usuários (CLAUDE.md, seção 2, transparência de cobertura).
 
 ## Testar os alertas localmente
 

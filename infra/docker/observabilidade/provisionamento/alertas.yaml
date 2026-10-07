@@ -182,3 +182,78 @@ groups:
         annotations:
           summary: 'O provedor rejeitou e-mails ({{ $labels.motivo }}) nos últimos 15 minutos.'
           runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#email-rejeicao'
+      - uid: pz-ia-orcamento
+        title: 'Orçamento de IA acima de 80%'
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: 'sum by (tarefa) (increase(pz_ia_orcamento_alertas_total[1h]))'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions: [{ evaluator: { type: gt, params: [0] } }]
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels: { severidade: media }
+        annotations:
+          summary: 'A tarefa de IA {{ $labels.tarefa }} passou de 80% do orçamento mensal de algum escritório.'
+          runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#ia-orcamento'
+      - uid: pz-ia-saidas-invalidas
+        title: 'Salto em saídas inválidas da IA'
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: 'sum by (tarefa) (increase(pz_ia_chamada_duracao_seconds_count{resultado="saida-invalida"}[30m])) / clamp_min(sum by (tarefa) (increase(pz_ia_chamada_duracao_seconds_count[30m])), 20)'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions: [{ evaluator: { type: gt, params: [0.05] } }]
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels: { severidade: alta }
+        annotations:
+          summary: 'Mais de 5% das respostas da tarefa {{ $labels.tarefa }} foram recusadas pela validação.'
+          runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#ia-saidas-invalidas'
+      - uid: pz-ia-provedor-indisponivel
+        title: 'IA sem modelo disponível'
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: 'sum by (tarefa) (increase(pz_ia_tarefas_sem_modelo_total[15m]))'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions: [{ evaluator: { type: gt, params: [0] } }]
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels: { severidade: critica }
+        annotations:
+          summary: 'Todos os modelos da tarefa {{ $labels.tarefa }} falharam (indisponível ou sem cota).'
+          runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#ia-provedor-indisponivel'

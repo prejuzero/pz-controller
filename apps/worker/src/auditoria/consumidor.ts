@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { AuditarEvento } from '@pz/auditoria';
+import { registrarCorrecaoDeIa } from '@pz/observability';
 
 import { Consome } from '../eventos/consome.js';
 
@@ -41,6 +42,9 @@ export class ConsumidorDeAuditoria {
 
   @Consome('SugestaoIaCorrigida', { versao: 1 })
   sugestaoIaCorrigida(tx: Transacao, evento: EventoDominio): Promise<void> {
+    // Métrica de qualidade (taxa de correção por tarefa): a tarefa é o prefixo da versão do prompt.
+    const { origemIa } = evento.payload as { origemIa?: { versaoPrompt?: string } };
+    registrarCorrecaoDeIa(origemIa?.versaoPrompt?.split('@')[0] ?? 'desconhecida');
     return this.auditar.executar(tx, evento);
   }
 }

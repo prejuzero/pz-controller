@@ -1,4 +1,10 @@
 import { ErroIntegracao, ErroPermanente } from '@pz/integracoes';
+import {
+  medirChamadaIa,
+  registrarAlertaDeOrcamentoIa,
+  registrarTarefaIaSemModelo,
+  type ResultadoChamadaIa,
+} from '@pz/observability';
 
 import { verificarSaidaSemDatas } from './guardrails.js';
 import { mesDoOrcamento, OrcamentoDeIaEsgotado } from './orcamento.js';
@@ -11,6 +17,15 @@ import type { z } from 'zod';
 
 /** Erros que levam ao próximo modelo: o provedor está fora, sobrecarregado ou sem cota. */
 const TIPOS_COM_FALLBACK = new Set(['transitorio', 'limite-excedido']);
+
+const comFallback = (erro: unknown): erro is ErroIntegracao =>
+  erro instanceof ErroIntegracao && TIPOS_COM_FALLBACK.has(erro.tipo);
+
+/** Saída fora do schema ou com data proibida chega como ErroPermanente. */
+function resultadoDoErro(erro: unknown): ResultadoChamadaIa {
+  if (comFallback(erro)) return 'erro-transitorio';
+  return erro instanceof ErroPermanente ? 'saida-invalida' : 'erro';
+}
 
 export interface ResultadoDaTarefa<Saida> extends RespostaIA<Saida> {
   readonly tarefa: string;
@@ -70,20 +85,7 @@ export class PlataformaIa {
   ): Promise<ResultadoDaTarefa<Saida>> {
     const tarefa = this.#tarefa(nome);
     const mes = await this.#conferirOrcamento(nome, tarefa, contexto);
-    const resultado = await this.#chamar(nome, tarefa, prompt, schema);
-    if (mes !== undefined && this.orcamento !== undefined) {
-      const { tokensEntrada, tokensSaida } = resultado.uso;
-      await this.orcamento.contador.registrar(
-        contexto.tenantId,
-        nome,
-        mes,
-        tokensEntrada + tokensSaida,
-      );
-    }
-    if (tarefa.saidaSemDatas !== undefined) {
-      verificarSaidaSemDatas(resultado.saida, tarefa.saidaSemDatas.excetoCampos);
-    }
-    return resultado;
+    return this.#chamar(nome, tarefa, prompt, schema, contexto, mes);
   }
 
   async #conferirOrcamento(
@@ -97,25 +99,59 @@ export class PlataformaIa {
     const uso = await this.orcamento.contador.usoNoMes(tenantId, nome, mes);
     if (uso >= limite) throw new OrcamentoDeIaEsgotado(nome, tenantId);
     if (uso >= limite * LIMIAR_DE_ALERTA) {
+      registrarAlertaDeOrcamentoIa(nome);
       this.orcamento.aoAlertar({ tenantId, tarefa: nome, usoTokens: uso, orcamentoTokens: limite });
     }
     return mes;
   }
 
+  /**
+   * Tenta os modelos em ordem. Cada tentativa vira um span com tokens, versão do prompt e o
+   * resultado da validação; o uso entra no orçamento mesmo quando a saída é recusada.
+   */
   async #chamar<Saida>(
     nome: string,
     tarefa: ConfiguracaoDaTarefa,
     prompt: PromptIA,
     schema: z.ZodType<Saida>,
+    { tenantId }: ContextoDaTarefa,
+    mes: string | undefined,
   ): Promise<ResultadoDaTarefa<Saida>> {
     const falhas: { modelo: string; erro: string }[] = [];
     let ultimoErro: unknown;
     for (const { provedor, modelo } of tarefa.modelos) {
       try {
-        const resposta = await this.#provedor(provedor).gerarEstruturado(
-          prompt,
-          schema,
-          this.#opcoes(tarefa, modelo),
+        const resposta = await medirChamadaIa(
+          { tarefa: nome, provedor, modelo, versaoPrompt: prompt.versao, tenantId },
+          async () => {
+            const gerada = await this.#provedor(provedor).gerarEstruturado(
+              prompt,
+              schema,
+              this.#opcoes(tarefa, modelo),
+            );
+            if (mes !== undefined && this.orcamento !== undefined) {
+              const { tokensEntrada, tokensSaida } = gerada.uso;
+              await this.orcamento.contador.registrar(
+                tenantId,
+                nome,
+                mes,
+                tokensEntrada + tokensSaida,
+              );
+            }
+            if (tarefa.saidaSemDatas !== undefined) {
+              verificarSaidaSemDatas(gerada.saida, tarefa.saidaSemDatas.excetoCampos);
+            }
+            return gerada;
+          },
+          (desfecho) =>
+            'valor' in desfecho
+              ? {
+                  resultado: 'sucesso',
+                  tokensEntrada: desfecho.valor.uso.tokensEntrada,
+                  tokensSaida: desfecho.valor.uso.tokensSaida,
+                  tokensCacheLidos: desfecho.valor.uso.tokensCacheLidos,
+                }
+              : { resultado: resultadoDoErro(desfecho.erro) },
         );
         return {
           ...resposta,
@@ -126,11 +162,12 @@ export class PlataformaIa {
           falhasAnteriores: falhas,
         };
       } catch (erro) {
-        if (!(erro instanceof ErroIntegracao) || !TIPOS_COM_FALLBACK.has(erro.tipo)) throw erro;
+        if (!comFallback(erro)) throw erro;
         ultimoErro = erro;
         falhas.push({ modelo, erro: erro.message });
       }
     }
+    registrarTarefaIaSemModelo(nome);
     throw ultimoErro;
   }
 
