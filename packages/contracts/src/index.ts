@@ -1,6 +1,29 @@
 import { ROTAS_ADMIN } from './admin/index.js';
 import { ROTAS_AUTH } from './auth/index.js';
 import { ROTAS_CADASTRO } from './cadastro/index.js';
+export {
+  AlteracaoDoCliente,
+  AlteracaoDoProcesso,
+  alterarCobertura,
+  atualizarCliente,
+  atualizarProcesso,
+  cadastrarCliente,
+  cadastrarProcesso,
+  ClienteDoTenant,
+  consultarCliente,
+  consultarProcesso,
+  listarClientes,
+  listarProcessos,
+  PaginaDeClientes,
+  PaginaDeProcessos,
+  PedidoDeCliente,
+  PedidoDeCobertura,
+  PedidoDeProcesso,
+  ProcessoDoTenant,
+  removerCliente,
+  ROTAS_PROCESSOS,
+} from './cadastro/processos.js';
+import { ROTAS_PROCESSOS } from './cadastro/processos.js';
 import { ROTAS_CALENDARIO } from './calendario/index.js';
 import { ROTAS_NOTIFICACOES } from './notificacoes/index.js';
 import { gerarOpenApi } from './openapi.js';
@@ -101,10 +124,12 @@ export type { PartesDoNumeroCnj, Tribunal } from './cnj.js';
 export {
   CalendarioAlterado,
   catalogoDeEventos,
+  CoberturaAlterada,
   ConsentimentoCanalAlterado,
   ContaBloqueada,
   definirEvento,
   EVENTOS,
+  ProcessoMonitorado,
   RedefinicaoDeSenhaSolicitada,
   SituacaoVerificada,
 } from './eventos/index.js';
@@ -136,6 +161,7 @@ export const ROTAS = [
   ...ROTAS_AUTH,
   ...ROTAS_ADMIN,
   ...ROTAS_CADASTRO,
+  ...ROTAS_PROCESSOS,
   ...ROTAS_CALENDARIO,
   ...ROTAS_NOTIFICACOES,
   ...ROTAS_SAUDE,

@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
-import { AdvogadosEmMemoria } from '@pz/cadastro';
+import { AdvogadosEmMemoria, ClientesEmMemoria, ProcessosEmMemoria } from '@pz/cadastro';
 import { carregarAmbiente } from '@pz/config/env';
 import {
   AcessosEmMemoria,
@@ -38,7 +38,11 @@ const pedido = {
   oabPrincipal: { numero: '123456', uf: 'SP' },
 };
 
-const pedir = (method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, payload?: object) =>
+const pedir = (
+  method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE',
+  url: string,
+  payload?: object,
+) =>
   api.inject({
     method,
     url,
@@ -93,6 +97,10 @@ beforeAll(async () => {
           }),
       },
       advogados: new AdvogadosEmMemoria(r),
+      ...(() => {
+        const processos = new ProcessosEmMemoria(r);
+        return { processos, clientes: new ClientesEmMemoria(processos) };
+      })(),
       trilha: {
         registrar: (tx, entrada) => {
           (tx as TransacaoEmMemoria).aoConfirmar(() => tipos.push(entrada.tipo));
@@ -167,5 +175,71 @@ describe('cadastro pela API (HU11)', () => {
   it('sem sessão, perfil e OABs exigem autenticação', async () => {
     const semSessao = await api.inject({ method: 'GET', url: '/v1/perfil' });
     expect(semSessao.statusCode).toBe(401);
+  });
+});
+
+describe('processos e clientes pela API (HU12)', () => {
+  // Número FICTÍCIO com dígito verificador conferido (mesmo do teste do kernel).
+  const numero = '0000001-68.2026.8.26.0100';
+
+  it('cliente, processo, sigilo e cobertura com auditoria', async () => {
+    const cliente = await pedir('POST', '/v1/clientes', {
+      nome: 'Cliente Fictício',
+      documento: '111.444.777-35',
+    });
+    expect(cliente.statusCode).toBe(201);
+    const { id: clienteId } = cliente.json<{ id: string }>();
+
+    const criado = await pedir('POST', '/v1/processos', {
+      numeroCnj: numero.replace(/\D/g, ''),
+      clienteId,
+    });
+    expect(criado.statusCode).toBe(201);
+    const processo = criado.json<{ id: string; numeroCnj: string; tribunal: string }>();
+    expect(processo).toMatchObject({ numeroCnj: numero, tribunal: 'TJSP' });
+    expect((await pedir('POST', '/v1/processos', { numeroCnj: numero })).statusCode).toBe(409);
+    expect((await pedir('POST', '/v1/processos', { numeroCnj: '123' })).statusCode).toBe(400);
+
+    const sigilo = await pedir('PATCH', `/v1/processos/${processo.id}`, { sigiloso: true });
+    expect(sigilo.json<{ sigiloso: boolean }>().sigiloso).toBe(true);
+    const semMotivo = await pedir('PUT', `/v1/processos/${processo.id}/cobertura`, {
+      cobertura: 'manual',
+    });
+    expect(semMotivo.statusCode).toBe(422);
+    const manual = await pedir('PUT', `/v1/processos/${processo.id}/cobertura`, {
+      cobertura: 'manual',
+      motivo: 'Intimações só no painel do tribunal.',
+    });
+    expect(manual.json<{ cobertura: string }>().cobertura).toBe('manual');
+    expect(tipos).toEqual(
+      expect.arrayContaining([
+        'cadastro.cliente-cadastrado',
+        'cadastro.processo-cadastrado',
+        'cadastro.sigilo-alterado',
+        'cadastro.cobertura-alterada',
+      ]),
+    );
+
+    const lista = await pedir('GET', '/v1/processos?numero=0000001&sigiloso=true&limite=1');
+    expect(lista.json<{ itens: unknown[]; proximoCursor: null }>()).toMatchObject({
+      itens: [{ id: processo.id }],
+      proximoCursor: null,
+    });
+    expect((await pedir('GET', `/v1/processos/${processo.id}`)).statusCode).toBe(200);
+    expect((await pedir('GET', '/v1/processos?cursor=x')).statusCode).toBe(400);
+    expect(
+      (await pedir('GET', '/v1/clientes?nome=fict')).json<{ itens: unknown[] }>().itens,
+    ).toHaveLength(1);
+    expect((await pedir('GET', `/v1/clientes/${clienteId}`)).statusCode).toBe(200);
+    expect(
+      (await pedir('PATCH', `/v1/clientes/${clienteId}`, { nome: 'Outro Nome' })).statusCode,
+    ).toBe(200);
+    expect((await pedir('DELETE', `/v1/clientes/${clienteId}`)).statusCode).toBe(422);
+    await pedir('PATCH', `/v1/processos/${processo.id}`, { clienteId: null });
+    expect((await pedir('DELETE', `/v1/clientes/${clienteId}`)).statusCode).toBe(204);
+  });
+
+  it('sem sessão, processos exigem autenticação', async () => {
+    expect((await api.inject({ method: 'GET', url: '/v1/processos' })).statusCode).toBe(401);
   });
 });

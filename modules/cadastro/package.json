@@ -2,7 +2,7 @@
   "name": "@pz/cadastro",
   "version": "0.0.0",
   "private": true,
-  "description": "Módulo cadastro: advogado e OABs (HU11).",
+  "description": "Módulo cadastro: advogado e OABs (HU11), processos e clientes (HU12).",
   "type": "module",
   "exports": {
     ".": "./index.ts"

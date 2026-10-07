@@ -6,9 +6,21 @@ import { TrilhaPostgres } from '@pz/auditoria';
 import {
   AdicionarOab,
   AdvogadosPostgres,
+  AlterarCobertura,
+  AtualizarCliente,
   AtualizarPerfil,
+  AtualizarProcesso,
   CadastrarAdvogado,
+  CadastrarCliente,
+  CadastrarProcesso,
+  ClientesPostgres,
+  ConsultarCliente,
   ConsultarPerfil,
+  ConsultarProcesso,
+  ListarClientes,
+  ListarProcessos,
+  ProcessosPostgres,
+  RemoverCliente,
   RemoverOab,
 } from '@pz/cadastro';
 import {
@@ -89,6 +101,7 @@ import { AdminController } from './admin/admin.controller.js';
 import { AuthController } from './auth/auth.controller.js';
 import { ContextoDoUsuario } from './auth/contexto-do-usuario.js';
 import { CadastroController } from './cadastro/cadastro.controller.js';
+import { ProcessosController } from './cadastro/processos.controller.js';
 import { CalendarioController } from './calendario/calendario.controller.js';
 import {
   AMBIENTE,
@@ -117,6 +130,8 @@ import type {
   CriadorDeConta,
   PreparadorDeVerificacao,
   RepositorioDeAdvogados,
+  RepositorioDeClientes,
+  RepositorioDeProcessos,
   UnidadeNoTenant,
 } from '@pz/cadastro';
 import type {
@@ -300,6 +315,8 @@ interface DependenciasDoCadastro {
   readonly contas: CriadorDeConta<unknown>;
   readonly verificacao: PreparadorDeVerificacao;
   readonly advogados: RepositorioDeAdvogados<unknown>;
+  readonly processos: RepositorioDeProcessos<unknown>;
+  readonly clientes: RepositorioDeClientes<unknown>;
   readonly trilha: TrilhaDeAuditoria<unknown>;
   readonly outbox: Outbox<unknown>;
 }
@@ -334,6 +351,23 @@ function provedoresDoCadastro(criar: (relogio: Clock) => DependenciasDoCadastro)
     caso(AtualizarPerfil, (d) => new AtualizarPerfil(d.unidade, d.advogados, d.trilha)),
     caso(AdicionarOab, (d) => new AdicionarOab(d.unidade, d.advogados, d.trilha, d.outbox)),
     caso(RemoverOab, (d) => new RemoverOab(d.unidade, d.advogados, d.trilha, d.outbox)),
+    // Processos e clientes (HU12).
+    caso(ListarProcessos, (d) => new ListarProcessos(d.unidade, d.processos)),
+    caso(ConsultarProcesso, (d) => new ConsultarProcesso(d.unidade, d.processos)),
+    caso(
+      CadastrarProcesso,
+      (d, r) => new CadastrarProcesso(d.unidade, d.processos, d.clientes, d.trilha, d.outbox, r),
+    ),
+    caso(
+      AtualizarProcesso,
+      (d) => new AtualizarProcesso(d.unidade, d.processos, d.clientes, d.trilha),
+    ),
+    caso(AlterarCobertura, (d) => new AlterarCobertura(d.unidade, d.processos, d.trilha, d.outbox)),
+    caso(ListarClientes, (d) => new ListarClientes(d.unidade, d.clientes)),
+    caso(ConsultarCliente, (d) => new ConsultarCliente(d.unidade, d.clientes)),
+    caso(CadastrarCliente, (d, r) => new CadastrarCliente(d.unidade, d.clientes, d.trilha, r)),
+    caso(AtualizarCliente, (d) => new AtualizarCliente(d.unidade, d.clientes, d.trilha)),
+    caso(RemoverCliente, (d) => new RemoverCliente(d.unidade, d.clientes, d.trilha)),
   ];
 }
 
@@ -449,6 +483,8 @@ export class AppModule {
             }),
         },
         advogados: new AdvogadosPostgres(relogio),
+        processos: new ProcessosPostgres(relogio),
+        clientes: new ClientesPostgres(),
         trilha: new TrilhaPostgres(),
         outbox: new OutboxPostgres(),
       }));
@@ -665,6 +701,7 @@ export class AppModule {
         AdminController,
         CalendarioController,
         CadastroController,
+        ProcessosController,
         NotificacoesController,
         SaudeController,
         SondasController,
