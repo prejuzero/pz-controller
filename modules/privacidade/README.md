@@ -16,6 +16,9 @@ Direitos do titular (HU38, LGPD art. 18).
 - Job diário `privacidade.efetivar-encerramentos` (worker, papel sistema): encerra as sessões, remove os arquivos exportados e, numa transação, registra `privacidade.conta-encerrada` na trilha do tenant e chama `pz_efetivar_encerramento` (função `SECURITY DEFINER`, só para o papel sistema, recusa pedido não vencido).
 - Apagados: alvos assinados, processos, clientes, OABs, advogados, preferências, destinos push, dispositivos, perfis, exportações e outbox. Pseudonimizados: acessos, aceites, notificações (destinatários e dados), consentimentos, dados pessoais da trilha (ADR-018) e a conta do usuário. Mantidos: trilha de auditoria e feriados locais (sem dado pessoal). Tenant marcado com `encerrado_em`.
 
-## Próximo passo (PZ-224)
+## Retenção
 
-- Job de retenção: acessos após 1 ano; provas pseudonimizadas de tenants encerrados após 5 anos (prazos a confirmar com o jurídico).
+- Job diário `privacidade.aplicar-retencao` (3h30, sistema). Prazos por ambiente (decisões de 07/10/2026, a confirmar com o jurídico): `RETENCAO_ACESSOS_DIAS` (365) e `RETENCAO_PROVAS_DIAS` (1826).
+- Provas de escritório encerrado há mais que o prazo: `pz_expurgar_provas` (só sistema, confere o prazo) apaga acessos, aceites, notificações, consentimentos, dados pessoais da trilha, o pedido de encerramento e os usuários, registrando `privacidade.provas-expurgadas` na trilha do tenant na mesma transação.
+- Registros de acesso mais antigos que o prazo, em todos os tenants (o sistema apaga com BYPASSRLS).
+- A trilha de auditoria imutável não é apagada por tenant (ADR-006): pendência.

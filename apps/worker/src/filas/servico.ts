@@ -8,7 +8,7 @@ import {
   registrarErro,
   registrarSituacaoDasFilas,
 } from '@pz/observability';
-import { EfetivarEncerramentos } from '@pz/privacidade';
+import { AplicarRetencao, EfetivarEncerramentos } from '@pz/privacidade';
 
 import {
   agendamentoDaCaptura,
@@ -29,7 +29,12 @@ import {
   UNIDADE_DOS_WEBHOOKS,
 } from '../fichas.js';
 import { processarWebhook, tratarWebhook } from '../integracoes/webhooks.js';
-import { AGENDAMENTO_DOS_ENCERRAMENTOS, efetivarEncerramentosJob } from '../privacidade/jobs.js';
+import {
+  AGENDAMENTO_DA_RETENCAO,
+  AGENDAMENTO_DOS_ENCERRAMENTOS,
+  aplicarRetencaoJob,
+  efetivarEncerramentosJob,
+} from '../privacidade/jobs.js';
 
 import {
   AGENDAMENTOS,
@@ -73,6 +78,7 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     @Inject(ExecutarCaptura) private readonly executarCaptura: ExecutarCaptura<unknown>,
     @Inject(EfetivarEncerramentos)
     private readonly efetivarEncerramentos: EfetivarEncerramentos<unknown>,
+    @Inject(AplicarRetencao) private readonly retencao: AplicarRetencao<unknown>,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -128,10 +134,18 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
       const encerrados = await this.efetivarEncerramentos.executar();
       logger.info({ tenants: encerrados.length }, 'encerramentos de conta efetivados');
     });
+    this.filas.registrar(aplicarRetencaoJob, async () => {
+      const { tenantsExpurgados, acessosExpurgados } = await this.retencao.executar();
+      logger.info(
+        { tenants: tenantsExpurgados.length, acessos: acessosExpurgados },
+        'retenção aplicada',
+      );
+    });
     const agendamentos = [
       ...AGENDAMENTOS,
       agendamentoDaCaptura(this.ambiente.CAPTURA_CRON),
       AGENDAMENTO_DOS_ENCERRAMENTOS,
+      AGENDAMENTO_DA_RETENCAO,
     ];
     this.filas.validarAgendamentos(agendamentos);
     this.filas.iniciar();

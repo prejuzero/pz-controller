@@ -36,6 +36,7 @@ export const TIPOS_DE_AUDITORIA = [
   'privacidade.encerramento-solicitado',
   'privacidade.encerramento-cancelado',
   'privacidade.conta-encerrada',
+  'privacidade.provas-expurgadas',
   'notificacoes.consentimento-concedido',
   'notificacoes.consentimento-revogado',
   'notificacoes.destino-push-registrado',

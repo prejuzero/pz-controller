@@ -20,3 +20,19 @@ export const AGENDAMENTO_DOS_ENCERRAMENTOS: Agendamento<unknown> = definirAgenda
   dados: {},
   motivo: 'efetivação dos encerramentos de conta vencidos (LGPD, carência de 30 dias)',
 });
+
+/** Retenção diária (HU38): provas de encerrados antigos e registros de acesso antigos. */
+export const aplicarRetencaoJob = definirJob({
+  fila: 'manutencao',
+  tipo: 'privacidade.aplicar-retencao',
+  dados: z.object({}).strict(),
+  global: true,
+});
+
+export const AGENDAMENTO_DA_RETENCAO: Agendamento<unknown> = definirAgendamento({
+  id: 'privacidade.aplicar-retencao',
+  job: aplicarRetencaoJob,
+  cron: '30 3 * * *', // diário às 3h30, depois da limpeza do outbox
+  dados: {},
+  motivo: 'retenção LGPD: acessos e provas pseudonimizadas vencidos',
+});

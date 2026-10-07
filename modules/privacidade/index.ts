@@ -23,6 +23,7 @@ export type { EncerramentoListado, ResponsavelPeloEscritorio } from './applicati
 export type {
   EncerradorDeSessoes,
   OperacoesDeEncerramento,
+  OperacoesDeRetencao,
   RepositorioDeEncerramentos,
 } from './application/portas.js';
 export { CARENCIA_DO_ENCERRAMENTO_DIAS, situacaoDoEncerramento } from './domain/encerramento.js';
@@ -30,6 +31,9 @@ export type { Encerramento, SituacaoDoEncerramento } from './domain/encerramento
 export {
   EncerramentosPostgres,
   OperacoesDeEncerramentoPostgres,
+  OperacoesDeRetencaoPostgres,
 } from './infra/encerramento-postgres.js';
+export { AplicarRetencao } from './application/retencao.js';
+export type { PrazosDeRetencao } from './application/retencao.js';
 export { ExportacoesEmMemoria } from './infra/em-memoria.js';
 export { ExportacoesPostgres } from './infra/exportacoes-postgres.js';

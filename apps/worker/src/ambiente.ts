@@ -70,6 +70,12 @@ export const esquemaWorker = esquemaBase
       .default(10 * 60_000),
     /** Adaptador de FontePublicacoes (ADR-005): trocar de fonte é configuração. */
     CAPTURA_FONTE: z.enum(['djen']).default('djen'),
+    /**
+     * Retenção (HU38; decisões de 07/10/2026, a confirmar com o jurídico): registros de acesso
+     * por 1 ano e provas pseudonimizadas de escritório encerrado por 5 anos.
+     */
+    RETENCAO_ACESSOS_DIAS: z.coerce.number().int().min(1).default(365),
+    RETENCAO_PROVAS_DIAS: z.coerce.number().int().min(1).default(1826),
     /** Intervalo do ciclo do relay do outbox. */
     RELAY_INTERVALO_MS: z.coerce.number().int().min(100).default(1_000),
   });

@@ -5,8 +5,13 @@ import { FixedClock, Instant } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { EfetivarEncerramentos, SolicitarEncerramento } from '../application/encerramento.js';
+import { AplicarRetencao } from '../application/retencao.js';
 
-import { EncerramentosPostgres, OperacoesDeEncerramentoPostgres } from './encerramento-postgres.js';
+import {
+  EncerramentosPostgres,
+  OperacoesDeEncerramentoPostgres,
+  OperacoesDeRetencaoPostgres,
+} from './encerramento-postgres.js';
 
 import type { Transacao } from '@pz/db';
 import type { BancoDeTeste } from '@pz/db/teste';
@@ -241,5 +246,53 @@ describe('encerramento da conta no PostgreSQL (HU38)', () => {
         banco.executar((tx) => tx.$queryRaw`SELECT pz_efetivar_encerramento(${B}::uuid)`),
       ),
     ).rejects.toThrow(/permission denied/);
+  });
+
+  it('retenção: provas do encerrado há mais de 5 anos e acessos com mais de 1 ano', async () => {
+    const operacoes = new OperacoesDeRetencaoPostgres();
+    await expect(
+      comoSistema.executar((tx) => operacoes.expurgarProvas(tx, A, 1826)),
+    ).rejects.toThrow(/não está encerrado há mais/);
+    await sistema.executarComoSistema('envelhecer', async (tx) => {
+      await tx.tenant.update({
+        where: { id: A },
+        data: { encerradoEm: new Date('2020-01-01T00:00:00Z') },
+      });
+      await tx.acesso.create({
+        data: {
+          id: id(90),
+          tenantId: B,
+          usuarioId: BIA,
+          tipo: 'login',
+          sucesso: true,
+          ip: '203.0.113.1',
+          userAgent: 'x',
+          ocorridoEm: new Date('2024-01-01T00:00:00Z'),
+        },
+      });
+    });
+    const retencao = new AplicarRetencao(
+      comoSistema,
+      operacoes,
+      new TrilhaPostgres(),
+      new FixedClock(Instant.deIso('2026-12-01T12:00:00Z')),
+      { acessosDias: 365, provasDias: 1826 },
+    );
+    expect(await retencao.executar()).toEqual({ tenantsExpurgados: [A], acessosExpurgados: 1 });
+    await sistema.executarComoSistema('conferir', async (tx) => {
+      expect(await tx.usuario.count({ where: { tenantId: A } })).toBe(0);
+      expect(await tx.acesso.count({ where: { tenantId: A } })).toBe(0);
+      expect(await tx.auditoriaDadoPessoal.count({ where: { tenantId: A } })).toBe(0);
+      expect(await tx.acesso.findMany({ where: { tenantId: B }, select: { id: true } })).toEqual([
+        { id: id(25) },
+      ]);
+    });
+    const cadeia = await executarNoTenant(A, () =>
+      banco.executar((tx) => new TrilhaPostgres().lerCadeia(tx, A)),
+    );
+    expect(cadeia.at(-1)?.tipo).toBe('privacidade.provas-expurgadas');
+    expect(verificarCadeia(cadeia, sha256)).toMatchObject({ valida: true });
+    // Já expurgado: a próxima execução não volta ao tenant.
+    expect((await retencao.executar()).tenantsExpurgados).toEqual([]);
   });
 });
