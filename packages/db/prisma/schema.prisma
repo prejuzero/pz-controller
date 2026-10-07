@@ -59,6 +59,8 @@ model Usuario {
   totpAtivoEm        DateTime? @map("totp_ativo_em") @db.Timestamptz(6)
   totpUltimoPasso    BigInt?   @map("totp_ultimo_passo")
   codigosRecuperacao String[]  @default([]) @map("codigos_recuperacao")
+  /// Quando o titular confirmou o e-mail pelo link do cadastro (HU11); nulo = não verificado.
+  emailVerificadoEm  DateTime? @map("email_verificado_em") @db.Timestamptz(6)
   criadoEm           DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm       DateTime  @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 

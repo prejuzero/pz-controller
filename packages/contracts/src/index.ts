@@ -55,9 +55,11 @@ export {
   OabDoAdvogado,
   PedidoDeCadastro,
   PedidoDeOab,
+  PedidoDeVerificacaoDeEmail,
   PerfilDoAdvogado,
   removerOab,
   ROTAS_CADASTRO,
+  verificarEmail,
 } from './cadastro/index.js';
 export {
   aprovarEventoDoCalendario,

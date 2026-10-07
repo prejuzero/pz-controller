@@ -57,7 +57,16 @@ export {
 } from './infra/em-memoria.js';
 export { CriarConta } from './application/contas.js';
 export type { ContaNova, RepositorioDeContas } from './application/contas.js';
-export { ContasPostgres } from './infra/contas-postgres.js';
+export { ContasPostgres, VerificacaoDeEmailPostgres } from './infra/contas-postgres.js';
+export {
+  SolicitarVerificacaoDeEmail,
+  VALIDADE_DA_VERIFICACAO_MS,
+  VerificarEmail,
+} from './application/verificacao-email.js';
+export type {
+  RepositorioDeVerificacaoDeEmail,
+  VerificacaoDeEmailSolicitada,
+} from './application/verificacao-email.js';
 export { AcessosPostgres } from './infra/acessos-postgres.js';
 export { TentativasRedis } from './infra/tentativas-redis.js';
 export { CifraAesGcm, SegredosTotp } from './infra/segundo-fator.js';

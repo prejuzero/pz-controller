@@ -49,6 +49,13 @@ export const CalendarioAlterado = definirEvento(
   }),
 );
 
+/** Verificação do e-mail pedida no cadastro (HU11): o token vai cifrado; o worker envia o link. */
+export const VerificacaoDeEmailSolicitada = definirEvento(
+  'VerificacaoDeEmailSolicitada',
+  1,
+  z.object({ usuarioId: z.uuid(), tokenCifrado: z.string().min(1) }),
+);
+
 /** Advogado cadastrado (HU11): tenant autônomo, conta e advogado criados juntos. */
 export const AdvogadoCadastrado = definirEvento(
   'AdvogadoCadastrado',
@@ -89,4 +96,5 @@ export const EVENTOS = catalogoDeEventos(
   AdvogadoCadastrado,
   OabAdicionada,
   OabRemovida,
+  VerificacaoDeEmailSolicitada,
 );

@@ -17,6 +17,8 @@ import {
   ConsultarPerfil,
   RemoverOab,
 } from '@pz/cadastro';
+import { PedidoDeVerificacaoDeEmail } from '@pz/contracts';
+import { VerificarEmail } from '@pz/identidade';
 import { z } from 'zod';
 
 import { autenticacao, contextoDe, validar } from '../auth/auth.controller.js';
@@ -48,6 +50,7 @@ export class CadastroController {
     @Inject(AtualizarPerfil) private readonly atualizar: AtualizarPerfil<unknown>,
     @Inject(AdicionarOab) private readonly adicionar: AdicionarOab<unknown>,
     @Inject(RemoverOab) private readonly remover: RemoverOab<unknown>,
+    @Inject(VerificarEmail) private readonly verificar: VerificarEmail<unknown>,
   ) {}
 
   @Post('cadastro')
@@ -61,6 +64,17 @@ export class CadastroController {
     const r = await this.cadastrar.executar(corpo, contextoDe(requisicao));
     if (!r.ok) throw r.erro;
     return { usuarioId: r.valor.usuarioId, perfil: r.valor.perfil };
+  }
+
+  /** Link do e-mail de boas-vindas: confirma o e-mail (o token vem no corpo, nunca na URL). */
+  @Post('email/verificar')
+  @Publico()
+  @LimitarPorIp(10)
+  @HttpCode(204)
+  async verificarEmail(@Body() corpo: unknown): Promise<void> {
+    const { token } = validar(PedidoDeVerificacaoDeEmail.esquema, corpo);
+    const r = await this.verificar.executar(token);
+    if (!r.ok) throw r.erro;
   }
 
   @Get('perfil')

@@ -12,6 +12,7 @@ export type { AutorDoCadastro, OabListada, PerfilListado } from './application/c
 export type {
   ContaPreparada,
   CriadorDeConta,
+  PreparadorDeVerificacao,
   RepositorioDeAdvogados,
   UnidadeNoTenant,
 } from './application/portas.js';

@@ -1,5 +1,5 @@
 import type { Advogado, Oab } from '../domain/advogado.js';
-import type { Conflito, Result, Uuid, Validacao } from '@pz/kernel';
+import type { Conflito, EventoDominio, Result, Uuid, Validacao } from '@pz/kernel';
 
 /** Porta: advogado e OABs do tenant da transação (tabelas `advogado` e `oab`, RLS). */
 export interface RepositorioDeAdvogados<Transacao> {
@@ -44,4 +44,12 @@ export interface UnidadeNoTenant<Transacao> {
     tenantId: Uuid,
     trabalho: (transacao: Transacao) => Promise<Resultado>,
   ): Promise<Resultado>;
+}
+
+/**
+ * Porta para a identidade: prepara a verificação do e-mail (token guardado) e devolve o evento
+ * que vai para o outbox na transação do cadastro; o worker envia o link (HU11).
+ */
+export interface PreparadorDeVerificacao {
+  preparar(conta: { usuarioId: Uuid; tenantId: Uuid; email: string }): Promise<EventoDominio>;
 }
