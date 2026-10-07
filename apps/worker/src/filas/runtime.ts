@@ -68,18 +68,23 @@ export class Filas {
     return fila;
   }
 
-  /** Publica um job. Repetir a mesma chave não cria outro job (idempotência). */
+  /**
+   * Publica um job. Repetir a mesma chave não cria outro job (idempotência). `atrasoMs` adia o
+   * início (ex.: jitter da captura).
+   */
   async publicar<Dados>(
     definicao: DefinicaoJob<Dados>,
     dados: Dados,
     escopo: Escopo,
     chave: string,
+    opcoes: { readonly atrasoMs?: number } = {},
   ): Promise<string> {
     const envelope = montarEnvelope(definicao, dados, escopo, chave, capturarContextoPropagavel());
     const jobId = idDoJob(definicao.tipo, chave);
     await this.#fila(definicao.fila).add(definicao.tipo, envelope, {
       jobId,
       ...this.#opcoesDoJob(definicao.fila),
+      ...(opcoes.atrasoMs === undefined ? {} : { delay: opcoes.atrasoMs }),
     });
     return jobId;
   }

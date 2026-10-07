@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { VerificarIntegridade } from '@pz/auditoria';
+import { ExecutarCaptura, PlanejarCaptura } from '@pz/captura';
 import { limparOutbox } from '@pz/kernel';
 import {
   criarLogger,
@@ -8,9 +9,16 @@ import {
   registrarSituacaoDasFilas,
 } from '@pz/observability';
 
+import {
+  agendamentoDaCaptura,
+  ESCOPO_DA_CAPTURA,
+  executarCapturaJob,
+  planejarCapturaJob,
+} from '../captura/jobs.js';
 import { DespachanteDeEventos } from '../eventos/consome.js';
 import { consumirEvento, desserializarEvento } from '../eventos/job-evento.js';
 import {
+  AMBIENTE,
   FILAS_RUNTIME,
   LIMPEZA_DO_OUTBOX,
   PROCESSADORES_DE_WEBHOOK,
@@ -29,6 +37,7 @@ import {
 } from './agendamento.js';
 import { Filas } from './runtime.js';
 
+import type { AmbienteWorker } from '../ambiente.js';
 import type { ProcessadorDeWebhook } from '../integracoes/webhooks.js';
 import type { OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import type { Transacao } from '@pz/db';
@@ -57,6 +66,9 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     @Inject(PROCESSADORES_DE_WEBHOOK)
     private readonly processadores: ReadonlyMap<string, ProcessadorDeWebhook>,
     @Inject(VerificarIntegridade) private readonly integridade: VerificarIntegridade<unknown>,
+    @Inject(AMBIENTE) private readonly ambiente: AmbienteWorker,
+    @Inject(PlanejarCaptura) private readonly planejarCaptura: PlanejarCaptura<unknown>,
+    @Inject(ExecutarCaptura) private readonly executarCaptura: ExecutarCaptura<unknown>,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -93,11 +105,27 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     this.filas.registrar(processarWebhook, ({ id }) =>
       tratarWebhook(this.unidadeDosWebhooks, this.processadores, this.relogio, id),
     );
-    this.filas.validarAgendamentos(AGENDAMENTOS);
+    // Captura (HU17): o planejamento enfileira um job por alvo, espalhados pelo jitter.
+    this.filas.registrar(planejarCapturaJob, async () => {
+      const planos = await this.planejarCaptura.executar();
+      for (const { chave, ...dados } of planos) {
+        const atrasoMs = Math.floor(Math.random() * this.ambiente.CAPTURA_JITTER_MS);
+        await this.filas.publicar(executarCapturaJob, dados, ESCOPO_DA_CAPTURA, chave, {
+          atrasoMs,
+        });
+      }
+      logger.info({ alvos: planos.length }, 'captura planejada');
+    });
+    this.filas.registrar(executarCapturaJob, async (dados) => {
+      const resultado = await this.executarCaptura.executar(dados);
+      logger.info({ alvoId: dados.alvoId, ...resultado }, 'captura executada');
+    });
+    const agendamentos = [...AGENDAMENTOS, agendamentoDaCaptura(this.ambiente.CAPTURA_CRON)];
+    this.filas.validarAgendamentos(agendamentos);
     this.filas.iniciar();
     // Sem esperar o Redis: com ele fora, o worker sobe e a prontidão mostra a falha; os
     // agendadores são gravados quando a conexão voltar. Falha aqui vira log, métrica e alerta.
-    void this.filas.agendar(AGENDAMENTOS).catch((erro: unknown) => {
+    void this.filas.agendar(agendamentos).catch((erro: unknown) => {
       registrarErro(logger, erro, 'falha ao registrar os jobs recorrentes', 'worker.agendador');
     });
     this.#cancelarMetricas = registrarSituacaoDasFilas(() => this.filas.situacao());

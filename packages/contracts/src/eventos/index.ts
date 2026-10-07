@@ -161,6 +161,36 @@ export const ConsentimentoCanalAlterado = definirEvento(
   }),
 );
 
+/**
+ * Captura de um alvo concluída (HU17): um evento por tenant assinante, com as publicações da
+ * janela no modelo canônico. A publicações (HU18) deduplica o conteúdo por fonte e hash.
+ */
+export const CapturaConcluida = definirEvento(
+  'CapturaConcluida',
+  1,
+  z.object({
+    alvoId: z.uuid(),
+    tipo: z.enum(['oab', 'processo']),
+    valor: z.string().min(1),
+    /** OABs ou processos do tenant que assinam o alvo. */
+    referencias: z.array(z.uuid()).min(1),
+    janela: z.object({ inicio: z.iso.date(), fim: z.iso.date() }),
+    fonte: z.string().min(1),
+    publicacoes: z.array(
+      z.object({
+        idExterno: z.string().min(1),
+        hashConteudo: z.string().regex(/^[0-9a-f]{64}$/),
+        dataDisponibilizacao: z.iso.date(),
+        teor: z.string().min(1),
+        numeroCnj: z.string().optional(),
+        destinatarios: z.array(z.object({ numero: z.string(), uf: z.string().length(2) })),
+        urlFonte: z.url(),
+        metadados: z.record(z.string(), z.unknown()),
+      }),
+    ),
+  }),
+);
+
 export const EVENTOS = catalogoDeEventos(
   SituacaoVerificada,
   RedefinicaoDeSenhaSolicitada,
@@ -176,4 +206,5 @@ export const EVENTOS = catalogoDeEventos(
   NotificacaoEntregue,
   NotificacaoRejeitada,
   ConsentimentoCanalAlterado,
+  CapturaConcluida,
 );

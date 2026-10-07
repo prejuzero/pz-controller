@@ -55,6 +55,8 @@ describe('migrações', () => {
       expect(await tabelas()).toEqual([
         'acesso',
         'advogado',
+        'alvo_assinante',
+        'alvo_monitoramento',
         'auditoria_verificacao',
         'cliente',
         'consentimento_canal',
@@ -90,6 +92,8 @@ describe('migrações', () => {
       expect(await tabelas()).toEqual([
         'acesso',
         'advogado',
+        'alvo_assinante',
+        'alvo_monitoramento',
         'auditoria_verificacao',
         'cliente',
         'consentimento_canal',
@@ -144,6 +148,7 @@ describe('RLS (ADR-003)', () => {
       expect(rows.map((linha) => linha.tabela)).toEqual([
         'acesso',
         'advogado',
+        'alvo_assinante',
         'auditoria_verificacao',
         'cliente',
         'consentimento_canal',

@@ -42,6 +42,7 @@ model Tenant {
   feriadosLocais     FeriadoLocal[]
   advogados          Advogado[]
   notificacoes       Notificacao[]
+  assinaturasDeAlvo  AlvoAssinante[]
   preferencias       PreferenciaNotificacao[]
   consentimentos     ConsentimentoCanal[]
   destinosPush       DestinoPush[]
@@ -632,4 +633,47 @@ model Supressao {
   criadaEm DateTime @default(now()) @map("criada_em") @db.Timestamptz(6)
 
   @@map("supressao")
+}
+
+enum TipoAlvo {
+  oab
+  processo
+
+  @@map("tipo_alvo")
+}
+
+/// Alvo de monitoramento da captura (HU17, ADR-014): global, uma consulta por alvo e execução.
+model AlvoMonitoramento {
+  id                 String    @id @db.Uuid
+  tipo               TipoAlvo
+  valor              String
+  ativo              Boolean   @default(true)
+  ultimoSucesso      DateTime? @map("ultimo_sucesso") @db.Timestamptz(6)
+  ultimaJanelaFim    DateTime? @map("ultima_janela_fim") @db.Date
+  ultimaChave        String?   @map("ultima_chave")
+  proximaExecucao    DateTime? @map("proxima_execucao") @db.Timestamptz(6)
+  falhasConsecutivas Int       @default(0) @map("falhas_consecutivas")
+  criadoEm           DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm       DateTime  @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  assinantes AlvoAssinante[]
+
+  @@unique([tipo, valor])
+  @@map("alvo_monitoramento")
+}
+
+/// Quem assina o alvo (HU17): por tenant, com RLS; `referencia` é a OAB ou o processo do tenant.
+model AlvoAssinante {
+  alvoId       String   @map("alvo_id") @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  referencia   String   @db.Uuid
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  alvo   AlvoMonitoramento @relation(fields: [alvoId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  tenant Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@id([tenantId, alvoId, referencia])
+  @@index([alvoId])
+  @@map("alvo_assinante")
 }

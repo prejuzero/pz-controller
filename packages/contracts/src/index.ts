@@ -140,6 +140,7 @@ export { formatarNumeroCnj, lerNumeroCnj, TRIBUNAIS, tribunalDoNumero } from './
 export type { PartesDoNumeroCnj, Tribunal } from './cnj.js';
 export {
   CalendarioAlterado,
+  CapturaConcluida,
   catalogoDeEventos,
   CoberturaAlterada,
   ConsentimentoCanalAlterado,

@@ -55,6 +55,21 @@ export const esquemaWorker = esquemaBase
      * responsável jurídico; obrigatório em produção, 1 dia no ambiente local.
      */
     AUDITORIA_WORM_RETENCAO_DIAS: z.coerce.number().int().positive().optional(),
+    /**
+     * Horários da captura de publicações (HU17), cron no fuso de Brasília. Padrão: 6 vezes ao
+     * dia em horário útil.
+     */
+    CAPTURA_CRON: z.string().min(9).default('0 7,9,11,13,15,17 * * *'),
+    /** Dias para trás na primeira captura de uma OAB ou processo novo. */
+    CAPTURA_DIAS_INICIAIS: z.coerce.number().int().min(0).max(30).default(7),
+    /** Espalha os jobs de cada execução por até este intervalo (jitter), sem rajada na fonte. */
+    CAPTURA_JITTER_MS: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(10 * 60_000),
+    /** Adaptador de FontePublicacoes (ADR-005): trocar de fonte é configuração. */
+    CAPTURA_FONTE: z.enum(['djen']).default('djen'),
     /** Intervalo do ciclo do relay do outbox. */
     RELAY_INTERVALO_MS: z.coerce.number().int().min(100).default(1_000),
   });

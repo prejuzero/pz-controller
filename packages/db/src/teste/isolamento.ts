@@ -118,6 +118,10 @@ const COLUNAS_FIXAS: Readonly<Record<string, Record<string, unknown>>> = {
   oab: { uf: 'XA' },
   consentimento_canal: { canal: 'push', origem: 'app' },
   cliente: { documento: null },
+  alvo_monitoramento: {
+    tipo: 'processo',
+    valor: () => String(randomInt(1e10, 1e11 - 1)).padStart(20, '0'),
+  },
   processo: {
     numero_cnj: () => String(randomInt(1e10, 1e11 - 1)).padStart(20, '0'),
     cliente_id: null,
