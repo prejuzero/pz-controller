@@ -19,6 +19,7 @@ export const PERFIS_PADRAO = {
     'relatorios:exportar',
     'processos:ler',
     'processos:gerir',
+    'escritorio:exportar',
   ],
   admin_plataforma: ['conta:gerir', 'admin:tenants', 'admin:impersonar', 'admin:filas'],
   admin_escritorio: [
@@ -33,6 +34,7 @@ export const PERFIS_PADRAO = {
     'usuarios:gerir',
     'processos:ler',
     'processos:gerir',
+    'escritorio:exportar',
   ],
   colaborador: ['conta:gerir', 'prazos:ler', 'publicacoes:ler', 'calendario:ler', 'processos:ler'],
   curador: ['conta:gerir', 'curadoria:calendario', 'curadoria:tabela-prazos'],

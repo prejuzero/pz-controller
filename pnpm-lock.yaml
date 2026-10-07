@@ -218,6 +218,9 @@ importers:
       '@nestjs/platform-fastify':
         specifier: 12.1.2
         version: 12.1.2(@fastify/static@10.1.5)(@fastify/view@12.0.0)(@nestjs/common@12.1.2(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@10.2.2))(@nestjs/core@12.1.2(@nestjs/common@12.1.2(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@10.2.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))
+      '@pz/adapter-s3':
+        specifier: workspace:*
+        version: link:../../packages/adapters/s3
       '@pz/adapter-ses':
         specifier: workspace:*
         version: link:../../packages/adapters/ses
@@ -260,6 +263,9 @@ importers:
       '@pz/prazos':
         specifier: workspace:*
         version: link:../../modules/prazos
+      '@pz/privacidade':
+        specifier: workspace:*
+        version: link:../../modules/privacidade
       '@pz/saude':
         specifier: workspace:*
         version: link:../../modules/saude
@@ -424,6 +430,9 @@ importers:
       '@pz/auditoria':
         specifier: workspace:*
         version: link:../../modules/auditoria
+      '@pz/cadastro':
+        specifier: workspace:*
+        version: link:../../modules/cadastro
       '@pz/calendario':
         specifier: workspace:*
         version: link:../../modules/calendario
@@ -454,9 +463,15 @@ importers:
       '@pz/observability':
         specifier: workspace:*
         version: link:../../packages/observability
+      '@pz/privacidade':
+        specifier: workspace:*
+        version: link:../../modules/privacidade
       '@pz/saude':
         specifier: workspace:*
         version: link:../../modules/saude
+      '@pz/termos':
+        specifier: workspace:*
+        version: link:../../modules/termos
       bullmq:
         specifier: 6.3.11
         version: 6.3.11(bullmq-otel@2.0.1)(ioredis@5.11.1(supports-color@10.2.2))(pg@8.23.1)
@@ -841,6 +856,61 @@ importers:
       '@pz/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@types/node':
+        specifier: 24.19.1
+        version: 24.19.1
+      '@vitest/coverage-v8':
+        specifier: 5.0.3
+        version: 5.0.3(@vitest/browser@5.0.3)(vitest@5.0.3)
+      eslint:
+        specifier: 10.12.0
+        version: 10.12.0(jiti@2.6.1)(supports-color@10.2.2)
+      fast-check:
+        specifier: 4.10.2
+        version: 4.10.2
+      testcontainers:
+        specifier: 12.2.0
+        version: 12.2.0(supports-color@10.2.2)
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.0.3
+        version: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@24.19.1)(@vitest/browser-playwright@5.0.3)(@vitest/coverage-v8@5.0.3)(@vitest/ui@5.0.3)(vite@8.3.2(@types/node@24.19.1)(jiti@2.6.1)(tsx@4.23.15))
+
+  modules/privacidade:
+    dependencies:
+      '@pz/auditoria':
+        specifier: workspace:*
+        version: link:../auditoria
+      '@pz/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@pz/integracoes':
+        specifier: workspace:*
+        version: link:../../packages/integracoes
+      '@pz/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+    devDependencies:
+      '@pz/cadastro':
+        specifier: workspace:*
+        version: link:../cadastro
+      '@pz/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@pz/identidade':
+        specifier: workspace:*
+        version: link:../identidade
+      '@pz/notificacoes':
+        specifier: workspace:*
+        version: link:../notificacoes
+      '@pz/termos':
+        specifier: workspace:*
+        version: link:../termos
       '@types/node':
         specifier: 24.19.1
         version: 24.19.1

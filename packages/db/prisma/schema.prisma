@@ -44,6 +44,7 @@ model Tenant {
   notificacoes       Notificacao[]
   assinaturasDeAlvo  AlvoAssinante[]
   aceitesDocumentos  AceiteDocumento[]
+  exportacoes        ExportacaoDados[]
   preferencias       PreferenciaNotificacao[]
   consentimentos     ConsentimentoCanal[]
   destinosPush       DestinoPush[]
@@ -719,4 +720,37 @@ model AceiteDocumento {
 
   @@id([tenantId, usuarioId, documentoId])
   @@map("aceite_documento")
+}
+
+enum EscopoExportacao {
+  titular
+  escritorio
+
+  @@map("escopo_exportacao")
+}
+
+enum SituacaoExportacao {
+  pendente
+  concluida
+
+  @@map("situacao_exportacao")
+}
+
+/// Pedido de exportação de dados (HU38, LGPD art. 18), por tenant (RLS).
+model ExportacaoDados {
+  id           String             @id @db.Uuid
+  tenantId     String             @map("tenant_id") @db.Uuid
+  usuarioId    String             @map("usuario_id") @db.Uuid
+  escopo       EscopoExportacao
+  situacao     SituacaoExportacao @default(pendente)
+  solicitadaEm DateTime           @map("solicitada_em") @db.Timestamptz(6)
+  concluidaEm  DateTime?          @map("concluida_em") @db.Timestamptz(6)
+  expiraEm     DateTime?          @map("expira_em") @db.Timestamptz(6)
+  criadoEm     DateTime           @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime           @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, usuarioId])
+  @@map("exportacao_dados")
 }

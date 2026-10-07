@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ArmazenamentoS3 } from '@pz/adapter-s3';
 import { DESCRITOR_SES, WebhooksSes } from '@pz/adapter-ses';
 import { FilaDeMortosBullMq, ReprocessarJobMorto } from '@pz/administracao';
 import { TrilhaPostgres } from '@pz/auditoria';
@@ -103,6 +104,7 @@ import {
   TabelaPostgres,
   TiposDeAtoPostgres,
 } from '@pz/prazos';
+import { ConsultarExportacao, ExportacoesPostgres, SolicitarExportacao } from '@pz/privacidade';
 import { ConsultarSituacao, VerificadorHttp, VerificadorTcp } from '@pz/saude';
 import {
   AceitarDocumento,
@@ -134,6 +136,7 @@ import { FiltroDeProblemas } from './http/problemas.js';
 import { NotificacoesController } from './notificacoes/notificacoes.controller.js';
 import { OpenApiController } from './openapi.controller.js';
 import { TabelaPrazosController } from './prazos/tabela-prazos.controller.js';
+import { PrivacidadeController } from './privacidade/privacidade.controller.js';
 import { SaudeController, SondasController } from './saude/saude.controller.js';
 import { TermosController } from './termos/termos.controller.js';
 import { WebhooksController } from './webhooks/webhooks.controller.js';
@@ -172,7 +175,7 @@ import type {
   RepositorioDePerfis,
   RepositorioDeSegundoFator,
 } from '@pz/identidade';
-import type { ReceptorWebhook } from '@pz/integracoes';
+import type { ReceptorWebhook, ArmazenamentoArquivos } from '@pz/integracoes';
 import type { Clock, Outbox, UnidadeDeTrabalho } from '@pz/kernel';
 import type {
   DestinosDoUsuario,
@@ -182,6 +185,7 @@ import type {
   RepositorioDeNotificacoes,
 } from '@pz/notificacoes';
 import type { RepositorioDaTabela, RepositorioDeTiposDeAto } from '@pz/prazos';
+import type { RepositorioDeExportacoes } from '@pz/privacidade';
 import type { VerificadorDeDependencia } from '@pz/saude';
 import type {
   RepositorioDeAceites,
@@ -224,6 +228,8 @@ export interface OpcoesApi {
   readonly calendario?: DependenciasDoCalendario;
   /** Tabela de prazos (HU15); nos testes, repositórios em memória. */
   readonly tabelaDePrazos?: DependenciasDaTabelaDePrazos;
+  /** Exportação de dados (HU38); nos testes, repositório e armazenamento em memória. */
+  readonly privacidade?: DependenciasDaPrivacidade;
   /** Termos e aceite versionado (HU38); nos testes, repositórios em memória. */
   readonly termos?: DependenciasDosTermos;
   /** Cadastro do advogado (HU11); nos testes, repositórios em memória. */
@@ -300,6 +306,56 @@ interface DependenciasDaTabelaDePrazos {
   readonly tabela: RepositorioDaTabela<unknown>;
   readonly trilha: TrilhaDeAuditoria<unknown>;
   readonly outbox: Outbox<unknown>;
+}
+
+interface DependenciasDaPrivacidade {
+  readonly unidade: UnidadeDeTrabalho<unknown>;
+  readonly exportacoes: RepositorioDeExportacoes<unknown>;
+  readonly trilha: TrilhaDeAuditoria<unknown>;
+  readonly outbox: Outbox<unknown>;
+  readonly armazenamento: ArmazenamentoArquivos;
+}
+
+/** Exportação de dados (HU38): pedido e consulta na API; a geração é do worker. */
+function provedoresDaPrivacidade(d: DependenciasDaPrivacidade): Provider[] {
+  return [
+    {
+      provide: SolicitarExportacao,
+      inject: [RELOGIO],
+      useFactory: (r: Clock) =>
+        new SolicitarExportacao(d.unidade, d.exportacoes, d.trilha, d.outbox, r),
+    },
+    {
+      provide: ConsultarExportacao,
+      inject: [RELOGIO],
+      useFactory: (r: Clock) =>
+        new ConsultarExportacao(d.unidade, d.exportacoes, d.armazenamento, r),
+    },
+  ];
+}
+
+/** Arquivos do sistema (exportações LGPD) no S3 ou RustFS local, só JSON e CSV. */
+function arquivosDoAmbiente(ambiente: AmbienteApi): ArmazenamentoArquivos {
+  return new ArmazenamentoS3(
+    {
+      bucket: ambiente.ARQUIVOS_BUCKET,
+      regiao: ambiente.S3_REGION,
+      ...(ambiente.S3_ENDPOINT === undefined ? {} : { endpoint: ambiente.S3_ENDPOINT }),
+      ...(ambiente.S3_ACCESS_KEY_ID === undefined || ambiente.S3_SECRET_ACCESS_KEY === undefined
+        ? {}
+        : {
+            credenciais: {
+              idChave: ambiente.S3_ACCESS_KEY_ID,
+              segredo: ambiente.S3_SECRET_ACCESS_KEY,
+            },
+          }),
+      forcarPathStyle: ambiente.S3_FORCE_PATH_STYLE,
+      criptografia: ambiente.S3_ENDPOINT === undefined ? 'AES256' : 'nenhuma',
+      tiposPermitidos: ['application/json', 'text/csv'],
+      tamanhoMaximoBytes: 100 * 1024 * 1024,
+    },
+    new SystemClock(),
+  );
 }
 
 interface DependenciasDosTermos {
@@ -765,6 +821,15 @@ export class AppModule {
       { provide: ReprocessarJobMorto, useValue: new ReprocessarJobMorto(filas.reprocessamento) },
       { provide: FILAS_DO_PAINEL, useValue: filas.painel },
       ...provedoresDoCalendario(calendario),
+      ...provedoresDaPrivacidade(
+        opcoes.privacidade ?? {
+          unidade: recursos.banco,
+          exportacoes: new ExportacoesPostgres(),
+          trilha: new TrilhaPostgres(),
+          outbox: new OutboxPostgres(),
+          armazenamento: arquivosDoAmbiente(opcoes.ambiente),
+        },
+      ),
       ...provedoresDosTermos(
         opcoes.termos ?? {
           noTenant: {
@@ -817,6 +882,7 @@ export class AppModule {
         CalendarioController,
         TabelaPrazosController,
         TermosController,
+        PrivacidadeController,
         CadastroController,
         ProcessosController,
         NotificacoesController,

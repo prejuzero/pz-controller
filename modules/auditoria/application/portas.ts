@@ -32,6 +32,7 @@ export const TIPOS_DE_AUDITORIA = [
   'notificacoes.notificacao-rejeitada',
   'ia.sugestao-corrigida',
   'termos.documento-aceito',
+  'privacidade.exportacao-solicitada',
   'notificacoes.consentimento-concedido',
   'notificacoes.consentimento-revogado',
   'notificacoes.destino-push-registrado',
