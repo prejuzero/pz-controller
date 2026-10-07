@@ -1,0 +1,155 @@
+{
+  "status": "success",
+  "message": "Sucesso",
+  "count": 3,
+  "items": [
+    {
+      "id": 900000001,
+      "data_disponibilizacao": "2026-10-06",
+      "siglaTribunal": "TJSP",
+      "tipoComunicacao": "Intimação",
+      "nomeOrgao": "Vara Fictícia 1",
+      "idOrgao": 10001,
+      "texto": "<p>FICTÍCIO&nbsp;&nbsp;Processo 1000001-51.2026.8.26.0100</p>\n\n<br/>  Intimação de teste 1: manifeste-se a parte autora   no prazo legal.&amp; Texto anonimizado.\r\n",
+      "numero_processo": "10000015120268260100",
+      "meio": "D",
+      "link": "https://tribunal.exemplo.invalid/expediente/1",
+      "tipoDocumento": "Ato ordinatório",
+      "nomeClasse": "PROCEDIMENTO DO JUIZADO ESPECIAL CíVEL",
+      "codigoClasse": "436",
+      "numeroComunicacao": 1,
+      "ativo": true,
+      "hash": "FicticioHash000000000000000001",
+      "status": "P",
+      "motivo_cancelamento": null,
+      "data_cancelamento": null,
+      "datadisponibilizacao": "06/10/2026",
+      "meiocompleto": "Diário de Justiça Eletrônico Nacional",
+      "numeroprocessocommascara": "1000001-51.2026.8.26.0100",
+      "destinatarios": [
+        {
+          "nome": "PARTE FICTÍCIA 1",
+          "polo": "A"
+        }
+      ],
+      "destinatarioadvogados": [
+        {
+          "id": "",
+          "comunicacao_id": "",
+          "advogado_id": 1001,
+          "created_at": "",
+          "updated_at": "",
+          "advogado": {
+            "id": 1001,
+            "nome": "ADVOGADA FICTÍCIA 1",
+            "numero_oab": "123456",
+            "uf_oab": "SP"
+          }
+        }
+      ]
+    },
+    {
+      "id": 900000002,
+      "data_disponibilizacao": "2026-10-06",
+      "siglaTribunal": "TJSP",
+      "tipoComunicacao": "Intimação",
+      "nomeOrgao": "Vara Fictícia 2",
+      "idOrgao": 10002,
+      "texto": "<p>FICTÍCIO&nbsp;&nbsp;Processo 1000002-36.2026.8.26.0100</p>\n\n<br/>  Intimação de teste 2: manifeste-se a parte autora   no prazo legal.&amp; Texto anonimizado.\r\n",
+      "numero_processo": "10000023620268260100",
+      "meio": "D",
+      "link": "https://tribunal.exemplo.invalid/expediente/2",
+      "tipoDocumento": "DESPACHO/DECISÃO",
+      "nomeClasse": "PROCEDIMENTO DO JUIZADO ESPECIAL CíVEL",
+      "codigoClasse": "436",
+      "numeroComunicacao": 52,
+      "ativo": true,
+      "hash": "FicticioHash000000000000000002",
+      "status": "P",
+      "motivo_cancelamento": null,
+      "data_cancelamento": null,
+      "datadisponibilizacao": "06/10/2026",
+      "meiocompleto": "Diário de Justiça Eletrônico Nacional",
+      "numeroprocessocommascara": "1000002-36.2026.8.26.0100",
+      "destinatarios": [
+        {
+          "nome": "PARTE FICTÍCIA 2",
+          "polo": "A"
+        }
+      ],
+      "destinatarioadvogados": [
+        {
+          "id": "",
+          "comunicacao_id": "",
+          "advogado_id": 1002,
+          "created_at": "",
+          "updated_at": "",
+          "advogado": {
+            "id": 1002,
+            "nome": "ADVOGADA FICTÍCIA 2",
+            "numero_oab": "123456",
+            "uf_oab": "SP"
+          }
+        }
+      ]
+    },
+    {
+      "id": 900000003,
+      "data_disponibilizacao": "2026-10-06",
+      "siglaTribunal": "TJSP",
+      "tipoComunicacao": "Intimação",
+      "nomeOrgao": "Vara Fictícia 3",
+      "idOrgao": 10003,
+      "texto": "<p>FICTÍCIO&nbsp;&nbsp;Processo 1000003-21.2026.8.26.0100</p>\n\n<br/>  Intimação de teste 3: manifeste-se a parte autora   no prazo legal.&amp; Texto anonimizado.\r\n",
+      "numero_processo": "10000032120268260100",
+      "meio": "D",
+      "link": "https://tribunal.exemplo.invalid/expediente/3",
+      "tipoDocumento": "DESPACHO/DECISÃO",
+      "nomeClasse": "PROCEDIMENTO COMUM CíVEL",
+      "codigoClasse": "7",
+      "numeroComunicacao": 110,
+      "ativo": true,
+      "hash": "FicticioHash000000000000000003",
+      "status": "P",
+      "motivo_cancelamento": null,
+      "data_cancelamento": null,
+      "datadisponibilizacao": "06/10/2026",
+      "meiocompleto": "Diário de Justiça Eletrônico Nacional",
+      "numeroprocessocommascara": "1000003-21.2026.8.26.0100",
+      "destinatarios": [
+        {
+          "nome": "PARTE FICTÍCIA 3",
+          "polo": "A"
+        }
+      ],
+      "destinatarioadvogados": [
+        {
+          "id": "",
+          "comunicacao_id": "",
+          "advogado_id": 1003,
+          "created_at": "",
+          "updated_at": "",
+          "advogado": {
+            "id": 1003,
+            "nome": "ADVOGADA FICTÍCIA 3",
+            "numero_oab": "123456",
+            "uf_oab": "SP"
+          }
+        },
+        {
+          "id": "",
+          "comunicacao_id": "",
+          "advogado_id": 1999,
+          "created_at": "",
+          "updated_at": "",
+          "advogado": {
+            "id": 1999,
+            "nome": "ADVOGADO FICTÍCIO SUPLEMENTAR",
+            "numero_oab": "12345A",
+            "uf_oab": "SP"
+          }
+        }
+      ]
+    }
+  ]
+}
