@@ -15,7 +15,8 @@ pnpm db:migrate
 # 2FA e com a senha padrão), para que o smoke cubra a ativação obrigatória (HU06) e a recuperação.
 infra/docker/compose.sh exec -T postgres psql -v ON_ERROR_STOP=1 -U pz_dev -d prejuzero -qc \
   "UPDATE usuario SET senha_hash = NULL, totp_segredo_cifrado = NULL, totp_ativo_em = NULL,
-   totp_ultimo_passo = NULL, codigos_recuperacao = '{}' WHERE email = 'demonstracao@prejuzero.local'" \
+   totp_ultimo_passo = NULL, codigos_recuperacao = '{}' WHERE email IN ('demonstracao@prejuzero.local', 'curadoria1@prejuzero.local',
+   'curadoria2@prejuzero.local')" \
   >/dev/null
 pnpm db:seed
 rm -rf apps/web/e2e/.sessao

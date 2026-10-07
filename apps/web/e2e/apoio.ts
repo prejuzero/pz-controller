@@ -8,7 +8,13 @@ export const EMAIL = 'demonstracao@prejuzero.local';
 export const SENHA = process.env.SENHA_DEMONSTRACAO ?? 'demonstracao local 2026';
 
 export const ESTADO_SESSAO = 'e2e/.sessao/estado.json';
-const ARQUIVO_TOTP = 'e2e/.sessao/totp.json';
+/** Segredo e último passo TOTP por usuário: cada um ativa o próprio 2FA no primeiro acesso. */
+const arquivoTotp = (email: string) => `e2e/.sessao/totp-${email}.json`;
+
+// Curadores FICTÍCIOS do seed (tenant plataforma), para a aprovação por quatro olhos.
+export const CURADOR_1 = 'curadoria1@prejuzero.local';
+export const CURADOR_2 = 'curadoria2@prejuzero.local';
+export const ESTADO_CURADOR = 'e2e/.sessao/estado-curador.json';
 const PERIODO_S = 30;
 
 /** Rotas do menu (src/navegacao.ts) com o rótulo do catálogo pt-BR. */
@@ -50,33 +56,38 @@ interface EstadoTotp {
   ultimoPasso: number;
 }
 
-function lerTotp(): EstadoTotp {
-  return JSON.parse(readFileSync(ARQUIVO_TOTP, 'utf8')) as EstadoTotp;
+function lerTotp(email: string): EstadoTotp {
+  return JSON.parse(readFileSync(arquivoTotp(email), 'utf8')) as EstadoTotp;
 }
 
-function salvarTotp(estado: EstadoTotp): void {
+function salvarTotp(email: string, estado: EstadoTotp): void {
   mkdirSync('e2e/.sessao', { recursive: true });
-  writeFileSync(ARQUIVO_TOTP, JSON.stringify(estado));
+  writeFileSync(arquivoTotp(email), JSON.stringify(estado));
 }
 
 /**
  * Próximo código aceito: a API recusa passo já usado e aceita até um passo à frente
  * (modules/identidade/application/segundo-fator.ts). Espera o passo virar se preciso.
  */
-async function proximoCodigo(page: Page, segredo: string, ultimoPasso: number): Promise<string> {
+async function proximoCodigo(
+  page: Page,
+  email: string,
+  segredo: string,
+  ultimoPasso: number,
+): Promise<string> {
   let atual = Math.floor(Date.now() / 1000 / PERIODO_S);
   while (ultimoPasso >= atual + 1) {
     await page.waitForTimeout(1_000);
     atual = Math.floor(Date.now() / 1000 / PERIODO_S);
   }
   const passo = Math.max(atual, ultimoPasso + 1);
-  salvarTotp({ segredo, ultimoPasso: passo });
+  salvarTotp(email, { segredo, ultimoPasso: passo });
   return codigoTotp(segredo, passo);
 }
 
 /** Senha → 2FA (ativa no primeiro acesso, verifica nos seguintes) → destino. */
-export async function entrar(page: Page, senha = SENHA): Promise<void> {
-  await page.getByLabel('E-mail').fill(EMAIL);
+export async function entrar(page: Page, senha = SENHA, email = EMAIL): Promise<void> {
+  await page.getByLabel('E-mail').fill(email);
   await page.getByLabel(/^Senha/).fill(senha);
   await page.getByRole('button', { name: 'Entrar' }).click();
   await page.waitForURL(/\/entrar\/2fa/);
@@ -89,12 +100,12 @@ export async function entrar(page: Page, senha = SENHA): Promise<void> {
     const segredo = (
       await page.getByText('Sem câmera?').locator('xpath=following-sibling::p[1]').innerText()
     ).trim();
-    await page.getByLabel('Código').fill(await proximoCodigo(page, segredo, 0));
+    await page.getByLabel('Código').fill(await proximoCodigo(page, email, segredo, 0));
     await ativar.click();
     await page.getByRole('button', { name: 'Já guardei, continuar' }).click();
   } else {
-    const { segredo, ultimoPasso } = lerTotp();
-    await page.getByLabel('Código').fill(await proximoCodigo(page, segredo, ultimoPasso));
+    const { segredo, ultimoPasso } = lerTotp(email);
+    await page.getByLabel('Código').fill(await proximoCodigo(page, email, segredo, ultimoPasso));
     await verificar.click();
   }
   await page.waitForURL((url) => !url.pathname.startsWith('/entrar'));

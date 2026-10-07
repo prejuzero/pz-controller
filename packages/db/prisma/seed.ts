@@ -14,6 +14,20 @@ const TENANT_DEMONSTRACAO = '01a10e00-0000-7000-8000-00000000d001';
 const USUARIO_DEMONSTRACAO = '01a10e00-0000-7000-8000-00000000d002';
 const ADVOGADO_DEMONSTRACAO = '01a10e00-0000-7000-8000-00000000d003';
 const OAB_DEMONSTRACAO = '01a10e00-0000-7000-8000-00000000d004';
+// Curadoria FICTÍCIA (HU13/HU15): dois curadores para exercitar a aprovação por quatro olhos.
+const TENANT_PLATAFORMA = '01a10e00-0000-7000-8000-00000000c001';
+const CURADORES = [
+  {
+    id: '01a10e00-0000-7000-8000-00000000c002',
+    nome: 'Curadoria Um',
+    email: 'curadoria1@prejuzero.local',
+  },
+  {
+    id: '01a10e00-0000-7000-8000-00000000c003',
+    nome: 'Curadoria Dois',
+    email: 'curadoria2@prejuzero.local',
+  },
+];
 
 // Senha só do ambiente local (fictícia); troque por SENHA_DEMONSTRACAO se quiser outra.
 const SENHA = process.env.SENHA_DEMONSTRACAO ?? 'demonstracao local 2026';
@@ -72,9 +86,31 @@ try {
     USUARIO_DEMONSTRACAO,
     await hashArgon2id(SENHA),
   ]);
+  await cliente.query(
+    `INSERT INTO tenant (id, nome, tipo) VALUES ($1, 'PrejuZero (curadoria local)', 'plataforma')
+     ON CONFLICT (id) DO NOTHING`,
+    [TENANT_PLATAFORMA],
+  );
+  await cliente.query(`SELECT set_config('app.tenant_id', $1, true)`, [TENANT_PLATAFORMA]);
+  for (const curador of CURADORES) {
+    await cliente.query(
+      `INSERT INTO usuario (id, tenant_id, nome, email) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (id) DO NOTHING`,
+      [curador.id, TENANT_PLATAFORMA, curador.nome, curador.email],
+    );
+    await cliente.query(
+      `INSERT INTO usuario_perfil (tenant_id, usuario_id, perfil) VALUES ($1, $2, 'curador')
+       ON CONFLICT DO NOTHING`,
+      [TENANT_PLATAFORMA, curador.id],
+    );
+    await cliente.query('UPDATE usuario SET senha_hash = $2 WHERE id = $1 AND senha_hash IS NULL', [
+      curador.id,
+      await hashArgon2id(SENHA),
+    ]);
+  }
   await cliente.query('COMMIT');
   process.stdout.write(
-    `Seeds aplicados (tenant ${TENANT_DEMONSTRACAO}; login demonstracao@prejuzero.local).\n`,
+    `Seeds aplicados (tenant ${TENANT_DEMONSTRACAO}; login demonstracao@prejuzero.local; curadoria1 e curadoria2@prejuzero.local).\n`,
   );
 } catch (erro) {
   await cliente.query('ROLLBACK');
