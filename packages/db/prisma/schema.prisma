@@ -31,26 +31,27 @@ model Tenant {
   criadoEm     DateTime   @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm DateTime   @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  usuarios           Usuario[]
-  eventosDominio     EventoDominio[]
-  eventosProcessados EventoProcessado[]
-  acessos            Acesso[]
-  dispositivos       SessaoDispositivo[]
-  perfis             UsuarioPerfil[]
-  auditoria          EventoAuditoria[]
-  verificacao        AuditoriaVerificacao?
-  feriadosLocais     FeriadoLocal[]
-  advogados          Advogado[]
-  notificacoes       Notificacao[]
-  assinaturasDeAlvo  AlvoAssinante[]
-  aceitesDocumentos  AceiteDocumento[]
-  exportacoes        ExportacaoDados[]
-  preferencias       PreferenciaNotificacao[]
-  consentimentos     ConsentimentoCanal[]
-  destinosPush       DestinoPush[]
-  oabs               Oab[]
-  clientes           Cliente[]
-  processos          Processo[]
+  usuarios               Usuario[]
+  eventosDominio         EventoDominio[]
+  eventosProcessados     EventoProcessado[]
+  acessos                Acesso[]
+  dispositivos           SessaoDispositivo[]
+  perfis                 UsuarioPerfil[]
+  auditoria              EventoAuditoria[]
+  verificacao            AuditoriaVerificacao?
+  feriadosLocais         FeriadoLocal[]
+  advogados              Advogado[]
+  notificacoes           Notificacao[]
+  assinaturasDeAlvo      AlvoAssinante[]
+  aceitesDocumentos      AceiteDocumento[]
+  exportacoes            ExportacaoDados[]
+  dadosPessoaisAuditoria AuditoriaDadoPessoal[]
+  preferencias           PreferenciaNotificacao[]
+  consentimentos         ConsentimentoCanal[]
+  destinosPush           DestinoPush[]
+  oabs                   Oab[]
+  clientes               Cliente[]
+  processos              Processo[]
 
   @@map("tenant")
 }
@@ -207,6 +208,8 @@ model EventoAuditoria {
   userAgent     String?  @map("user_agent")
   antes         Json?    @db.JsonB
   depois        Json?    @db.JsonB
+  /// Referências aos dados pessoais (ADR-018), campo -> id em auditoria_dado_pessoal.
+  dadosPessoais Json?    @map("dados_pessoais") @db.JsonB
   criadoEm      DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
   hashAnterior  String   @map("hash_anterior")
   hash          String
@@ -753,4 +756,22 @@ model ExportacaoDados {
 
   @@index([tenantId, usuarioId])
   @@map("exportacao_dados")
+}
+
+/// Dado pessoal da trilha fora do hash (ADR-018): pseudonimizável sem quebrar a cadeia.
+model AuditoriaDadoPessoal {
+  id               String    @id @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  usuarioId        String?   @map("usuario_id") @db.Uuid
+  campo            String
+  valor            String?
+  sal              String?
+  compromisso      String
+  pseudonimizadoEm DateTime? @map("pseudonimizado_em") @db.Timestamptz(6)
+  criadoEm         DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, usuarioId])
+  @@map("auditoria_dado_pessoal")
 }

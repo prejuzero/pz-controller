@@ -5,9 +5,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { VerificarIntegridade } from '../application/integridade.js';
 import { verificarCadeia } from '../domain/cadeia.js';
+import { dadoPessoal } from '../domain/dados-pessoais.js';
 
 import { CadeiaPostgres } from './cadeia-postgres.js';
-import { sha256, TrilhaPostgres } from './trilha-postgres.js';
+import { DadosPessoaisDaTrilhaPostgres, sha256, TrilhaPostgres } from './trilha-postgres.js';
 
 import type { BancoDeTeste } from '@pz/db/teste';
 import type { Uuid } from '@pz/kernel';
@@ -88,8 +89,10 @@ describe('trilha de auditoria no PostgreSQL (HU08)', () => {
       sequencia: 1,
       hashAnterior: '0'.repeat(64),
       canal: 'portal',
-      ip: '203.0.113.1',
+      // ADR-018: o IP fica em auditoria_dado_pessoal; o evento guarda só a referência.
+      ip: null,
     });
+    expect(Object.keys(b[0]?.dadosPessoais ?? {})).toEqual(['ip']);
     expect(Math.abs(Date.parse(String(b[0]?.criadoEm)) - Date.now())).toBeLessThan(60_000);
     expect((await ler(TENANT_A)).every((r) => r.tenantId === TENANT_A)).toBe(true);
   });
@@ -218,4 +221,71 @@ describe('verificador diário com PostgreSQL real (PZ-110)', () => {
       sequencia: 500,
     });
   }, 120_000);
+});
+
+describe('dados pessoais fora do hash (ADR-018, HU38)', () => {
+  const TENANT_D = '01a10e00-0000-7000-8000-0000000a0d04' as Uuid;
+  const USUARIO = '01a10e00-0000-7000-8000-0000000a0d05' as Uuid;
+
+  it('grava à parte, pseudonimiza e a cadeia continua válida', async () => {
+    await sistema.executarComoSistema('preparar', (tx) =>
+      tx.tenant.create({ data: { id: TENANT_D, nome: 'D', tipo: 'escritorio' } }),
+    );
+    await executarNoTenant(TENANT_D, () =>
+      banco.executar((tx) =>
+        trilha.registrar(
+          tx,
+          {
+            tipo: 'cadastro.cliente-cadastrado',
+            entidade: 'cliente',
+            entidadeId: 'c-1',
+            depois: { nome: dadoPessoal('Cliente FICTÍCIO'), tipo: 'pf' },
+          },
+          {
+            canal: 'portal',
+            usuarioId: USUARIO,
+            ip: '203.0.113.7',
+            userAgent: 'Navegador FICTÍCIO',
+          },
+        ),
+      ),
+    );
+    const [registro] = await ler(TENANT_D);
+    expect(registro).toMatchObject({ ip: null, userAgent: null });
+    expect(JSON.stringify(registro)).not.toMatch(
+      /203\.0\.113\.7|Navegador FICTÍCIO|Cliente FICTÍCIO/,
+    );
+    expect(Object.keys(registro?.dadosPessoais ?? {})).toEqual(['ip', 'userAgent']);
+
+    const comoSistema = <T>(
+      f: (tx: Parameters<Parameters<BancoSistema['executarComoSistema']>[1]>[0]) => Promise<T>,
+    ) => sistema.executarComoSistema('teste da pseudonimização', f);
+    const antes = await comoSistema((tx) =>
+      tx.auditoriaDadoPessoal.findMany({ where: { tenantId: TENANT_D } }),
+    );
+    expect(antes.map((d) => d.campo).sort()).toEqual(['depois', 'ip', 'userAgent']);
+    for (const d of antes) expect(d.compromisso).toBe(sha256(`${d.sal ?? ''}${d.valor ?? ''}`));
+
+    // A aplicação não altera nem apaga; o sistema não restaura um valor apagado.
+    await expect(
+      executarNoTenant(TENANT_D, () =>
+        banco.executar((tx) => tx.auditoriaDadoPessoal.updateMany({ data: { valor: 'x' } })),
+      ),
+    ).rejects.toThrow(/permission denied/);
+
+    const pseudonimizador = new DadosPessoaisDaTrilhaPostgres();
+    expect(await comoSistema((tx) => pseudonimizador.pseudonimizar(tx, TENANT_D, USUARIO))).toBe(3);
+    expect(await comoSistema((tx) => pseudonimizador.pseudonimizar(tx, TENANT_D))).toBe(0);
+    const depois = await comoSistema((tx) =>
+      tx.auditoriaDadoPessoal.findMany({ where: { tenantId: TENANT_D } }),
+    );
+    expect(
+      depois.every((d) => d.valor === null && d.sal === null && d.pseudonimizadoEm !== null),
+    ).toBe(true);
+    await expect(
+      comoSistema((tx) => tx.auditoriaDadoPessoal.updateMany({ data: { valor: 'volta' } })),
+    ).rejects.toThrow(/só a pseudonimização/);
+
+    expect(verificarCadeia(await ler(TENANT_D), sha256)).toMatchObject({ valida: true });
+  });
 });

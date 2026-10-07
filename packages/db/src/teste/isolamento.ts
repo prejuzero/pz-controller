@@ -118,6 +118,12 @@ const COLUNAS_FIXAS: Readonly<Record<string, Record<string, unknown>>> = {
   oab: { uf: 'XA' },
   consentimento_canal: { canal: 'push', origem: 'app' },
   cliente: { documento: null },
+  auditoria_dado_pessoal: {
+    valor: 'FICTÍCIO',
+    sal: '00',
+    compromisso: 'a'.repeat(64),
+    pseudonimizado_em: null,
+  },
   documento_legal: { versao: () => `${String(randomInt(1, 1e6))}.0`, conteudo: 'FICTÍCIO' },
   alvo_monitoramento: {
     tipo: 'processo',
@@ -197,6 +203,7 @@ export const TABELAS_SO_INSERCAO: readonly string[] = [
   'evento_auditoria',
   'feriado_local',
   'aceite_documento',
+  'auditoria_dado_pessoal',
 ];
 
 /** Tabelas sem DELETE para a aplicação (o registro fica: remoção vira estado, LGPD e prova). */

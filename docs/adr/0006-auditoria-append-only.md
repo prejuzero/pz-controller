@@ -14,3 +14,5 @@ RF84–RF87 e RNF14–RNF17: a trilha precisa servir de prova e não pode ser al
 ## Consequências
 
 O registro acontece na mesma transação da mudança. O carimbo do tempo ICP-Brasil (F2) entra sobre o hash dos lotes.
+
+Dados pessoais (IP, navegador e valores marcados) ficam fora do hash desde o ADR-018, para a pseudonimização na LGPD sem quebrar a cadeia.
