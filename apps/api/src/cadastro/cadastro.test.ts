@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 
 import { AdvogadosEmMemoria, ClientesEmMemoria, ProcessosEmMemoria } from '@pz/cadastro';
+import { EventosGlobaisEmMemoria, FeriadosLocaisEmMemoria } from '@pz/calendario';
 import { carregarAmbiente } from '@pz/config/env';
 import {
   AcessosEmMemoria,
@@ -72,6 +73,13 @@ beforeAll(async () => {
       perfis,
     },
     janelaDeRequisicoes: { registrar: () => Promise.resolve(1) },
+    calendario: {
+      unidade: new OutboxEmMemoria(),
+      globais: new EventosGlobaisEmMemoria(),
+      locais: new FeriadosLocaisEmMemoria(),
+      trilha: { registrar: () => Promise.resolve() },
+      outbox: new OutboxEmMemoria(),
+    },
     cadastro: (r) => ({
       noTenant: { executar: (_tenant, trabalho) => outbox.executar(trabalho) },
       unidade: outbox,
@@ -199,6 +207,19 @@ describe('processos e clientes pela API (HU12)', () => {
     expect(processo).toMatchObject({ numeroCnj: numero, tribunal: 'TJSP' });
     expect((await pedir('POST', '/v1/processos', { numeroCnj: numero })).statusCode).toBe(409);
     expect((await pedir('POST', '/v1/processos', { numeroCnj: '123' })).statusCode).toBe(400);
+
+    // HU13: a jurisdição do calendário sai do processo (TJSP → SP; sem comarca nem município).
+    const dias = await pedir(
+      'GET',
+      `/v1/processos/${processo.id}/dias-nao-uteis?inicio=2030-01-01&fim=2030-01-31`,
+    );
+    expect(dias.json()).toEqual({
+      itens: [],
+      jurisdicao: { tribunal: 'TJSP', uf: 'SP' },
+      lacunas: ['municipio', 'comarca'],
+    });
+    const semProcesso = `/v1/processos/${gerarUuidV7()}/dias-nao-uteis?inicio=2030-01-01&fim=2030-01-31`;
+    expect((await pedir('GET', semProcesso)).statusCode).toBe(404);
 
     const sigilo = await pedir('PATCH', `/v1/processos/${processo.id}`, { sigiloso: true });
     expect(sigilo.json<{ sigiloso: boolean }>().sigiloso).toBe(true);

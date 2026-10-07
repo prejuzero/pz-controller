@@ -4,6 +4,7 @@ import {
   CadastrarFeriadoLocal,
   ConsultarCalendario,
   ConsultarDiasNaoUteis,
+  ConsultarDiasNaoUteisDoProcesso,
   ImportarCalendario,
   ProporEventoDoCalendario,
   RevogarEventoDoCalendario,
@@ -20,6 +21,7 @@ import type { RequisicaoAutenticada } from '../http/acesso.js';
 import type { AutorEmAcao, FiltroDoCalendario } from '@pz/calendario';
 import type {
   DiasNaoUteis,
+  DiasNaoUteisDoProcesso,
   EventoDoCalendario,
   EventosDoCalendario,
   FeriadoLocal,
@@ -66,6 +68,8 @@ export class CalendarioController {
     @Inject(RevogarFeriadoLocal) private readonly revogarLocal: RevogarFeriadoLocal<unknown>,
     @Inject(ConsultarCalendario) private readonly consultar: ConsultarCalendario<unknown>,
     @Inject(ConsultarDiasNaoUteis) private readonly dias: ConsultarDiasNaoUteis<unknown>,
+    @Inject(ConsultarDiasNaoUteisDoProcesso)
+    private readonly diasDoProcesso: ConsultarDiasNaoUteisDoProcesso<unknown>,
   ) {}
 
   @Get('admin/calendario')
@@ -166,6 +170,22 @@ export class CalendarioController {
     if (!r.ok) throw r.erro;
     return {
       itens: r.valor.map((dia) => ({ ...dia, data: dia.data.paraIso() })),
+    };
+  }
+
+  @Get('processos/:id/dias-nao-uteis')
+  @RequerPermissao('processos:ler')
+  async diasNaoUteisDoProcesso(
+    @Param('id') processoId: string,
+    @Query() consulta: Record<string, unknown>,
+  ): Promise<DiasNaoUteisDoProcesso> {
+    const r = await this.diasDoProcesso.executar({ ...consulta, processoId });
+    if (!r.ok) throw r.erro;
+    const { dias, jurisdicao, lacunas } = r.valor;
+    return {
+      itens: dias.map((dia) => ({ ...dia, data: dia.data.paraIso() })),
+      jurisdicao,
+      lacunas: [...lacunas],
     };
   }
 }

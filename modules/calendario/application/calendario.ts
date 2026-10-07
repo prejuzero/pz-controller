@@ -3,10 +3,12 @@ import { z } from 'zod';
 
 import { diasNaoUteis } from '../domain/dias-nao-uteis.js';
 import { ABRANGENCIAS, EventoGlobal, FeriadoLocal, TIPOS_DE_EVENTO } from '../domain/evento.js';
+import { jurisdicaoDoProcesso } from '../domain/jurisdicao-do-processo.js';
 
 import type {
   CacheDeDiasNaoUteis,
   FiltroDoCalendario,
+  LocalizadorDeProcesso,
   RepositorioDeEventosGlobais,
   RepositorioDeFeriadosLocais,
 } from './portas.js';
@@ -17,6 +19,7 @@ import type {
   EstadoDoEventoGlobal,
   EstadoDoFeriadoLocal,
 } from '../domain/evento.js';
+import type { JurisdicaoResolvida } from '../domain/jurisdicao-do-processo.js';
 import type { OrigemDaAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
 import type { Clock, Outbox, Proibido, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 
@@ -70,16 +73,21 @@ const EntradaJurisdicao = z
   })
   .strict();
 
+function periodoValido(
+  { inicio, fim }: { inicio: LocalDate; fim: LocalDate },
+  contexto: z.RefinementCtx,
+): void {
+  if (fim.ehAntesDe(inicio)) {
+    contexto.addIssue({ code: 'custom', path: ['fim'], message: 'O fim é anterior ao início.' });
+  } else if (inicio.diasAte(fim) > MAXIMO_DIAS_POR_CONSULTA) {
+    contexto.addIssue({ code: 'custom', path: ['fim'], message: 'Período longo demais.' });
+  }
+}
+
 export const EntradaDiasNaoUteis = z
   .object({ jurisdicao: EntradaJurisdicao, inicio: Data, fim: Data })
   .strict()
-  .superRefine(({ inicio, fim }, contexto) => {
-    if (fim.ehAntesDe(inicio)) {
-      contexto.addIssue({ code: 'custom', path: ['fim'], message: 'O fim é anterior ao início.' });
-    } else if (inicio.diasAte(fim) > MAXIMO_DIAS_POR_CONSULTA) {
-      contexto.addIssue({ code: 'custom', path: ['fim'], message: 'Período longo demais.' });
-    }
-  });
+  .superRefine(periodoValido);
 
 /** Quem age, e por qual canal (vai para a trilha). */
 export interface AutorEmAcao extends Autor {
@@ -461,6 +469,42 @@ export class ConsultarDiasNaoUteis<Transacao> {
         .map((e) => ({ id: e.id, origem: 'local' as const, conteudo: e.estado })),
     ];
     return diasNaoUteis(vigentes, jurisdicao, inicio, fim);
+  }
+}
+
+export const EntradaDiasNaoUteisDoProcesso = z
+  .object({ processoId: z.uuid(), inicio: Data, fim: Data })
+  .strict()
+  .superRefine(periodoValido);
+
+export interface DiasNaoUteisDoProcesso extends JurisdicaoResolvida {
+  readonly dias: DiaNaoUtil[];
+}
+
+/**
+ * diasNaoUteis com a jurisdição resolvida a partir do processo (HU13): o motor e as telas pedem
+ * pelo processo, sem repetir tribunal e comarca. As lacunas seguem junto para virar aviso.
+ */
+export class ConsultarDiasNaoUteisDoProcesso<Transacao> {
+  constructor(
+    private readonly localizar: LocalizadorDeProcesso,
+    private readonly dias: ConsultarDiasNaoUteis<Transacao>,
+  ) {}
+
+  async executar(
+    entrada: unknown,
+  ): Promise<Result<DiasNaoUteisDoProcesso, Validacao | NaoEncontrado>> {
+    const dados = EntradaDiasNaoUteisDoProcesso.safeParse(entrada);
+    if (!dados.success) return err(validacao(dados.error));
+    const { processoId, inicio, fim } = dados.data;
+    const local = await this.localizar(processoId as Uuid);
+    if (local === undefined)
+      return err(new NaoEncontrado('processo-inexistente', 'Processo não encontrado.'));
+    const resolvida = jurisdicaoDoProcesso(local);
+    return ok({
+      ...resolvida,
+      dias: await this.dias.diasNaoUteis(resolvida.jurisdicao, inicio, fim),
+    });
   }
 }
 

@@ -29,6 +29,7 @@ import {
   CadastrarFeriadoLocal,
   ConsultarCalendario,
   ConsultarDiasNaoUteis,
+  ConsultarDiasNaoUteisDoProcesso,
   EventosGlobaisPostgres,
   FeriadosLocaisPostgres,
   ImportarCalendario,
@@ -305,6 +306,16 @@ function provedoresDoCalendario(d: DependenciasDoCalendario): Provider[] {
     {
       provide: ConsultarDiasNaoUteis,
       useValue: new ConsultarDiasNaoUteis(d.unidade, d.globais, d.locais, d.cache),
+    },
+    {
+      // O calendário lê o processo só pela API pública do cadastro (CLAUDE.md, seção 6).
+      provide: ConsultarDiasNaoUteisDoProcesso,
+      inject: [ConsultarProcesso, ConsultarDiasNaoUteis],
+      useFactory: (processos: ConsultarProcesso<unknown>, dias: ConsultarDiasNaoUteis<unknown>) =>
+        new ConsultarDiasNaoUteisDoProcesso(async (id) => {
+          const r = await processos.executar(id);
+          return r.ok ? { tribunal: r.valor.tribunal, comarca: r.valor.comarca } : undefined;
+        }, dias),
     },
   ];
 }

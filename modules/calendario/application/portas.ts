@@ -1,5 +1,6 @@
 import type { DiaNaoUtil, Jurisdicao } from '../domain/dias-nao-uteis.js';
 import type { EventoGlobal, FeriadoLocal, OrigemDoEvento } from '../domain/evento.js';
+import type { LocalDoProcesso } from '../domain/jurisdicao-do-processo.js';
 import type { LocalDate, Uuid } from '@pz/kernel';
 
 /** Filtro das listagens: eventos que cruzam o período (inclusivo). */
@@ -59,3 +60,9 @@ export interface AlteracaoDoCalendario {
   readonly tenantId: Uuid;
   readonly anos: readonly number[];
 }
+
+/**
+ * Porta: local do processo no tenant corrente (tribunal e comarca), fornecido pelo módulo
+ * cadastro na composição. `undefined` quando o processo não existe ou é de outro tenant.
+ */
+export type LocalizadorDeProcesso = (processoId: Uuid) => Promise<LocalDoProcesso | undefined>;
