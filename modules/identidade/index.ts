@@ -55,6 +55,9 @@ export {
   DispositivosEmMemoria,
   RenovacoesEmMemoria,
 } from './infra/em-memoria.js';
+export { CriarConta } from './application/contas.js';
+export type { ContaNova, RepositorioDeContas } from './application/contas.js';
+export { ContasPostgres } from './infra/contas-postgres.js';
 export { AcessosPostgres } from './infra/acessos-postgres.js';
 export { TentativasRedis } from './infra/tentativas-redis.js';
 export { CifraAesGcm, SegredosTotp } from './infra/segundo-fator.js';

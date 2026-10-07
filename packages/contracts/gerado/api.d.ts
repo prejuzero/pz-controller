@@ -325,6 +325,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/cadastro": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cadastra um advogado autônomo; depois ele entra e ativa o 2FA. */
+        post: operations["cadastrarAdvogado"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/calendario/dias-nao-uteis": {
         parameters: {
             query?: never;
@@ -377,6 +394,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/oabs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Adiciona uma OAB suplementar; ela entra no monitoramento. */
+        post: operations["adicionarOab"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/oabs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove uma OAB suplementar do monitoramento (a principal não sai). */
+        delete: operations["removerOab"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/perfil": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Perfil do advogado da sessão, com as OABs ativas. */
+        get: operations["consultarPerfil"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Altera nome, celular ou e-mails em cópia. */
+        patch: operations["atualizarPerfil"];
+        trace?: never;
+    };
     "/v1/saude": {
         parameters: {
             query?: never;
@@ -425,6 +494,17 @@ export interface components {
                 /** Format: date-time */
                 ocorridoEm: string;
             }[];
+        };
+        AlteracaoDoPerfil: {
+            nome?: string;
+            celular?: string;
+            /** @description Recebem cópia das notificações. */
+            emailsAdicionais?: string[];
+        };
+        CadastroRealizado: {
+            /** Format: uuid */
+            usuarioId: string;
+            perfil: components["schemas"]["PerfilDoAdvogado"];
         };
         CodigoSegundoFator: {
             /** @description 6 dígitos do aplicativo ou um código de recuperação (XXXXX-XXXXX). */
@@ -535,6 +615,28 @@ export interface components {
         FeriadosLocais: {
             itens: components["schemas"]["FeriadoLocal"][];
         };
+        OabDoAdvogado: {
+            /** Format: uuid */
+            id: string;
+            numero: string;
+            uf: string;
+            /** @enum {string} */
+            tipo: "principal" | "suplementar";
+        };
+        PedidoDeCadastro: {
+            nome: string;
+            /** @description Com ou sem máscara. */
+            cpf: string;
+            /** Format: email */
+            email: string;
+            senha: string;
+            /** @description Com DDD. */
+            celular: string;
+            oabPrincipal: components["schemas"]["PedidoDeOab"];
+            oabsSuplementares?: components["schemas"]["PedidoDeOab"][];
+            /** @description Recebem cópia das notificações. */
+            emailsAdicionais?: string[];
+        };
         PedidoDeEventoDoCalendario: {
             /**
              * @description Os campos de jurisdição exigidos dependem dela.
@@ -585,6 +687,12 @@ export interface components {
              */
             somentePrevia: boolean;
         };
+        PedidoDeOab: {
+            /** @description Número de inscrição (ex.: 123456 ou 12345A). */
+            numero: string;
+            /** @description Seccional (UF). */
+            uf: string;
+        };
         PedidoDeRedefinicaoDeSenha: {
             email: string;
         };
@@ -603,6 +711,18 @@ export interface components {
             /** @enum {string} */
             tipoCliente: "web" | "mobile" | "mcp" | "integrador";
             nomeDispositivo: string;
+        };
+        PerfilDoAdvogado: {
+            /** Format: uuid */
+            id: string;
+            nome: string;
+            /** @description Mascarado (***.123.456-**). */
+            cpf: string;
+            /** @description Só dígitos, com DDD. */
+            celular: string;
+            emailsAdicionais: string[];
+            /** @description Só as ativas. */
+            oabs: components["schemas"]["OabDoAdvogado"][];
         };
         Problema: {
             /** @description URI que identifica o tipo do problema. */
@@ -1961,6 +2081,66 @@ export interface operations {
             };
         };
     };
+    cadastrarAdvogado: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeCadastro"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CadastroRealizado"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Limite de requisições excedido. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
     consultarDiasNaoUteis: {
         parameters: {
             query: {
@@ -2205,6 +2385,292 @@ export interface operations {
             };
             /** @description Conflito com o estado atual. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    adicionarOab: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeOab"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OabDoAdvogado"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Regra de negócio violada. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    removerOab: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso, sem corpo. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Regra de negócio violada. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    consultarPerfil: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerfilDoAdvogado"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    atualizarPerfil: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlteracaoDoPerfil"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerfilDoAdvogado"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

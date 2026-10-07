@@ -20,6 +20,7 @@
     "@nestjs/platform-fastify": "12.1.2",
     "@pz/administracao": "workspace:*",
     "@pz/auditoria": "workspace:*",
+    "@pz/cadastro": "workspace:*",
     "@pz/calendario": "workspace:*",
     "@pz/config": "workspace:*",
     "@pz/contracts": "workspace:*",

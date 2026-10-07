@@ -49,9 +49,44 @@ export const CalendarioAlterado = definirEvento(
   }),
 );
 
+/** Advogado cadastrado (HU11): tenant autônomo, conta e advogado criados juntos. */
+export const AdvogadoCadastrado = definirEvento(
+  'AdvogadoCadastrado',
+  1,
+  z.object({ advogadoId: z.uuid(), usuarioId: z.uuid() }),
+);
+
+/** OAB entrou no cadastro (HU11): a captura passa a monitorá-la. */
+export const OabAdicionada = definirEvento(
+  'OabAdicionada',
+  1,
+  z.object({
+    advogadoId: z.uuid(),
+    oabId: z.uuid(),
+    numero: z.string().min(1),
+    uf: z.string().length(2),
+    tipo: z.enum(['principal', 'suplementar']),
+  }),
+);
+
+/** OAB saiu do cadastro (HU11): a captura deixa de monitorá-la. */
+export const OabRemovida = definirEvento(
+  'OabRemovida',
+  1,
+  z.object({
+    advogadoId: z.uuid(),
+    oabId: z.uuid(),
+    numero: z.string().min(1),
+    uf: z.string().length(2),
+  }),
+);
+
 export const EVENTOS = catalogoDeEventos(
   SituacaoVerificada,
   RedefinicaoDeSenhaSolicitada,
   ContaBloqueada,
   CalendarioAlterado,
+  AdvogadoCadastrado,
+  OabAdicionada,
+  OabRemovida,
 );
