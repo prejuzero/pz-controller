@@ -35,7 +35,7 @@ export const PERFIS_PADRAO = {
     'processos:gerir',
   ],
   colaborador: ['conta:gerir', 'prazos:ler', 'publicacoes:ler', 'calendario:ler', 'processos:ler'],
-  curador: ['conta:gerir', 'curadoria:calendario'],
+  curador: ['conta:gerir', 'curadoria:calendario', 'curadoria:tabela-prazos'],
 } as const satisfies Record<string, readonly Permissao[]>;
 
 export type CodigoPerfil = keyof typeof PERFIS_PADRAO;

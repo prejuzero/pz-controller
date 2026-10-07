@@ -37,7 +37,9 @@ describe('navegacao', () => {
   });
 
   it('exige a permissão de leitura das seções protegidas pela API (HU07)', () => {
-    expect(secaoDoSegmento('prazos')).toMatchObject({ permissao: 'prazos:ler' });
+    expect(secaoDoSegmento('prazos')).toMatchObject({
+      permissao: { algum: ['prazos:ler', 'curadoria:tabela-prazos'] },
+    });
     expect(secaoDoSegmento('publicacoes')).toMatchObject({ permissao: 'publicacoes:ler' });
     expect(secaoDoSegmento('calendario')).toMatchObject({
       permissao: { algum: ['calendario:ler', 'curadoria:calendario'] },

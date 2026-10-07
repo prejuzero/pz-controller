@@ -394,5 +394,83 @@
     "removido": "Cliente removido.",
     "cancelar": "Cancelar",
     "voltar": "Voltar para processos"
+  },
+  "tabelaPrazos": {
+    "titulo": "Tabela de prazos",
+    "descricao": "Prazo de cada tipo de ato por ramo, com o dispositivo legal e a fonte oficial. Cada versão só entra no cálculo depois de aprovada por outro curador.",
+    "novoTipo": "Novo tipo de ato",
+    "novaVersao": "Propor versão",
+    "vazio": "Nenhuma versão cadastrada ainda.",
+    "colunas": {
+      "ato": "Ato",
+      "ramo": "Ramo",
+      "ultimaAprovada": "Última aprovada",
+      "vigencia": "Vigência",
+      "pendentes": "Rascunhos",
+      "acoes": "Ações"
+    },
+    "nenhumaAprovada": "Nenhuma aprovada",
+    "aPartirDe": "a partir de {inicio}",
+    "periodo": "{inicio} a {fim}",
+    "historico": "Histórico",
+    "historicoTitulo": "{ato} · {ramo}",
+    "versao": "Versão {numero}",
+    "semMudancas": "Sem mudanças em relação à versão anterior.",
+    "primeiraVersao": "Primeira versão.",
+    "mudou": "{campo}: {antes} → {depois}",
+    "propostoPor": "Proposta em {quando}",
+    "aprovadoEm": "Aprovada em {quando}",
+    "aprovar": "Aprovar",
+    "aprovada": "Versão aprovada.",
+    "aprovarProprio": "Quem propôs não pode aprovar: peça a outro curador.",
+    "proposta": "Versão proposta. Ela só vale depois da aprovação de outro curador.",
+    "tipoCadastrado": "Tipo de ato cadastrado.",
+    "propor": "Propor",
+    "cadastrar": "Cadastrar",
+    "cancelar": "Cancelar",
+    "prazo": "{dias} {unidade}",
+    "situacoes": {
+      "rascunho": "Rascunho",
+      "aprovado": "Aprovada"
+    },
+    "ramos": {
+      "civel": "Cível",
+      "juizados": "Juizados",
+      "trabalhista": "Trabalhista",
+      "penal": "Penal"
+    },
+    "unidades": {
+      "dias": "dias",
+      "horas": "horas",
+      "meses": "meses",
+      "anos": "anos"
+    },
+    "campos": {
+      "codigo": "Código",
+      "nome": "Nome",
+      "descricao": "Descrição",
+      "tipoAto": "Tipo de ato",
+      "ramo": "Ramo",
+      "dias": "Quantidade",
+      "unidade": "Unidade",
+      "fundamento": "Fundamento legal",
+      "fonteUrl": "Link da fonte oficial",
+      "vigenciaInicio": "Vigência a partir de",
+      "vigenciaFim": "Vigência até"
+    },
+    "ajudaCodigo": "Letras minúsculas, números e hífens (ex.: contestacao). Não muda depois.",
+    "ajudaFundamento": "Dispositivo exato: lei ou ato, artigo, parágrafo e inciso.",
+    "ajudaFonte": "Link HTTPS do planalto.gov.br, do CNJ ou do diário oficial.",
+    "ajudaVigenciaFim": "Opcional. Em branco, vale até nova versão.",
+    "ajudaUnidade": "Fora de dias, o prazo só é calculado com regra específica cadastrada.",
+    "avisoCurador": "Só cadastre regra com base em norma oficial vigente. Sem fundamento, o prazo fica \"a confirmar\".",
+    "diffCampos": {
+      "dias": "Quantidade",
+      "unidade": "Unidade",
+      "fundamento": "Fundamento",
+      "fonteUrl": "Fonte",
+      "vigenciaInicio": "Início da vigência",
+      "vigenciaFim": "Fim da vigência"
+    }
   }
 }

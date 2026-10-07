@@ -32,6 +32,10 @@ export const CATALOGO_DE_PERMISSOES = {
     descricao: 'Propor, aprovar e revogar o calendário forense global (curador).',
     leitura: false,
   },
+  'curadoria:tabela-prazos': {
+    descricao: 'Manter a taxonomia de atos e propor e aprovar a tabela de prazos (curador).',
+    leitura: false,
+  },
 } as const satisfies Record<string, { readonly descricao: string; readonly leitura: boolean }>;
 
 export type Permissao = keyof typeof CATALOGO_DE_PERMISSOES;

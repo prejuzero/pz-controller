@@ -6,7 +6,12 @@ import type { Exigencia } from './permissoes';
  */
 export const ITENS_MENU = [
   { chave: 'dashboard', href: '/' },
-  { chave: 'prazos', href: '/prazos', permissao: 'prazos:ler' },
+  // O escritório acompanha os prazos; a curadoria mantém a tabela de prazos por ato (HU15).
+  {
+    chave: 'prazos',
+    href: '/prazos',
+    permissao: { algum: ['prazos:ler', 'curadoria:tabela-prazos'] },
+  },
   { chave: 'publicacoes', href: '/publicacoes', permissao: 'publicacoes:ler' },
   { chave: 'busca', href: '/busca' },
   { chave: 'processos', href: '/processos', permissao: 'processos:ler' },
