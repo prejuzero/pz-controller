@@ -24,6 +24,13 @@ const Tarefa = z
     cachePrompt: z.boolean(),
     /** Permite processamento em lote (assíncrono e mais barato). */
     lote: z.boolean(),
+    /** Recusa datas na saída (ADR-008), exceto nos campos de trecho literal do documento. */
+    saidaSemDatas: z
+      .object({ excetoCampos: z.array(z.string()) })
+      .strict()
+      .optional(),
+    /** Tokens (entrada + saída) por tenant e mês; alerta a 80%, recusa a partir de 100%. */
+    orcamentoMensalTokens: z.number().int().positive().optional(),
   })
   .strict();
 

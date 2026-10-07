@@ -2,6 +2,15 @@ export { ConfiguracaoDasTarefas, lerConfiguracaoDasTarefas } from './configuraca
 export type { ConfiguracaoDaTarefa } from './configuracao.js';
 export { origemIa } from './origem.js';
 export type { OrigemIa } from './origem.js';
+export {
+  detectarInstrucaoEmbutida,
+  isolarConteudoExterno,
+  minimizarDadosPessoais,
+  verificarSaidaSemDatas,
+} from './guardrails.js';
+export { ContadorDeUsoEmMemoria, mesDoOrcamento, OrcamentoDeIaEsgotado } from './orcamento.js';
+export type { AlertaDeOrcamento, ContadorDeUsoDeIa } from './orcamento.js';
 export { PlataformaIa } from './plataforma.js';
-export type { ResultadoDaTarefa } from './plataforma.js';
+export type { ContextoDaTarefa, OrcamentoDaPlataforma, ResultadoDaTarefa } from './plataforma.js';
 export { ArquivoDePrompt, hashDoPrompt, problemasDeVersao, RegistroDePrompts } from './prompts.js';
+export type { PromptMontado } from './prompts.js';

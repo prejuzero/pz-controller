@@ -17,3 +17,10 @@ Implementado em: HU58 (plataforma) e HU59 (catálogo de ferramentas). Siga o [CL
 - `RegistroDePrompts.doDiretorio(...)` valida tudo no boot; `montar(tarefa, variaveis)` recusa variável faltando ou sobrando e devolve o `PromptIA` com a versão `tarefa@x.y.z`.
 - `origemIa(resultado, agora, confianca?)`: modelo, provedor, versão do prompt e da configuração, confiança e instante. Toda sugestão persistida leva esse objeto (`OrigemIa` em `@pz/contracts`) para a interface marcar "sugerido por IA".
 - Correção do advogado: evento `SugestaoIaCorrigida` (só códigos e valores curtos), registrado na trilha como `ia.sugestao-corrigida`.
+
+## Guardrails (HU58)
+
+- **Conteúdo externo**: variáveis marcadas em `externas` no arquivo do prompt são escapadas (`<`/`>`) dentro do bloco delimitado e inspecionadas por `detectarInstrucaoEmbutida`; `montar` devolve os alertas para registro (o texto segue como dado).
+- **Dados pessoais**: com `minimizarDadosPessoais` (padrão), CPF, CNPJ, e-mail, CEP e telefone com DDD viram marcadores. Número CNJ e OAB ficam. Nome e endereço por extenso não são detectados.
+- **Saída sem datas** (`saidaSemDatas` na tarefa): qualquer data nos textos da saída, exceto nos campos de trecho literal, vira erro (revisão manual), ADR-008.
+- **Orçamento** (`orcamentoMensalTokens`): por tenant, tarefa e mês de Brasília; a partir de 80% chama `aoAlertar`; esgotado, `OrcamentoDeIaEsgotado` antes de chamar o provedor (a funcionalidade cai no fluxo manual).

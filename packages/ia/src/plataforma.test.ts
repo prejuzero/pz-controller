@@ -6,11 +6,12 @@ import {
   ErroPermanente,
   ErroTransitorio,
 } from '@pz/integracoes';
-import { Instant } from '@pz/kernel';
+import { FixedClock, Instant } from '@pz/kernel';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import { lerConfiguracaoDasTarefas } from './configuracao.js';
+import { ContadorDeUsoEmMemoria, OrcamentoDeIaEsgotado } from './orcamento.js';
 import { PlataformaIa } from './plataforma.js';
 
 import type { OpcoesIA, PromptIA, ProvedorIA } from '@pz/integracoes';
@@ -21,6 +22,7 @@ const prompt: PromptIA = {
   mensagens: [{ papel: 'usuario', conteudo: 'Texto fictício.' }],
 };
 const Saida = z.object({ tipoAto: z.string() });
+const CONTEXTO = { tenantId: 'tenant-ficticio' };
 
 const configuracao = lerConfiguracaoDasTarefas({
   versao: 'teste',
@@ -79,7 +81,7 @@ describe('PlataformaIa (HU58)', () => {
         ['b', provedor()],
       ]),
     );
-    const resultado = await plataforma.executarTarefa('classificar', prompt, Saida);
+    const resultado = await plataforma.executarTarefa('classificar', prompt, Saida, CONTEXTO);
     expect(resultado).toMatchObject({
       saida: { tipoAto: 'ficticio' },
       modelo: 'modelo-a1',
@@ -106,7 +108,7 @@ describe('PlataformaIa (HU58)', () => {
         ['b', provedor()],
       ]),
     );
-    const resultado = await plataforma.executarTarefa('classificar', prompt, Saida);
+    const resultado = await plataforma.executarTarefa('classificar', prompt, Saida, CONTEXTO);
     expect(resultado).toMatchObject({ provedor: 'b', modelo: 'modelo-b1' });
     expect(resultado.falhasAnteriores.map((f) => f.modelo)).toEqual(['modelo-a1', 'modelo-a2']);
   });
@@ -125,7 +127,9 @@ describe('PlataformaIa (HU58)', () => {
           ['b', provedor()],
         ]),
       );
-      await expect(plataforma.executarTarefa('classificar', prompt, Saida)).rejects.toBe(erro);
+      await expect(plataforma.executarTarefa('classificar', prompt, Saida, CONTEXTO)).rejects.toBe(
+        erro,
+      );
       expect(a.chamadas).toHaveLength(1);
     }
     const fora = new ErroTransitorio('fora', 'b');
@@ -136,7 +140,7 @@ describe('PlataformaIa (HU58)', () => {
         ['b', provedor({ 'modelo-b1': fora })],
       ]),
     );
-    await expect(plataforma.executarTarefa('resumir', prompt, Saida)).rejects.toBe(fora);
+    await expect(plataforma.executarTarefa('resumir', prompt, Saida, CONTEXTO)).rejects.toBe(fora);
   });
 
   it('lote: primeiro provedor que aceita; tarefa sem lote ou sem provedor com lote é erro', async () => {
@@ -175,9 +179,9 @@ describe('PlataformaIa (HU58)', () => {
         ['b', provedor()],
       ]),
     );
-    await expect(plataforma.executarTarefa('outra', prompt, Saida)).rejects.toBeInstanceOf(
-      ErroPermanente,
-    );
+    await expect(
+      plataforma.executarTarefa('outra', prompt, Saida, CONTEXTO),
+    ).rejects.toBeInstanceOf(ErroPermanente);
     expect(() => new PlataformaIa(configuracao, new Map([['a', provedor()]]))).toThrow(
       /provedor b/,
     );
@@ -204,5 +208,75 @@ describe('configuração versionada (HU58)', () => {
     ]) {
       expect(() => lerConfiguracaoDasTarefas({ versao: 'v', tarefas: { t: tarefa } })).toThrow();
     }
+  });
+});
+
+describe('guardrails na plataforma (HU58)', () => {
+  const comGuardrails = lerConfiguracaoDasTarefas({
+    versao: 'teste',
+    tarefas: {
+      classificar: {
+        descricao: 'teste',
+        modelos: [{ provedor: 'a', modelo: 'modelo-a1' }],
+        maxTokensSaida: 100,
+        cachePrompt: true,
+        lote: false,
+        saidaSemDatas: { excetoCampos: ['trecho'] },
+        orcamentoMensalTokens: 30,
+      },
+    },
+  });
+  const respondendo = (saida: unknown): ProvedorIA => ({
+    gerarEstruturado: <S>(_p: PromptIA, schema: z.ZodType<S>, opcoes: OpcoesIA) =>
+      Promise.resolve({
+        saida: schema.parse(saida),
+        modelo: opcoes.modelo,
+        uso: { tokensEntrada: 10, tokensSaida: 2, tokensCacheLidos: 0 },
+        chamadasDeFerramenta: [],
+      }),
+    saude: () => Promise.resolve({ estado: 'operacional', verificadoEm: Instant.deEpochMs(0) }),
+  });
+  const ComTrecho = z.object({ tipoAto: z.string(), trecho: z.string() });
+
+  it('saída com data é recusada, exceto no trecho literal', async () => {
+    const ok = new PlataformaIa(
+      comGuardrails,
+      new Map([['a', respondendo({ tipoAto: 'ficticio', trecho: 'intimado em 06/10/2026' })]]),
+    );
+    expect(
+      (await ok.executarTarefa('classificar', prompt, ComTrecho, CONTEXTO)).saida.trecho,
+    ).toContain('06/10/2026');
+    const comData = new PlataformaIa(
+      comGuardrails,
+      new Map([['a', respondendo({ tipoAto: 'prazo até 2026-10-20', trecho: 'x' })]]),
+    );
+    await expect(
+      comData.executarTarefa('classificar', prompt, ComTrecho, CONTEXTO),
+    ).rejects.toThrow(/data em "tipoAto"/);
+  });
+
+  it('orçamento por tenant: alerta a partir de 80% e recusa ao esgotar, sem chamar o provedor', async () => {
+    const contador = new ContadorDeUsoEmMemoria();
+    const alertas: unknown[] = [];
+    const relogio = new FixedClock(Instant.deIso('2026-10-31T23:30:00Z'));
+    const plataforma = new PlataformaIa(
+      comGuardrails,
+      new Map([['a', respondendo({ tipoAto: 'ficticio', trecho: 'x' })]]),
+      { contador, relogio, aoAlertar: (a) => alertas.push(a) },
+    );
+    await plataforma.executarTarefa('classificar', prompt, ComTrecho, CONTEXTO);
+    await plataforma.executarTarefa('classificar', prompt, ComTrecho, CONTEXTO);
+    // 24 de 30 tokens: 80% atingido, a próxima chamada alerta mas segue.
+    await plataforma.executarTarefa('classificar', prompt, ComTrecho, CONTEXTO);
+    expect(alertas).toEqual([
+      { tenantId: 'tenant-ficticio', tarefa: 'classificar', usoTokens: 24, orcamentoTokens: 30 },
+    ]);
+    await expect(
+      plataforma.executarTarefa('classificar', prompt, ComTrecho, CONTEXTO),
+    ).rejects.toBeInstanceOf(OrcamentoDeIaEsgotado);
+    // Outro tenant tem orçamento próprio; o mês é o de Brasília (31/10, 20h30).
+    await plataforma.executarTarefa('classificar', prompt, ComTrecho, { tenantId: 'outro' });
+    expect(await contador.usoNoMes('tenant-ficticio', 'classificar', '2026-10')).toBe(36);
+    expect(await contador.usoNoMes('outro', 'classificar', '2026-10')).toBe(12);
   });
 });

@@ -1,7 +1,12 @@
 import { ErroIntegracao, ErroPermanente } from '@pz/integracoes';
 
+import { verificarSaidaSemDatas } from './guardrails.js';
+import { mesDoOrcamento, OrcamentoDeIaEsgotado } from './orcamento.js';
+
 import type { ConfiguracaoDaTarefa, ConfiguracaoDasTarefas } from './configuracao.js';
+import type { AlertaDeOrcamento, ContadorDeUsoDeIa } from './orcamento.js';
 import type { OpcoesIA, PromptIA, ProvedorIA, RespostaIA } from '@pz/integracoes';
+import type { Clock } from '@pz/kernel';
 import type { z } from 'zod';
 
 /** Erros que levam ao próximo modelo: o provedor está fora, sobrecarregado ou sem cota. */
@@ -22,10 +27,25 @@ export interface ResultadoDaTarefa<Saida> extends RespostaIA<Saida> {
  * tarefa, o fallback entre modelos e provedores, o cache de prompt e o lote. Não há operação de
  * data nem de fundamento legal (ADR-008, ADR-016).
  */
+export interface OrcamentoDaPlataforma {
+  readonly contador: ContadorDeUsoDeIa;
+  readonly relogio: Clock;
+  /** Uso a partir de 80% do orçamento: vira log, métrica e alerta na composição. */
+  readonly aoAlertar: (alerta: AlertaDeOrcamento) => void;
+}
+
+/** Quem pede a tarefa: o orçamento é por tenant. */
+export interface ContextoDaTarefa {
+  readonly tenantId: string;
+}
+
+const LIMIAR_DE_ALERTA = 0.8;
+
 export class PlataformaIa {
   constructor(
     private readonly configuracao: ConfiguracaoDasTarefas,
     private readonly provedores: ReadonlyMap<string, ProvedorIA>,
+    private readonly orcamento?: OrcamentoDaPlataforma,
   ) {
     for (const [nome, tarefa] of Object.entries(configuracao.tarefas)) {
       for (const { provedor } of tarefa.modelos) {
@@ -39,13 +59,55 @@ export class PlataformaIa {
   /**
    * Executa a tarefa com saída validada pelo schema. Erro transitório, cota ou circuito aberto
    * passam ao próximo modelo; os demais (saída inválida, credencial, pedido) sobem na hora.
+   * Orçamento esgotado recusa antes de chamar (bloqueio suave: a funcionalidade cai no fluxo
+   * manual); saída com data, quando a tarefa proíbe, vira erro (revisão manual).
    */
   async executarTarefa<Saida>(
     nome: string,
     prompt: PromptIA,
     schema: z.ZodType<Saida>,
+    contexto: ContextoDaTarefa,
   ): Promise<ResultadoDaTarefa<Saida>> {
     const tarefa = this.#tarefa(nome);
+    const mes = await this.#conferirOrcamento(nome, tarefa, contexto);
+    const resultado = await this.#chamar(nome, tarefa, prompt, schema);
+    if (mes !== undefined && this.orcamento !== undefined) {
+      const { tokensEntrada, tokensSaida } = resultado.uso;
+      await this.orcamento.contador.registrar(
+        contexto.tenantId,
+        nome,
+        mes,
+        tokensEntrada + tokensSaida,
+      );
+    }
+    if (tarefa.saidaSemDatas !== undefined) {
+      verificarSaidaSemDatas(resultado.saida, tarefa.saidaSemDatas.excetoCampos);
+    }
+    return resultado;
+  }
+
+  async #conferirOrcamento(
+    nome: string,
+    tarefa: ConfiguracaoDaTarefa,
+    { tenantId }: ContextoDaTarefa,
+  ): Promise<string | undefined> {
+    const limite = tarefa.orcamentoMensalTokens;
+    if (limite === undefined || this.orcamento === undefined) return undefined;
+    const mes = mesDoOrcamento(this.orcamento.relogio.agora());
+    const uso = await this.orcamento.contador.usoNoMes(tenantId, nome, mes);
+    if (uso >= limite) throw new OrcamentoDeIaEsgotado(nome, tenantId);
+    if (uso >= limite * LIMIAR_DE_ALERTA) {
+      this.orcamento.aoAlertar({ tenantId, tarefa: nome, usoTokens: uso, orcamentoTokens: limite });
+    }
+    return mes;
+  }
+
+  async #chamar<Saida>(
+    nome: string,
+    tarefa: ConfiguracaoDaTarefa,
+    prompt: PromptIA,
+    schema: z.ZodType<Saida>,
+  ): Promise<ResultadoDaTarefa<Saida>> {
     const falhas: { modelo: string; erro: string }[] = [];
     let ultimoErro: unknown;
     for (const { provedor, modelo } of tarefa.modelos) {

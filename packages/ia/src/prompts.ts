@@ -5,6 +5,12 @@ import { join } from 'node:path';
 import { ErroPermanente, type PromptIA } from '@pz/integracoes';
 import { z } from 'zod';
 
+import {
+  detectarInstrucaoEmbutida,
+  isolarConteudoExterno,
+  minimizarDadosPessoais,
+} from './guardrails.js';
+
 const SemVer = z.string().regex(/^\d+\.\d+\.\d+$/, 'versão semântica (ex.: 1.2.0)');
 
 /**
@@ -19,6 +25,10 @@ export const ArquivoDePrompt = z
     sistema: z.string().min(1),
     /** Modelo da mensagem do usuário, com variáveis `{{nome}}`. */
     usuario: z.string().min(1),
+    /** Variáveis com conteúdo externo (publicação, mensagem): isoladas e inspecionadas. */
+    externas: z.array(z.string()).default([]),
+    /** Troca CPF, CNPJ, e-mail, CEP e telefone das variáveis externas por marcadores. */
+    minimizarDadosPessoais: z.boolean().default(true),
     changelog: z
       .array(
         z
@@ -34,7 +44,14 @@ export const ArquivoDePrompt = z
       .min(1),
   })
   .strict();
-export type ArquivoDePrompt = z.infer<typeof ArquivoDePrompt>;
+export type ArquivoDePrompt = z.input<typeof ArquivoDePrompt>;
+type ArquivoLido = z.output<typeof ArquivoDePrompt>;
+
+/** Prompt montado e os indícios de instrução embutida encontrados no conteúdo externo. */
+export interface PromptMontado {
+  readonly prompt: PromptIA;
+  readonly alertas: readonly { readonly variavel: string; readonly padroes: readonly string[] }[];
+}
 
 /** Hash do conteúdo de um prompt (o que, se mudar, exige nova versão). */
 export function hashDoPrompt(prompt: Pick<ArquivoDePrompt, 'sistema' | 'usuario'>): string {
@@ -44,7 +61,9 @@ export function hashDoPrompt(prompt: Pick<ArquivoDePrompt, 'sistema' | 'usuario'
 }
 
 /** Problemas de versionamento do arquivo (vazio quando está tudo certo). */
-export function problemasDeVersao(arquivo: ArquivoDePrompt): string[] {
+export function problemasDeVersao(
+  arquivo: Pick<ArquivoLido, 'tarefa' | 'versao' | 'sistema' | 'usuario' | 'changelog'>,
+): string[] {
   const atual = arquivo.changelog.find((entrada) => entrada.versao === arquivo.versao);
   if (atual === undefined) return [`${arquivo.tarefa}: changelog sem a versão ${arquivo.versao}`];
   if (atual.hash !== hashDoPrompt(arquivo)) {
@@ -57,11 +76,12 @@ const VARIAVEL = /\{\{\s*([a-zA-Z][a-zA-Z0-9]*)\s*\}\}/g;
 
 /** Prompts por tarefa, lidos e validados no boot (erro de arquivo derruba o processo). */
 export class RegistroDePrompts {
-  readonly #porTarefa: ReadonlyMap<string, ArquivoDePrompt>;
+  readonly #porTarefa: ReadonlyMap<string, ArquivoLido>;
 
   constructor(arquivos: readonly ArquivoDePrompt[]) {
-    const porTarefa = new Map<string, ArquivoDePrompt>();
-    for (const arquivo of arquivos) {
+    const porTarefa = new Map<string, ArquivoLido>();
+    for (const bruto of arquivos) {
+      const arquivo = ArquivoDePrompt.parse(bruto);
       const problemas = problemasDeVersao(arquivo);
       if (problemas.length > 0) throw new Error(problemas.join('; '));
       if (porTarefa.has(arquivo.tarefa)) throw new Error(`Prompt duplicado: ${arquivo.tarefa}`);
@@ -88,9 +108,10 @@ export class RegistroDePrompts {
 
   /**
    * Monta o prompt da tarefa. Variável faltando ou sobrando é erro: nada de prompt incompleto
-   * chegando ao modelo. A versão vai junto (`tarefa@x.y.z`) e é registrada em toda chamada.
+   * chegando ao modelo. A versão vai junto (`tarefa@x.y.z`) e é registrada em toda chamada. As
+   * variáveis externas são minimizadas (se o prompt pedir), isoladas e inspecionadas.
    */
-  montar(tarefa: string, variaveis: Readonly<Record<string, string>>): PromptIA {
+  montar(tarefa: string, variaveis: Readonly<Record<string, string>>): PromptMontado {
     const arquivo = this.#arquivo(tarefa);
     const esperadas = new Set([...arquivo.usuario.matchAll(VARIAVEL)].map(([, nome]) => nome));
     const recebidas = Object.keys(variaveis);
@@ -102,22 +123,31 @@ export class RegistroDePrompts {
         'ia',
       );
     }
+    const alertas: { variavel: string; padroes: string[] }[] = [];
+    const valor = (nome: string): string => {
+      const bruto = variaveis[nome] ?? '';
+      if (!arquivo.externas.includes(nome)) return bruto;
+      const padroes = detectarInstrucaoEmbutida(bruto);
+      if (padroes.length > 0) alertas.push({ variavel: nome, padroes });
+      const minimo = arquivo.minimizarDadosPessoais ? minimizarDadosPessoais(bruto) : bruto;
+      return isolarConteudoExterno(minimo);
+    };
     return {
-      versao: this.versao(tarefa),
-      sistema: arquivo.sistema,
-      mensagens: [
-        {
-          papel: 'usuario',
-          conteudo: arquivo.usuario.replace(
-            VARIAVEL,
-            (_inteira, nome: string) => variaveis[nome] ?? '',
-          ),
-        },
-      ],
+      prompt: {
+        versao: this.versao(tarefa),
+        sistema: arquivo.sistema,
+        mensagens: [
+          {
+            papel: 'usuario',
+            conteudo: arquivo.usuario.replace(VARIAVEL, (_inteira, nome: string) => valor(nome)),
+          },
+        ],
+      },
+      alertas,
     };
   }
 
-  #arquivo(tarefa: string): ArquivoDePrompt {
+  #arquivo(tarefa: string): ArquivoLido {
     const arquivo = this.#porTarefa.get(tarefa);
     if (arquivo === undefined) throw new ErroPermanente(`Prompt sem arquivo: ${tarefa}`, 'ia');
     return arquivo;
