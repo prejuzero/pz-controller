@@ -1,5 +1,6 @@
 import { ROTAS_ADMIN } from './admin/index.js';
 import { ROTAS_AUTH } from './auth/index.js';
+import { ROTAS_CADASTRO } from './cadastro/index.js';
 import { ROTAS_CALENDARIO } from './calendario/index.js';
 import { gerarOpenApi } from './openapi.js';
 import { ROTAS_SAUDE } from './saude/index.js';
@@ -44,6 +45,20 @@ export {
   SessaoAtual,
   verificarSegundoFator,
 } from './auth/index.js';
+export {
+  adicionarOab,
+  AlteracaoDoPerfil,
+  atualizarPerfil,
+  CadastroRealizado,
+  cadastrarAdvogado,
+  consultarPerfil,
+  OabDoAdvogado,
+  PedidoDeCadastro,
+  PedidoDeOab,
+  PerfilDoAdvogado,
+  removerOab,
+  ROTAS_CADASTRO,
+} from './cadastro/index.js';
 export {
   aprovarEventoDoCalendario,
   cadastrarFeriadoLocal,
@@ -99,6 +114,7 @@ export { receberWebhook, ROTAS_WEBHOOKS, WebhookAceito } from './webhooks/index.
 export const ROTAS = [
   ...ROTAS_AUTH,
   ...ROTAS_ADMIN,
+  ...ROTAS_CADASTRO,
   ...ROTAS_CALENDARIO,
   ...ROTAS_SAUDE,
   ...ROTAS_WEBHOOKS,

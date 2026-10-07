@@ -3,6 +3,14 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { FilaDeMortosBullMq, ReprocessarJobMorto } from '@pz/administracao';
 import { TrilhaPostgres } from '@pz/auditoria';
 import {
+  AdicionarOab,
+  AdvogadosPostgres,
+  AtualizarPerfil,
+  CadastrarAdvogado,
+  ConsultarPerfil,
+  RemoverOab,
+} from '@pz/cadastro';
+import {
   AprovarEventoDoCalendario,
   CacheDeDiasNaoUteisRedis,
   CadastrarFeriadoLocal,
@@ -46,6 +54,8 @@ import {
   ProtecaoDeAcesso,
   GeradorDeTokensSeguro,
   HasherArgon2,
+  ContasPostgres,
+  CriarConta,
   SegredosTotp,
   SegundoFatorPostgres,
   SessoesRedis,
@@ -61,6 +71,7 @@ import { Redis } from 'ioredis';
 import { AdminController } from './admin/admin.controller.js';
 import { AuthController } from './auth/auth.controller.js';
 import { ContextoDoUsuario } from './auth/contexto-do-usuario.js';
+import { CadastroController } from './cadastro/cadastro.controller.js';
 import { CalendarioController } from './calendario/calendario.controller.js';
 import {
   AMBIENTE,
@@ -84,6 +95,7 @@ import type { CaixaDeWebhooks } from './webhooks/webhooks.controller.js';
 import type { DynamicModule, Provider, Type } from '@nestjs/common';
 import type { DependenciasDoReprocessamento } from '@pz/administracao';
 import type { TrilhaDeAuditoria } from '@pz/auditoria';
+import type { CriadorDeConta, RepositorioDeAdvogados, UnidadeNoTenant } from '@pz/cadastro';
 import type {
   CacheDeDiasNaoUteis,
   RepositorioDeEventosGlobais,
@@ -138,6 +150,8 @@ export interface OpcoesApi {
   /** DLQ, banco e trilha do reprocessamento e filas do painel nos testes (sem Redis). */
   /** Calendário forense (HU13); nos testes, repositórios em memória. */
   readonly calendario?: DependenciasDoCalendario;
+  /** Cadastro do advogado (HU11); nos testes, repositórios em memória. */
+  readonly cadastro?: (relogio: Clock) => DependenciasDoCadastro;
   readonly filas?: {
     readonly reprocessamento: DependenciasDoReprocessamento<unknown>;
     readonly painel: readonly Queue[];
@@ -245,6 +259,39 @@ function provedoresDoCalendario(d: DependenciasDoCalendario): Provider[] {
   ];
 }
 
+interface DependenciasDoCadastro {
+  readonly noTenant: UnidadeNoTenant<unknown>;
+  readonly unidade: UnidadeDeTrabalho<unknown>;
+  readonly contas: CriadorDeConta<unknown>;
+  readonly advogados: RepositorioDeAdvogados<unknown>;
+  readonly trilha: TrilhaDeAuditoria<unknown>;
+  readonly outbox: Outbox<unknown>;
+}
+
+/** Casos de uso do cadastro (HU11), ligados aos mesmos repositórios. */
+function provedoresDoCadastro(criar: (relogio: Clock) => DependenciasDoCadastro): Provider[] {
+  const DEPENDENCIAS = Symbol('dependencias do cadastro');
+  const caso = <T>(
+    classe: Type<T>,
+    montar: (d: DependenciasDoCadastro, r: Clock) => T,
+  ): Provider => ({
+    provide: classe,
+    inject: [DEPENDENCIAS, RELOGIO],
+    useFactory: montar,
+  });
+  return [
+    { provide: DEPENDENCIAS, inject: [RELOGIO], useFactory: criar },
+    caso(
+      CadastrarAdvogado,
+      (d, r) => new CadastrarAdvogado(d.noTenant, d.contas, d.advogados, d.trilha, d.outbox, r),
+    ),
+    caso(ConsultarPerfil, (d) => new ConsultarPerfil(d.unidade, d.advogados)),
+    caso(AtualizarPerfil, (d) => new AtualizarPerfil(d.unidade, d.advogados, d.trilha)),
+    caso(AdicionarOab, (d) => new AdicionarOab(d.unidade, d.advogados, d.trilha, d.outbox)),
+    caso(RemoverOab, (d) => new RemoverOab(d.unidade, d.advogados, d.trilha, d.outbox)),
+  ];
+}
+
 /**
  * Composição da api (CLAUDE.md, seção 6): só liga módulos, controllers e infraestrutura HTTP.
  * Módulos entram por lista explícita.
@@ -286,6 +333,19 @@ export class AppModule {
         registrarErro(logger, erro, 'cache do calendário indisponível', 'calendario.cache');
       }),
     };
+    const cadastro =
+      opcoes.cadastro ??
+      ((relogio: Clock): DependenciasDoCadastro => ({
+        noTenant: {
+          executar: (tenantId, trabalho) =>
+            noTenantDoBanco(tenantId, () => recursos.banco.executar(trabalho)),
+        },
+        unidade: recursos.banco,
+        contas: new CriarConta(hasher, new ContasPostgres()),
+        advogados: new AdvogadosPostgres(relogio),
+        trilha: new TrilhaPostgres(),
+        outbox: new OutboxPostgres(),
+      }));
     const provedores: Provider[] = [
       { provide: RecursosDaApi, useValue: recursos },
       { provide: AMBIENTE, useValue: opcoes.ambiente },
@@ -440,6 +500,7 @@ export class AppModule {
       { provide: ReprocessarJobMorto, useValue: new ReprocessarJobMorto(filas.reprocessamento) },
       { provide: FILAS_DO_PAINEL, useValue: filas.painel },
       ...provedoresDoCalendario(calendario),
+      ...provedoresDoCadastro(cadastro),
       { provide: APP_INTERCEPTOR, useClass: ContextoDoUsuario },
       { provide: RECEPTORES_DE_WEBHOOK, useValue: opcoes.receptoresDeWebhook ?? new Map() },
       // Ordem importa: o limite por IP vem antes da autenticação.
@@ -453,6 +514,7 @@ export class AppModule {
         AuthController,
         AdminController,
         CalendarioController,
+        CadastroController,
         SaudeController,
         SondasController,
         OpenApiController,

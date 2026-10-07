@@ -11,5 +11,6 @@ export default criarConfigVitest({
     'infra/tentativas-redis.ts',
     'infra/redefinicao.ts',
     'infra/dispositivos.ts',
+    'infra/contas-postgres.ts',
   ],
 });
