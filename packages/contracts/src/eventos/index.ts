@@ -216,6 +216,17 @@ export const SugestaoIaCorrigida = definirEvento(
   }),
 );
 
+/** Pedido de exportação de dados (HU38): o worker gera os arquivos JSON e CSV. */
+export const ExportacaoDeDadosSolicitada = definirEvento(
+  'ExportacaoDeDadosSolicitada',
+  1,
+  z.object({
+    exportacaoId: z.uuid(),
+    usuarioId: z.uuid(),
+    escopo: z.enum(['titular', 'escritorio']),
+  }),
+);
+
 export const EVENTOS = catalogoDeEventos(
   SituacaoVerificada,
   RedefinicaoDeSenhaSolicitada,
@@ -233,4 +244,5 @@ export const EVENTOS = catalogoDeEventos(
   ConsentimentoCanalAlterado,
   CapturaConcluida,
   SugestaoIaCorrigida,
+  ExportacaoDeDadosSolicitada,
 );

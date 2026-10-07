@@ -138,3 +138,4 @@ export type {
 } from './application/impersonacao.js';
 export { TenantsEmMemoria } from './infra/em-memoria.js';
 export { TenantsPostgres } from './infra/tenants-postgres.js';
+export { ExportacaoDaIdentidadePostgres } from './infra/exportacao-postgres.js';

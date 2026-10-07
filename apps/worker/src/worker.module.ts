@@ -11,6 +11,7 @@ import {
   TrilhaPostgres,
   VerificarIntegridade,
 } from '@pz/auditoria';
+import { ExportacaoDoCadastroPostgres } from '@pz/cadastro';
 import { CacheDeDiasNaoUteisRedis, InvalidarCacheDoCalendario } from '@pz/calendario';
 import {
   AssinaturasPostgres,
@@ -20,22 +21,30 @@ import {
   PlanejarCaptura,
 } from '@pz/captura';
 import { Banco, BancoSistema, OutboxPostgres } from '@pz/db';
-import { CifraAesGcm, EmailsDosUsuariosPostgres, EnviarAvisosDeSeguranca } from '@pz/identidade';
+import {
+  ExportacaoDaIdentidadePostgres,
+  CifraAesGcm,
+  EmailsDosUsuariosPostgres,
+  EnviarAvisosDeSeguranca,
+} from '@pz/identidade';
 import { RegistroDeAdaptadores } from '@pz/integracoes';
 import { SystemClock } from '@pz/kernel';
 import {
+  ExportacaoDasNotificacoesPostgres,
   EnviarNotificacao,
   NotificacoesPostgres,
   RegistrarDesfechosDeEntrega,
   SupressaoPostgres,
 } from '@pz/notificacoes';
 import { criarLogger, registrarErro } from '@pz/observability';
+import { ExportacoesPostgres, GerarExportacao } from '@pz/privacidade';
 import {
   ConsultarSituacao,
   HistoricoEmMemoria,
   RegistrarHistoricoDeSituacao,
   VerificadorHttp,
 } from '@pz/saude';
+import { ExportacaoDosTermosPostgres } from '@pz/termos';
 import { Redis } from 'ioredis';
 
 import { ConsumidorDeAuditoria } from './auditoria/consumidor.js';
@@ -66,6 +75,7 @@ import { ConsumidorDeAvisosDeIdentidade } from './identidade/consumidor.js';
 import { RelayDeWebhooks } from './integracoes/webhooks.js';
 import { ConsumidorDeNotificacoes } from './notificacoes/consumidor.js';
 import { processadorDeEntregas } from './notificacoes/entregas.js';
+import { ConsumidorDaPrivacidade } from './privacidade/consumidor.js';
 import { RecursosDoBanco } from './recursos.js';
 import { ConsumidorDeSituacao } from './saude/consumidor.js';
 
@@ -75,7 +85,7 @@ import type { ProcessadorDeWebhook } from './integracoes/webhooks.js';
 import type { DynamicModule, Provider } from '@nestjs/common';
 import type { DestinoWorm } from '@pz/auditoria';
 import type { CacheDeDiasNaoUteis } from '@pz/calendario';
-import type { FontePublicacoes, ProvedorEmail } from '@pz/integracoes';
+import type { ArmazenamentoArquivos, FontePublicacoes, ProvedorEmail } from '@pz/integracoes';
 import type { Clock, OutboxEmMemoria, Uuid } from '@pz/kernel';
 import type { VerificadorDeDependencia } from '@pz/saude';
 
@@ -96,6 +106,8 @@ export interface OpcoesWorker {
   readonly worm?: DestinoWorm;
   /** Cache do calendário no lugar do Redis (testes). */
   readonly cacheDoCalendario?: CacheDeDiasNaoUteis;
+  /** Armazenamento das exportações LGPD no lugar do S3 (testes). */
+  readonly arquivos?: ArmazenamentoArquivos;
   /** Fonte de publicações no lugar do DJEN (testes, sem rede). */
   readonly fonteDePublicacoes?: FontePublicacoes;
 }
@@ -227,6 +239,30 @@ function fonteDoAmbiente(ambiente: AmbienteWorker, relogio: Clock): FontePublica
   return registro.obter('fonte-publicacoes');
 }
 
+/** Arquivos do sistema (exportações LGPD) no S3 ou RustFS local, só JSON e CSV. */
+function arquivosDoAmbiente(ambiente: AmbienteWorker, relogio: Clock): ArmazenamentoArquivos {
+  return new ArmazenamentoS3(
+    {
+      bucket: ambiente.ARQUIVOS_BUCKET,
+      regiao: ambiente.S3_REGION,
+      ...(ambiente.S3_ENDPOINT === undefined ? {} : { endpoint: ambiente.S3_ENDPOINT }),
+      ...(ambiente.S3_ACCESS_KEY_ID === undefined || ambiente.S3_SECRET_ACCESS_KEY === undefined
+        ? {}
+        : {
+            credenciais: {
+              idChave: ambiente.S3_ACCESS_KEY_ID,
+              segredo: ambiente.S3_SECRET_ACCESS_KEY,
+            },
+          }),
+      forcarPathStyle: ambiente.S3_FORCE_PATH_STYLE,
+      criptografia: ambiente.S3_ENDPOINT === undefined ? 'AES256' : 'nenhuma',
+      tiposPermitidos: ['application/json', 'text/csv'],
+      tamanhoMaximoBytes: 100 * 1024 * 1024,
+    },
+    relogio,
+  );
+}
+
 /** Processadores de webhook por adaptador; o do SES só com tópico SNS configurado. */
 function processadoresDoAmbiente(
   ambiente: AmbienteWorker,
@@ -327,6 +363,24 @@ export class WorkerModule {
       ConsumidorDeAuditoria,
       ConsumidorDoCalendario,
       ConsumidorDaCaptura,
+      ConsumidorDaPrivacidade,
+      {
+        // Cada módulo exporta só as próprias tabelas; a composição junta as fontes (HU38).
+        provide: GerarExportacao,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new GerarExportacao(
+            new ExportacoesPostgres(),
+            [
+              new ExportacaoDaIdentidadePostgres(),
+              new ExportacaoDoCadastroPostgres(),
+              new ExportacaoDosTermosPostgres(),
+              new ExportacaoDasNotificacoesPostgres(),
+            ],
+            opcoes.arquivos ?? arquivosDoAmbiente(ambiente, relogio),
+            relogio,
+          ),
+      },
       {
         provide: ManterAssinaturas,
         inject: [RELOGIO],

@@ -11,3 +11,4 @@ export { pendentes, TIPOS_DE_DOCUMENTO } from './domain/documento.js';
 export type { Aceite, DocumentoLegal, TipoDeDocumento } from './domain/documento.js';
 export { TermosEmMemoria } from './infra/em-memoria.js';
 export { AceitesPostgres, DocumentosPostgres } from './infra/termos-postgres.js';
+export { ExportacaoDosTermosPostgres } from './infra/exportacao-postgres.js';

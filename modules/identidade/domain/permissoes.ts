@@ -32,6 +32,10 @@ export const CATALOGO_DE_PERMISSOES = {
     descricao: 'Propor, aprovar e revogar o calendário forense global (curador).',
     leitura: false,
   },
+  'escritorio:exportar': {
+    descricao: 'Exportar todos os dados do escritório (LGPD; responsável pelo escritório).',
+    leitura: false,
+  },
   'curadoria:tabela-prazos': {
     descricao: 'Manter a taxonomia de atos e propor e aprovar a tabela de prazos (curador).',
     leitura: false,

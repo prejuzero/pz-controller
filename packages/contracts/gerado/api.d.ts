@@ -623,6 +623,40 @@ export interface paths {
         patch: operations["atualizarPerfil"];
         trace?: never;
     };
+    "/v1/privacidade/exportacoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pede a exportação dos dados (JSON e CSV), gerada em segundo plano. */
+        post: operations["solicitarExportacao"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/privacidade/exportacoes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Situação do pedido de exportação e, quando pronto, os links dos arquivos. */
+        get: operations["consultarExportacao"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/processos": {
         parameters: {
             query?: never;
@@ -986,6 +1020,34 @@ export interface components {
         EventosDoCalendario: {
             itens: components["schemas"]["EventoDoCalendario"][];
         };
+        ExportacaoDeDados: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description `titular`: dados pessoais do usuário; `escritorio`: todo o tenant (responsável).
+             * @enum {string}
+             */
+            escopo: "titular" | "escritorio";
+            /** @enum {string} */
+            situacao: "pendente" | "concluida";
+            /** Format: date-time */
+            solicitadaEm: string;
+            concluidaEm: string | null;
+            /** @description Os arquivos ficam disponíveis por 7 dias. */
+            expiraEm: string | null;
+            /** @description Links assinados (15 min) para JSON e CSV, quando concluída e dentro da validade. */
+            arquivos: {
+                nome: string;
+                /** Format: uri */
+                url: string;
+            }[];
+        };
+        ExportacaoSolicitada: {
+            /** Format: uuid */
+            id: string;
+            /** @description false: já havia pedido pendente do mesmo escopo. */
+            nova: boolean;
+        };
         FeriadoLocal: {
             /** Format: uuid */
             id: string;
@@ -1117,6 +1179,13 @@ export interface components {
              * @description Link HTTPS da fonte oficial.
              */
             urlAto: string;
+        };
+        PedidoDeExportacao: {
+            /**
+             * @description `titular`: dados pessoais do usuário; `escritorio`: todo o tenant (responsável).
+             * @enum {string}
+             */
+            escopo: "titular" | "escritorio";
         };
         PedidoDeImpersonacao: {
             /**
@@ -4250,6 +4319,133 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PerfilDoAdvogado"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    solicitarExportacao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeExportacao"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportacaoSolicitada"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    consultarExportacao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportacaoDeDados"];
                 };
             };
             /** @description Entrada inválida. */

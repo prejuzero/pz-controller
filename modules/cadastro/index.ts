@@ -49,3 +49,4 @@ export { AdvogadosPostgres } from './infra/advogados-postgres.js';
 export { AdvogadosEmMemoria } from './infra/em-memoria.js';
 export { ClientesEmMemoria, ProcessosEmMemoria } from './infra/processos-em-memoria.js';
 export { ClientesPostgres, ProcessosPostgres } from './infra/processos-postgres.js';
+export { ExportacaoDoCadastroPostgres } from './infra/exportacao-postgres.js';

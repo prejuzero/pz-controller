@@ -60,3 +60,4 @@ export {
   PreferenciasPostgres,
   SupressaoPostgres,
 } from './infra/notificacoes-postgres.js';
+export { ExportacaoDasNotificacoesPostgres } from './infra/exportacao-postgres.js';
