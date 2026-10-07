@@ -183,8 +183,11 @@ describe('consentimento por canal e destinos de push (HU30)', () => {
     ]);
   });
 
-  it('renderização mínima: sem número do processo, limite do canal, template quando exigido', () => {
-    const push = renderizar('nova-intimacao', intimacao, 'push', { ...PUSH, tamanhoMaximo: 500 });
+  it('renderização mínima: sem número do processo, limite do canal, template quando exigido', async () => {
+    const push = await renderizar('nova-intimacao', intimacao, 'push', {
+      ...PUSH,
+      tamanhoMaximo: 500,
+    });
     expect(push).toEqual({
       assunto: 'Nova intimação',
       texto: 'Há uma nova intimação para conferir no PrejuZero.',
@@ -192,13 +195,15 @@ describe('consentimento por canal e destinos de push (HU30)', () => {
       link: dados.link,
     });
     expect(JSON.stringify(push)).not.toContain(dados.numeroProcesso);
-    const whatsapp = renderizar('lembrete-prazo', dados, 'whatsapp', {
+    const whatsapp = await renderizar('lembrete-prazo', dados, 'whatsapp', {
       ...PUSH,
       exigeTemplateAprovado: true,
       tamanhoMaximo: 1000,
     });
-    expect(whatsapp.template).toEqual({ id: 'lembrete-prazo-v1', variaveis: { link: dados.link } });
-    expect(() => renderizar('nova-intimacao', intimacao, 'sms')).toThrow('sem capacidades');
-    expect(renderizar('nova-intimacao', intimacao).html).toContain('0000001-00.2026.8.26.0001');
+    expect(whatsapp.template).toEqual({ id: 'lembrete-prazo-v2', variaveis: { link: dados.link } });
+    await expect(renderizar('nova-intimacao', intimacao, 'sms')).rejects.toThrow('sem capacidades');
+    expect((await renderizar('nova-intimacao', intimacao)).html).toContain(
+      '0000001-00.2026.8.26.0001',
+    );
   });
 });

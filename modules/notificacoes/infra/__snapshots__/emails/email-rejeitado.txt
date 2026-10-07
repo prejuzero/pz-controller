@@ -1,0 +1,16 @@
+Avisos do PrejuZero não estão sendo entregues
+
+PrejuZero
+
+
+E-MAIL NÃO ENTREGUE
+
+Os avisos para ana@exemplo.invalid foram recusados pelo servidor de e-mail (endereço inexistente ou caixa bloqueada).
+
+Enquanto o endereço não for corrigido ou liberado, ele não recebe avisos de prazos. Confira no PrejuZero.
+
+Ver no portal https://app.exemplo.invalid/configuracoes/notificacoes
+
+----------------------------------------
+
+Você recebe este aviso porque monitora processos no PrejuZero. Ajuste as notificações em Configurações.

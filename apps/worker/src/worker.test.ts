@@ -280,7 +280,7 @@ describe('notificações (HU30)', () => {
             canal: 'email',
             tipo: 'nova-intimacao',
             chaveIdempotencia: 'chave-1',
-            versaoTemplate: 1,
+            versaoTemplate: 2,
             destinatarios: ['ana@exemplo.invalid'],
             dados: { numeroProcesso: '1', link: 'https://app.exemplo.invalid/x' },
             enviadaEm: null,

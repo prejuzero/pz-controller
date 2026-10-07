@@ -15,3 +15,5 @@ storybook-static/
 apps/web/e2e/.relatorio/
 apps/web/e2e/.resultados/
 apps/web/e2e/.sessao/
+# Snapshots gerados pelos testes (ex.: e-mails renderizados): saem como o código os produz.
+**/__snapshots__/

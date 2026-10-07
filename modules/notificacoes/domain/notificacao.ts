@@ -3,7 +3,15 @@ import { AggregateRoot, gerarUuidV7 } from '@pz/kernel';
 import type { Clock, EventoDominio, Instant, Uuid } from '@pz/kernel';
 
 export const CANAIS = ['email', 'push', 'whatsapp', 'sms'] as const;
-export const TIPOS_DE_NOTIFICACAO = ['nova-intimacao', 'lembrete-prazo'] as const;
+export const TIPOS_DE_NOTIFICACAO = [
+  'nova-intimacao',
+  'lembrete-prazo',
+  'resumo-diario',
+  'prazo-recalculado',
+  'ciencia-confirmada',
+  'email-rejeitado',
+  'envio-manual',
+] as const;
 export type TipoDeNotificacao = (typeof TIPOS_DE_NOTIFICACAO)[number];
 export type Canal = (typeof CANAIS)[number];
 
