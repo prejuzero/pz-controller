@@ -310,5 +310,89 @@
     "removida": "OAB removida do monitoramento.",
     "cancelar": "Cancelar",
     "vazio": "Nenhuma OAB ativa."
+  },
+  "processos": {
+    "titulo": "Processos",
+    "descricao": "Processos monitorados pelo escritório. Nos de cobertura parcial ou manual, as intimações podem não chegar pelas fontes públicas: confira o painel do tribunal.",
+    "novo": "Novo processo",
+    "cadastrar": "Cadastrar",
+    "cadastrado": "Processo cadastrado.",
+    "vazio": "Nenhum processo cadastrado ainda.",
+    "vazioFiltro": "Nenhum processo com esses filtros.",
+    "buscar": "Número CNJ",
+    "todas": "Todas",
+    "carregarMais": "Carregar mais",
+    "irClientes": "Clientes",
+    "colunas": {
+      "numero": "Número",
+      "tribunal": "Tribunal",
+      "orgao": "Órgão",
+      "cliente": "Cliente",
+      "cobertura": "Cobertura"
+    },
+    "coberturas": {
+      "automatica": "Automática",
+      "parcial": "Parcial",
+      "manual": "Manual"
+    },
+    "coberturaAjuda": {
+      "automatica": "As intimações chegam pelas fontes públicas monitoradas.",
+      "parcial": "Parte das intimações pode não chegar pelas fontes públicas. Confira o painel do tribunal.",
+      "manual": "Fora da cobertura automática. Confira o painel do tribunal."
+    },
+    "sigiloso": "Sigiloso",
+    "sigilosoAjuda": "Segredo de justiça: a intimação pode sair só no painel do tribunal.",
+    "semTribunal": "Tribunal não identificado",
+    "numeroCnj": "Número CNJ",
+    "numeroAjuda": "Cole o número ou o trecho da intimação; o número é reconhecido sozinho.",
+    "numeroInvalido": "Número CNJ inválido: confira os dígitos.",
+    "numeroValido": "Número válido · {tribunal}",
+    "orgao": "Órgão julgador",
+    "comarca": "Comarca",
+    "cliente": "Cliente",
+    "semCliente": "Sem cliente",
+    "detalhe": {
+      "voltar": "Voltar para processos",
+      "dados": "Dados do processo",
+      "ramo": "Ramo",
+      "editar": "Editar dados",
+      "salvar": "Salvar",
+      "salvo": "Dados do processo salvos.",
+      "cobertura": "Cobertura",
+      "motivo": "Motivo",
+      "alterarCobertura": "Alterar cobertura",
+      "coberturaAlterada": "Cobertura alterada.",
+      "marcarFora": "Marcar como fora da cobertura",
+      "motivoAjuda": "Obrigatório fora da cobertura automática (ex.: processo físico, sistema sem publicação no DJEN).",
+      "publicacoes": "Publicações",
+      "prazos": "Prazos",
+      "emBreve": "Aparecem aqui quando a captura de publicações e o cálculo de prazos entrarem em operação."
+    },
+    "cancelar": "Cancelar"
+  },
+  "clientes": {
+    "titulo": "Clientes",
+    "descricao": "Clientes do escritório, para vincular aos processos.",
+    "novo": "Novo cliente",
+    "cadastrar": "Cadastrar",
+    "cadastrado": "Cliente cadastrado.",
+    "vazio": "Nenhum cliente cadastrado ainda.",
+    "nome": "Nome",
+    "documento": "CPF ou CNPJ",
+    "documentoAjuda": "Opcional.",
+    "colunas": {
+      "nome": "Nome",
+      "documento": "CPF ou CNPJ",
+      "acoes": "Ações"
+    },
+    "editar": "Editar",
+    "salvar": "Salvar",
+    "salvo": "Cliente salvo.",
+    "remover": "Remover",
+    "removerTitulo": "Remover {nome}?",
+    "removerDescricao": "Só é possível remover clientes sem processos vinculados.",
+    "removido": "Cliente removido.",
+    "cancelar": "Cancelar",
+    "voltar": "Voltar para processos"
   }
 }

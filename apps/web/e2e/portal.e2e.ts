@@ -63,6 +63,7 @@ test.describe('acessibilidade (axe)', () => {
     '/configuracoes/feriados-locais',
     '/configuracoes/perfil',
     '/configuracoes/oabs',
+    '/processos/clientes',
   ]) {
     test(`sem violações em ${rota}`, async ({ page }) => {
       await page.goto(rota);
@@ -74,6 +75,13 @@ test.describe('acessibilidade (axe)', () => {
   test('sem violações no formulário de feriado local', async ({ page }) => {
     await page.goto('/configuracoes/feriados-locais');
     await page.getByRole('button', { name: 'Novo feriado local' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await semViolacoes(page);
+  });
+
+  test('sem violações no formulário de processo', async ({ page }) => {
+    await page.goto('/processos');
+    await page.getByRole('button', { name: 'Novo processo' }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await semViolacoes(page);
   });

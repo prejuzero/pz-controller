@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext } from 'react';
 
 import { permite, type Exigencia } from '../permissoes';
@@ -8,6 +8,7 @@ import { permite, type Exigencia } from '../permissoes';
 import { consultasCadastro, mutacoesCadastro } from './cadastro';
 import { consultasCalendario, mutacoesCalendario } from './calendario';
 import { consultasNotificacoes } from './notificacoes';
+import { consultasProcessos, mutacoesProcessos, type FiltrosProcessos } from './processos';
 import { consultasSessao, mutacoesSessao } from './sessao';
 
 import type { ClienteApi } from './cliente';
@@ -89,3 +90,18 @@ export const useVerificarEmail = () => useMutation(useMutacoesCadastro().verific
 export const useAtualizarPerfil = () => useMutation(useMutacoesCadastro().atualizarPerfil);
 export const useAdicionarOab = () => useMutation(useMutacoesCadastro().adicionarOab);
 export const useRemoverOab = () => useMutation(useMutacoesCadastro().removerOab);
+
+function useMutacoesProcessos() {
+  return mutacoesProcessos(useApi(), useQueryClient());
+}
+
+export const useProcessos = (filtros: FiltrosProcessos) =>
+  useInfiniteQuery(consultasProcessos(useApi()).lista(filtros));
+export const useProcesso = (id: string) => useQuery(consultasProcessos(useApi()).detalhe(id));
+export const useClientes = () => useQuery(consultasProcessos(useApi()).clientes());
+export const useCadastrarProcesso = () => useMutation(useMutacoesProcessos().cadastrar);
+export const useAtualizarProcesso = () => useMutation(useMutacoesProcessos().atualizar);
+export const useAlterarCobertura = () => useMutation(useMutacoesProcessos().alterarCobertura);
+export const useCadastrarCliente = () => useMutation(useMutacoesProcessos().cadastrarCliente);
+export const useAtualizarCliente = () => useMutation(useMutacoesProcessos().atualizarCliente);
+export const useRemoverCliente = () => useMutation(useMutacoesProcessos().removerCliente);
