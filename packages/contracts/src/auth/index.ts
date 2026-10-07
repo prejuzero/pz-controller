@@ -27,9 +27,11 @@ export const SessaoAtual = nomear(
       .enum(['senha', 'completo'])
       .describe('`senha`: falta o 2FA; `completo`: senha e 2FA verificados.'),
     proximoPasso: z
-      .enum(['configurar-2fa', 'verificar-2fa'])
+      .enum(['configurar-2fa', 'verificar-2fa', 'aceitar-termos'])
       .nullable()
-      .describe('O que falta para a sessão ficar completa; null quando já está.'),
+      .describe(
+        'O que falta antes de usar o sistema; null quando nada. `aceitar-termos`: versão nova de documento legal (GET /v1/termos/pendentes).',
+      ),
     permissoes: z
       .array(z.string())
       .describe(

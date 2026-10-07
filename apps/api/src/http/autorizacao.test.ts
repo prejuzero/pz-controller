@@ -25,6 +25,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { esquemaApi } from '../ambiente.js';
 import { criarApi } from '../app.js';
 import { AppModule } from '../app.module.js';
+import { termosEmMemoria } from '../termos/termos-de-teste.js';
 
 import { declaracaoDeAcesso } from './acesso.js';
 
@@ -54,6 +55,7 @@ const ambiente = carregarAmbiente(esquemaApi, {
   CHAVE_CIFRAGEM: randomBytes(32).toString('base64'),
 });
 const opcoes: OpcoesApi = {
+  termos: termosEmMemoria().dependencias,
   ambiente,
   verificadores: [],
   identidade: {

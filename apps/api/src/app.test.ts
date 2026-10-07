@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { esquemaApi } from './ambiente.js';
 import { criarApi } from './app.js';
 import { Publico } from './http/acesso.js';
+import { termosEmMemoria } from './termos/termos-de-teste.js';
 
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import type { VerificadorDeDependencia } from '@pz/saude';
@@ -74,6 +75,7 @@ async function subir(
   opcoes: { producao?: boolean } = {},
 ): Promise<NestFastifyApplication> {
   api = await criarApi({
+    termos: termosEmMemoria().dependencias,
     ambiente: opcoes.producao === true ? { ...ambiente, NODE_ENV: 'production' } : ambiente,
     relogio,
     verificadores,
@@ -130,7 +132,11 @@ describe('api: verificadores do ambiente', () => {
       REDIS_URL: 'redis://127.0.0.1:1',
     };
     for (const extra of [{}, { S3_ENDPOINT: 'http://127.0.0.1:1' }]) {
-      api = await criarApi({ ambiente: { ...ambiente, ...semServicos, ...extra }, relogio });
+      api = await criarApi({
+        termos: termosEmMemoria().dependencias,
+        ambiente: { ...ambiente, ...semServicos, ...extra },
+        relogio,
+      });
       await api.init();
       const pronto = (await api.inject({ method: 'GET', url: '/health/ready' })).json<{
         dependencias: { dependencia: string }[];

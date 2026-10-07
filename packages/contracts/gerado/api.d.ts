@@ -710,6 +710,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/termos/{id}/aceitar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Registra o aceite (com IP e navegador) da versão vigente de um documento. */
+        post: operations["aceitarDocumentoLegal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/termos/aceites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Histórico de aceites do usuário (exportável). */
+        get: operations["listarAceites"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/termos/pendentes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Documentos legais que o usuário precisa aceitar para continuar usando o sistema. */
+        get: operations["listarTermosPendentes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/webhooks/{adaptador}": {
         parameters: {
             query?: never;
@@ -731,6 +782,19 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AceitesDoUsuario: {
+            itens: {
+                /** Format: uuid */
+                documentoId: string;
+                /** @enum {string} */
+                tipo: "termos" | "privacidade" | "cobertura";
+                versao: string;
+                /** Format: date-time */
+                aceitoEm: string;
+                ip: string;
+                userAgent: string;
+            }[];
+        };
         AcessosRecentes: {
             itens: {
                 /** @enum {string} */
@@ -872,6 +936,18 @@ export interface components {
                 /** Format: date-time */
                 ultimoUso: string;
                 revogadaEm: string | null;
+            }[];
+        };
+        DocumentosPendentes: {
+            itens: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                tipo: "termos" | "privacidade" | "cobertura";
+                versao: string;
+                conteudo: string;
+                /** Format: date-time */
+                publicadoEm: string;
             }[];
         };
         EventoDoCalendario: {
@@ -1215,8 +1291,8 @@ export interface components {
              * @enum {string}
              */
             nivel: "senha" | "completo";
-            /** @description O que falta para a sessão ficar completa; null quando já está. */
-            proximoPasso: ("configurar-2fa" | "verificar-2fa") | null;
+            /** @description O que falta antes de usar o sistema; null quando nada. `aceitar-termos`: versão nova de documento legal (GET /v1/termos/pendentes). */
+            proximoPasso: ("configurar-2fa" | "verificar-2fa" | "aceitar-termos") | null;
             /** @description Permissões efetivas (catálogo da HU07, ex.: `prazos:ler`), também usadas como escopos OAuth. Vazio sem o 2FA. O portal só oculta ações; a API sempre confere. */
             permissoes: string[];
             /** @description Impersonação em curso (HU07): o portal mostra a faixa enquanto houver. Ausente ou null fora dela. */
@@ -4683,6 +4759,165 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SituacaoDaApi"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    aceitarDocumentoLegal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso, sem corpo. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarAceites: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AceitesDoUsuario"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarTermosPendentes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentosPendentes"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
                 };
             };
             /** @description Erro inesperado. */

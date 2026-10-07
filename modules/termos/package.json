@@ -1,0 +1,30 @@
+{
+  "name": "@pz/termos",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Módulo termos: documentos legais versionados e aceite (HU38, LGPD).",
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "scripts": {
+    "lint": "eslint --max-warnings=0 .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --coverage",
+    "test:int": "vitest run --config vitest.int.config.ts"
+  },
+  "dependencies": {
+    "@pz/auditoria": "workspace:*",
+    "@pz/db": "workspace:*",
+    "@pz/kernel": "workspace:*"
+  },
+  "devDependencies": {
+    "@pz/config": "workspace:*",
+    "@types/node": "24.19.1",
+    "@vitest/coverage-v8": "5.0.3",
+    "eslint": "10.12.0",
+    "testcontainers": "12.2.0",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}

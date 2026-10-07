@@ -118,6 +118,7 @@ const COLUNAS_FIXAS: Readonly<Record<string, Record<string, unknown>>> = {
   oab: { uf: 'XA' },
   consentimento_canal: { canal: 'push', origem: 'app' },
   cliente: { documento: null },
+  documento_legal: { versao: () => `${String(randomInt(1, 1e6))}.0`, conteudo: 'FICTÍCIO' },
   alvo_monitoramento: {
     tipo: 'processo',
     valor: () => String(randomInt(1e10, 1e11 - 1)).padStart(20, '0'),
@@ -192,7 +193,11 @@ function aplicarFixas(tabela: string, valores: Record<string, unknown>): Record<
  * aplicação, uma garantia mais forte que o RLS (que só filtra o tenant). `feriado_local` aceita
  * só a revogação, controlada por trigger; qualquer outro UPDATE é recusado (HU13).
  */
-export const TABELAS_SO_INSERCAO: readonly string[] = ['evento_auditoria', 'feriado_local'];
+export const TABELAS_SO_INSERCAO: readonly string[] = [
+  'evento_auditoria',
+  'feriado_local',
+  'aceite_documento',
+];
 
 /** Tabelas sem DELETE para a aplicação (o registro fica: remoção vira estado, LGPD e prova). */
 export const TABELAS_SEM_DELETE: readonly string[] = [

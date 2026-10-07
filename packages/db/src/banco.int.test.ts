@@ -53,6 +53,7 @@ describe('migrações', () => {
         ).rows.map((linha) => linha.tablename);
 
       expect(await tabelas()).toEqual([
+        'aceite_documento',
         'acesso',
         'advogado',
         'alvo_assinante',
@@ -61,6 +62,7 @@ describe('migrações', () => {
         'cliente',
         'consentimento_canal',
         'destino_push',
+        'documento_legal',
         'evento_auditoria',
         'evento_calendario',
         'evento_dominio',
@@ -90,6 +92,7 @@ describe('migrações', () => {
 
       await banco.migrar();
       expect(await tabelas()).toEqual([
+        'aceite_documento',
         'acesso',
         'advogado',
         'alvo_assinante',
@@ -98,6 +101,7 @@ describe('migrações', () => {
         'cliente',
         'consentimento_canal',
         'destino_push',
+        'documento_legal',
         'evento_auditoria',
         'evento_calendario',
         'evento_dominio',
@@ -146,6 +150,7 @@ describe('RLS (ADR-003)', () => {
          ORDER BY 1`);
 
       expect(rows.map((linha) => linha.tabela)).toEqual([
+        'aceite_documento',
         'acesso',
         'advogado',
         'alvo_assinante',

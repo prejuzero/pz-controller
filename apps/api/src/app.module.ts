@@ -104,6 +104,13 @@ import {
   TiposDeAtoPostgres,
 } from '@pz/prazos';
 import { ConsultarSituacao, VerificadorHttp, VerificadorTcp } from '@pz/saude';
+import {
+  AceitarDocumento,
+  AceitesPostgres,
+  ConsultarTermosPendentes,
+  DocumentosPostgres,
+  ListarAceites,
+} from '@pz/termos';
 import { Redis } from 'ioredis';
 
 import { AdminController } from './admin/admin.controller.js';
@@ -128,6 +135,7 @@ import { NotificacoesController } from './notificacoes/notificacoes.controller.j
 import { OpenApiController } from './openapi.controller.js';
 import { TabelaPrazosController } from './prazos/tabela-prazos.controller.js';
 import { SaudeController, SondasController } from './saude/saude.controller.js';
+import { TermosController } from './termos/termos.controller.js';
 import { WebhooksController } from './webhooks/webhooks.controller.js';
 
 import type { AmbienteApi } from './ambiente.js';
@@ -175,6 +183,11 @@ import type {
 } from '@pz/notificacoes';
 import type { RepositorioDaTabela, RepositorioDeTiposDeAto } from '@pz/prazos';
 import type { VerificadorDeDependencia } from '@pz/saude';
+import type {
+  RepositorioDeAceites,
+  RepositorioDeDocumentos,
+  UnidadeNoTenant as UnidadeNoTenantDosTermos,
+} from '@pz/termos';
 import type { Queue } from 'bullmq';
 
 export interface OpcoesApi {
@@ -211,6 +224,8 @@ export interface OpcoesApi {
   readonly calendario?: DependenciasDoCalendario;
   /** Tabela de prazos (HU15); nos testes, repositórios em memória. */
   readonly tabelaDePrazos?: DependenciasDaTabelaDePrazos;
+  /** Termos e aceite versionado (HU38); nos testes, repositórios em memória. */
+  readonly termos?: DependenciasDosTermos;
   /** Cadastro do advogado (HU11); nos testes, repositórios em memória. */
   readonly cadastro?: (relogio: Clock) => DependenciasDoCadastro;
   /** Avisos de entrega do portal (HU30); nos testes, repositórios em memória. */
@@ -285,6 +300,30 @@ interface DependenciasDaTabelaDePrazos {
   readonly tabela: RepositorioDaTabela<unknown>;
   readonly trilha: TrilhaDeAuditoria<unknown>;
   readonly outbox: Outbox<unknown>;
+}
+
+interface DependenciasDosTermos {
+  readonly noTenant: UnidadeNoTenantDosTermos<unknown>;
+  readonly documentos: RepositorioDeDocumentos<unknown>;
+  readonly aceites: RepositorioDeAceites<unknown>;
+  readonly trilha: TrilhaDeAuditoria<unknown>;
+}
+
+/** Casos de uso dos termos (HU38): o guarda consulta as pendências a cada requisição. */
+function provedoresDosTermos(d: DependenciasDosTermos): Provider[] {
+  return [
+    {
+      provide: ConsultarTermosPendentes,
+      useValue: new ConsultarTermosPendentes(d.noTenant, d.documentos, d.aceites),
+    },
+    { provide: ListarAceites, useValue: new ListarAceites(d.noTenant, d.aceites) },
+    {
+      provide: AceitarDocumento,
+      inject: [RELOGIO],
+      useFactory: (r: Clock) =>
+        new AceitarDocumento(d.noTenant, d.documentos, d.aceites, d.trilha, r),
+    },
+  ];
 }
 
 /** Casos de uso da tabela de prazos (HU15). */
@@ -726,6 +765,17 @@ export class AppModule {
       { provide: ReprocessarJobMorto, useValue: new ReprocessarJobMorto(filas.reprocessamento) },
       { provide: FILAS_DO_PAINEL, useValue: filas.painel },
       ...provedoresDoCalendario(calendario),
+      ...provedoresDosTermos(
+        opcoes.termos ?? {
+          noTenant: {
+            executar: (tenantId, trabalho) =>
+              noTenantDoBanco(tenantId, () => recursos.banco.executar(trabalho)),
+          },
+          documentos: new DocumentosPostgres(),
+          aceites: new AceitesPostgres(),
+          trilha: new TrilhaPostgres(),
+        },
+      ),
       ...provedoresDaTabelaDePrazos(
         opcoes.tabelaDePrazos ?? {
           unidade: recursos.banco,
@@ -766,6 +816,7 @@ export class AppModule {
         AdminController,
         CalendarioController,
         TabelaPrazosController,
+        TermosController,
         CadastroController,
         ProcessosController,
         NotificacoesController,

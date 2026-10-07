@@ -29,6 +29,7 @@ import { ROTAS_NOTIFICACOES } from './notificacoes/index.js';
 import { gerarOpenApi } from './openapi.js';
 import { ROTAS_TABELA_PRAZOS } from './prazos/index.js';
 import { ROTAS_SAUDE } from './saude/index.js';
+import { ROTAS_TERMOS } from './termos.js';
 import { ROTAS_WEBHOOKS } from './webhooks/index.js';
 
 export {
@@ -138,6 +139,15 @@ export {
 } from './comum.js';
 export { formatarNumeroCnj, lerNumeroCnj, TRIBUNAIS, tribunalDoNumero } from './cnj.js';
 export { OrigemIa } from './ia.js';
+export {
+  aceitarDocumentoLegal,
+  AceitesDoUsuario,
+  DocumentoLegal,
+  DocumentosPendentes,
+  listarAceites,
+  listarTermosPendentes,
+  ROTAS_TERMOS,
+} from './termos.js';
 export type { PartesDoNumeroCnj, Tribunal } from './cnj.js';
 export {
   CalendarioAlterado,
@@ -184,6 +194,7 @@ export const ROTAS = [
   ...ROTAS_PROCESSOS,
   ...ROTAS_CALENDARIO,
   ...ROTAS_TABELA_PRAZOS,
+  ...ROTAS_TERMOS,
   ...ROTAS_NOTIFICACOES,
   ...ROTAS_SAUDE,
   ...ROTAS_WEBHOOKS,
