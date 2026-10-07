@@ -27,3 +27,11 @@ export { registrarRotaHttp } from './rota-http.js';
 export { MARCADOR_REMOVIDO, sanitizar, sanitizarTexto } from './sanitizacao.js';
 export { iniciarTelemetria } from './telemetria.js';
 export type { OpcoesTelemetria, Telemetria } from './telemetria.js';
+export {
+  medirChamadaIa,
+  NOMES_METRICAS_IA,
+  registrarAlertaDeOrcamentoIa,
+  registrarCorrecaoDeIa,
+  registrarTarefaIaSemModelo,
+} from './ia.js';
+export type { ChamadaIa, DesfechoChamadaIa, ResultadoChamadaIa } from './ia.js';
