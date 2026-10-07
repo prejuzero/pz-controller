@@ -5,7 +5,16 @@ export const ROTA_RECUPERAR_SENHA = '/recuperar-senha';
 // O caminho vem do e-mail de redefinição (modules/identidade/application/avisos.ts).
 export const ROTA_REDEFINIR_SENHA = '/redefinir-senha';
 export const ROTA_SEGURANCA = '/configuracoes/seguranca';
-const ROTAS_PUBLICAS = [ROTA_ENTRAR, ROTA_RECUPERAR_SENHA, ROTA_REDEFINIR_SENHA];
+export const ROTA_CADASTRO = '/cadastro';
+// O caminho vem do e-mail de boas-vindas (modules/identidade/application/avisos.ts).
+export const ROTA_VERIFICAR_EMAIL = '/verificar-email';
+const ROTAS_PUBLICAS = [
+  ROTA_ENTRAR,
+  ROTA_RECUPERAR_SENHA,
+  ROTA_REDEFINIR_SENHA,
+  ROTA_CADASTRO,
+  ROTA_VERIFICAR_EMAIL,
+];
 
 export type MotivoEntrar = 'sessao-expirada' | 'senha-redefinida';
 

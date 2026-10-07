@@ -13,6 +13,8 @@ describe('rotas', () => {
     expect(ehRotaPublica('/entrar')).toBe(true);
     expect(ehRotaPublica('/recuperar-senha')).toBe(true);
     expect(ehRotaPublica('/redefinir-senha')).toBe(true);
+    expect(ehRotaPublica('/cadastro')).toBe(true);
+    expect(ehRotaPublica('/verificar-email')).toBe(true);
     expect(ehRotaPublica('/configuracoes/seguranca')).toBe(false);
     expect(ehRotaPublica('/entrar/2fa')).toBe(true);
     expect(ehRotaPublica('/entrarx')).toBe(false);

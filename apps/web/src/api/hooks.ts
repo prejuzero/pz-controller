@@ -5,6 +5,7 @@ import { createContext, useContext } from 'react';
 
 import { permite, type Exigencia } from '../permissoes';
 
+import { consultasCadastro, mutacoesCadastro } from './cadastro';
 import { consultasCalendario, mutacoesCalendario } from './calendario';
 import { consultasSessao, mutacoesSessao } from './sessao';
 
@@ -70,3 +71,14 @@ export const useRevogarEvento = () => useMutation(useMutacoesCalendario().revoga
 export const useImportarCalendario = () => useMutation(useMutacoesCalendario().importar);
 export const useCadastrarFeriadoLocal = () => useMutation(useMutacoesCalendario().cadastrarLocal);
 export const useRevogarFeriadoLocal = () => useMutation(useMutacoesCalendario().revogarLocal);
+
+function useMutacoesCadastro() {
+  return mutacoesCadastro(useApi(), useQueryClient());
+}
+
+export const usePerfil = () => useQuery(consultasCadastro(useApi()).perfil());
+export const useCadastrar = () => useMutation(useMutacoesCadastro().cadastrar);
+export const useVerificarEmail = () => useMutation(useMutacoesCadastro().verificarEmail);
+export const useAtualizarPerfil = () => useMutation(useMutacoesCadastro().atualizarPerfil);
+export const useAdicionarOab = () => useMutation(useMutacoesCadastro().adicionarOab);
+export const useRemoverOab = () => useMutation(useMutacoesCadastro().removerOab);

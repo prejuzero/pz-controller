@@ -9,6 +9,10 @@ export const chaves = {
     acessos: () => [...chaves.sessao.todas, 'acessos'] as const,
     dispositivos: () => [...chaves.sessao.todas, 'dispositivos'] as const,
   },
+  cadastro: {
+    todas: ['cadastro'] as const,
+    perfil: () => [...chaves.cadastro.todas, 'perfil'] as const,
+  },
   calendario: {
     todas: ['calendario'] as const,
     global: (ano: number) => [...chaves.calendario.todas, 'global', ano] as const,

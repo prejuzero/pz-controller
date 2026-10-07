@@ -1,0 +1,32 @@
+/** As 27 seccionais da OAB (uma por UF); a API valida a mesma lista (modules/cadastro). */
+export const UFS = [
+  'AC',
+  'AL',
+  'AM',
+  'AP',
+  'BA',
+  'CE',
+  'DF',
+  'ES',
+  'GO',
+  'MA',
+  'MG',
+  'MS',
+  'MT',
+  'PA',
+  'PB',
+  'PE',
+  'PI',
+  'PR',
+  'RJ',
+  'RN',
+  'RO',
+  'RR',
+  'RS',
+  'SC',
+  'SE',
+  'SP',
+  'TO',
+] as const;
+
+export const OPCOES_UF = UFS.map((uf) => ({ valor: uf, rotulo: uf }));

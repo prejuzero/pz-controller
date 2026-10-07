@@ -12,6 +12,8 @@ const url =
 
 const TENANT_DEMONSTRACAO = '01a10e00-0000-7000-8000-00000000d001';
 const USUARIO_DEMONSTRACAO = '01a10e00-0000-7000-8000-00000000d002';
+const ADVOGADO_DEMONSTRACAO = '01a10e00-0000-7000-8000-00000000d003';
+const OAB_DEMONSTRACAO = '01a10e00-0000-7000-8000-00000000d004';
 
 // Senha só do ambiente local (fictícia); troque por SENHA_DEMONSTRACAO se quiser outra.
 const SENHA = process.env.SENHA_DEMONSTRACAO ?? 'demonstracao local 2026';
@@ -52,6 +54,19 @@ try {
     `INSERT INTO usuario_perfil (tenant_id, usuario_id, perfil) VALUES ($1, $2, 'advogado')
      ON CONFLICT DO NOTHING`,
     [TENANT_DEMONSTRACAO, USUARIO_DEMONSTRACAO],
+  );
+  // Advogado e OAB FICTÍCIOS (HU11): CPF gerado só para a demonstração, OAB inexistente.
+  await cliente.query(
+    `INSERT INTO advogado (id, tenant_id, usuario_id, nome, cpf, celular)
+     VALUES ($1, $2, $3, 'Pessoa Demonstração', '52998224725', '11900000000')
+     ON CONFLICT DO NOTHING`,
+    [ADVOGADO_DEMONSTRACAO, TENANT_DEMONSTRACAO, USUARIO_DEMONSTRACAO],
+  );
+  await cliente.query(
+    `INSERT INTO oab (id, tenant_id, advogado_id, numero, uf, tipo)
+     VALUES ($1, $2, $3, '999999', 'SP', 'principal')
+     ON CONFLICT DO NOTHING`,
+    [OAB_DEMONSTRACAO, TENANT_DEMONSTRACAO, ADVOGADO_DEMONSTRACAO],
   );
   await cliente.query('UPDATE usuario SET senha_hash = $2 WHERE id = $1 AND senha_hash IS NULL', [
     USUARIO_DEMONSTRACAO,

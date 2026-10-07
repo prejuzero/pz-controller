@@ -55,6 +55,24 @@ describe('UF, OAB e celular (HU11)', () => {
     expect(numero.ok && numero.valor.valor).toBe(esperado);
   });
 
+  it('propriedade: número com até 6 dígitos (e letra opcional) é aceito e normalizado', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 999_999 }),
+        fc.constantFrom('', 'A', 'b'),
+        (n, letra) => {
+          const numero = NumeroOab.de(`${String(n).padStart(6, '0')}${letra}`);
+          expect(numero.ok && numero.valor.valor).toBe(`${String(n)}${letra.toUpperCase()}`);
+        },
+      ),
+    );
+    fc.assert(
+      fc.property(fc.integer({ min: 1_000_000, max: 99_999_999 }), (n) => {
+        expect(NumeroOab.de(String(n)).ok).toBe(false);
+      }),
+    );
+  });
+
   it.each(['', 'A1', '1234567', '12AB'])('recusa OAB %s', (texto) => {
     expect(NumeroOab.de(texto).ok).toBe(false);
   });

@@ -10,7 +10,8 @@
     "email": "E-mail",
     "senha": "Senha",
     "enviar": "Entrar",
-    "esqueciSenha": "Esqueci minha senha"
+    "esqueciSenha": "Esqueci minha senha",
+    "criarConta": "Ainda não tem conta? Cadastre-se"
   },
   "segundoFator": {
     "titulo": "Verificação em duas etapas",
@@ -240,6 +241,71 @@
     "seguranca": "Segurança",
     "segurancaDescricao": "Verificação em duas etapas, sessões ativas e últimos acessos.",
     "feriadosLocais": "Feriados locais",
-    "feriadosLocaisDescricao": "Feriados e suspensões da sua comarca que valem para o escritório."
+    "feriadosLocaisDescricao": "Feriados e suspensões da sua comarca que valem para o escritório.",
+    "perfil": "Perfil",
+    "perfilDescricao": "Nome, celular e e-mails que recebem cópia das notificações.",
+    "oabs": "OABs",
+    "oabsDescricao": "Inscrições monitoradas nas publicações."
+  },
+  "cadastro": {
+    "titulo": "Criar conta",
+    "passo": "Passo {atual} de {total}: {nome}",
+    "passos": {
+      "dados": "Seus dados",
+      "oabs": "Suas OABs",
+      "seguranca": "Segurança"
+    },
+    "nome": "Nome completo",
+    "cpf": "CPF",
+    "email": "E-mail",
+    "celular": "Celular com DDD",
+    "senha": "Senha",
+    "confirmacao": "Confirme a senha",
+    "ajudaSenha": "Use uma frase longa e única; senhas fracas ou vazadas são recusadas.",
+    "oabPrincipal": "OAB principal",
+    "oabSuplementar": "OAB suplementar {n}",
+    "numero": "Número",
+    "uf": "UF",
+    "adicionarSuplementar": "Adicionar OAB suplementar",
+    "remover": "Remover",
+    "ajudaOabs": "Cada OAB informada passa a ser monitorada nas publicações do DJEN.",
+    "segurancaTexto": "Depois de criar a conta, você vai ativar a verificação em duas etapas com um aplicativo autenticador. Ela é obrigatória para proteger os prazos do escritório.",
+    "resumo": "{nome} · {email} · {total, plural, one {# OAB} other {# OABs}}",
+    "voltar": "Voltar",
+    "continuar": "Continuar",
+    "criar": "Criar conta e configurar o 2FA",
+    "jaTemConta": "Já tem conta? Entrar",
+    "progressoGuardado": "Seu progresso fica guardado neste navegador até a conta ser criada (a senha, não)."
+  },
+  "verificarEmail": {
+    "titulo": "Confirmação de e-mail",
+    "verificando": "Confirmando o seu e-mail…",
+    "confirmado": "E-mail confirmado. Obrigado!",
+    "irParaPortal": "Ir para o PrejuZero",
+    "invalido": "Link inválido ou expirado. Entre no PrejuZero e peça um novo link em Configurações > Perfil."
+  },
+  "perfil": {
+    "titulo": "Perfil",
+    "nome": "Nome completo",
+    "cpf": "CPF",
+    "celular": "Celular com DDD",
+    "emailsAdicionais": "E-mails em cópia",
+    "ajudaEmails": "Um por linha, até 5. Recebem cópia das notificações.",
+    "salvar": "Salvar",
+    "salvo": "Perfil atualizado."
+  },
+  "oabs": {
+    "titulo": "OABs",
+    "descricao": "As OABs ativas são monitoradas nas publicações. A principal não pode ser removida.",
+    "principal": "Principal",
+    "suplementar": "Suplementar",
+    "adicionar": "Adicionar OAB",
+    "adicionada": "OAB adicionada ao monitoramento.",
+    "remover": "Remover",
+    "removerTitulo": "Remover a OAB {oab}?",
+    "removerDescricao": "Ela deixa de ser monitorada. Publicações já capturadas continuam no portal.",
+    "removida": "OAB removida do monitoramento.",
+    "cancelar": "Cancelar",
+    "vazio": "Nenhuma OAB ativa."
   }
 }

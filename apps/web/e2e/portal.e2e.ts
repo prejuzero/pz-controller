@@ -58,7 +58,12 @@ test.describe('acessibilidade (axe)', () => {
     });
   }
 
-  for (const rota of ['/configuracoes/seguranca', '/configuracoes/feriados-locais']) {
+  for (const rota of [
+    '/configuracoes/seguranca',
+    '/configuracoes/feriados-locais',
+    '/configuracoes/perfil',
+    '/configuracoes/oabs',
+  ]) {
     test(`sem violações em ${rota}`, async ({ page }) => {
       await page.goto(rota);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
@@ -75,7 +80,13 @@ test.describe('acessibilidade (axe)', () => {
 
   test.describe('sem sessão', () => {
     test.use({ storageState: SEM_SESSAO });
-    for (const rota of ['/entrar', '/recuperar-senha', '/redefinir-senha?token=e2e']) {
+    for (const rota of [
+      '/entrar',
+      '/recuperar-senha',
+      '/redefinir-senha?token=e2e',
+      '/cadastro',
+      '/verificar-email',
+    ]) {
       test(`sem violações em ${rota}`, async ({ page }) => {
         await page.goto(rota);
         await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
