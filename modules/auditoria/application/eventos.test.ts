@@ -39,6 +39,11 @@ describe('eventos de domínio na trilha (HU08)', () => {
           tokenCifrado: 'segredo',
           notificacaoId: gerarUuidV7(),
           detalhe: 'segredo',
+          entidade: 'publicacao',
+          entidadeId: gerarUuidV7(),
+          campo: 'tipoAto',
+          valorSugerido: 'ficticio-a',
+          valorCorrigido: 'ficticio-b',
         }),
       );
     }

@@ -10,3 +10,10 @@ Implementado em: HU58 (plataforma) e HU59 (catálogo de ferramentas). Siga o [CL
 - `PlataformaIa.executarTarefa(tarefa, prompt, schema)`: chama o primário; em erro transitório, cota ou circuito aberto passa ao próximo modelo ou provedor. Saída inválida, credencial e erro inesperado sobem na hora. O resultado traz modelo, provedor, versão do prompt e da configuração, uso de tokens e as falhas anteriores.
 - `PlataformaIa.enviarLote(tarefa, itens)`: primeiro provedor da tarefa que aceita lote; sem lote habilitado, erro explícito.
 - Os provedores entram como `ProvedorIA` (registro de adaptadores, com resiliência); nenhum SDK de IA aqui.
+
+## Prompts versionados e origem das sugestões (HU58)
+
+- `prompts/<tarefa>.json`: `versao` (semver), `sistema`, `usuario` (com `{{variaveis}}`) e `changelog`, cuja entrada da versão atual guarda o SHA-256 do conteúdo. Mudar o texto sem subir a versão e registrar a mudança falha nos testes; o gate de avaliação (`pnpm eval`) entra com a HU22.
+- `RegistroDePrompts.doDiretorio(...)` valida tudo no boot; `montar(tarefa, variaveis)` recusa variável faltando ou sobrando e devolve o `PromptIA` com a versão `tarefa@x.y.z`.
+- `origemIa(resultado, agora, confianca?)`: modelo, provedor, versão do prompt e da configuração, confiança e instante. Toda sugestão persistida leva esse objeto (`OrigemIa` em `@pz/contracts`) para a interface marcar "sugerido por IA".
+- Correção do advogado: evento `SugestaoIaCorrigida` (só códigos e valores curtos), registrado na trilha como `ia.sugestao-corrigida`.

@@ -38,4 +38,9 @@ export class ConsumidorDeAuditoria {
   notificacaoRejeitada(tx: Transacao, evento: EventoDominio): Promise<void> {
     return this.auditar.executar(tx, evento);
   }
+
+  @Consome('SugestaoIaCorrigida', { versao: 1 })
+  sugestaoIaCorrigida(tx: Transacao, evento: EventoDominio): Promise<void> {
+    return this.auditar.executar(tx, evento);
+  }
 }
