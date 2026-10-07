@@ -5,7 +5,8 @@
   "description": "Kernel de domínio: Result, erros, Clock, LocalDate, Instant, UUIDv7, Entity e AggregateRoot.",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./cnj": "./src/cnj/index.ts"
   },
   "scripts": {
     "lint": "eslint --max-warnings=0 .",

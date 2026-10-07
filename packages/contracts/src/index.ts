@@ -96,6 +96,8 @@ export {
   Problema,
   Uuid,
 } from './comum.js';
+export { formatarNumeroCnj, lerNumeroCnj, TRIBUNAIS, tribunalDoNumero } from './cnj.js';
+export type { PartesDoNumeroCnj, Tribunal } from './cnj.js';
 export {
   CalendarioAlterado,
   catalogoDeEventos,

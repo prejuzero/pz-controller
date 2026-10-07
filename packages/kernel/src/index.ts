@@ -31,3 +31,14 @@ export { err, ok } from './result.js';
 export type { Err, Ok, Result } from './result.js';
 export { ehUuid, gerarUuidV7, instanteDoUuidV7 } from './uuid.js';
 export type { Uuid } from './uuid.js';
+export {
+  calcularDigitoCnj,
+  formatarNumeroCnj,
+  lerNumeroCnj,
+  NumeroCnj,
+  RAMOS,
+  SISTEMAS_PROCESSUAIS,
+  TRIBUNAIS,
+  tribunalDoNumero,
+} from './cnj/index.js';
+export type { PartesDoNumeroCnj, Ramo, SistemaProcessual, Tribunal } from './cnj/index.js';

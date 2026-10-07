@@ -12,7 +12,7 @@ const config: NextConfig = {
   output: 'standalone',
   outputFileTracingRoot: fileURLToPath(new URL('../..', import.meta.url)),
   // Pacotes do monorepo são publicados como TypeScript (exports para src).
-  transpilePackages: ['@pz/ui', '@pz/design-tokens', '@pz/contracts'],
+  transpilePackages: ['@pz/ui', '@pz/design-tokens', '@pz/contracts', '@pz/kernel'],
   // Os pacotes importam `./x.js` apontando para `./x.ts` (NodeNext). O Turbopack ainda não faz esse
   // mapeamento; por isso o portal usa o webpack (`--webpack` nos scripts).
   experimental: { extensionAlias: { '.js': ['.ts', '.tsx', '.js'] } },
