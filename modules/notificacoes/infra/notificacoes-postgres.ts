@@ -60,6 +60,15 @@ export class NotificacoesPostgres implements RepositorioDeNotificacoes<Transacao
     });
   }
 
+  async usuariosComRejeicaoDesde(tx: Transacao, desde: Instant): Promise<number> {
+    const linhas = await tx.notificacao.findMany({
+      where: { rejeitadaEm: { gte: new Date(desde.epochMs) } },
+      distinct: ['usuarioId'],
+      select: { usuarioId: true },
+    });
+    return linhas.length;
+  }
+
   async registrarEnvio(tx: Transacao, notificacao: Notificacao): Promise<void> {
     const { id, idExterno, enviadaEm } = notificacao.estado;
     await tx.notificacao.update({

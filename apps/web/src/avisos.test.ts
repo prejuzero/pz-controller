@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { avisosDaSessao } from './avisos';
+import { avisosDaSessao, avisosDeEntrega } from './avisos';
 
 describe('avisosDaSessao', () => {
   it('sem impersonação, não há aviso', () => {
@@ -16,6 +16,27 @@ describe('avisosDaSessao', () => {
     };
     expect(avisosDaSessao({ impersonacao })).toEqual([
       { tipo: 'impersonacao', motivo: impersonacao.motivo, expiraEm: impersonacao.expiraEm },
+    ]);
+  });
+});
+
+describe('avisosDeEntrega (HU30)', () => {
+  it('sem rejeição, nada; administrador sem colegas afetados, nada', () => {
+    expect(avisosDeEntrega({ emailsRejeitados: [], usuariosDaEquipeComRejeicao: null })).toEqual(
+      [],
+    );
+    expect(avisosDeEntrega({ emailsRejeitados: [], usuariosDaEquipeComRejeicao: 0 })).toEqual([]);
+  });
+
+  it('avisa os e-mails rejeitados do usuário e a equipe afetada', () => {
+    expect(
+      avisosDeEntrega({
+        emailsRejeitados: ['ana@exemplo.invalid'],
+        usuariosDaEquipeComRejeicao: 2,
+      }),
+    ).toEqual([
+      { tipo: 'email-rejeitado', emails: ['ana@exemplo.invalid'] },
+      { tipo: 'equipe-com-rejeicao', quantidade: 2 },
     ]);
   });
 });

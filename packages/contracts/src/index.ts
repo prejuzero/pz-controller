@@ -2,6 +2,7 @@ import { ROTAS_ADMIN } from './admin/index.js';
 import { ROTAS_AUTH } from './auth/index.js';
 import { ROTAS_CADASTRO } from './cadastro/index.js';
 import { ROTAS_CALENDARIO } from './calendario/index.js';
+import { ROTAS_NOTIFICACOES } from './notificacoes/index.js';
 import { gerarOpenApi } from './openapi.js';
 import { ROTAS_SAUDE } from './saude/index.js';
 import { ROTAS_WEBHOOKS } from './webhooks/index.js';
@@ -105,6 +106,11 @@ export {
   SituacaoVerificada,
 } from './eventos/index.js';
 export type { ContratoEvento } from './eventos/index.js';
+export {
+  AvisosDeEntrega,
+  consultarAvisosDeEntrega,
+  ROTAS_NOTIFICACOES,
+} from './notificacoes/index.js';
 export { gerarOpenApi } from './openapi.js';
 export type { OpcoesOpenApi } from './openapi.js';
 export { definirRota, nomear } from './rota.js';
@@ -118,6 +124,7 @@ export const ROTAS = [
   ...ROTAS_ADMIN,
   ...ROTAS_CADASTRO,
   ...ROTAS_CALENDARIO,
+  ...ROTAS_NOTIFICACOES,
   ...ROTAS_SAUDE,
   ...ROTAS_WEBHOOKS,
 ] as const;

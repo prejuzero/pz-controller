@@ -7,3 +7,4 @@ Notificações multicanal com idempotência e supressão.
 - Templates em `application/templates.ts`: dados mínimos, sem partes nem teor. Mudar o texto exige uma nova versão.
 - Canal novo = novo `EnviadorDeCanal` na composição e uma opção nas preferências.
 - `RegistrarDesfechosDeEntrega` (worker, webhook do provedor na transação global): rejeição permanente (`bounce`) e reclamação (`spam`) entram na lista de supressão; a notificação recebe entrega, abertura ou rejeição uma vez só e publica `NotificacaoEntregue` ou `NotificacaoRejeitada` (auditada; a métrica `pz_email_rejeicoes_total` alerta o administrador).
+- `ConsultarAvisosDeEntrega` (`GET /v1/notificacoes/avisos`, faixa do portal): o usuário vê os próprios e-mails suprimidos (não recebem nada até serem trocados ou liberados pelo suporte); quem tem `usuarios:gerir` vê também quantos colegas tiveram rejeição nos últimos 7 dias. É derivado do estado, sem dispensa: o aviso some quando a causa some.

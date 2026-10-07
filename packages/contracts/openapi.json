@@ -2020,6 +2020,58 @@
         }
       }
     },
+    "/v1/notificacoes/avisos": {
+      "get": {
+        "operationId": "consultarAvisosDeEntrega",
+        "summary": "E-mails do usuário rejeitados e, para quem administra, colegas com rejeição recente.",
+        "tags": [
+          "notificacoes"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvisosDeEntrega"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/oabs": {
       "post": {
         "operationId": "adicionarOab",
@@ -2532,6 +2584,36 @@
             "description": "Recebem cópia das notificações."
           }
         },
+        "additionalProperties": false
+      },
+      "AvisosDeEntrega": {
+        "type": "object",
+        "properties": {
+          "emailsRejeitados": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "E-mails do usuário que rejeitaram mensagens (bounce) ou marcaram spam: não recebem notificações até serem trocados ou liberados pelo suporte."
+          },
+          "usuariosDaEquipeComRejeicao": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Usuários do escritório com notificação rejeitada nos últimos 7 dias; null para quem não administra a equipe (`usuarios:gerir`)."
+          }
+        },
+        "required": [
+          "emailsRejeitados",
+          "usuariosDaEquipeComRejeicao"
+        ],
         "additionalProperties": false
       },
       "CadastroRealizado": {

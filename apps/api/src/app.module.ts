@@ -51,6 +51,7 @@ import {
   TenantsPostgres,
   PerfisPostgres,
   ElevarSessao,
+  EmailsDosUsuariosPostgres,
   EncerrarSessao,
   ProtecaoDeAcesso,
   GeradorDeTokensSeguro,
@@ -68,6 +69,11 @@ import {
   VerificarSegundoFator,
 } from '@pz/identidade';
 import { SystemClock } from '@pz/kernel';
+import {
+  ConsultarAvisosDeEntrega,
+  NotificacoesPostgres,
+  SupressaoPostgres,
+} from '@pz/notificacoes';
 import { criarLogger, registrarErro } from '@pz/observability';
 import { ConsultarSituacao, VerificadorHttp, VerificadorTcp } from '@pz/saude';
 import { Redis } from 'ioredis';
@@ -89,6 +95,7 @@ import {
 import { GuardaDeAcesso } from './http/acesso.js';
 import { GuardaDeLimite, JanelaRedis } from './http/limite.js';
 import { FiltroDeProblemas } from './http/problemas.js';
+import { NotificacoesController } from './notificacoes/notificacoes.controller.js';
 import { OpenApiController } from './openapi.controller.js';
 import { SaudeController, SondasController } from './saude/saude.controller.js';
 import { WebhooksController } from './webhooks/webhooks.controller.js';
@@ -110,6 +117,7 @@ import type {
   RepositorioDeEventosGlobais,
   RepositorioDeFeriadosLocais,
 } from '@pz/calendario';
+import type { Transacao } from '@pz/db';
 import type {
   Email,
   DependenciasDaImpersonacao,
@@ -126,6 +134,7 @@ import type {
 } from '@pz/identidade';
 import type { ReceptorWebhook } from '@pz/integracoes';
 import type { Clock, Outbox, UnidadeDeTrabalho } from '@pz/kernel';
+import type { DestinosDoUsuario } from '@pz/notificacoes';
 import type { VerificadorDeDependencia } from '@pz/saude';
 import type { Queue } from 'bullmq';
 
@@ -163,6 +172,8 @@ export interface OpcoesApi {
   readonly calendario?: DependenciasDoCalendario;
   /** Cadastro do advogado (HU11); nos testes, repositórios em memória. */
   readonly cadastro?: (relogio: Clock) => DependenciasDoCadastro;
+  /** Avisos de entrega do portal (HU30); nos testes, repositórios em memória. */
+  readonly avisosDeEntrega?: (relogio: Clock) => ConsultarAvisosDeEntrega<unknown>;
   readonly filas?: {
     readonly reprocessamento: DependenciasDoReprocessamento<unknown>;
     readonly painel: readonly Queue[];
@@ -388,8 +399,33 @@ export class AppModule {
         trilha: new TrilhaPostgres(),
         outbox: new OutboxPostgres(),
       }));
+    const avisosDeEntrega =
+      opcoes.avisosDeEntrega ??
+      ((relogio: Clock) => {
+        // Destinos pelas APIs públicas: e-mail da conta (identidade) e cópias (cadastro).
+        const contas = new EmailsDosUsuariosPostgres();
+        const advogados = new AdvogadosPostgres(relogio);
+        const destinos: DestinosDoUsuario<Transacao> = {
+          emails: async (tx, usuarioId) => {
+            const principal = await contas.emailDe(tx, usuarioId);
+            const advogado = await advogados.buscarPorUsuario(tx, usuarioId);
+            return {
+              ...(principal === undefined ? {} : { principal }),
+              copias: advogado?.estado.emailsAdicionais ?? [],
+            };
+          },
+        };
+        return new ConsultarAvisosDeEntrega(
+          recursos.banco,
+          new NotificacoesPostgres(),
+          destinos,
+          new SupressaoPostgres(),
+          relogio,
+        );
+      });
     const provedores: Provider[] = [
       { provide: RecursosDaApi, useValue: recursos },
+      { provide: ConsultarAvisosDeEntrega, inject: [RELOGIO], useFactory: avisosDeEntrega },
       { provide: AMBIENTE, useValue: opcoes.ambiente },
       { provide: RELOGIO, useValue: opcoes.relogio ?? new SystemClock() },
       {
@@ -573,6 +609,7 @@ export class AppModule {
         AdminController,
         CalendarioController,
         CadastroController,
+        NotificacoesController,
         SaudeController,
         SondasController,
         OpenApiController,

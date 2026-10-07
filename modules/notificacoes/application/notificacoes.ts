@@ -14,7 +14,7 @@ import type {
 } from './portas.js';
 import type { Canal, MotivoDeRejeicao } from '../domain/notificacao.js';
 import type { EventoEntrega } from '@pz/integracoes';
-import type { Clock, Outbox, Result, Uuid } from '@pz/kernel';
+import type { Clock, Outbox, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 
 export const PedidoDeNotificacao = z
   .object({
@@ -171,6 +171,53 @@ export class RegistrarDesfechosDeEntrega<Transacao> {
       await this.outbox.gravar(transacao, novos);
     }
     return { rejeicoes, semNotificacao };
+  }
+}
+
+export interface AvisosDeEntrega {
+  /** E-mails do usuário na lista de supressão: não recebem nada até o suporte liberar. */
+  readonly emailsRejeitados: readonly string[];
+  /** Usuários do escritório com rejeição na janela; `null` para quem não administra a equipe. */
+  readonly usuariosDaEquipeComRejeicao: number | null;
+}
+
+/** Janela do aviso à equipe: rejeições da última semana (HU30). */
+export const JANELA_DO_AVISO_A_EQUIPE_MS = 7 * 24 * 3600 * 1000;
+
+/**
+ * Avisos de entrega para a faixa do portal (HU30: "rejeição gera aviso no portal e ao
+ * administrador"). O usuário vê os próprios e-mails suprimidos; quem administra a equipe vê
+ * também quantos colegas tiveram rejeição recente. Consulta derivada do estado, sem dispensa:
+ * o aviso some quando o e-mail é trocado ou liberado.
+ */
+export class ConsultarAvisosDeEntrega<Transacao> {
+  constructor(
+    private readonly unidade: UnidadeDeTrabalho<Transacao>,
+    private readonly notificacoes: RepositorioDeNotificacoes<Transacao>,
+    private readonly destinos: DestinosDoUsuario<Transacao>,
+    private readonly supressao: ListaDeSupressao<Transacao>,
+    private readonly relogio: Clock,
+  ) {}
+
+  executar(usuarioId: Uuid, administraEquipe: boolean): Promise<AvisosDeEntrega> {
+    return this.unidade.executar(async (transacao) => {
+      const { principal, copias } = await this.destinos.emails(transacao, usuarioId);
+      const emails = [
+        ...new Set(
+          [principal, ...copias]
+            .filter((e): e is string => e !== undefined)
+            .map((e) => e.trim().toLowerCase()),
+        ),
+      ];
+      const suprimidos = await this.supressao.suprimidos(transacao, emails);
+      const desde = this.relogio.agora().maisMs(-JANELA_DO_AVISO_A_EQUIPE_MS);
+      return {
+        emailsRejeitados: emails.filter((e) => suprimidos.has(e)),
+        usuariosDaEquipeComRejeicao: administraEquipe
+          ? await this.notificacoes.usuariosComRejeicaoDesde(transacao, desde)
+          : null,
+      };
+    });
   }
 }
 

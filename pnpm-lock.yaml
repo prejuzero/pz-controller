@@ -251,6 +251,9 @@ importers:
       '@pz/kernel':
         specifier: workspace:*
         version: link:../../packages/kernel
+      '@pz/notificacoes':
+        specifier: workspace:*
+        version: link:../../modules/notificacoes
       '@pz/observability':
         specifier: workspace:*
         version: link:../../packages/observability

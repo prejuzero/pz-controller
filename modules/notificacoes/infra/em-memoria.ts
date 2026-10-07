@@ -2,7 +2,7 @@ import { Notificacao } from '../domain/notificacao.js';
 
 import type { RepositorioDeNotificacoes } from '../application/portas.js';
 import type { EstadoDaNotificacao } from '../domain/notificacao.js';
-import type { TransacaoEmMemoria, Uuid } from '@pz/kernel';
+import type { Instant, TransacaoEmMemoria, Uuid } from '@pz/kernel';
 
 /** Notificações em memória, com a chave de idempotência única do Postgres. Só para testes. */
 export class NotificacoesEmMemoria implements RepositorioDeNotificacoes<TransacaoEmMemoria> {
@@ -45,5 +45,12 @@ export class NotificacoesEmMemoria implements RepositorioDeNotificacoes<Transaca
     }
     pendentes.set(notificacao.id, notificacao.estado);
     return this.registrarEnvio(tx, notificacao);
+  }
+
+  usuariosComRejeicaoDesde(_tx: TransacaoEmMemoria, desde: Instant): Promise<number> {
+    const usuarios = this.todas()
+      .filter((n) => n.rejeitadaEm !== undefined && !n.rejeitadaEm.ehAntesDe(desde))
+      .map((n) => n.usuarioId);
+    return Promise.resolve(new Set(usuarios).size);
   }
 }

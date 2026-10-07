@@ -7,6 +7,7 @@ import { permite, type Exigencia } from '../permissoes';
 
 import { consultasCadastro, mutacoesCadastro } from './cadastro';
 import { consultasCalendario, mutacoesCalendario } from './calendario';
+import { consultasNotificacoes } from './notificacoes';
 import { consultasSessao, mutacoesSessao } from './sessao';
 
 import type { ClienteApi } from './cliente';
@@ -77,6 +78,12 @@ function useMutacoesCadastro() {
 }
 
 export const usePerfil = () => useQuery(consultasCadastro(useApi()).perfil());
+
+/** Avisos de entrega da faixa do topo (HU30); só com a sessão completa (`conta:gerir`). */
+export function useAvisosDeEntrega() {
+  const habilitado = usePermissao('conta:gerir') === true;
+  return useQuery({ ...consultasNotificacoes(useApi()).avisos(), enabled: habilitado });
+}
 export const useCadastrar = () => useMutation(useMutacoesCadastro().cadastrar);
 export const useVerificarEmail = () => useMutation(useMutacoesCadastro().verificarEmail);
 export const useAtualizarPerfil = () => useMutation(useMutacoesCadastro().atualizarPerfil);

@@ -13,6 +13,10 @@ export const chaves = {
     todas: ['cadastro'] as const,
     perfil: () => [...chaves.cadastro.todas, 'perfil'] as const,
   },
+  notificacoes: {
+    todas: ['notificacoes'] as const,
+    avisos: () => [...chaves.notificacoes.todas, 'avisos'] as const,
+  },
   calendario: {
     todas: ['calendario'] as const,
     global: (ano: number) => [...chaves.calendario.todas, 'global', ano] as const,

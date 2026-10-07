@@ -39,7 +39,12 @@ export const mutacoesCadastro = (api: ClienteApi, cache: QueryClient) => {
     atualizarPerfil: {
       meta: ERRO_NO_FORMULARIO,
       mutationFn: (body: Corpo<'/v1/perfil', 'patch'>) => exigir(api.PATCH('/v1/perfil', { body })),
-      onSuccess: invalidar,
+      // Trocar o e-mail em cópia pode encerrar o aviso de e-mail rejeitado (HU30).
+      onSuccess: () =>
+        Promise.all([
+          invalidar(),
+          cache.invalidateQueries({ queryKey: chaves.notificacoes.todas }),
+        ]),
     },
     adicionarOab: {
       meta: ERRO_NO_FORMULARIO,
