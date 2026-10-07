@@ -104,7 +104,15 @@ import {
   TabelaPostgres,
   TiposDeAtoPostgres,
 } from '@pz/prazos';
-import { ConsultarExportacao, ExportacoesPostgres, SolicitarExportacao } from '@pz/privacidade';
+import {
+  CancelarEncerramento,
+  ConsultarEncerramento,
+  ConsultarExportacao,
+  EncerramentosPostgres,
+  ExportacoesPostgres,
+  SolicitarEncerramento,
+  SolicitarExportacao,
+} from '@pz/privacidade';
 import { ConsultarSituacao, VerificadorHttp, VerificadorTcp } from '@pz/saude';
 import {
   AceitarDocumento,
@@ -185,7 +193,7 @@ import type {
   RepositorioDeNotificacoes,
 } from '@pz/notificacoes';
 import type { RepositorioDaTabela, RepositorioDeTiposDeAto } from '@pz/prazos';
-import type { RepositorioDeExportacoes } from '@pz/privacidade';
+import type { RepositorioDeEncerramentos, RepositorioDeExportacoes } from '@pz/privacidade';
 import type { VerificadorDeDependencia } from '@pz/saude';
 import type {
   RepositorioDeAceites,
@@ -314,6 +322,7 @@ interface DependenciasDaPrivacidade {
   readonly trilha: TrilhaDeAuditoria<unknown>;
   readonly outbox: Outbox<unknown>;
   readonly armazenamento: ArmazenamentoArquivos;
+  readonly encerramentos: RepositorioDeEncerramentos<unknown>;
 }
 
 /** Exportação de dados (HU38): pedido e consulta na API; a geração é do worker. */
@@ -330,6 +339,21 @@ function provedoresDaPrivacidade(d: DependenciasDaPrivacidade): Provider[] {
       inject: [RELOGIO],
       useFactory: (r: Clock) =>
         new ConsultarExportacao(d.unidade, d.exportacoes, d.armazenamento, r),
+    },
+    {
+      provide: SolicitarEncerramento,
+      inject: [RELOGIO],
+      useFactory: (r: Clock) => new SolicitarEncerramento(d.unidade, d.encerramentos, d.trilha, r),
+    },
+    {
+      provide: CancelarEncerramento,
+      inject: [RELOGIO],
+      useFactory: (r: Clock) => new CancelarEncerramento(d.unidade, d.encerramentos, d.trilha, r),
+    },
+    {
+      provide: ConsultarEncerramento,
+      inject: [RELOGIO],
+      useFactory: (r: Clock) => new ConsultarEncerramento(d.unidade, d.encerramentos, r),
     },
   ];
 }
@@ -828,6 +852,7 @@ export class AppModule {
           trilha: new TrilhaPostgres(),
           outbox: new OutboxPostgres(),
           armazenamento: arquivosDoAmbiente(opcoes.ambiente),
+          encerramentos: new EncerramentosPostgres(),
         },
       ),
       ...provedoresDosTermos(

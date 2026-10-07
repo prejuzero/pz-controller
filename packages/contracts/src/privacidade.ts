@@ -56,4 +56,51 @@ export const consultarExportacao = definirRota({
   erros: [404],
 });
 
-export const ROTAS_PRIVACIDADE = [solicitarExportacao, consultarExportacao] as const;
+export const EncerramentoDaConta = nomear(
+  'EncerramentoDaConta',
+  z.object({
+    situacao: z
+      .enum(['nenhum', 'em-carencia', 'vencido', 'cancelado', 'efetivado'])
+      .describe('Carência de 30 dias: até `efetivarEm` o responsável pode cancelar.'),
+    solicitadoEm: Instante.nullable(),
+    efetivarEm: Instante.nullable(),
+  }),
+);
+export type EncerramentoDaConta = z.infer<typeof EncerramentoDaConta.esquema>;
+
+export const consultarEncerramento = definirRota({
+  id: 'consultarEncerramento',
+  metodo: 'get',
+  caminho: '/v1/privacidade/encerramento',
+  resumo: 'Situação do encerramento da conta do escritório.',
+  tag: 'privacidade',
+  resposta: { status: 200, corpo: EncerramentoDaConta },
+});
+
+export const solicitarEncerramento = definirRota({
+  id: 'solicitarEncerramento',
+  metodo: 'post',
+  caminho: '/v1/privacidade/encerramento',
+  resumo:
+    'Pede o encerramento da conta: após 30 dias, dados de negócio são apagados e provas pseudonimizadas.',
+  tag: 'privacidade',
+  resposta: { status: 202, corpo: EncerramentoDaConta },
+});
+
+export const cancelarEncerramento = definirRota({
+  id: 'cancelarEncerramento',
+  metodo: 'post',
+  caminho: '/v1/privacidade/encerramento/cancelar',
+  resumo: 'Cancela o pedido de encerramento dentro da carência.',
+  tag: 'privacidade',
+  resposta: { status: 204, corpo: null },
+  erros: [404, 409],
+});
+
+export const ROTAS_PRIVACIDADE = [
+  solicitarExportacao,
+  consultarExportacao,
+  consultarEncerramento,
+  solicitarEncerramento,
+  cancelarEncerramento,
+] as const;

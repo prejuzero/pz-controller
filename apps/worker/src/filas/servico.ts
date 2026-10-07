@@ -8,6 +8,7 @@ import {
   registrarErro,
   registrarSituacaoDasFilas,
 } from '@pz/observability';
+import { EfetivarEncerramentos } from '@pz/privacidade';
 
 import {
   agendamentoDaCaptura,
@@ -28,6 +29,7 @@ import {
   UNIDADE_DOS_WEBHOOKS,
 } from '../fichas.js';
 import { processarWebhook, tratarWebhook } from '../integracoes/webhooks.js';
+import { AGENDAMENTO_DOS_ENCERRAMENTOS, efetivarEncerramentosJob } from '../privacidade/jobs.js';
 
 import {
   AGENDAMENTOS,
@@ -69,6 +71,8 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     @Inject(AMBIENTE) private readonly ambiente: AmbienteWorker,
     @Inject(PlanejarCaptura) private readonly planejarCaptura: PlanejarCaptura<unknown>,
     @Inject(ExecutarCaptura) private readonly executarCaptura: ExecutarCaptura<unknown>,
+    @Inject(EfetivarEncerramentos)
+    private readonly efetivarEncerramentos: EfetivarEncerramentos<unknown>,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -120,7 +124,15 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
       const resultado = await this.executarCaptura.executar(dados);
       logger.info({ alvoId: dados.alvoId, ...resultado }, 'captura executada');
     });
-    const agendamentos = [...AGENDAMENTOS, agendamentoDaCaptura(this.ambiente.CAPTURA_CRON)];
+    this.filas.registrar(efetivarEncerramentosJob, async () => {
+      const encerrados = await this.efetivarEncerramentos.executar();
+      logger.info({ tenants: encerrados.length }, 'encerramentos de conta efetivados');
+    });
+    const agendamentos = [
+      ...AGENDAMENTOS,
+      agendamentoDaCaptura(this.ambiente.CAPTURA_CRON),
+      AGENDAMENTO_DOS_ENCERRAMENTOS,
+    ];
     this.filas.validarAgendamentos(agendamentos);
     this.filas.iniciar();
     // Sem esperar o Redis: com ele fora, o worker sobe e a prontidão mostra a falha; os
