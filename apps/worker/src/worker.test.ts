@@ -1,3 +1,4 @@
+import { EVENTOS_AUDITADOS } from '@pz/auditoria';
 import { carregarAmbiente } from '@pz/config/env';
 import { FixedClock, gerarUuidV7, Instant, OutboxEmMemoria } from '@pz/kernel';
 import { EnviarNotificacao } from '@pz/notificacoes';
@@ -139,6 +140,16 @@ describe('@Consome e o despachante', () => {
         ['NotificacaoRejeitada@1', ['ConsumidorDeAuditoria.notificacaoRejeitada']],
       ]),
     );
+  });
+
+  it('todo evento do ConsumidorDeAuditoria tem mapeamento na trilha (senão vai para a DLQ)', async () => {
+    const { worker: app } = await subir();
+    const auditados = [...app.get(DespachanteDeEventos).inscritos()]
+      .filter(([, consumidores]) =>
+        consumidores.some((c) => c.startsWith('ConsumidorDeAuditoria.')),
+      )
+      .map(([chave]) => chave.split('@')[0]);
+    for (const tipo of auditados) expect(EVENTOS_AUDITADOS).toContain(tipo);
   });
 
   it('verificação → outbox → consumidor inscrito, uma vez só por consumidor', async () => {

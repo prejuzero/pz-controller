@@ -28,6 +28,13 @@ const MAPA: Readonly<Record<string, (payload: Payload) => EntradaDeAuditoria>> =
     entidade: 'usuario',
     entidadeId: String(p.usuarioId),
   }),
+  // HU30. Sem o detalhe do provedor: pode trazer o endereço de e-mail (minimização, LGPD).
+  NotificacaoRejeitada: (p) => ({
+    tipo: 'notificacoes.notificacao-rejeitada',
+    entidade: 'notificacao',
+    entidadeId: String(p.notificacaoId),
+    depois: { canal: p.canal, tipo: p.tipo, motivo: p.motivo },
+  }),
 };
 
 export const EVENTOS_AUDITADOS = Object.keys(MAPA);

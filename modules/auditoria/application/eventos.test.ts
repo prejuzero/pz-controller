@@ -37,6 +37,8 @@ describe('eventos de domínio na trilha (HU08)', () => {
           motivo: 'usuario',
           bloqueadaAte: 'x',
           tokenCifrado: 'segredo',
+          notificacaoId: gerarUuidV7(),
+          detalhe: 'segredo',
         }),
       );
     }
@@ -44,7 +46,7 @@ describe('eventos de domínio na trilha (HU08)', () => {
     for (const { entrada, origem } of registrados) {
       expect(EntradaDeAuditoria.parse(entrada)).toEqual(entrada);
       expect(origem).toEqual({ canal: 'evento', usuarioId });
-      expect(JSON.stringify(entrada)).not.toContain('segredo'); // token nunca vai para a trilha
+      expect(JSON.stringify(entrada)).not.toContain('segredo'); // token e detalhe fora da trilha
     }
   });
 
