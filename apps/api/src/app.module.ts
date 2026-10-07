@@ -95,6 +95,14 @@ import {
   SupressaoPostgres,
 } from '@pz/notificacoes';
 import { criarLogger, registrarErro } from '@pz/observability';
+import {
+  AprovarVersaoDaTabela,
+  CadastrarTipoDeAto,
+  ConsultarTabelaDePrazos,
+  ProporVersaoDaTabela,
+  TabelaPostgres,
+  TiposDeAtoPostgres,
+} from '@pz/prazos';
 import { ConsultarSituacao, VerificadorHttp, VerificadorTcp } from '@pz/saude';
 import { Redis } from 'ioredis';
 
@@ -118,6 +126,7 @@ import { GuardaDeLimite, JanelaRedis } from './http/limite.js';
 import { FiltroDeProblemas } from './http/problemas.js';
 import { NotificacoesController } from './notificacoes/notificacoes.controller.js';
 import { OpenApiController } from './openapi.controller.js';
+import { TabelaPrazosController } from './prazos/tabela-prazos.controller.js';
 import { SaudeController, SondasController } from './saude/saude.controller.js';
 import { WebhooksController } from './webhooks/webhooks.controller.js';
 
@@ -164,6 +173,7 @@ import type {
   RepositorioDeDestinosPush,
   RepositorioDeNotificacoes,
 } from '@pz/notificacoes';
+import type { RepositorioDaTabela, RepositorioDeTiposDeAto } from '@pz/prazos';
 import type { VerificadorDeDependencia } from '@pz/saude';
 import type { Queue } from 'bullmq';
 
@@ -199,6 +209,8 @@ export interface OpcoesApi {
   /** DLQ, banco e trilha do reprocessamento e filas do painel nos testes (sem Redis). */
   /** Calendário forense (HU13); nos testes, repositórios em memória. */
   readonly calendario?: DependenciasDoCalendario;
+  /** Tabela de prazos (HU15); nos testes, repositórios em memória. */
+  readonly tabelaDePrazos?: DependenciasDaTabelaDePrazos;
   /** Cadastro do advogado (HU11); nos testes, repositórios em memória. */
   readonly cadastro?: (relogio: Clock) => DependenciasDoCadastro;
   /** Avisos de entrega do portal (HU30); nos testes, repositórios em memória. */
@@ -265,6 +277,39 @@ interface DependenciasDoCalendario {
   readonly outbox: Outbox<unknown>;
   /** Ausente: sem cache (testes). */
   readonly cache?: CacheDeDiasNaoUteis;
+}
+
+interface DependenciasDaTabelaDePrazos {
+  readonly unidade: UnidadeDeTrabalho<unknown>;
+  readonly tipos: RepositorioDeTiposDeAto<unknown>;
+  readonly tabela: RepositorioDaTabela<unknown>;
+  readonly trilha: TrilhaDeAuditoria<unknown>;
+  readonly outbox: Outbox<unknown>;
+}
+
+/** Casos de uso da tabela de prazos (HU15). */
+function provedoresDaTabelaDePrazos(d: DependenciasDaTabelaDePrazos): Provider[] {
+  return [
+    {
+      provide: CadastrarTipoDeAto,
+      useValue: new CadastrarTipoDeAto(d.unidade, d.tipos, d.trilha),
+    },
+    {
+      provide: ProporVersaoDaTabela,
+      inject: [RELOGIO],
+      useFactory: (r: Clock) => new ProporVersaoDaTabela(d.unidade, d.tipos, d.tabela, d.trilha, r),
+    },
+    {
+      provide: AprovarVersaoDaTabela,
+      inject: [RELOGIO],
+      useFactory: (r: Clock) =>
+        new AprovarVersaoDaTabela(d.unidade, d.tabela, d.trilha, d.outbox, r),
+    },
+    {
+      provide: ConsultarTabelaDePrazos,
+      useValue: new ConsultarTabelaDePrazos(d.unidade, d.tipos, d.tabela),
+    },
+  ];
 }
 
 /** Casos de uso do calendário (HU13), ligados aos mesmos repositórios. */
@@ -681,6 +726,15 @@ export class AppModule {
       { provide: ReprocessarJobMorto, useValue: new ReprocessarJobMorto(filas.reprocessamento) },
       { provide: FILAS_DO_PAINEL, useValue: filas.painel },
       ...provedoresDoCalendario(calendario),
+      ...provedoresDaTabelaDePrazos(
+        opcoes.tabelaDePrazos ?? {
+          unidade: recursos.banco,
+          tipos: new TiposDeAtoPostgres(),
+          tabela: new TabelaPostgres(),
+          trilha: new TrilhaPostgres(),
+          outbox: new OutboxPostgres(),
+        },
+      ),
       ...provedoresDoCadastro(cadastro),
       {
         provide: VerificarEmail,
@@ -711,6 +765,7 @@ export class AppModule {
         AuthController,
         AdminController,
         CalendarioController,
+        TabelaPrazosController,
         CadastroController,
         ProcessosController,
         NotificacoesController,

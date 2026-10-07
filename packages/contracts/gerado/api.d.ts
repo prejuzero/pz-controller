@@ -104,6 +104,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/tabela-prazos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Versões da tabela (rascunhos e aprovadas), por ato e ramo. */
+        get: operations["listarVersoesDaTabela"];
+        put?: never;
+        /** Propõe uma versão; só vale depois de aprovada por outro curador. */
+        post: operations["proporVersaoDaTabela"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/tabela-prazos/{id}/aprovar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Aprova uma versão proposta por outro curador (quatro olhos). */
+        post: operations["aprovarVersaoDaTabela"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/tabela-prazos/tipos-de-ato": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Taxonomia única de tipos de ato. */
+        get: operations["listarTiposDeAto"];
+        put?: never;
+        /** Cadastra um tipo de ato na taxonomia. */
+        post: operations["cadastrarTipoDeAto"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/2fa/ativar": {
         parameters: {
             query?: never;
@@ -1042,6 +1095,13 @@ export interface components {
             /** @description Vai para a auditoria. */
             motivo: string;
         };
+        PedidoDeTipoDeAto: {
+            /** @description Código da taxonomia única (kebab-case). */
+            codigo: string;
+            nome: string;
+            descricao: string;
+            sinonimos?: string[];
+        };
         PedidoDeTokensDeDispositivo: {
             /** @enum {string} */
             tipoCliente: "web" | "mobile" | "mcp" | "integrador";
@@ -1050,6 +1110,30 @@ export interface components {
         PedidoDeVerificacaoDeEmail: {
             /** @description Token do link enviado por e-mail. */
             token: string;
+        };
+        PedidoDeVersaoDaTabela: {
+            /** @description Código da taxonomia única (kebab-case). */
+            tipoAto: string;
+            /** @enum {string} */
+            ramo: "civel" | "juizados" | "trabalhista" | "penal";
+            /** @description Quantidade, na unidade indicada. */
+            dias: number;
+            /**
+             * @description Fora de dias, só há cálculo com regra específica cadastrada.
+             * @enum {string}
+             */
+            unidade: "dias" | "horas" | "meses" | "anos";
+            /** @description Dispositivo legal (lei, artigo, parágrafo). */
+            fundamento: string;
+            /**
+             * Format: uri
+             * @description Link HTTPS da fonte oficial.
+             */
+            fonteUrl: string;
+            /** Format: date */
+            vigenciaInicio: string;
+            /** Format: date */
+            vigenciaFim?: string;
         };
         PerfilDoAdvogado: {
             /** Format: uuid */
@@ -1155,6 +1239,16 @@ export interface components {
             /** Format: date-time */
             verificadoEm: string;
         };
+        TipoDeAto: {
+            /** @description Código da taxonomia única (kebab-case). */
+            codigo: string;
+            nome: string;
+            descricao: string;
+            sinonimos: string[];
+        };
+        TiposDeAto: {
+            itens: components["schemas"]["TipoDeAto"][];
+        };
         TokensDeDispositivo: {
             /** Format: uuid */
             dispositivoId: string;
@@ -1166,6 +1260,40 @@ export interface components {
             tokenDeRenovacao: string;
             /** Format: date-time */
             renovacaoExpiraEm: string;
+        };
+        VersaoDaTabela: {
+            /** Format: uuid */
+            id: string;
+            /** @description Código da taxonomia única (kebab-case). */
+            tipoAto: string;
+            /** @enum {string} */
+            ramo: "civel" | "juizados" | "trabalhista" | "penal";
+            versao: number;
+            dias: number;
+            /**
+             * @description Fora de dias, só há cálculo com regra específica cadastrada.
+             * @enum {string}
+             */
+            unidade: "dias" | "horas" | "meses" | "anos";
+            fundamento: string;
+            fonteUrl: string;
+            /** Format: date */
+            vigenciaInicio: string;
+            vigenciaFim: string | null;
+            /**
+             * @description Só a aprovada entra no cálculo.
+             * @enum {string}
+             */
+            status: "rascunho" | "aprovado";
+            /** Format: uuid */
+            propostoPor: string;
+            /** Format: date-time */
+            propostoEm: string;
+            aprovadoPor: string | null;
+            aprovadoEm: string | null;
+        };
+        VersoesDaTabela: {
+            itens: components["schemas"]["VersaoDaTabela"][];
         };
         WebhookAceito: {
             /** @description O mesmo webhook (ID externo) já tinha sido recebido. */
@@ -1699,6 +1827,327 @@ export interface operations {
             };
             /** @description Sem permissão. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarVersoesDaTabela: {
+        parameters: {
+            query?: {
+                /** @description Código da taxonomia única (kebab-case). */
+                tipoAto?: string;
+                ramo?: "civel" | "juizados" | "trabalhista" | "penal";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersoesDaTabela"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    proporVersaoDaTabela: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeVersaoDaTabela"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersaoDaTabela"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    aprovarVersaoDaTabela: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersaoDaTabela"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarTiposDeAto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TiposDeAto"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    cadastrarTipoDeAto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeTipoDeAto"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TipoDeAto"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -27,6 +27,11 @@ export const chaves = {
     lista: (filtros: object) => [...chaves.processos.todas, 'lista', filtros] as const,
     detalhe: (id: string) => [...chaves.processos.todas, 'detalhe', id] as const,
   },
+  tabelaPrazos: {
+    todas: ['tabelaPrazos'] as const,
+    tipos: () => [...chaves.tabelaPrazos.todas, 'tipos'] as const,
+    versoes: () => [...chaves.tabelaPrazos.todas, 'versoes'] as const,
+  },
   clientes: {
     todas: ['clientes'] as const,
     lista: () => [...chaves.clientes.todas, 'lista'] as const,

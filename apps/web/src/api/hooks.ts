@@ -10,6 +10,7 @@ import { consultasCalendario, mutacoesCalendario } from './calendario';
 import { consultasNotificacoes } from './notificacoes';
 import { consultasProcessos, mutacoesProcessos, type FiltrosProcessos } from './processos';
 import { consultasSessao, mutacoesSessao } from './sessao';
+import { consultasTabelaPrazos, mutacoesTabelaPrazos } from './tabela-prazos';
 
 import type { ClienteApi } from './cliente';
 
@@ -58,6 +59,16 @@ export const useSolicitarRedefinicao = () => useMutation(useMutacoesSessao().sol
 export const useRedefinirSenha = () => useMutation(useMutacoesSessao().redefinirSenha);
 export const useRevogarDispositivo = () => useMutation(useMutacoesSessao().revogarDispositivo);
 export const useSair = () => useMutation(useMutacoesSessao().sair);
+
+function useMutacoesTabelaPrazos() {
+  return mutacoesTabelaPrazos(useApi(), useQueryClient());
+}
+
+export const useTiposDeAto = () => useQuery(consultasTabelaPrazos(useApi()).tiposDeAto());
+export const useVersoesDaTabela = () => useQuery(consultasTabelaPrazos(useApi()).versoes());
+export const useCadastrarTipoDeAto = () => useMutation(useMutacoesTabelaPrazos().cadastrarTipo);
+export const useProporVersao = () => useMutation(useMutacoesTabelaPrazos().propor);
+export const useAprovarVersao = () => useMutation(useMutacoesTabelaPrazos().aprovar);
 
 function useMutacoesCalendario() {
   return mutacoesCalendario(useApi(), useQueryClient());

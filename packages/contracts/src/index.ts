@@ -27,6 +27,7 @@ import { ROTAS_PROCESSOS } from './cadastro/processos.js';
 import { ROTAS_CALENDARIO } from './calendario/index.js';
 import { ROTAS_NOTIFICACOES } from './notificacoes/index.js';
 import { gerarOpenApi } from './openapi.js';
+import { ROTAS_TABELA_PRAZOS } from './prazos/index.js';
 import { ROTAS_SAUDE } from './saude/index.js';
 import { ROTAS_WEBHOOKS } from './webhooks/index.js';
 
@@ -110,6 +111,20 @@ export {
   ROTAS_CALENDARIO,
 } from './calendario/index.js';
 export {
+  aprovarVersaoDaTabela,
+  cadastrarTipoDeAto,
+  listarTiposDeAto,
+  listarVersoesDaTabela,
+  PedidoDeTipoDeAto,
+  PedidoDeVersaoDaTabela,
+  proporVersaoDaTabela,
+  ROTAS_TABELA_PRAZOS,
+  TipoDeAto,
+  TiposDeAto,
+  VersaoDaTabela,
+  VersoesDaTabela,
+} from './prazos/index.js';
+export {
   CABECALHO_IDEMPOTENCIA,
   ChaveIdempotencia,
   ConsultaPaginada,
@@ -165,6 +180,7 @@ export const ROTAS = [
   ...ROTAS_CADASTRO,
   ...ROTAS_PROCESSOS,
   ...ROTAS_CALENDARIO,
+  ...ROTAS_TABELA_PRAZOS,
   ...ROTAS_NOTIFICACOES,
   ...ROTAS_SAUDE,
   ...ROTAS_WEBHOOKS,
