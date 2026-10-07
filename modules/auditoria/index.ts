@@ -9,7 +9,13 @@ export type {
   ResultadoDaVerificacao,
 } from './domain/cadeia.js';
 export { jsonCanonico } from './domain/canonico.js';
-export { sha256, TrilhaPostgres } from './infra/trilha-postgres.js';
+export {
+  dadoPessoal,
+  MARCADOR_DADO_PESSOAL,
+  substituirDadosPessoais,
+} from './domain/dados-pessoais.js';
+export type { DadoPessoalMarcado } from './domain/dados-pessoais.js';
+export { DadosPessoaisDaTrilhaPostgres, sha256, TrilhaPostgres } from './infra/trilha-postgres.js';
 export { ConsultarTrecho, VerificarIntegridade } from './application/integridade.js';
 export type {
   Checkpoint,

@@ -18,6 +18,11 @@ export interface RegistroDeAuditoria {
   readonly userAgent: string | null;
   readonly antes: unknown;
   readonly depois: unknown;
+  /**
+   * Referências aos dados pessoais da origem (ADR-018), campo -> id. Ausente nos registros
+   * anteriores ao ADR-018: o JSON canônico omite o campo e o hash antigo continua valendo.
+   */
+  readonly dadosPessoais?: Readonly<Record<string, string>>;
   /** Instante do banco, em ISO 8601 UTC com milissegundos. */
   readonly criadoEm: string;
 }

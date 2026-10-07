@@ -1,9 +1,10 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 
 import { gerarUuidV7 } from '@pz/kernel';
 
 import { EntradaDeAuditoria } from '../application/portas.js';
 import { calcularHash, HASH_GENESE } from '../domain/cadeia.js';
+import { substituirDadosPessoais } from '../domain/dados-pessoais.js';
 
 import type { OrigemDaAuditoria, TrilhaDeAuditoria } from '../application/portas.js';
 import type { RegistroDeAuditoria, RegistroEncadeado } from '../domain/cadeia.js';
@@ -31,6 +32,18 @@ export class TrilhaPostgres implements TrilhaDeAuditoria<Transacao> {
     const [ultimo] = await tx.$queryRaw<{ sequencia: bigint; hash: string }[]>`
       SELECT sequencia, hash FROM evento_auditoria
        WHERE tenant_id = ${tenantId}::uuid ORDER BY sequencia DESC LIMIT 1`;
+    // ADR-018: IP, navegador e valores marcados vão para auditoria_dado_pessoal; o evento (e o
+    // hash) leva só as referências, e o valor pode ser pseudonimizado sem quebrar a cadeia.
+    const pessoais: { id: string; campo: string; valor: string }[] = [];
+    const guardar = (campo: string, valor: string) => {
+      const id = gerarUuidV7();
+      pessoais.push({ id, campo, valor });
+      return id;
+    };
+    const referencias: Record<string, string> = {};
+    if (origem.ip !== undefined) referencias.ip = guardar('ip', origem.ip);
+    if (origem.userAgent !== undefined)
+      referencias.userAgent = guardar('userAgent', origem.userAgent);
     const registro: RegistroDeAuditoria = {
       id: gerarUuidV7(),
       tenantId,
@@ -41,21 +54,31 @@ export class TrilhaPostgres implements TrilhaDeAuditoria<Transacao> {
       usuarioId: origem.usuarioId ?? null,
       usuarioRealId: origem.usuarioRealId ?? null,
       canal: origem.canal,
-      ip: origem.ip ?? null,
-      userAgent: origem.userAgent ?? null,
-      antes: valida.antes ?? null,
-      depois: valida.depois ?? null,
+      ip: null,
+      userAgent: null,
+      antes: substituirDadosPessoais(valida.antes ?? null, (v) => guardar('antes', v)),
+      depois: substituirDadosPessoais(valida.depois ?? null, (v) => guardar('depois', v)),
+      ...(Object.keys(referencias).length === 0 ? {} : { dadosPessoais: referencias }),
       criadoEm: (contexto?.agora ?? new Date(Number.NaN)).toISOString(),
     };
+    for (const { id, campo, valor } of pessoais) {
+      const sal = randomBytes(16).toString('hex');
+      await tx.$executeRaw`
+        INSERT INTO auditoria_dado_pessoal (id, tenant_id, usuario_id, campo, valor, sal, compromisso)
+        VALUES (${id}::uuid, ${tenantId}::uuid, ${registro.usuarioId}::uuid, ${campo}, ${valor}, ${sal},
+          ${sha256(sal + valor)})`;
+    }
     const hashAnterior = ultimo?.hash ?? HASH_GENESE;
     const hash = calcularHash(hashAnterior, registro, sha256);
     await tx.$executeRaw`
       INSERT INTO evento_auditoria (id, tenant_id, sequencia, tipo, entidade, entidade_id, usuario_id,
-        usuario_real_id, canal, ip, user_agent, antes, depois, criado_em, hash_anterior, hash)
+        usuario_real_id, canal, ip, user_agent, antes, depois, dados_pessoais, criado_em, hash_anterior, hash)
       VALUES (${registro.id}::uuid, ${tenantId}::uuid, ${BigInt(registro.sequencia)}, ${registro.tipo},
         ${registro.entidade}, ${registro.entidadeId}, ${registro.usuarioId}::uuid, ${registro.usuarioRealId}::uuid,
         ${registro.canal}, ${registro.ip}, ${registro.userAgent}, ${JSON.stringify(registro.antes)}::jsonb,
-        ${JSON.stringify(registro.depois)}::jsonb, ${contexto?.agora}, ${hashAnterior}, ${hash})`;
+        ${JSON.stringify(registro.depois)}::jsonb,
+        ${registro.dadosPessoais === undefined ? null : JSON.stringify(registro.dadosPessoais)}::jsonb,
+        ${contexto?.agora}, ${hashAnterior}, ${hash})`;
   }
 
   /** Trecho da cadeia do tenant, em ordem, a partir de uma sequência (filtro explícito: o verificador roda como sistema). */
@@ -80,6 +103,7 @@ export class TrilhaPostgres implements TrilhaDeAuditoria<Transacao> {
         user_agent: string | null;
         antes: unknown;
         depois: unknown;
+        dados_pessoais: Record<string, string> | null;
         criado_em: Date;
         hash_anterior: string;
         hash: string;
@@ -100,9 +124,27 @@ export class TrilhaPostgres implements TrilhaDeAuditoria<Transacao> {
       userAgent: l.user_agent,
       antes: l.antes,
       depois: l.depois,
+      ...(l.dados_pessoais === null ? {} : { dadosPessoais: l.dados_pessoais }),
       criadoEm: l.criado_em.toISOString(),
       hashAnterior: l.hash_anterior,
       hash: l.hash,
     }));
+  }
+}
+
+/**
+ * Pseudonimização dos dados pessoais da trilha (ADR-018, LGPD): apaga valor e sal; o
+ * compromisso e as referências no evento ficam, e a cadeia continua válida. Roda como sistema.
+ */
+export class DadosPessoaisDaTrilhaPostgres {
+  async pseudonimizar(tx: Transacao, tenantId: string, usuarioId?: string): Promise<number> {
+    return usuarioId === undefined
+      ? tx.$executeRaw`
+          UPDATE auditoria_dado_pessoal SET valor = NULL, sal = NULL, pseudonimizado_em = now()
+           WHERE tenant_id = ${tenantId}::uuid AND pseudonimizado_em IS NULL`
+      : tx.$executeRaw`
+          UPDATE auditoria_dado_pessoal SET valor = NULL, sal = NULL, pseudonimizado_em = now()
+           WHERE tenant_id = ${tenantId}::uuid AND usuario_id = ${usuarioId}::uuid
+             AND pseudonimizado_em IS NULL`;
   }
 }
