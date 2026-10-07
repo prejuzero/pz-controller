@@ -1,0 +1,135 @@
+import { err, ok, Validacao } from '@pz/kernel';
+import { z } from 'zod';
+
+import { Notificacao, TIPOS_DE_NOTIFICACAO } from '../domain/notificacao.js';
+
+import { renderizar, TEMPLATES } from './templates.js';
+
+import type {
+  DestinosDoUsuario,
+  EnviadorDeCanal,
+  ListaDeSupressao,
+  PreferenciasDeNotificacao,
+  RepositorioDeNotificacoes,
+} from './portas.js';
+import type { Canal } from '../domain/notificacao.js';
+import type { Clock, Outbox, Result, Uuid } from '@pz/kernel';
+
+export const PedidoDeNotificacao = z
+  .object({
+    tipo: z.enum(TIPOS_DE_NOTIFICACAO),
+    tenantId: z.uuid(),
+    usuarioId: z.uuid(),
+    prazoId: z.uuid().optional(),
+    /** Janela da idempotência (ex.: o dia do lembrete, AAAA-MM-DD). */
+    janela: z.string().min(1).max(40),
+    dados: z.unknown(),
+  })
+  .strict();
+
+export type ResultadoDoPedido =
+  | { readonly solicitada: true; readonly notificacaoId: Uuid }
+  | {
+      readonly solicitada: false;
+      readonly motivo: 'ja-solicitada' | 'desativada' | 'sem-destinatario';
+    };
+
+/**
+ * Pede uma notificação (HU30): resolve preferência e destinatários (sem os suprimidos), valida os
+ * dados no template e grava a notificação e o evento na mesma transação; o worker envia.
+ * Canal novo = novo enviador e opção nas preferências, sem mudar este caso de uso.
+ */
+export class Notificar<Transacao> {
+  constructor(
+    private readonly notificacoes: RepositorioDeNotificacoes<Transacao>,
+    private readonly preferencias: PreferenciasDeNotificacao<Transacao>,
+    private readonly destinos: DestinosDoUsuario<Transacao>,
+    private readonly supressao: ListaDeSupressao<Transacao>,
+    private readonly outbox: Outbox<Transacao>,
+    private readonly relogio: Clock,
+  ) {}
+
+  async executar(
+    transacao: Transacao,
+    entrada: unknown,
+    canal: Canal = 'email',
+  ): Promise<Result<ResultadoDoPedido, Validacao>> {
+    const pedido = PedidoDeNotificacao.safeParse(entrada);
+    if (!pedido.success) return err(problemas(pedido.error));
+    const { tipo, usuarioId, tenantId, prazoId, janela } = pedido.data;
+    const dados = TEMPLATES[tipo].dados.safeParse(pedido.data.dados);
+    if (!dados.success) return err(problemas(dados.error, 'dados'));
+
+    const uid = usuarioId as Uuid;
+    if ((await this.preferencias.ativo(transacao, uid, tipo, canal)) === false)
+      return ok({ solicitada: false, motivo: 'desativada' });
+    const { principal, copias } = await this.destinos.emails(transacao, uid);
+    const todos = [
+      ...new Set(
+        [principal, ...copias]
+          .filter((e): e is string => e !== undefined)
+          .map((e) => e.trim().toLowerCase()),
+      ),
+    ];
+    const suprimidos = await this.supressao.suprimidos(transacao, todos);
+    const destinatarios = todos.filter((e) => !suprimidos.has(e));
+    if (destinatarios.length === 0) return ok({ solicitada: false, motivo: 'sem-destinatario' });
+
+    const notificacao = Notificacao.solicitar(
+      {
+        tenantId: tenantId as Uuid,
+        usuarioId: uid,
+        ...(prazoId === undefined ? {} : { prazoId: prazoId as Uuid }),
+        canal,
+        tipo,
+        versaoTemplate: TEMPLATES[tipo].versao,
+        destinatarios,
+        dados: dados.data,
+        janela,
+      },
+      this.relogio,
+    );
+    if (!(await this.notificacoes.inserir(transacao, notificacao)))
+      return ok({ solicitada: false, motivo: 'ja-solicitada' });
+    await this.outbox.gravar(transacao, notificacao.retirarEventos());
+    return ok({ solicitada: true, notificacaoId: notificacao.id });
+  }
+}
+
+/**
+ * Envia a notificação solicitada (consumidor de NotificacaoSolicitada). Idempotente: já enviada
+ * não sai de novo, e o provedor recebe a chave de idempotência da notificação.
+ */
+export class EnviarNotificacao<Transacao> {
+  constructor(
+    private readonly notificacoes: RepositorioDeNotificacoes<Transacao>,
+    private readonly enviadores: Partial<Record<Canal, EnviadorDeCanal>>,
+    private readonly relogio: Clock,
+  ) {}
+
+  async executar(transacao: Transacao, notificacaoId: Uuid): Promise<void> {
+    const notificacao = await this.notificacoes.buscar(transacao, notificacaoId);
+    if (notificacao === undefined) throw new Error(`Notificação ${notificacaoId} não encontrada`);
+    if (notificacao.enviada) return;
+    const { canal, tipo, dados, chave, destinatarios } = notificacao.estado;
+    const enviador = this.enviadores[canal];
+    // Nada falha em silêncio: sem enviador o evento vai para a DLQ com o motivo.
+    if (enviador === undefined) throw new Error(`Canal ${canal} sem enviador configurado`);
+    const resultado = await enviador.enviar({
+      idempotencia: chave,
+      destinatarios,
+      mensagem: renderizar(tipo, dados),
+    });
+    notificacao.registrarEnvio(resultado.idExterno, this.relogio.agora());
+    await this.notificacoes.registrarEnvio(transacao, notificacao);
+  }
+}
+
+function problemas(erro: z.ZodError, prefixo?: string): Validacao {
+  return new Validacao(
+    erro.issues.map((p) => ({
+      campo: [prefixo, ...p.path].filter((x) => x !== undefined).join('.'),
+      mensagem: p.message,
+    })),
+  );
+}
