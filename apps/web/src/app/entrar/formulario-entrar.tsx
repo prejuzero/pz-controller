@@ -10,7 +10,7 @@ import { useForm } from 'react-hook-form';
 
 import { useEntrar } from '../../api/hooks';
 import { chaveValidacao } from '../../formularios';
-import { destinoAposEntrar, ROTA_RECUPERAR_SENHA } from '../../rotas';
+import { destinoAposEntrar, ROTA_CADASTRO, ROTA_RECUPERAR_SENHA } from '../../rotas';
 import { AlertaFormulario } from '../_acesso/alerta-formulario';
 
 export function FormularioEntrar({ retorno }: { retorno: string | undefined }) {
@@ -59,6 +59,12 @@ export function FormularioEntrar({ retorno }: { retorno: string | undefined }) {
         className="justify-self-center text-sm text-texto underline underline-offset-4"
       >
         {t('entrar.esqueciSenha')}
+      </Link>
+      <Link
+        href={ROTA_CADASTRO}
+        className="justify-self-center text-sm text-texto underline underline-offset-4"
+      >
+        {t('entrar.criarConta')}
       </Link>
     </form>
   );

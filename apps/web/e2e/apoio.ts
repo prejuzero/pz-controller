@@ -36,7 +36,7 @@ function base32(texto: string): Buffer {
 }
 
 /** RFC 6238 (HMAC-SHA1, 6 dígitos, passo de 30 s), como o autenticador do celular. */
-function codigoTotp(segredo: string, passo: number): string {
+export function codigoTotp(segredo: string, passo: number): string {
   const contador = Buffer.alloc(8);
   contador.writeBigUInt64BE(BigInt(passo));
   const hmac = createHmac('sha1', base32(segredo)).update(contador).digest();

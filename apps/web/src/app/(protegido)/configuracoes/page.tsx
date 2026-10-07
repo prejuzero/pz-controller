@@ -19,6 +19,8 @@ export default async function PaginaConfiguracoes() {
     <div className="max-w-3xl space-y-6">
       <h1 className="text-2xl font-semibold">{t('titulo')}</h1>
       <ul className="divide-y divide-borda rounded-md border border-borda">
+        <Item href="/configuracoes/perfil" titulo={t('perfil')} descricao={t('perfilDescricao')} />
+        <Item href="/configuracoes/oabs" titulo={t('oabs')} descricao={t('oabsDescricao')} />
         <Item href={ROTA_SEGURANCA} titulo={t('seguranca')} descricao={t('segurancaDescricao')} />
         <SePermitido permissao="calendario:ler">
           <Item
