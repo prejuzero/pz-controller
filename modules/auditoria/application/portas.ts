@@ -30,6 +30,7 @@ export const TIPOS_DE_AUDITORIA = [
   'cadastro.cliente-removido',
   'identidade.email-verificado',
   'notificacoes.notificacao-rejeitada',
+  'ia.sugestao-corrigida',
   'notificacoes.consentimento-concedido',
   'notificacoes.consentimento-revogado',
   'notificacoes.destino-push-registrado',

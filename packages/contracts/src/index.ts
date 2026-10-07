@@ -137,6 +137,7 @@ export {
   Uuid,
 } from './comum.js';
 export { formatarNumeroCnj, lerNumeroCnj, TRIBUNAIS, tribunalDoNumero } from './cnj.js';
+export { OrigemIa } from './ia.js';
 export type { PartesDoNumeroCnj, Tribunal } from './cnj.js';
 export {
   CalendarioAlterado,
@@ -149,6 +150,7 @@ export {
   EVENTOS,
   ProcessoMonitorado,
   RedefinicaoDeSenhaSolicitada,
+  SugestaoIaCorrigida,
   SituacaoVerificada,
 } from './eventos/index.js';
 export type { ContratoEvento } from './eventos/index.js';

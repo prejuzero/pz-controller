@@ -35,6 +35,14 @@ const MAPA: Readonly<Record<string, (payload: Payload) => EntradaDeAuditoria>> =
     entidadeId: String(p.notificacaoId),
     depois: { canal: p.canal, tipo: p.tipo, motivo: p.motivo },
   }),
+  // HU58: correção de sugestão de IA, com a origem (modelo e prompt) para a curadoria.
+  SugestaoIaCorrigida: (p) => ({
+    tipo: 'ia.sugestao-corrigida',
+    entidade: String(p.entidade),
+    entidadeId: String(p.entidadeId),
+    antes: { campo: p.campo, valor: p.valorSugerido, origemIa: p.origemIa },
+    depois: { campo: p.campo, valor: p.valorCorrigido },
+  }),
 };
 
 export const EVENTOS_AUDITADOS = Object.keys(MAPA);

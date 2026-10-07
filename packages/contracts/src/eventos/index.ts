@@ -191,6 +191,31 @@ export const CapturaConcluida = definirEvento(
   }),
 );
 
+/**
+ * O advogado corrigiu uma sugestão de IA (HU58): vai para a trilha e para a curadoria. Só
+ * códigos e valores curtos, nunca o teor da publicação.
+ */
+export const SugestaoIaCorrigida = definirEvento(
+  'SugestaoIaCorrigida',
+  1,
+  z.object({
+    entidade: z.string().min(1),
+    entidadeId: z.string().min(1),
+    campo: z.string().min(1),
+    valorSugerido: z.string().max(200),
+    valorCorrigido: z.string().max(200),
+    usuarioId: z.uuid(),
+    origemIa: z.object({
+      modelo: z.string().min(1),
+      provedor: z.string().min(1),
+      versaoPrompt: z.string().min(1),
+      versaoConfiguracao: z.string().min(1),
+      confianca: z.number().min(0).max(1).nullable(),
+      geradoEm: z.iso.datetime(),
+    }),
+  }),
+);
+
 export const EVENTOS = catalogoDeEventos(
   SituacaoVerificada,
   RedefinicaoDeSenhaSolicitada,
@@ -207,4 +232,5 @@ export const EVENTOS = catalogoDeEventos(
   NotificacaoRejeitada,
   ConsentimentoCanalAlterado,
   CapturaConcluida,
+  SugestaoIaCorrigida,
 );
