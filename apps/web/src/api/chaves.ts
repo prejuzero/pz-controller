@@ -22,4 +22,13 @@ export const chaves = {
     global: (ano: number) => [...chaves.calendario.todas, 'global', ano] as const,
     locais: (ano: number) => [...chaves.calendario.todas, 'locais', ano] as const,
   },
+  processos: {
+    todas: ['processos'] as const,
+    lista: (filtros: object) => [...chaves.processos.todas, 'lista', filtros] as const,
+    detalhe: (id: string) => [...chaves.processos.todas, 'detalhe', id] as const,
+  },
+  clientes: {
+    todas: ['clientes'] as const,
+    lista: () => [...chaves.clientes.todas, 'lista'] as const,
+  },
 };

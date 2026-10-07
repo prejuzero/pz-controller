@@ -9,7 +9,7 @@ export const ITENS_MENU = [
   { chave: 'prazos', href: '/prazos', permissao: 'prazos:ler' },
   { chave: 'publicacoes', href: '/publicacoes', permissao: 'publicacoes:ler' },
   { chave: 'busca', href: '/busca' },
-  { chave: 'processos', href: '/processos' },
+  { chave: 'processos', href: '/processos', permissao: 'processos:ler' },
   // O escritório consulta (e informa feriados locais); a curadoria mantém o calendário global (HU13).
   {
     chave: 'calendario',
