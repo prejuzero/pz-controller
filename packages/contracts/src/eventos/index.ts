@@ -266,6 +266,30 @@ export const PublicacaoRecebida = definirEvento(
   }),
 );
 
+/**
+ * Conteúdo classificado (HU21), uma vez por conteúdo (ADR-014). Diz o ato e o prazo citado no
+ * texto, nunca uma data (ADR-008); "a_confirmar" e "revisao_manual" pedem decisão humana.
+ */
+export const PublicacaoClassificada = definirEvento(
+  'PublicacaoClassificada',
+  1,
+  z.object({
+    conteudoId: z.uuid(),
+    origem: z.enum(['regra', 'ia', 'nenhuma']),
+    situacao: z.enum(['ok', 'a_confirmar', 'revisao_manual']),
+    tipoAto: z.string().min(1).nullable(),
+    confianca: z.number().min(0).max(1).nullable(),
+    prazoCitado: z
+      .object({
+        quantidade: z.number().int().positive(),
+        unidade: z.enum(['dias', 'dias-uteis', 'horas', 'meses', 'anos']),
+        unidadeImplicita: z.boolean(),
+        divergente: z.boolean(),
+      })
+      .nullable(),
+  }),
+);
+
 export const EVENTOS = catalogoDeEventos(
   SituacaoVerificada,
   RedefinicaoDeSenhaSolicitada,
@@ -285,6 +309,7 @@ export const EVENTOS = catalogoDeEventos(
   SugestaoIaCorrigida,
   ExportacaoDeDadosSolicitada,
   PublicacaoNova,
+  PublicacaoClassificada,
   PublicacaoRecebida,
   FonteDegradada,
   FonteRestabelecida,

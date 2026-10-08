@@ -16,3 +16,4 @@ export type {
 export { ExportacaoDasPublicacoesPostgres } from './infra/exportacao-postgres.js';
 export { LeituraPostgres } from './infra/leitura-postgres.js';
 export { PublicacoesPostgres } from './infra/publicacoes-postgres.js';
+export { TeoresPostgres } from './infra/teores-postgres.js';

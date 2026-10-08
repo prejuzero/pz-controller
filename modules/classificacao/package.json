@@ -15,7 +15,10 @@
   },
   "dependencies": {
     "@pz/db": "workspace:*",
+    "@pz/ia": "workspace:*",
+    "@pz/integracoes": "workspace:*",
     "@pz/kernel": "workspace:*",
+    "@pz/prazos": "workspace:*",
     "zod": "4.6.5"
   },
   "devDependencies": {

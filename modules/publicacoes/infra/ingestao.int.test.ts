@@ -11,6 +11,7 @@ import { ListarPublicacoes, MarcarComoLida } from '../application/leitura.js';
 import { ExportacaoDasPublicacoesPostgres } from './exportacao-postgres.js';
 import { LeituraPostgres } from './leitura-postgres.js';
 import { PublicacoesPostgres } from './publicacoes-postgres.js';
+import { TeoresPostgres } from './teores-postgres.js';
 
 import type { Transacao } from '@pz/db';
 import type { BancoDeTeste } from '@pz/db/teste';
@@ -154,6 +155,16 @@ describe('ingestão no PostgreSQL (HU18)', () => {
     expect(secao?.linhas).toEqual([
       expect.objectContaining({ numeroCnj: '10000040620268260100', fonte: 'djen' }),
     ]);
+    // Teor para a classificação (HU21): visível no escritório que recebeu, invisível nos outros.
+    const conteudo = await sistema.executarComoSistema('conteúdo', (tx) =>
+      tx.publicacaoConteudo.findFirstOrThrow({ select: { id: true, teor: true } }),
+    );
+    const teor = (tenant: Uuid) =>
+      executarNoTenant(tenant, () =>
+        banco.executar((tx) => new TeoresPostgres().teor(tx, conteudo.id as Uuid)),
+      );
+    expect(await teor(A)).toBe(conteudo.teor);
+    expect(await teor(gerarUuidV7())).toBeUndefined();
   });
 
   it('leitura: lista pela view com filtros e cursor; marcar lida audita uma vez; outro tenant não vê', async () => {

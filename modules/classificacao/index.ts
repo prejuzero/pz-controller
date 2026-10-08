@@ -8,3 +8,21 @@ export type { RegraRapida, ResultadoDasRegras } from './domain/regras.js';
 export type { Evidencia } from './domain/texto.js';
 export { RegrasEmMemoria } from './infra/em-memoria.js';
 export { RegrasPostgres } from './infra/regras-postgres.js';
+export { ClassificarPublicacao } from './application/classificar-publicacao.js';
+export type {
+  ClassificadorIa,
+  DependenciasDaClassificacao,
+  LeitorDeTeor,
+  RepositorioDeClassificacoes,
+  Taxonomia,
+  TipoDaTaxonomia,
+} from './application/classificar-publicacao.js';
+export { ATO_DESCONHECIDO, CONFIANCA_MINIMA, decidir } from './domain/decisao.js';
+export type { Classificacao, RespostaDaIa } from './domain/decisao.js';
+export { ClassificacoesPostgres } from './infra/classificacoes-postgres.js';
+export {
+  ClassificadorIaPlataforma,
+  SaidaDaClassificacao,
+  TAREFA as TAREFA_DE_CLASSIFICACAO,
+} from './infra/classificador-ia-plataforma.js';
+export { TaxonomiaPostgres } from './infra/taxonomia-postgres.js';
