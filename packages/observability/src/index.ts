@@ -8,11 +8,13 @@ export type { Logger, OpcoesLogger } from './logger.js';
 export {
   ESTADO_CIRCUITO,
   NOMES_METRICAS,
+  registrarAlvoFalhando,
   registrarChamadaIntegracao,
   registrarDivergenciaDeAuditoria,
   registrarEstadoCircuito,
   registrarJobProcessado,
   registrarRejeicaoEmail,
+  registrarSituacaoDaFonte,
   registrarSituacaoDasFilas,
   registrarWebhookRecusado,
 } from './metricas.js';

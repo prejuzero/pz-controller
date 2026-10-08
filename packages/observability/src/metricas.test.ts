@@ -7,7 +7,9 @@ import {
   registrarErroInesperado,
   registrarEstadoCircuito,
   registrarJobProcessado,
+  registrarAlvoFalhando,
   registrarDivergenciaDeAuditoria,
+  registrarSituacaoDaFonte,
   registrarRejeicaoEmail,
   registrarWebhookRecusado,
   registrarSituacaoDasFilas,
@@ -67,8 +69,16 @@ describe('catálogo de métricas', () => {
     registrarJobProcessado('captura', 'sucesso', 0.2);
     registrarWebhookRecusado('ses');
     registrarDivergenciaDeAuditoria();
+    registrarSituacaoDaFonte('djen', true);
+    registrarAlvoFalhando();
 
     const metricas = await coletar();
+    expect(pontos(metricas.get(NOMES_METRICAS.capturaFonteDegradada))).toEqual([
+      { atributos: { fonte: 'djen' }, valor: 1 },
+    ]);
+    expect(pontos(metricas.get(NOMES_METRICAS.capturaAlvoFalhando))).toEqual([
+      { atributos: {}, valor: 1 },
+    ]);
     expect(pontos(metricas.get(NOMES_METRICAS.webhooksRecusados))).toEqual([
       { atributos: { adaptador: 'ses' }, valor: 1 },
     ]);

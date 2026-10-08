@@ -85,6 +85,27 @@ const pedir = (quem: string, method: 'GET' | 'POST', url: string, payload?: obje
 beforeAll(async () => {
   api = await criarApi({
     termos: termos.dependencias,
+    statusDaCaptura: {
+      unidade: new OutboxEmMemoria(),
+      leitura: {
+        fonte: () =>
+          Promise.resolve({
+            id: 'djen',
+            situacao: 'degradada' as const,
+            desde: Instant.deIso('2026-10-07T08:00:00Z'),
+          }),
+        oabs: () =>
+          Promise.resolve([
+            {
+              oabId: ID,
+              oab: '123456/SP',
+              ultimoSucesso: Instant.deIso('2026-10-06T21:00:00Z'),
+              proximaExecucao: null,
+              falhasConsecutivas: 3,
+            },
+          ]),
+      },
+    },
     publicacoes: {
       unidade: new OutboxEmMemoria(),
       leitura: leitura,
@@ -154,5 +175,24 @@ describe('publicações do escritório (HU18)', () => {
     expect((await pedir('caio', 'GET', `/v1/publicacoes/${gerarUuidV7()}`)).statusCode).toBe(404);
     expect((await pedir('caio', 'GET', '/v1/publicacoes/abc')).statusCode).toBe(400);
     expect((await pedir('caio', 'GET', '/v1/publicacoes?limite=0')).statusCode).toBe(400);
+  });
+});
+
+describe('status da captura (HU19)', () => {
+  it('fonte e OABs do escritório, com instantes em ISO', async () => {
+    const status = await pedir('caio', 'GET', '/v1/captura/status');
+    expect(status.statusCode).toBe(200);
+    expect(status.json()).toEqual({
+      fonte: { id: 'djen', situacao: 'degradada', desde: '2026-10-07T08:00:00.000Z' },
+      oabs: [
+        {
+          oabId: ID,
+          oab: '123456/SP',
+          ultimoSucesso: '2026-10-06T21:00:00.000Z',
+          proximaExecucao: null,
+          falhasConsecutivas: 3,
+        },
+      ],
+    });
   });
 });

@@ -157,6 +157,56 @@ groups:
         annotations:
           summary: 'O circuit breaker do adaptador {{ $labels.adaptador }} está aberto.'
           runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#integracao-degradada'
+      - uid: pz-captura-fonte-degradada
+        title: 'Fonte de publicações degradada'
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: 'max by (fonte) (pz_captura_fonte_degradada)'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions: [{ evaluator: { type: gt, params: [0] } }]
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels: { severidade: critica }
+        annotations:
+          summary: 'A fonte {{ $labels.fonte }} falhou seguidamente: a captura está parada e os escritórios foram avisados.'
+          runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#captura-fonte-degradada'
+      - uid: pz-captura-alvo-falhando
+        title: 'Alvo de captura com falhas seguidas'
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: 'sum(increase(pz_captura_alvo_falhando_total[1h]))'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions: [{ evaluator: { type: gt, params: [0] } }]
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels: { severidade: alta }
+        annotations:
+          summary: 'Uma OAB ou processo falhou na captura várias vezes seguidas (veja o log captura.alvo-falhando).'
+          runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#captura-alvo-falhando'
       - uid: pz-email-rejeicao
         title: 'Rejeição de e-mail'
         condition: C

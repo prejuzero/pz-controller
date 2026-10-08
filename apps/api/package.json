@@ -24,6 +24,7 @@
     "@pz/auditoria": "workspace:*",
     "@pz/cadastro": "workspace:*",
     "@pz/calendario": "workspace:*",
+    "@pz/captura": "workspace:*",
     "@pz/config": "workspace:*",
     "@pz/contracts": "workspace:*",
     "@pz/db": "workspace:*",

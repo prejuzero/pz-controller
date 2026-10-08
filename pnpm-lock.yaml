@@ -236,6 +236,9 @@ importers:
       '@pz/calendario':
         specifier: workspace:*
         version: link:../../modules/calendario
+      '@pz/captura':
+        specifier: workspace:*
+        version: link:../../modules/captura
       '@pz/config':
         specifier: workspace:*
         version: link:../../packages/config

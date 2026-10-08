@@ -1,14 +1,18 @@
-import { LocalDate } from '@pz/kernel';
+import { Instant, LocalDate } from '@pz/kernel';
 
 import type {
   AlvoDevido,
   AlvoParaEntrega,
+  LeituraDoStatus,
   RepositorioDaCaptura,
   RepositorioDeAssinaturas,
+  SituacaoPublicaDaFonte,
+  StatusDaOab,
 } from '../application/portas.js';
 import type { JanelaDaCaptura, TipoDeAlvo } from '../domain/alvo.js';
+import type { EstadoDaFonte } from '../domain/fonte.js';
 import type { Transacao } from '@pz/db';
-import type { Instant, Uuid } from '@pz/kernel';
+import type { Uuid } from '@pz/kernel';
 
 const paraData = (data: LocalDate) => new Date(Date.UTC(data.ano, data.mes - 1, data.dia));
 const deData = (data: Date) =>
@@ -132,5 +136,99 @@ export class CapturaPostgres implements RepositorioDaCaptura<Transacao> {
       where: { id: alvoId },
       data: { falhasConsecutivas: falhas, proximaExecucao: new Date(proximaExecucao.epochMs) },
     });
+  }
+
+  async estadoDaFonte(tx: Transacao, fonte: string): Promise<EstadoDaFonte> {
+    const linha = await tx.fonteCaptura.findUnique({
+      where: { id: fonte },
+      select: { situacao: true, falhasConsecutivas: true },
+    });
+    return linha ?? { situacao: 'operacional', falhasConsecutivas: 0 };
+  }
+
+  async travarFonte(tx: Transacao, fonte: string): Promise<EstadoDaFonte> {
+    // ON CONFLICT DO NOTHING + FOR UPDATE: a primeira falha cria a linha sem corrida.
+    await tx.$executeRaw`INSERT INTO fonte_captura (id) VALUES (${fonte}) ON CONFLICT (id) DO NOTHING`;
+    const [linha] = await tx.$queryRaw<{ situacao: EstadoDaFonte['situacao']; falhas: number }[]>`
+      SELECT situacao::text AS situacao, falhas_consecutivas AS falhas
+      FROM fonte_captura WHERE id = ${fonte} FOR UPDATE`;
+    if (linha === undefined) throw new Error('fonte_captura sem linha após o insert');
+    return { situacao: linha.situacao, falhasConsecutivas: linha.falhas };
+  }
+
+  async gravarFonte(
+    tx: Transacao,
+    fonte: string,
+    estado: EstadoDaFonte,
+    desde?: Instant,
+  ): Promise<void> {
+    await tx.fonteCaptura.update({
+      where: { id: fonte },
+      data: {
+        situacao: estado.situacao,
+        falhasConsecutivas: estado.falhasConsecutivas,
+        ...(desde === undefined ? {} : { desde: new Date(desde.epochMs) }),
+      },
+    });
+  }
+
+  async tenantsAssinantes(tx: Transacao): Promise<Uuid[]> {
+    const linhas = await tx.alvoAssinante.findMany({
+      distinct: ['tenantId'],
+      select: { tenantId: true },
+      orderBy: { tenantId: 'asc' },
+    });
+    return linhas.map((l) => l.tenantId as Uuid);
+  }
+
+  async anteciparAlvos(tx: Transacao, agora: Instant): Promise<number> {
+    const quando = new Date(agora.epochMs);
+    const { count } = await tx.alvoMonitoramento.updateMany({
+      where: { ativo: true, proximaExecucao: { gt: quando } },
+      data: { proximaExecucao: quando },
+    });
+    return count;
+  }
+}
+
+const instante = (data: Date | null) => (data === null ? null : Instant.deEpochMs(data.getTime()));
+
+/** Status no tenant da transação: as assinaturas vêm pela RLS; alvo e fonte são globais. */
+export class LeituraDoStatusPostgres implements LeituraDoStatus<Transacao> {
+  async oabs(tx: Transacao): Promise<StatusDaOab[]> {
+    const linhas = await tx.alvoAssinante.findMany({
+      where: { alvo: { tipo: 'oab' } },
+      select: {
+        referencia: true,
+        alvo: {
+          select: {
+            valor: true,
+            ultimoSucesso: true,
+            proximaExecucao: true,
+            falhasConsecutivas: true,
+          },
+        },
+      },
+      orderBy: { alvo: { valor: 'asc' } },
+    });
+    return linhas.map(({ referencia, alvo }) => ({
+      oabId: referencia as Uuid,
+      oab: alvo.valor,
+      ultimoSucesso: instante(alvo.ultimoSucesso),
+      proximaExecucao: instante(alvo.proximaExecucao),
+      falhasConsecutivas: alvo.falhasConsecutivas,
+    }));
+  }
+
+  async fonte(tx: Transacao, fonte: string): Promise<SituacaoPublicaDaFonte> {
+    const linha = await tx.fonteCaptura.findUnique({
+      where: { id: fonte },
+      select: { situacao: true, desde: true },
+    });
+    return {
+      id: fonte,
+      situacao: linha?.situacao ?? 'operacional',
+      desde: instante(linha?.desde ?? null),
+    };
   }
 }

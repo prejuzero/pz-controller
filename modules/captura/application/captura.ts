@@ -1,4 +1,4 @@
-import { Oab } from '@pz/integracoes';
+import { ErroIntegracao, Oab } from '@pz/integracoes';
 import { gerarUuidV7, LocalDate } from '@pz/kernel';
 import { z } from 'zod';
 
@@ -10,8 +10,17 @@ import {
   valorDaOab,
   valorDoProcesso,
 } from '../domain/alvo.js';
+import { alvoPrecisaDeAlerta, aposFalhaDaFonte, aposSucessoDaFonte } from '../domain/fonte.js';
 
-import type { AlvoParaEntrega, RepositorioDaCaptura, RepositorioDeAssinaturas } from './portas.js';
+import type {
+  AlertasDaCaptura,
+  AlvoParaEntrega,
+  LeituraDoStatus,
+  RepositorioDaCaptura,
+  RepositorioDeAssinaturas,
+  SituacaoPublicaDaFonte,
+  StatusDaOab,
+} from './portas.js';
 import type { JanelaDaCaptura, TipoDeAlvo } from '../domain/alvo.js';
 import type { FontePublicacoes, PublicacaoCapturada } from '@pz/integracoes';
 import type { Clock, EventoDominio, Outbox, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
@@ -160,11 +169,19 @@ function formatarCnj(digitos: string): string {
   return `${digitos.slice(0, 7)}-${digitos.slice(7, 9)}.${digitos.slice(9, 13)}.${digitos.slice(13, 14)}.${digitos.slice(14, 16)}.${digitos.slice(16)}`;
 }
 
+/** Falha que indica a fonte fora do ar (não cota nem resposta inválida de um alvo). */
+const indicaDegradacao = (erro: unknown): boolean =>
+  erro instanceof ErroIntegracao && erro.indicaDegradacao;
+
 /**
  * Executa a captura de um alvo (HU17): uma consulta à fonte, qualquer que seja o número de
  * assinantes. A entrega roda numa transação do papel sistema (o alvo é global): trava o alvo,
  * grava um CapturaConcluida por tenant assinante e o checkpoint juntos. A mesma chave não entrega
  * duas vezes. Falha da fonte registra o recuo e relança: o job tenta de novo e vai à DLQ.
+ *
+ * Saúde da fonte (HU19): falhas seguidas que indicam indisponibilidade degradam a fonte (alerta
+ * à equipe e FonteDegradada aos escritórios afetados); o primeiro sucesso a restabelece, antecipa
+ * todos os alvos em recuo (recaptura desde o último sucesso) e emite FonteRestabelecida.
  */
 export class ExecutarCaptura<Transacao> {
   constructor(
@@ -174,6 +191,7 @@ export class ExecutarCaptura<Transacao> {
     private readonly outbox: Outbox<Transacao>,
     private readonly relogio: Clock,
     private readonly idDaFonte: string,
+    private readonly alertas: AlertasDaCaptura,
   ) {}
 
   async executar(entrada: unknown): Promise<ResultadoDaCaptura> {
@@ -183,22 +201,62 @@ export class ExecutarCaptura<Transacao> {
     try {
       publicacoes = await this.#buscar(tipo, valor, janela);
     } catch (erro) {
-      await this.#registrarFalha(alvoId as Uuid);
+      await this.#registrarFalha(alvoId as Uuid, indicaDegradacao(erro));
       throw erro;
     }
     const chave = chaveDaCaptura(alvoId, janela);
-    return this.unidade.executar(async (tx) => {
+    const { resultado, antecipados } = await this.unidade.executar(async (tx) => {
+      const antecipados = await this.#registrarSucessoDaFonte(tx);
       const alvo = await this.captura.travar(tx, alvoId as Uuid);
-      if (alvo === undefined) return { situacao: 'alvo-inexistente' };
-      if (alvo.ultimaChave === chave) return { situacao: 'ja-entregue' };
+      if (alvo === undefined)
+        return { resultado: { situacao: 'alvo-inexistente' as const }, antecipados };
+      if (alvo.ultimaChave === chave)
+        return { resultado: { situacao: 'ja-entregue' as const }, antecipados };
       await this.outbox.gravar(tx, this.#eventos(alvo, janela, publicacoes));
       await this.captura.registrarSucesso(tx, alvo.id, this.relogio.agora(), janela, chave);
-      return {
+      const entregue: ResultadoDaCaptura = {
         situacao: 'entregue',
         publicacoes: publicacoes.length,
         tenants: alvo.assinantes.length,
       };
+      return { resultado: entregue, antecipados };
     });
+    // Depois do commit: o alerta só sai se a mudança foi gravada.
+    if (antecipados !== undefined) this.alertas.fonteRestabelecida(this.idDaFonte, antecipados);
+    return resultado;
+  }
+
+  /** Zera as falhas da fonte e, se ela estava degradada, restabelece e antecipa os alvos. */
+  async #registrarSucessoDaFonte(tx: Transacao): Promise<number | undefined> {
+    // Leitura sem trava primeiro: no caso comum (fonte saudável) nenhuma captura espera outra.
+    const lido = await this.captura.estadoDaFonte(tx, this.idDaFonte);
+    if (lido.situacao === 'operacional' && lido.falhasConsecutivas === 0) return undefined;
+    const atual = await this.captura.travarFonte(tx, this.idDaFonte);
+    const { estado, transicao } = aposSucessoDaFonte(atual);
+    const agora = this.relogio.agora();
+    if (transicao !== 'restabeleceu') {
+      await this.captura.gravarFonte(tx, this.idDaFonte, estado);
+      return undefined;
+    }
+    await this.captura.gravarFonte(tx, this.idDaFonte, estado, agora);
+    const antecipados = await this.captura.anteciparAlvos(tx, agora);
+    await this.outbox.gravar(tx, await this.#avisos(tx, 'FonteRestabelecida', { antecipados }));
+    return antecipados;
+  }
+
+  /** Um evento por escritório afetado: quem assina algum alvo depende da fonte. */
+  async #avisos(tx: Transacao, tipo: string, extra: object): Promise<EventoDominio[]> {
+    const ocorridoEm = this.relogio.agora();
+    const tenants = await this.captura.tenantsAssinantes(tx);
+    return tenants.map((tenantId) => ({
+      id: gerarUuidV7(this.relogio),
+      tipo,
+      versao: 1,
+      tenantId,
+      agregadoId: tenantId,
+      ocorridoEm,
+      payload: { fonte: this.idDaFonte, ...extra },
+    }));
   }
 
   #buscar(tipo: TipoDeAlvo, valor: string, janela: JanelaDaCaptura) {
@@ -207,14 +265,32 @@ export class ExecutarCaptura<Transacao> {
     return this.fonte.buscarPorOab(Oab.parse({ numero, uf }), janela);
   }
 
-  async #registrarFalha(alvoId: Uuid): Promise<void> {
+  async #registrarFalha(alvoId: Uuid, daFonte: boolean): Promise<void> {
     const agora = this.relogio.agora();
-    await this.unidade.executar(async (tx) => {
+    const { falhasDoAlvo, fonte } = await this.unidade.executar(async (tx) => {
+      const fonte = daFonte ? await this.#registrarFalhaDaFonte(tx) : undefined;
       const alvo = await this.captura.travar(tx, alvoId);
-      if (alvo === undefined) return;
+      if (alvo === undefined) return { falhasDoAlvo: 0, fonte };
       const falhas = alvo.falhasConsecutivas + 1;
       await this.captura.registrarFalha(tx, alvoId, falhas, proximaTentativa(agora, falhas));
+      return { falhasDoAlvo: falhas, fonte };
     });
+    if (fonte !== undefined) this.alertas.fonteDegradada(this.idDaFonte, fonte);
+    if (alvoPrecisaDeAlerta(falhasDoAlvo)) this.alertas.alvoFalhando(alvoId, falhasDoAlvo);
+  }
+
+  /** Conta a falha da fonte; devolve as falhas quando ela acabou de degradar. */
+  async #registrarFalhaDaFonte(tx: Transacao): Promise<number | undefined> {
+    const { estado, transicao } = aposFalhaDaFonte(
+      await this.captura.travarFonte(tx, this.idDaFonte),
+    );
+    if (transicao !== 'degradou') {
+      await this.captura.gravarFonte(tx, this.idDaFonte, estado);
+      return undefined;
+    }
+    await this.captura.gravarFonte(tx, this.idDaFonte, estado, this.relogio.agora());
+    await this.outbox.gravar(tx, await this.#avisos(tx, 'FonteDegradada', {}));
+    return estado.falhasConsecutivas;
   }
 
   #eventos(
@@ -249,6 +325,27 @@ export class ExecutarCaptura<Transacao> {
         fonte: this.idDaFonte,
         publicacoes: serializadas,
       },
+    }));
+  }
+}
+
+export interface StatusDaCaptura {
+  readonly fonte: SituacaoPublicaDaFonte;
+  readonly oabs: readonly StatusDaOab[];
+}
+
+/** Status da captura do escritório (HU19): por OAB e a situação da fonte. Só leitura. */
+export class ConsultarStatusDaCaptura<Transacao> {
+  constructor(
+    private readonly unidade: UnidadeDeTrabalho<Transacao>,
+    private readonly leitura: LeituraDoStatus<Transacao>,
+    private readonly idDaFonte: string,
+  ) {}
+
+  executar(): Promise<StatusDaCaptura> {
+    return this.unidade.executar(async (tx) => ({
+      fonte: await this.leitura.fonte(tx, this.idDaFonte),
+      oabs: await this.leitura.oabs(tx),
     }));
   }
 }

@@ -5,6 +5,7 @@ import type {
   RepositorioDeAssinaturas,
 } from '../application/portas.js';
 import type { JanelaDaCaptura, TipoDeAlvo } from '../domain/alvo.js';
+import type { EstadoDaFonte } from '../domain/fonte.js';
 import type { Instant, LocalDate, TransacaoEmMemoria, Uuid } from '@pz/kernel';
 
 interface Alvo {
@@ -25,6 +26,7 @@ export class CapturaEmMemoria
 {
   readonly alvos = new Map<string, Alvo>();
   readonly assinaturas: { alvoId: Uuid; tenantId: Uuid; referencia: Uuid }[] = [];
+  readonly fontes = new Map<string, EstadoDaFonte & { desde?: Instant }>();
 
   alvo(tipo: TipoDeAlvo, valor: string): Alvo | undefined {
     return [...this.alvos.values()].find((a) => a.tipo === tipo && a.valor === valor);
@@ -115,5 +117,39 @@ export class CapturaEmMemoria
     if (alvo !== undefined)
       Object.assign(alvo, { falhasConsecutivas: falhas, proximaExecucao: proxima });
     return Promise.resolve();
+  }
+
+  estadoDaFonte(_tx: TransacaoEmMemoria, fonte: string): Promise<EstadoDaFonte> {
+    const { situacao, falhasConsecutivas } = this.fontes.get(fonte) ?? {
+      situacao: 'operacional',
+      falhasConsecutivas: 0,
+    };
+    return Promise.resolve({ situacao, falhasConsecutivas });
+  }
+
+  travarFonte(tx: TransacaoEmMemoria, fonte: string): Promise<EstadoDaFonte> {
+    return this.estadoDaFonte(tx, fonte);
+  }
+
+  gravarFonte(_tx: TransacaoEmMemoria, fonte: string, estado: EstadoDaFonte, desde?: Instant) {
+    const anterior = this.fontes.get(fonte)?.desde;
+    const quando = desde ?? anterior;
+    this.fontes.set(fonte, { ...estado, ...(quando === undefined ? {} : { desde: quando }) });
+    return Promise.resolve();
+  }
+
+  tenantsAssinantes(): Promise<Uuid[]> {
+    return Promise.resolve([...new Set(this.assinaturas.map((a) => a.tenantId))].sort());
+  }
+
+  anteciparAlvos(_tx: TransacaoEmMemoria, agora: Instant): Promise<number> {
+    let n = 0;
+    for (const alvo of this.alvos.values()) {
+      if (alvo.ativo && alvo.proximaExecucao?.ehDepoisDe(agora) === true) {
+        alvo.proximaExecucao = agora;
+        n++;
+      }
+    }
+    return Promise.resolve(n);
   }
 }

@@ -66,6 +66,7 @@ import { Redis } from 'ioredis';
 
 import { ConsumidorDeAuditoria } from './auditoria/consumidor.js';
 import { ConsumidorDoCalendario } from './calendario/consumidor.js';
+import { alertasDaCaptura } from './captura/alertas.js';
 import { ConsumidorDaCaptura } from './captura/consumidor.js';
 import { DespachanteDeEventos } from './eventos/consome.js';
 import { RelayDoOutbox } from './eventos/relay.js';
@@ -485,6 +486,7 @@ export class WorkerModule {
             outboxPostgres,
             relogio,
             ambiente.CAPTURA_FONTE,
+            alertasDaCaptura,
           ),
       },
       {

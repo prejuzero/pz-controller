@@ -447,6 +447,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/captura/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Situação da fonte e da captura de cada OAB do escritório. */
+        get: operations["consultarStatusDaCaptura"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/clientes": {
         parameters: {
             query?: never;
@@ -1529,6 +1546,27 @@ export interface components {
             versao: string;
             /** Format: date-time */
             verificadoEm: string;
+        };
+        StatusDaCaptura: {
+            fonte: {
+                /** @description Fonte de publicações (ex.: djen). */
+                id: string;
+                /** @enum {string} */
+                situacao: "operacional" | "degradada";
+                /** @description Desde quando está na situação atual. */
+                desde: string | null;
+            };
+            oabs: {
+                /** Format: uuid */
+                oabId: string;
+                /** @description Número/UF, ex.: 123456/SP. */
+                oab: string;
+                /** @description Última captura bem-sucedida. */
+                ultimoSucesso: string | null;
+                /** @description Próxima tentativa após falha; nulo: na próxima rodada do agendamento. */
+                proximaExecucao: string | null;
+                falhasConsecutivas: number;
+            }[];
         };
         TipoDeAto: {
             /** @description Código da taxonomia única (kebab-case). */
@@ -3484,6 +3522,53 @@ export interface operations {
             };
             /** @description Conflito com o estado atual. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    consultarStatusDaCaptura: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatusDaCaptura"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

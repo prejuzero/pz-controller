@@ -1,11 +1,22 @@
 import { Banco, BancoSistema, executarNoTenant, OutboxPostgres } from '@pz/db';
 import { subirBancoDeTeste } from '@pz/db/teste';
+import { ErroTransitorio } from '@pz/integracoes';
 import { FixedClock, gerarUuidV7, Instant, LocalDate } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { ExecutarCaptura, ManterAssinaturas, PlanejarCaptura } from '../application/captura.js';
+import {
+  ConsultarStatusDaCaptura,
+  ExecutarCaptura,
+  ManterAssinaturas,
+  PlanejarCaptura,
+} from '../application/captura.js';
+import { FALHAS_PARA_DEGRADAR } from '../domain/fonte.js';
 
-import { AssinaturasPostgres, CapturaPostgres } from './captura-postgres.js';
+import {
+  AssinaturasPostgres,
+  CapturaPostgres,
+  LeituraDoStatusPostgres,
+} from './captura-postgres.js';
 
 import type { Transacao } from '@pz/db';
 import type { BancoDeTeste } from '@pz/db/teste';
@@ -17,20 +28,23 @@ const relogio = new FixedClock(Instant.deIso('2026-10-07T12:00:00Z'));
 const ESCRITORIO = '01a10e00-0000-7000-8000-0000000ca001' as Uuid;
 const OUTRO = '01a10e00-0000-7000-8000-0000000ca002' as Uuid;
 
+let foraDoAr = false;
 const fonte: FontePublicacoes = {
   buscarPorOab: () =>
-    Promise.resolve([
-      {
-        fonte: 'falsa',
-        idExterno: '1',
-        hashConteudo: 'b'.repeat(64),
-        dataDisponibilizacao: LocalDate.de(2026, 10, 6),
-        teor: 'FICTÍCIO',
-        destinatarios: [{ oab: { numero: '654321', uf: 'RJ' } }],
-        urlFonte: 'https://exemplo.invalid/certidao',
-        metadados: {},
-      },
-    ]),
+    foraDoAr
+      ? Promise.reject(new ErroTransitorio('fora do ar', 'falsa'))
+      : Promise.resolve([
+          {
+            fonte: 'falsa',
+            idExterno: '1',
+            hashConteudo: 'b'.repeat(64),
+            dataDisponibilizacao: LocalDate.de(2026, 10, 6),
+            teor: 'FICTÍCIO',
+            destinatarios: [{ oab: { numero: '654321', uf: 'RJ' } }],
+            urlFonte: 'https://exemplo.invalid/certidao',
+            metadados: {},
+          },
+        ]),
   buscarPorProcesso: () => Promise.resolve([]),
   saude: () => Promise.resolve({ estado: 'operacional', verificadoEm: relogio.agora() }),
 };
@@ -75,6 +89,11 @@ beforeAll(async () => {
     new OutboxPostgres(),
     relogio,
     'falsa',
+    {
+      fonteDegradada: () => undefined,
+      fonteRestabelecida: () => undefined,
+      alvoFalhando: () => undefined,
+    },
   );
 }, 300_000);
 
@@ -123,5 +142,46 @@ describe('captura no PostgreSQL (HU17)', () => {
         tx.alvoMonitoramento.create({ data: { id: gerarUuidV7(), tipo: 'oab', valor: '12/sp' } }),
       ),
     ).rejects.toThrow(/alvo_monitoramento_valor/);
+  });
+
+  it('saúde (HU19): degrada com aviso por escritório, status pela RLS e restabelece antecipando', async () => {
+    const [plano] = await planejar.executar();
+    if (plano === undefined) throw new Error('sem plano');
+    foraDoAr = true;
+    for (let i = 0; i < FALHAS_PARA_DEGRADAR; i++) {
+      await expect(executar.executar(plano)).rejects.toBeInstanceOf(ErroTransitorio);
+    }
+    const degradada = await sistema.executarComoSistema('conferir', async (tx) => ({
+      fonte: await tx.fonteCaptura.findUnique({ where: { id: 'falsa' } }),
+      avisos: await tx.eventoDominio.findMany({ where: { tipo: 'FonteDegradada' } }),
+    }));
+    expect(degradada.fonte).toMatchObject({ situacao: 'degradada', falhasConsecutivas: 3 });
+    expect(degradada.avisos.map((e) => e.tenantId).sort()).toEqual([ESCRITORIO, OUTRO].sort());
+
+    const status = new ConsultarStatusDaCaptura(
+      { executar: (t) => noTenant(ESCRITORIO, t) },
+      new LeituraDoStatusPostgres(),
+      'falsa',
+    );
+    const visto = await status.executar();
+    expect(visto.fonte).toMatchObject({ situacao: 'degradada' });
+    expect(visto.oabs).toEqual([
+      expect.objectContaining({ oab: '654321/RJ', falhasConsecutivas: 3 }),
+    ]);
+    // O escritório só lê a fonte.
+    await expect(
+      noTenant(ESCRITORIO, (tx) =>
+        tx.fonteCaptura.update({ where: { id: 'falsa' }, data: { falhasConsecutivas: 0 } }),
+      ),
+    ).rejects.toThrow();
+
+    foraDoAr = false;
+    expect((await executar.executar(plano)).situacao).toBe('entregue');
+    const restabelecida = await sistema.executarComoSistema('conferir', async (tx) => ({
+      fonte: await tx.fonteCaptura.findUnique({ where: { id: 'falsa' } }),
+      avisos: await tx.eventoDominio.count({ where: { tipo: 'FonteRestabelecida' } }),
+    }));
+    expect(restabelecida.fonte).toMatchObject({ situacao: 'operacional', falhasConsecutivas: 0 });
+    expect(restabelecida.avisos).toBe(2);
   });
 });

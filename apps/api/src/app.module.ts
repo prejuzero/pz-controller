@@ -38,6 +38,7 @@ import {
   RevogarEventoDoCalendario,
   RevogarFeriadoLocal,
 } from '@pz/calendario';
+import { ConsultarStatusDaCaptura, LeituraDoStatusPostgres } from '@pz/captura';
 import { Banco, OutboxPostgres, WebhooksPostgres } from '@pz/db';
 import {
   AtivarSegundoFator,
@@ -136,6 +137,7 @@ import { ContextoDoUsuario } from './auth/contexto-do-usuario.js';
 import { CadastroController } from './cadastro/cadastro.controller.js';
 import { ProcessosController } from './cadastro/processos.controller.js';
 import { CalendarioController } from './calendario/calendario.controller.js';
+import { CapturaController } from './captura/captura.controller.js';
 import {
   AMBIENTE,
   CAIXA_DE_WEBHOOKS,
@@ -176,6 +178,7 @@ import type {
   RepositorioDeEventosGlobais,
   RepositorioDeFeriadosLocais,
 } from '@pz/calendario';
+import type { LeituraDoStatus } from '@pz/captura';
 import type { Transacao } from '@pz/db';
 import type {
   Email,
@@ -245,6 +248,11 @@ export interface OpcoesApi {
   readonly calendario?: DependenciasDoCalendario;
   /** Tabela de prazos (HU15); nos testes, repositórios em memória. */
   readonly tabelaDePrazos?: DependenciasDaTabelaDePrazos;
+  /** Status da captura (HU19); nos testes, leitura em memória. */
+  readonly statusDaCaptura?: {
+    readonly unidade: UnidadeDeTrabalho<unknown>;
+    readonly leitura: LeituraDoStatus<unknown>;
+  };
   /** Leitura das publicações (HU18); nos testes, repositório em memória. */
   readonly publicacoes?: DependenciasDasPublicacoes;
   /** Exportação de dados (HU38); nos testes, repositório e armazenamento em memória. */
@@ -888,6 +896,14 @@ export class AppModule {
       { provide: ReprocessarJobMorto, useValue: new ReprocessarJobMorto(filas.reprocessamento) },
       { provide: FILAS_DO_PAINEL, useValue: filas.painel },
       ...provedoresDoCalendario(calendario),
+      {
+        provide: ConsultarStatusDaCaptura,
+        useValue: new ConsultarStatusDaCaptura(
+          opcoes.statusDaCaptura?.unidade ?? recursos.banco,
+          opcoes.statusDaCaptura?.leitura ?? new LeituraDoStatusPostgres(),
+          opcoes.ambiente.CAPTURA_FONTE,
+        ),
+      },
       ...provedoresDasPublicacoes(
         opcoes.publicacoes ?? {
           unidade: recursos.banco,
@@ -959,6 +975,7 @@ export class AppModule {
         TermosController,
         PrivacidadeController,
         PublicacoesController,
+        CapturaController,
         CadastroController,
         ProcessosController,
         NotificacoesController,
