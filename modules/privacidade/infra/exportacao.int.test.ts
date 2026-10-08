@@ -138,6 +138,33 @@ describe('exportação no PostgreSQL com as fontes dos módulos (HU38)', () => {
       expect(json).not.toContain('10000030620268260100');
       if (escopo === 'escritorio') expect(json).toContain('10000040620268260100');
       else expect(json).toContain('52998224725');
+      // QA (PZ-227): todas as seções de dados pessoais de cada módulo estão no arquivo.
+      const secoes = Object.keys((JSON.parse(json) as { secoes: Record<string, unknown> }).secoes);
+      expect(secoes.sort()).toEqual(
+        (escopo === 'titular'
+          ? [
+              'conta',
+              'perfis',
+              'acessos',
+              'dispositivos',
+              'advogado',
+              'oabs',
+              'aceites',
+              'consentimentos',
+              'preferencias',
+            ]
+          : [
+              'usuarios',
+              'advogados',
+              'oabs',
+              'clientes',
+              'processos',
+              'aceites',
+              'consentimentos',
+              'preferencias',
+            ]
+        ).sort(),
+      );
     }
     const situacoes = await noTenant(A, (tx) =>
       tx.exportacaoDados.findMany({ select: { situacao: true } }),

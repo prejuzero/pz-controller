@@ -1,4 +1,10 @@
-import { TrilhaPostgres, verificarCadeia, sha256 } from '@pz/auditoria';
+import {
+  CadeiaPostgres,
+  sha256,
+  TrilhaPostgres,
+  verificarCadeia,
+  VerificarIntegridade,
+} from '@pz/auditoria';
 import { Banco, BancoSistema, executarNoTenant } from '@pz/db';
 import { subirBancoDeTeste } from '@pz/db/teste';
 import { FixedClock, Instant } from '@pz/kernel';
@@ -235,6 +241,21 @@ describe('encerramento da conta no PostgreSQL (HU38)', () => {
       'privacidade.conta-encerrada',
     ]);
     expect(verificarCadeia(cadeia, sha256)).toMatchObject({ valida: true });
+    // QA (PZ-227): o verificador diário da auditoria (o mesmo do worker) passa após a exclusão.
+    const verificador = new VerificarIntegridade(
+      comoSistema,
+      new CadeiaPostgres(),
+      { gravar: () => Promise.resolve() },
+      sha256,
+      new FixedClock(Instant.deIso('2026-12-01T12:00:00Z')),
+    );
+    const resultados = await verificador.executar();
+    expect(resultados.map((r) => [r.tenantId, r.situacao]).sort()).toEqual(
+      [
+        [A, 'integra'],
+        [B, 'integra'],
+      ].sort(),
+    );
 
     // Repetir não efetiva de novo.
     expect(await efetivarEm('2026-12-02T12:00:00Z').executar()).toEqual([]);
