@@ -291,7 +291,10 @@ export interface OpcoesApi {
     readonly contador: ContadorDeFilas;
   };
   /** Rejeições de e-mail para o administrador (HU39); nos testes, em memória. */
-  readonly supressoes?: ConsultaDeSupressoes<unknown>;
+  readonly supressoes?: {
+    readonly unidade: UnidadeDeTrabalho<unknown>;
+    readonly consulta: ConsultaDeSupressoes<unknown>;
+  };
 }
 
 /** Dependências que /health/ready e /v1/saude conferem (ADR-010). */
@@ -935,10 +938,10 @@ export class AppModule {
       { provide: ConsultarFilas, useValue: new ConsultarFilas(filas.contador) },
       {
         provide: ListarSupressoes,
-        useValue: new ListarSupressoes(
-          recursos.banco,
-          opcoes.supressoes ?? new SupressaoPostgres(),
-        ),
+        useValue:
+          opcoes.supressoes === undefined
+            ? new ListarSupressoes(recursos.banco, new SupressaoPostgres())
+            : new ListarSupressoes(opcoes.supressoes.unidade, opcoes.supressoes.consulta),
       },
       ...[ListarTenants, DetalharTenant, AlterarAssinatura, SuspenderTenant, ReativarTenant].map(
         (CasoDeUso) => ({

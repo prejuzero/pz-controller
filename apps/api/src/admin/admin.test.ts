@@ -103,7 +103,7 @@ beforeAll(async () => {
       integracoes: painel,
       contador: painel,
     },
-    supressoes,
+    supressoes: { unidade: new OutboxEmMemoria(), consulta: supressoes },
   });
   await api.init();
   await api.getHttpAdapter().getInstance().ready();
