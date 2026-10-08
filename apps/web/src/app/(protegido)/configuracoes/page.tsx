@@ -22,6 +22,11 @@ export default async function PaginaConfiguracoes() {
         <Item href="/configuracoes/perfil" titulo={t('perfil')} descricao={t('perfilDescricao')} />
         <Item href="/configuracoes/oabs" titulo={t('oabs')} descricao={t('oabsDescricao')} />
         <Item href={ROTA_SEGURANCA} titulo={t('seguranca')} descricao={t('segurancaDescricao')} />
+        <Item
+          href="/configuracoes/privacidade"
+          titulo={t('privacidade')}
+          descricao={t('privacidadeDescricao')}
+        />
         <SePermitido permissao="calendario:ler">
           <Item
             href="/configuracoes/feriados-locais"

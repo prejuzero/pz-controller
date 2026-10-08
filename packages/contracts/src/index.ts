@@ -158,6 +158,7 @@ export {
   DocumentoLegal,
   DocumentosPendentes,
   listarAceites,
+  listarDocumentosVigentes,
   listarTermosPendentes,
   ROTAS_TERMOS,
 } from './termos.js';

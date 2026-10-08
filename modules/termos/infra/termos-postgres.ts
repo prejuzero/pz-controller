@@ -17,6 +17,7 @@ const documento = (l: LinhaDocumento): DocumentoLegal => ({
   tipo: l.tipo,
   versao: l.versao,
   conteudo: l.conteudo,
+  ...(l.resumoAlteracoes === null ? {} : { resumoAlteracoes: l.resumoAlteracoes }),
   publicadoEm: paraInstante(l.publicadoEm),
 });
 

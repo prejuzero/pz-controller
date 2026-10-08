@@ -830,6 +830,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/termos/vigentes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Versão vigente dos termos de uso, da política de privacidade e do aviso de cobertura. */
+        get: operations["listarDocumentosVigentes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/webhooks/{adaptador}": {
         parameters: {
             query?: never;
@@ -1015,6 +1032,8 @@ export interface components {
                 tipo: "termos" | "privacidade" | "cobertura";
                 versao: string;
                 conteudo: string;
+                /** @description O que mudou em relação à versão anterior. */
+                resumoAlteracoes: string | null;
                 /** Format: date-time */
                 publicadoEm: string;
             }[];
@@ -5315,6 +5334,35 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarDocumentosVigentes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentosPendentes"];
                 };
             };
             /** @description Erro inesperado. */

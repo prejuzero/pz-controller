@@ -248,7 +248,9 @@
     "perfil": "Perfil",
     "perfilDescricao": "Nome, celular e e-mails que recebem cópia das notificações.",
     "oabs": "OABs",
-    "oabsDescricao": "Inscrições monitoradas nas publicações."
+    "oabsDescricao": "Inscrições monitoradas nas publicações.",
+    "privacidade": "Privacidade",
+    "privacidadeDescricao": "Documentos aceitos, exportação dos seus dados e encerramento da conta."
   },
   "cadastro": {
     "titulo": "Criar conta",
@@ -472,5 +474,58 @@
       "vigenciaInicio": "Início da vigência",
       "vigenciaFim": "Fim da vigência"
     }
+  },
+  "legal": {
+    "termos": "Termos de uso",
+    "privacidade": "Política de privacidade",
+    "cobertura": "Aviso de cobertura",
+    "versao": "Versão {versao}, publicada em {data}",
+    "emElaboracao": "Este documento está em elaboração e será publicado antes do uso do sistema.",
+    "encarregado": "Encarregado pelo tratamento de dados pessoais (LGPD): {email}",
+    "outrosDocumentos": "Outros documentos",
+    "voltar": "Voltar"
+  },
+  "aceiteTermos": {
+    "titulo": "Documentos atualizados",
+    "descricao": "Para continuar usando o PrejuZero, leia e aceite a versão atual dos documentos abaixo.",
+    "resumo": "O que mudou: {resumo}",
+    "semResumo": "Primeira versão do documento.",
+    "conteudo": "Conteúdo de {documento}",
+    "concordo": "Li e aceito os documentos acima.",
+    "aceitar": "Aceitar e continuar",
+    "aceitos": "Documentos aceitos.",
+    "nenhum": "Não há documentos pendentes.",
+    "continuar": "Continuar"
+  },
+  "privacidade": {
+    "titulo": "Privacidade",
+    "aceitesTitulo": "Documentos aceitos",
+    "aceitesVazio": "Nenhum aceite registrado.",
+    "colunas": {
+      "documento": "Documento",
+      "versao": "Versão",
+      "aceitoEm": "Aceito em",
+      "origem": "Origem"
+    },
+    "exportarTitulo": "Exportar meus dados",
+    "exportarDescricao": "Gera um arquivo JSON e um CSV com os seus dados pessoais. Fica pronto em alguns minutos e disponível por 7 dias.",
+    "exportarEscritorioTitulo": "Exportar dados do escritório",
+    "exportarEscritorioDescricao": "Gera JSON e CSV com todos os dados do escritório: usuários, advogados, OABs, clientes, processos, aceites e preferências.",
+    "exportar": "Gerar exportação",
+    "exportacaoPendente": "Gerando os arquivos…",
+    "exportacaoPronta": "Arquivos prontos até {data}:",
+    "baixar": "Baixar {arquivo}",
+    "encerrarTitulo": "Encerrar a conta do escritório",
+    "encerrarDescricao": "Depois de 30 dias de carência, os dados do escritório são apagados. Registros que servem de prova (aceites, notificações e acessos) ficam sem dados pessoais até o fim do prazo legal de guarda.",
+    "encerrar": "Encerrar a conta",
+    "encerrarConfirmarTitulo": "Encerrar a conta do escritório?",
+    "encerrarConfirmarDescricao": "Exporte os dados antes. Durante 30 dias você pode cancelar; depois disso, a exclusão é definitiva.",
+    "encerrarConfirmar": "Sim, encerrar",
+    "encerramentoSolicitado": "Encerramento pedido. Você pode cancelar até {data}.",
+    "emCarencia": "Encerramento pedido em {pedido}. A exclusão acontece em {efetivar}.",
+    "vencido": "O prazo de carência terminou; a exclusão acontece na próxima execução diária.",
+    "cancelar": "Cancelar o encerramento",
+    "cancelado": "Encerramento cancelado.",
+    "voltar": "Cancelar"
   }
 }

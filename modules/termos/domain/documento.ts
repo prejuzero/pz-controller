@@ -9,6 +9,8 @@ export interface DocumentoLegal {
   readonly tipo: TipoDeDocumento;
   readonly versao: string;
   readonly conteudo: string;
+  /** O que mudou em relação à versão anterior, para a tela de novo aceite. */
+  readonly resumoAlteracoes?: string;
   readonly publicadoEm: Instant;
 }
 

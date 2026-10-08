@@ -8,6 +8,7 @@ import { permite, type Exigencia } from '../permissoes';
 import { consultasCadastro, mutacoesCadastro } from './cadastro';
 import { consultasCalendario, mutacoesCalendario } from './calendario';
 import { consultasNotificacoes } from './notificacoes';
+import { consultasPrivacidade, mutacoesPrivacidade } from './privacidade';
 import { consultasProcessos, mutacoesProcessos, type FiltrosProcessos } from './processos';
 import { consultasSessao, mutacoesSessao } from './sessao';
 import { consultasTabelaPrazos, mutacoesTabelaPrazos } from './tabela-prazos';
@@ -59,6 +60,22 @@ export const useSolicitarRedefinicao = () => useMutation(useMutacoesSessao().sol
 export const useRedefinirSenha = () => useMutation(useMutacoesSessao().redefinirSenha);
 export const useRevogarDispositivo = () => useMutation(useMutacoesSessao().revogarDispositivo);
 export const useSair = () => useMutation(useMutacoesSessao().sair);
+
+function useMutacoesPrivacidade() {
+  return mutacoesPrivacidade(useApi(), useQueryClient());
+}
+
+export const useDocumentosVigentes = () => useQuery(consultasPrivacidade(useApi()).vigentes());
+export const useTermosPendentes = () => useQuery(consultasPrivacidade(useApi()).pendentes());
+export const useAceites = () => useQuery(consultasPrivacidade(useApi()).aceites());
+export const useExportacao = (id: string) =>
+  useQuery(consultasPrivacidade(useApi()).exportacao(id));
+export const useEncerramento = () => useQuery(consultasPrivacidade(useApi()).encerramento());
+export const useAceitarTermos = () => useMutation(useMutacoesPrivacidade().aceitar);
+export const useExportarDados = () => useMutation(useMutacoesPrivacidade().exportar);
+export const useEncerrarConta = () => useMutation(useMutacoesPrivacidade().encerrar);
+export const useCancelarEncerramento = () =>
+  useMutation(useMutacoesPrivacidade().cancelarEncerramento);
 
 function useMutacoesTabelaPrazos() {
   return mutacoesTabelaPrazos(useApi(), useQueryClient());

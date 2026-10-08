@@ -8,12 +8,16 @@ export const ROTA_SEGURANCA = '/configuracoes/seguranca';
 export const ROTA_CADASTRO = '/cadastro';
 // O caminho vem do e-mail de boas-vindas (modules/identidade/application/avisos.ts).
 export const ROTA_VERIFICAR_EMAIL = '/verificar-email';
+/** Documentos legais públicos e a tela de novo aceite (HU38). */
+export const ROTAS_LEGAIS = ['/termos', '/privacidade', '/cobertura'] as const;
+export const ROTA_ACEITAR_TERMOS = '/aceitar-termos';
 const ROTAS_PUBLICAS = [
   ROTA_ENTRAR,
   ROTA_RECUPERAR_SENHA,
   ROTA_REDEFINIR_SENHA,
   ROTA_CADASTRO,
   ROTA_VERIFICAR_EMAIL,
+  ...ROTAS_LEGAIS,
 ];
 
 export type MotivoEntrar = 'sessao-expirada' | 'senha-redefinida';

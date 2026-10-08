@@ -4706,6 +4706,39 @@
         }
       }
     },
+    "/v1/termos/vigentes": {
+      "get": {
+        "operationId": "listarDocumentosVigentes",
+        "summary": "Versão vigente dos termos de uso, da política de privacidade e do aviso de cobertura.",
+        "tags": [
+          "termos"
+        ],
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentosPendentes"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/webhooks/{adaptador}": {
       "post": {
         "operationId": "receberWebhook",
@@ -5464,6 +5497,13 @@
                 "conteudo": {
                   "type": "string"
                 },
+                "resumoAlteracoes": {
+                  "description": "O que mudou em relação à versão anterior.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "publicadoEm": {
                   "type": "string",
                   "format": "date-time",
@@ -5475,6 +5515,7 @@
                 "tipo",
                 "versao",
                 "conteudo",
+                "resumoAlteracoes",
                 "publicadoEm"
               ],
               "additionalProperties": false

@@ -13,6 +13,7 @@ export const DocumentoLegal = nomear(
     tipo: TipoDeDocumento,
     versao: z.string(),
     conteudo: z.string(),
+    resumoAlteracoes: z.string().nullable().describe('O que mudou em relação à versão anterior.'),
     publicadoEm: Instante,
   }),
 );
@@ -69,4 +70,19 @@ export const listarAceites = definirRota({
   resposta: { status: 200, corpo: AceitesDoUsuario },
 });
 
-export const ROTAS_TERMOS = [listarTermosPendentes, aceitarDocumentoLegal, listarAceites] as const;
+export const listarDocumentosVigentes = definirRota({
+  id: 'listarDocumentosVigentes',
+  metodo: 'get',
+  caminho: '/v1/termos/vigentes',
+  resumo: 'Versão vigente dos termos de uso, da política de privacidade e do aviso de cobertura.',
+  tag: 'termos',
+  publica: true,
+  resposta: { status: 200, corpo: DocumentosPendentes },
+});
+
+export const ROTAS_TERMOS = [
+  listarTermosPendentes,
+  aceitarDocumentoLegal,
+  listarAceites,
+  listarDocumentosVigentes,
+] as const;
