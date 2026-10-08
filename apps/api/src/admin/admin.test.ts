@@ -328,6 +328,12 @@ describe('tenants da plataforma pela API (HU39)', () => {
     const corpo = pagina.json<{ itens: { id: string }[]; proximoCursor: string | null }>();
     expect(corpo.itens).toHaveLength(1);
     expect(corpo.proximoCursor).toBe(corpo.itens[0]?.id);
+    const seguinte = await pedir(
+      'GET',
+      `/v1/admin/tenants?limite=1&cursor=${String(corpo.proximoCursor)}`,
+    );
+    expect(seguinte.statusCode).toBe(200);
+    expect(seguinte.json<{ itens: { id: string }[] }>().itens[0]?.id).not.toBe(corpo.itens[0]?.id);
     expect((await pedir('GET', `/v1/admin/tenants?cursor=nao-e-uuid`)).statusCode).toBe(400);
     const detalhe = await pedir('GET', `/v1/admin/tenants/${ESCRITORIO}`);
     expect(detalhe.json()).toMatchObject({ id: ESCRITORIO, suspensao: null, encerradoEm: null });
@@ -367,6 +373,25 @@ describe('tenants da plataforma pela API (HU39)', () => {
       [ESCRITORIO, 'identidade.tenant-reativado'],
       [PLATAFORMA, 'identidade.tenant-reativado'],
     ]);
+  });
+
+  it('assinatura parcial: altera só o campo enviado', async () => {
+    await pedir('PATCH', `/v1/admin/tenants/${ESCRITORIO}/assinatura`, {
+      plano: 'Escritório 10',
+      situacaoAssinatura: 'ativa',
+    });
+    expect(
+      (
+        await pedir('PATCH', `/v1/admin/tenants/${ESCRITORIO}/assinatura`, { plano: 'Solo' })
+      ).json(),
+    ).toMatchObject({ plano: 'Solo', situacaoAssinatura: 'ativa' });
+    expect(
+      (
+        await pedir('PATCH', `/v1/admin/tenants/${ESCRITORIO}/assinatura`, {
+          situacaoAssinatura: 'inadimplente',
+        })
+      ).json(),
+    ).toMatchObject({ plano: 'Solo', situacaoAssinatura: 'inadimplente' });
   });
 
   it('sem admin:tenants: 403', async () => {
@@ -416,6 +441,29 @@ describe('painel do administrador pela API (HU39)', () => {
     expect((await ler('/v1/admin/rejeicoes-email?limite=10')).json()).toEqual({
       itens: [{ email: 'rejeitou@exemplo.invalid', motivo: 'bounce', criadaEm: agora.paraIso() }],
       proximoCursor: null,
+    });
+    expect(
+      (await ler('/v1/admin/rejeicoes-email?limite=10&cursor=rejeitou@exemplo.invalid')).json(),
+    ).toEqual({ itens: [], proximoCursor: null });
+
+    await painel.gravar(
+      {
+        instancia: 'w1',
+        em: agora,
+        situacoes: [{ adaptador: 'djen', estado: 'operacional', ultimoSucesso: agora }],
+      },
+      [],
+    );
+    expect((await ler('/v1/admin/integracoes')).json()).toMatchObject({
+      adaptadores: [
+        {
+          adaptador: 'djen',
+          estado: 'operacional',
+          ultimoSucesso: agora.paraIso(),
+          ultimaFalha: null,
+          erro: null,
+        },
+      ],
     });
   });
 
@@ -484,6 +532,10 @@ describe('painel do administrador pela API (HU39)', () => {
       proximoCursor: null,
     });
     expect((await ler(`${url}&cursor=x`, curador)).statusCode).toBe(400);
+    expect((await ler(`${url}&cursor=${conteudoId}`, curador)).json()).toEqual({
+      itens: [],
+      proximoCursor: null,
+    });
     expect((await ler(url)).statusCode).toBe(403);
   });
 

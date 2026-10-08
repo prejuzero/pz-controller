@@ -127,6 +127,8 @@ jobs:
             apps/web/e2e/.relatorio/
             apps/web/e2e/.resultados/
           if-no-files-found: ignore
+          # As pastas do relatório começam com ponto: sem isto o upload as ignora e o trace se perde.
+          include-hidden-files: true
       - name: Logs em caso de falha
         if: failure()
         run: infra/docker/compose.sh --profile apps logs

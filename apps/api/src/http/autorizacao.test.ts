@@ -49,8 +49,8 @@ const sessoes = new SessoesEmMemoria();
 const perfis = new PerfisEmMemoria();
 const ambiente = carregarAmbiente(esquemaApi, {
   NODE_ENV: 'test',
-  DATABASE_URL: 'postgresql://pz_dev:pz_dev_local@127.0.0.1:5432/prejuzero',
-  REDIS_URL: 'redis://127.0.0.1:6379',
+  DATABASE_URL: 'postgresql://pz_dev:pz_dev_local@127.0.0.1:1/prejuzero',
+  REDIS_URL: 'redis://127.0.0.1:1',
   S3_REGION: 'us-east-1',
   CHAVE_CIFRAGEM: randomBytes(32).toString('base64'),
 });

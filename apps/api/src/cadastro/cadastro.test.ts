@@ -171,6 +171,47 @@ describe('cadastro pela API (HU11)', () => {
     expect((await pedir('DELETE', '/v1/oabs/nao-e-uuid')).statusCode).toBe(400);
   });
 
+  it('pelo app: a sessão com dispositivo também altera o perfil', async () => {
+    const sessao = await sessoes.obter(token);
+    if (sessao === undefined) throw new Error('sessão do advogado não gravada');
+    const tokenDoApp = randomBytes(32).toString('base64url');
+    await sessoes.gravar(tokenDoApp, {
+      ...sessao,
+      id: gerarUuidV7(),
+      dispositivoId: gerarUuidV7(),
+    });
+    const alterado = await api.inject({
+      method: 'PATCH',
+      url: '/v1/perfil',
+      headers: { authorization: `Bearer ${tokenDoApp}` },
+      payload: { celular: '21912345678' },
+    });
+    expect(alterado.statusCode).toBe(200);
+  });
+
+  it('entrada inválida e usuário sem cadastro: erros do caso de uso', async () => {
+    expect((await pedir('PATCH', '/v1/perfil', { celular: 'x' })).statusCode).toBe(400);
+    expect((await pedir('POST', '/v1/oabs', { numero: '', uf: 'ZZ' })).statusCode).toBe(400);
+    const semCadastro = randomBytes(32).toString('base64url');
+    const usuarioId = gerarUuidV7();
+    perfis.atribuir(usuarioId, 'advogado');
+    await sessoes.gravar(semCadastro, {
+      id: gerarUuidV7(),
+      usuarioId,
+      tenantId: gerarUuidV7(),
+      nivel: 'completo',
+      segundoFatorAtivo: true,
+      criadaEm: relogio.agora(),
+      ultimoUso: relogio.agora(),
+    });
+    const perfil = await api.inject({
+      method: 'GET',
+      url: '/v1/perfil',
+      headers: { authorization: `Bearer ${semCadastro}` },
+    });
+    expect(perfil.statusCode).toBe(404);
+  });
+
   it('verificação do e-mail: token desconhecido é 401; sem token, 400', async () => {
     const r = await api.inject({
       method: 'POST',

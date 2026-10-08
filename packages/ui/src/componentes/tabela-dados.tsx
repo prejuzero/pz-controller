@@ -6,6 +6,7 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
+  type Cell,
   type ColumnDef,
   type SortingState,
 } from '@tanstack/react-table';
@@ -17,6 +18,18 @@ import { mensagens } from '../mensagens.js';
 import { Botao } from './botao.js';
 
 export type ColunaTabela<T> = ColumnDef<T>;
+
+/**
+ * O flexRender monta a célula como componente: com colunas declaradas inline, cada render cria um
+ * tipo novo e o React remonta a célula (diálogo aberto fecha e o onSuccess do mutate se perde).
+ * Chamada como função, o React reconcilia pelo que ela devolve. Por isso célula não usa hooks.
+ */
+function renderizarCelula<T>(celula: Cell<T, unknown>): ReactNode {
+  const definicao = celula.column.columnDef.cell;
+  return typeof definicao === 'function'
+    ? (definicao(celula.getContext()) as ReactNode)
+    : definicao;
+}
 
 export interface TabelaDadosProps<T> {
   /** Nome acessível da tabela (vira o <caption>, visível só para leitores de tela). */
@@ -117,7 +130,7 @@ export function TabelaDados<T>({
                 >
                   {linha.getVisibleCells().map((celula) => (
                     <td key={celula.id} className="px-3 py-2 text-texto">
-                      {flexRender(celula.column.columnDef.cell, celula.getContext())}
+                      {renderizarCelula(celula)}
                     </td>
                   ))}
                 </tr>
