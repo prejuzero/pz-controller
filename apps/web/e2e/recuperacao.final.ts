@@ -14,6 +14,8 @@ test('recupera a senha pelo link do e-mail e entra com a nova senha', async ({ p
 
   await page.goto('/entrar');
   await page.getByRole('link', { name: 'Esqueci minha senha' }).click();
+  // A /entrar também tem "E-mail": sem esperar a navegação, o fill cai no formulário antigo.
+  await expect(page.getByRole('heading', { level: 1, name: 'Recuperar senha' })).toBeVisible();
   await page.getByLabel('E-mail').fill(EMAIL);
   await page.getByRole('button', { name: 'Enviar link' }).click();
   await expect(page.getByText('Se o e-mail estiver cadastrado', { exact: false })).toBeVisible();
