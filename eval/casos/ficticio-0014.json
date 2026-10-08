@@ -1,0 +1,17 @@
+{
+  "id": "ficticio-0014",
+  "origem": "ficticio",
+  "ramo": "penal",
+  "teor": "Encerrada a instrução, intimem-se as partes para apresentarem memoriais escritos no prazo sucessivo de 5 (cinco) dias, iniciando-se pelo Ministério Público.",
+  "anotacao": {
+    "tipoAto": "intimacao-alegacoes-finais",
+    "trecho": "apresentarem memoriais escritos",
+    "prazoCitado": {
+      "quantidade": 5,
+      "unidade": "dias"
+    }
+  },
+  "anotador": "ficticio-01",
+  "revisor": null,
+  "anonimizacaoConferidaPor": null
+}

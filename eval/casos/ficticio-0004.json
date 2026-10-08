@@ -1,0 +1,14 @@
+{
+  "id": "ficticio-0004",
+  "origem": "ficticio",
+  "ramo": "civel",
+  "teor": "Junte-se a petição. Após, aguarde-se o cumprimento do mandado já expedido.",
+  "anotacao": {
+    "tipoAto": "despacho-mero-expediente",
+    "trecho": "aguarde-se o cumprimento do mandado",
+    "prazoCitado": null
+  },
+  "anotador": "ficticio-01",
+  "revisor": null,
+  "anonimizacaoConferidaPor": null
+}

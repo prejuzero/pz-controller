@@ -1,0 +1,14 @@
+{
+  "id": "ficticio-0003",
+  "origem": "ficticio",
+  "ramo": "civel",
+  "teor": "Ante o exposto, JULGO PROCEDENTE o pedido formulado por [NOME 1] em face de [NOME 2], com resolução do mérito. Condeno a parte ré ao pagamento das custas e dos honorários advocatícios. Publique-se. Intimem-se.",
+  "anotacao": {
+    "tipoAto": "sentenca",
+    "trecho": "JULGO PROCEDENTE o pedido",
+    "prazoCitado": null
+  },
+  "anotador": "ficticio-01",
+  "revisor": null,
+  "anonimizacaoConferidaPor": null
+}

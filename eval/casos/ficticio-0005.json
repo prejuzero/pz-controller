@@ -1,0 +1,17 @@
+{
+  "id": "ficticio-0005",
+  "origem": "ficticio",
+  "ramo": "civel",
+  "teor": "Intime-se a parte executada, por seu advogado, para pagar o débito apontado no prazo de 15 (quinze) dias, acrescido de custas, sob pena de multa.",
+  "anotacao": {
+    "tipoAto": "intimacao-pagamento",
+    "trecho": "pagar o débito apontado",
+    "prazoCitado": {
+      "quantidade": 15,
+      "unidade": "dias"
+    }
+  },
+  "anotador": "ficticio-01",
+  "revisor": null,
+  "anonimizacaoConferidaPor": null
+}

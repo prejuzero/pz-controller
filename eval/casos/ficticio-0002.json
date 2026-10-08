@@ -1,0 +1,17 @@
+{
+  "id": "ficticio-0002",
+  "origem": "ficticio",
+  "ramo": "civel",
+  "teor": "Intime-se a parte autora para manifestar-se sobre a contestação e os documentos juntados, no prazo de 15 (quinze) dias.",
+  "anotacao": {
+    "tipoAto": "intimacao-manifestacao",
+    "trecho": "manifestar-se sobre a contestação",
+    "prazoCitado": {
+      "quantidade": 15,
+      "unidade": "dias"
+    }
+  },
+  "anotador": "ficticio-01",
+  "revisor": null,
+  "anonimizacaoConferidaPor": null
+}
