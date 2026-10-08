@@ -548,9 +548,18 @@ importers:
 
   eval:
     dependencies:
+      '@pz/adapter-anthropic':
+        specifier: workspace:*
+        version: link:../packages/adapters/anthropic
+      '@pz/classificacao':
+        specifier: workspace:*
+        version: link:../modules/classificacao
       '@pz/ia':
         specifier: workspace:*
         version: link:../packages/ia
+      '@pz/integracoes':
+        specifier: workspace:*
+        version: link:../packages/integracoes
       '@pz/kernel':
         specifier: workspace:*
         version: link:../packages/kernel

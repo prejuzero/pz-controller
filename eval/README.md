@@ -23,3 +23,12 @@ Os casos `ficticio-*` foram escritos pela IA programadora, com códigos de ato p
 4. Outro advogado revisa a anotação (`revisor`) e a anonimização (`anonimizacaoConferidaPor`).
 5. `pnpm --filter @pz/eval test` roda a verificação automática (formato, trecho literal, revisor diferente, nenhum CPF/CNPJ/e-mail/CEP/telefone/número CNJ/OAB/endereço). O CI bloqueia o PR se falhar.
 6. A cada lote, `pnpm --filter @pz/eval amostrar --tamanho 20` sorteia casos para conferência manual; registre a semente no PR.
+
+## Avaliação e gate (`pnpm eval`)
+
+Roda cada caso pelo mesmo caso de uso da produção (regras rápidas, depois a plataforma de IA com o prompt e a configuração versionados) e gera `relatorio/relatorio.md` e `.json`: acurácia, acertos por tipo, matriz de confusão, prazo citado, origem e situação, custo estimado e latência. No CI o relatório vira o artefato `avaliacao-ia` e o resumo do job.
+
+- **Referência** ([referencia/](referencia/)): cópia versionada da taxonomia (HU15) e das regras rápidas vigentes (HU20). As atuais são **provisórias** (`provisoria: true`); trocar pela exportação aprovada pelo curador.
+- **Gravações** (`gravacoes/<tarefa@versao>.json`): respostas reais do modelo, reproduzidas no CI sem rede e sem custo. A chave de cada resposta é o hash do prompt montado (texto, versão, taxonomia, teor) e do modelo com seus parâmetros: mudou qualquer um, a gravação deixa de valer.
+- **Regravar** (exige `ANTHROPIC_API_KEY`, nunca no CI): `ANTHROPIC_API_KEY=... pnpm eval --gravar`. Regrava as respostas da versão atual do prompt e grava o resultado em `historico/<tarefa@versao>.json` (histórico por versão do prompt). Versione os dois arquivos no PR.
+- **Gate**: só casos `real-anonimizado` com revisor contam para a meta (≥ 98%). Reprova abaixo da meta ou se faltar gravação para algum caso da meta. Sem casos reais revisados, passa com aviso explícito no CI.
