@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
-import { CURADOR_2, entrar, ESTADO_CURADOR, SENHA } from './apoio';
+import { aguardarAnimacoes, CURADOR_2, entrar, ESTADO_CURADOR, SENHA } from './apoio';
 
 // Taxonomia e versão FICTÍCIAS, únicas por execução (o banco local persiste entre rodadas).
 const SUFIXO = String(Date.now());
@@ -9,6 +9,7 @@ const CODIGO = `ficticio-e2e-${SUFIXO}`;
 const NOME = `FICTÍCIO E2E ${SUFIXO}`;
 
 async function semViolacoes(page: Page): Promise<void> {
+  await aguardarAnimacoes(page);
   const { violations } = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .analyze();

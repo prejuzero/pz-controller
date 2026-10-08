@@ -40,6 +40,10 @@ export const chaves = {
     exportacao: (id: string) => [...chaves.privacidade.todas, 'exportacao', id] as const,
     encerramento: () => [...chaves.privacidade.todas, 'encerramento'] as const,
   },
+  captura: {
+    todas: ['captura'] as const,
+    status: () => [...chaves.captura.todas, 'status'] as const,
+  },
   publicacoes: {
     todas: ['publicacoes'] as const,
     lista: (filtros: object) => [...chaves.publicacoes.todas, 'lista', filtros] as const,

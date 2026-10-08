@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { avisosDaSessao, avisosDeEntrega } from './avisos';
+import { avisosDaCaptura, avisosDaSessao, avisosDeEntrega } from './avisos';
 
 describe('avisosDaSessao', () => {
   it('sem impersonação, não há aviso', () => {
@@ -37,6 +37,20 @@ describe('avisosDeEntrega (HU30)', () => {
     ).toEqual([
       { tipo: 'email-rejeitado', emails: ['ana@exemplo.invalid'] },
       { tipo: 'equipe-com-rejeicao', quantidade: 2 },
+    ]);
+  });
+});
+
+describe('avisosDaCaptura (HU19)', () => {
+  const status = (situacao: 'operacional' | 'degradada') => ({
+    fonte: { id: 'djen', situacao, desde: '2026-10-08T17:00:00Z' },
+    oabs: [],
+  });
+
+  it('fonte operacional: nada; degradada: aviso com a fonte e o horário', () => {
+    expect(avisosDaCaptura(status('operacional'))).toEqual([]);
+    expect(avisosDaCaptura(status('degradada'))).toEqual([
+      { tipo: 'captura-atrasada', fonte: 'DJEN', desde: '2026-10-08T17:00:00Z' },
     ]);
   });
 });

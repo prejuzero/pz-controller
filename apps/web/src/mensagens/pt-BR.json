@@ -91,11 +91,13 @@
   "avisos": {
     "rotulo": "Avisos",
     "impersonacao": "Você está acessando outro escritório só para leitura. Motivo: {motivo}. Expira em {expiraEm}.",
-    "capturaAtrasada": "A captura de publicações está atrasada. Confira as intimações manualmente até a normalização.",
+    "capturaAtrasada": "A captura do {fonte} está atrasada. Recuperaremos automaticamente; até lá, confira as intimações no diário.",
     "cienciaPendente": "{quantidade, plural, one {# intimação aguarda} other {# intimações aguardam}} confirmação de ciência.",
     "emailRejeitado": "Não conseguimos entregar e-mails para {emails}. Enquanto isso, você não recebe avisos de prazo por e-mail.",
     "emailRejeitadoAcao": "Revisar e-mails no perfil",
-    "equipeComRejeicao": "{quantidade, plural, one {# pessoa da equipe teve} other {# pessoas da equipe tiveram}} e-mails rejeitados nos últimos 7 dias."
+    "equipeComRejeicao": "{quantidade, plural, one {# pessoa da equipe teve} other {# pessoas da equipe tiveram}} e-mails rejeitados nos últimos 7 dias.",
+    "capturaAtrasadaDesde": "Captura do {fonte} atrasada desde {desde}. Recuperaremos automaticamente; até lá, confira as intimações no diário.",
+    "capturaAtrasadaAcao": "Ver a cobertura"
   },
   "secao": {
     "emConstrucao": "Esta seção chega nas próximas entregas."
@@ -250,7 +252,9 @@
     "oabs": "OABs",
     "oabsDescricao": "Inscrições monitoradas nas publicações.",
     "privacidade": "Privacidade",
-    "privacidadeDescricao": "Documentos aceitos, exportação dos seus dados e encerramento da conta."
+    "privacidadeDescricao": "Documentos aceitos, exportação dos seus dados e encerramento da conta.",
+    "cobertura": "Cobertura",
+    "coberturaDescricao": "Última captura de cada OAB e o que exige conferência manual."
   },
   "cadastro": {
     "titulo": "Criar conta",
@@ -559,5 +563,27 @@
       "processo": "Ver processo",
       "indicio": "A leitura fica registrada como indício de conhecimento. Ela não é ciência e não confirma prazo."
     }
+  },
+  "cobertura": {
+    "titulo": "Cobertura da captura",
+    "descricao": "O PrejuZero consulta o {fonte} várias vezes ao dia para cada OAB do escritório. Depois de uma falha, a próxima captura busca desde a última que deu certo: nenhum dia fica sem consulta.",
+    "fonte": "Fonte",
+    "operacional": "Operacional",
+    "degradada": "Atrasada",
+    "desde": "desde {desde}",
+    "oabs": "OABs monitoradas automaticamente",
+    "vazio": "Nenhuma OAB cadastrada ainda.",
+    "colunas": {
+      "oab": "OAB",
+      "ultima": "Última captura",
+      "situacao": "Situação"
+    },
+    "nunca": "Aguardando a primeira captura",
+    "emDia": "Em dia",
+    "comFalhas": "{falhas, plural, one {# falha} other {# falhas}}; nova tentativa {quando}",
+    "comFalhasProxima": "{falhas, plural, one {# falha} other {# falhas}}; nova tentativa na próxima rodada",
+    "manual": "O que exige conferência manual",
+    "manualTexto": "Processos marcados com cobertura parcial ou manual (ex.: físicos ou de sistemas que não publicam no DJEN) não chegam pelas fontes públicas. Confira o diário ou o painel do tribunal.",
+    "verProcessos": "Ver processos com cobertura manual"
   }
 }

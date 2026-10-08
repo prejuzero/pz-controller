@@ -27,6 +27,13 @@ export default async function PaginaConfiguracoes() {
           titulo={t('privacidade')}
           descricao={t('privacidadeDescricao')}
         />
+        <SePermitido permissao="publicacoes:ler">
+          <Item
+            href="/configuracoes/cobertura"
+            titulo={t('cobertura')}
+            descricao={t('coberturaDescricao')}
+          />
+        </SePermitido>
         <SePermitido permissao="calendario:ler">
           <Item
             href="/configuracoes/feriados-locais"
