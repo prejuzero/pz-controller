@@ -73,6 +73,21 @@ export class CapturaPostgres implements RepositorioDaCaptura<Transacao> {
     }));
   }
 
+  async sonda(tx: Transacao): Promise<AlvoDevido | undefined> {
+    const linha = await tx.alvoMonitoramento.findFirst({
+      where: { ativo: true, assinantes: { some: {} } },
+      select: { id: true, tipo: true, valor: true, ultimaJanelaFim: true },
+      orderBy: [{ proximaExecucao: { sort: 'asc', nulls: 'first' } }, { id: 'asc' }],
+    });
+    if (linha === null) return undefined;
+    return {
+      id: linha.id as Uuid,
+      tipo: linha.tipo,
+      valor: linha.valor,
+      ...(linha.ultimaJanelaFim === null ? {} : { ultimaJanelaFim: deData(linha.ultimaJanelaFim) }),
+    };
+  }
+
   async travar(tx: Transacao, alvoId: Uuid): Promise<AlvoParaEntrega | undefined> {
     const [alvo] = await tx.$queryRaw<
       {

@@ -47,6 +47,8 @@ export interface RepositorioDeAssinaturas<Transacao> {
 /** Porta: planejamento e entrega, que atravessam tenants (papel sistema, com motivo). */
 export interface RepositorioDaCaptura<Transacao> {
   devidos(transacao: Transacao, agora: Instant): Promise<AlvoDevido[]>;
+  /** Alvo ativo com assinante e a próxima execução mais antiga (sonda da fonte degradada). */
+  sonda(transacao: Transacao): Promise<AlvoDevido | undefined>;
   /** Trava o alvo (FOR UPDATE) até o fim da transação. */
   travar(transacao: Transacao, alvoId: Uuid): Promise<AlvoParaEntrega | undefined>;
   registrarSucesso(

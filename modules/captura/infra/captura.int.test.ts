@@ -81,7 +81,10 @@ beforeAll(async () => {
   };
   const captura = new CapturaPostgres();
   manter = new ManterAssinaturas(new AssinaturasPostgres(), relogio);
-  planejar = new PlanejarCaptura(comoSistema, captura, relogio, { diasIniciais: 7 });
+  planejar = new PlanejarCaptura(comoSistema, captura, relogio, {
+    diasIniciais: 7,
+    fonte: 'falsa',
+  });
   executar = new ExecutarCaptura(
     comoSistema,
     captura,
