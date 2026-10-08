@@ -2,6 +2,7 @@ import { filaDlq, NOMES_FILAS } from '@pz/integracoes';
 import { Queue } from 'bullmq';
 import { z } from 'zod';
 
+import type { ContadorDeFilas, ResumoDeFila } from '../application/painel.js';
 import type { FilaDeMortos } from '../application/reprocessar-job-morto.js';
 import type { JobMorto } from '../domain/job-morto.js';
 import type { NomeFila } from '@pz/integracoes';
@@ -22,7 +23,7 @@ function ehFila(nome: string): nome is NomeFila {
 }
 
 /** DLQs no BullMQ. Também entrega as filas ao painel (Bull Board), que só lê. */
-export class FilaDeMortosBullMq implements FilaDeMortos {
+export class FilaDeMortosBullMq implements FilaDeMortos, ContadorDeFilas {
   readonly #filas = new Map<string, Queue>();
 
   constructor(private readonly conexao: ConnectionOptions) {}
@@ -39,6 +40,31 @@ export class FilaDeMortosBullMq implements FilaDeMortos {
   /** Todas as filas do catálogo e as DLQs, para o painel. */
   todas(): Queue[] {
     return NOMES_FILAS.flatMap((nome) => [this.#fila(nome), this.#fila(filaDlq(nome))]);
+  }
+
+  /** Contagem por fila do catálogo, com a DLQ (só leitura). */
+  async resumo(): Promise<ResumoDeFila[]> {
+    return Promise.all(
+      NOMES_FILAS.map(async (nome) => {
+        const [contagem, mortos] = await Promise.all([
+          this.#fila(nome).getJobCounts('wait', 'active', 'delayed', 'failed'),
+          this.#fila(filaDlq(nome)).getJobCountByTypes(
+            'wait',
+            'waiting-children',
+            'delayed',
+            'prioritized',
+          ),
+        ]);
+        return {
+          fila: nome,
+          aguardando: contagem.wait ?? 0,
+          ativos: contagem.active ?? 0,
+          atrasados: contagem.delayed ?? 0,
+          falhos: contagem.failed ?? 0,
+          mortos,
+        };
+      }),
+    );
   }
 
   async buscar(fila: string, jobId: string): Promise<JobMorto | undefined> {

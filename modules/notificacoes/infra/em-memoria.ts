@@ -7,6 +7,7 @@ import type {
   RepositorioDeDestinosPush,
   RepositorioDeNotificacoes,
 } from '../application/portas.js';
+import type { ConsultaDeSupressoes, Supressao } from '../application/supressoes.js';
 import type { CanalComConsentimento, EstadoDoConsentimento } from '../domain/consentimento.js';
 import type { EstadoDaNotificacao } from '../domain/notificacao.js';
 import type { Instant, TransacaoEmMemoria, Uuid } from '@pz/kernel';
@@ -135,5 +136,23 @@ export class ConsentimentosEmMemoria
     if (atual === undefined) return Promise.resolve(undefined);
     tx.aoConfirmar(() => this.#push.set(atual.id, { ...atual, ativo: false }));
     return Promise.resolve(atual.id);
+  }
+}
+
+/** Supressões em memória, para testes (só a consulta). */
+export class SupressoesEmMemoria implements ConsultaDeSupressoes<unknown> {
+  readonly itens: Supressao[] = [];
+
+  listar(
+    _transacao: unknown,
+    pagina: { readonly limite: number; readonly apos?: string },
+  ): Promise<Supressao[]> {
+    const { apos } = pagina;
+    return Promise.resolve(
+      [...this.itens]
+        .sort((a, b) => a.email.localeCompare(b.email))
+        .filter((s) => apos === undefined || s.email > apos)
+        .slice(0, pagina.limite),
+    );
   }
 }

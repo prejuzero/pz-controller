@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 
 import { Controller, Get } from '@nestjs/common';
-import { FilaDeMortosEmMemoria } from '@pz/administracao';
+import { FilaDeMortosEmMemoria, PainelEmMemoria } from '@pz/administracao';
 import { carregarAmbiente } from '@pz/config/env';
 import { tenantAtual } from '@pz/db';
 import {
@@ -15,6 +15,7 @@ import {
   TentativasEmMemoria,
 } from '@pz/identidade';
 import { FixedClock, gerarUuidV7, Instant, OutboxEmMemoria } from '@pz/kernel';
+import { SupressoesEmMemoria } from '@pz/notificacoes';
 import { obterContexto } from '@pz/observability';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
@@ -62,6 +63,8 @@ const autorizacao = { authorization: `Bearer ${token}` };
 const SEM_PERFIL = gerarUuidV7();
 const tokenSemPerfil = randomBytes(32).toString('base64url');
 const mortos = new FilaDeMortosEmMemoria();
+const painel = new PainelEmMemoria();
+const supressoes = new SupressoesEmMemoria();
 let api: NestFastifyApplication;
 
 beforeAll(async () => {
@@ -94,7 +97,10 @@ beforeAll(async () => {
     filas: {
       reprocessamento: { filaDeMortos: mortos, unidade: new OutboxEmMemoria(), trilha },
       painel: [],
+      integracoes: painel,
+      contador: painel,
     },
+    supressoes,
   });
   await api.init();
   await api.getHttpAdapter().getInstance().ready();
@@ -341,5 +347,53 @@ describe('tenants da plataforma pela API (HU39)', () => {
       headers: { authorization: `Bearer ${tokenSemPerfil}` },
     });
     expect(resposta.statusCode).toBe(403);
+  });
+});
+
+describe('painel do administrador pela API (HU39)', () => {
+  const ler = (url: string, headers = autorizacao) => api.inject({ method: 'GET', url, headers });
+
+  it('integrações, filas e rejeições de e-mail', async () => {
+    const agora = relogio.agora();
+    await painel.gravar(
+      {
+        instancia: 'w1',
+        em: agora,
+        situacoes: [
+          { adaptador: 'djen', estado: 'degradado', ultimaFalha: agora, erro: 'HTTP 503' },
+        ],
+      },
+      [{ adaptador: 'djen', instancia: 'w1', em: agora, erro: 'HTTP 503' }],
+    );
+    painel.filas = [
+      { fila: 'captura', aguardando: 3, ativos: 1, atrasados: 0, falhos: 2, mortos: 1 },
+    ];
+    supressoes.itens.push({ email: 'rejeitou@exemplo.invalid', motivo: 'bounce', criadaEm: agora });
+
+    expect((await ler('/v1/admin/integracoes')).json()).toEqual({
+      adaptadores: [
+        {
+          adaptador: 'djen',
+          estado: 'degradado',
+          instancias: 1,
+          ultimoSucesso: null,
+          ultimaFalha: agora.paraIso(),
+          erro: 'HTTP 503',
+        },
+      ],
+      falhas: [{ adaptador: 'djen', instancia: 'w1', em: agora.paraIso(), erro: 'HTTP 503' }],
+    });
+    expect((await ler('/v1/admin/filas')).json()).toEqual({ filas: painel.filas });
+    expect((await ler('/v1/admin/rejeicoes-email?limite=10')).json()).toEqual({
+      itens: [{ email: 'rejeitou@exemplo.invalid', motivo: 'bounce', criadaEm: agora.paraIso() }],
+      proximoCursor: null,
+    });
+  });
+
+  it('sem permissão de administrador: 403', async () => {
+    const semPerfil = { authorization: `Bearer ${tokenSemPerfil}` };
+    for (const url of ['/v1/admin/integracoes', '/v1/admin/filas', '/v1/admin/rejeicoes-email']) {
+      expect((await ler(url, semPerfil)).statusCode).toBe(403);
+    }
   });
 });

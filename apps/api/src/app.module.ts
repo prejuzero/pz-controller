@@ -2,7 +2,13 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ArmazenamentoS3 } from '@pz/adapter-s3';
 import { DESCRITOR_SES, WebhooksSes } from '@pz/adapter-ses';
-import { FilaDeMortosBullMq, ReprocessarJobMorto } from '@pz/administracao';
+import {
+  ConsultarFilas,
+  ConsultarIntegracoes,
+  FilaDeMortosBullMq,
+  PainelRedis,
+  ReprocessarJobMorto,
+} from '@pz/administracao';
 import { TrilhaPostgres } from '@pz/auditoria';
 import {
   AdicionarOab,
@@ -99,6 +105,7 @@ import {
   NotificacoesPostgres,
   RegistrarDestinoPush,
   RevogarConsentimento,
+  ListarSupressoes,
   SupressaoPostgres,
 } from '@pz/notificacoes';
 import { criarLogger, registrarErro } from '@pz/observability';
@@ -168,7 +175,11 @@ import type { AmbienteApi } from './ambiente.js';
 import type { JanelaDeRequisicoes } from './http/limite.js';
 import type { CaixaDeWebhooks } from './webhooks/webhooks.controller.js';
 import type { DynamicModule, Provider, Type } from '@nestjs/common';
-import type { DependenciasDoReprocessamento } from '@pz/administracao';
+import type {
+  ArmazemDoPainel,
+  ContadorDeFilas,
+  DependenciasDoReprocessamento,
+} from '@pz/administracao';
 import type { TrilhaDeAuditoria } from '@pz/auditoria';
 import type {
   CriadorDeConta,
@@ -208,6 +219,7 @@ import type {
   RepositorioDeConsentimentos,
   RepositorioDeDestinosPush,
   RepositorioDeNotificacoes,
+  ConsultaDeSupressoes,
 } from '@pz/notificacoes';
 import type { RepositorioDaTabela, RepositorioDeTiposDeAto } from '@pz/prazos';
 import type { RepositorioDeEncerramentos, RepositorioDeExportacoes } from '@pz/privacidade';
@@ -274,7 +286,12 @@ export interface OpcoesApi {
   readonly filas?: {
     readonly reprocessamento: DependenciasDoReprocessamento<unknown>;
     readonly painel: readonly Queue[];
+    /** Painel do administrador (HU39): saúde das integrações e contagem das filas. */
+    readonly integracoes: ArmazemDoPainel;
+    readonly contador: ContadorDeFilas;
   };
+  /** Rejeições de e-mail para o administrador (HU39); nos testes, em memória. */
+  readonly supressoes?: ConsultaDeSupressoes<unknown>;
 }
 
 /** Dependências que /health/ready e /v1/saude conferem (ADR-010). */
@@ -322,7 +339,12 @@ function filasDoAmbiente(recursos: RecursosDaApi): NonNullable<OpcoesApi['filas'
     unidade: recursos.banco,
     trilha: new TrilhaPostgres(),
   };
-  return { reprocessamento, painel: mortos.todas() };
+  return {
+    reprocessamento,
+    painel: mortos.todas(),
+    integracoes: new PainelRedis(recursos.redis),
+    contador: mortos,
+  };
 }
 
 interface DependenciasDoCalendario {
@@ -905,6 +927,19 @@ export class AppModule {
           }),
       },
       { provide: ReprocessarJobMorto, useValue: new ReprocessarJobMorto(filas.reprocessamento) },
+      {
+        provide: ConsultarIntegracoes,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) => new ConsultarIntegracoes(filas.integracoes, relogio),
+      },
+      { provide: ConsultarFilas, useValue: new ConsultarFilas(filas.contador) },
+      {
+        provide: ListarSupressoes,
+        useValue: new ListarSupressoes(
+          recursos.banco,
+          opcoes.supressoes ?? new SupressaoPostgres(),
+        ),
+      },
       ...[ListarTenants, DetalharTenant, AlterarAssinatura, SuspenderTenant, ReativarTenant].map(
         (CasoDeUso) => ({
           provide: CasoDeUso,

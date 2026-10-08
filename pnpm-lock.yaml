@@ -433,6 +433,9 @@ importers:
       '@pz/adapter-smtp':
         specifier: workspace:*
         version: link:../../packages/adapters/smtp
+      '@pz/administracao':
+        specifier: workspace:*
+        version: link:../../modules/administracao
       '@pz/auditoria':
         specifier: workspace:*
         version: link:../../modules/auditoria

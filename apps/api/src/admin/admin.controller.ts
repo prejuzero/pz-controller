@@ -11,7 +11,7 @@ import {
   Query,
   Req,
 } from '@nestjs/common';
-import { ReprocessarJobMorto } from '@pz/administracao';
+import { ConsultarFilas, ConsultarIntegracoes, ReprocessarJobMorto } from '@pz/administracao';
 import {
   ConsultaPaginada,
   PedidoDeAssinatura,
@@ -30,12 +30,20 @@ import {
   ReativarTenant,
   SuspenderTenant,
 } from '@pz/identidade';
+import { ListarSupressoes } from '@pz/notificacoes';
 
 import { autenticacao, contextoDe, sessaoAtual, validar } from '../auth/auth.controller.js';
 import { RequerPermissao } from '../http/acesso.js';
 
 import type { RequisicaoAutenticada } from '../http/acesso.js';
-import type { PaginaDeTenants, SessaoAtual, TenantAdministrado } from '@pz/contracts';
+import type {
+  PaginaDeRejeicoes,
+  PaginaDeTenants,
+  PainelDeIntegracoes,
+  ResumoDasFilas,
+  SessaoAtual,
+  TenantAdministrado,
+} from '@pz/contracts';
 import type { Administrador, TenantAdministrado as Tenant } from '@pz/identidade';
 import type { Result, Uuid } from '@pz/kernel';
 
@@ -86,7 +94,47 @@ export class AdminController {
     @Inject(AlterarAssinatura) private readonly assinatura: AlterarAssinatura<unknown>,
     @Inject(SuspenderTenant) private readonly suspender: SuspenderTenant<unknown>,
     @Inject(ReativarTenant) private readonly reativar: ReativarTenant<unknown>,
+    @Inject(ConsultarIntegracoes) private readonly integracoes: ConsultarIntegracoes,
+    @Inject(ConsultarFilas) private readonly filas: ConsultarFilas,
+    @Inject(ListarSupressoes) private readonly supressoes: ListarSupressoes<unknown>,
   ) {}
+
+  @Get('integracoes')
+  @RequerPermissao('admin:filas')
+  async consultarIntegracoes(): Promise<PainelDeIntegracoes> {
+    const { adaptadores, falhas } = await this.integracoes.executar();
+    return {
+      adaptadores: adaptadores.map((a) => ({
+        adaptador: a.adaptador,
+        estado: a.estado,
+        instancias: a.instancias,
+        ultimoSucesso: a.ultimoSucesso?.paraIso() ?? null,
+        ultimaFalha: a.ultimaFalha?.paraIso() ?? null,
+        erro: a.erro ?? null,
+      })),
+      falhas: falhas.map((f) => ({ ...f, em: f.em.paraIso() })),
+    };
+  }
+
+  @Get('filas')
+  @RequerPermissao('admin:filas')
+  async resumirFilas(): Promise<ResumoDasFilas> {
+    return { filas: await this.filas.executar() };
+  }
+
+  @Get('rejeicoes-email')
+  @RequerPermissao('admin:tenants')
+  async rejeicoes(@Query() consulta: unknown): Promise<PaginaDeRejeicoes> {
+    const { cursor, limite } = validar(ConsultaPaginada, consulta);
+    const pagina = await this.supressoes.executar({
+      limite,
+      ...(cursor === undefined ? {} : { apos: cursor }),
+    });
+    return {
+      itens: pagina.itens.map((s) => ({ ...s, criadaEm: s.criadaEm.paraIso() })),
+      proximoCursor: pagina.proximoCursor,
+    };
+  }
 
   @Get('tenants')
   @RequerPermissao('admin:tenants')

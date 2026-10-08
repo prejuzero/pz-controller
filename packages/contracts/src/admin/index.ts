@@ -190,6 +190,92 @@ export const reativarTenant = definirRota({
   erros: [404],
 });
 
+const EstadoDaIntegracao = z.enum(['operacional', 'degradado', 'indisponivel']);
+
+export const PainelDeIntegracoes = nomear(
+  'PainelDeIntegracoes',
+  z.object({
+    adaptadores: z
+      .array(
+        z.object({
+          adaptador: z.string(),
+          estado: EstadoDaIntegracao.describe('Pior estado entre as instâncias do worker.'),
+          instancias: z.number().int().min(1),
+          ultimoSucesso: Instante.nullable(),
+          ultimaFalha: Instante.nullable(),
+          erro: z.string().nullable().describe('Mensagem da última falha, sem dados do processo.'),
+        }),
+      )
+      .describe('Só adaptadores de instâncias que informaram nos últimos 2 minutos.'),
+    falhas: z
+      .array(
+        z.object({ adaptador: z.string(), instancia: z.string(), em: Instante, erro: z.string() }),
+      )
+      .describe('Falhas mais recentes primeiro (até 50).'),
+  }),
+);
+export type PainelDeIntegracoes = z.infer<typeof PainelDeIntegracoes.esquema>;
+
+/** Saúde das integrações (HU39, ADR-005): exige `admin:filas` (operação da plataforma). */
+export const consultarIntegracoes = definirRota({
+  id: 'consultarIntegracoes',
+  metodo: 'get',
+  caminho: '/v1/admin/integracoes',
+  resumo: 'Estado de cada adaptador e o histórico recente de falhas.',
+  tag: 'admin',
+  resposta: { status: 200, corpo: PainelDeIntegracoes },
+});
+
+export const ResumoDasFilas = nomear(
+  'ResumoDasFilas',
+  z.object({
+    filas: z.array(
+      z.object({
+        fila: z.string(),
+        aguardando: z.number().int().nonnegative(),
+        ativos: z.number().int().nonnegative(),
+        atrasados: z.number().int().nonnegative(),
+        falhos: z.number().int().nonnegative(),
+        mortos: z.number().int().nonnegative().describe('Jobs na DLQ da fila.'),
+      }),
+    ),
+  }),
+);
+export type ResumoDasFilas = z.infer<typeof ResumoDasFilas.esquema>;
+
+/** Resumo das filas (HU39): exige `admin:filas`. Reprocessar a DLQ é pela rota auditada. */
+export const resumirFilas = definirRota({
+  id: 'resumirFilas',
+  metodo: 'get',
+  caminho: '/v1/admin/filas',
+  resumo: 'Contagem de jobs por fila do catálogo, com a DLQ.',
+  tag: 'admin',
+  resposta: { status: 200, corpo: ResumoDasFilas },
+});
+
+export const RejeicaoDeEmail = nomear(
+  'RejeicaoDeEmail',
+  z.object({
+    email: z.string(),
+    motivo: z.enum(['bounce', 'spam']),
+    criadaEm: Instante,
+  }),
+);
+
+export const PaginaDeRejeicoes = nomear('PaginaDeRejeicoes', pagina(RejeicaoDeEmail.esquema));
+export type PaginaDeRejeicoes = z.infer<typeof PaginaDeRejeicoes.esquema>;
+
+/** E-mails suprimidos por rejeição (HU30/HU39): exige `admin:tenants`. Lista global. */
+export const listarRejeicoesDeEmail = definirRota({
+  id: 'listarRejeicoesDeEmail',
+  metodo: 'get',
+  caminho: '/v1/admin/rejeicoes-email',
+  resumo: 'Lista os e-mails que não recebem mais envios (bounce ou spam), por e-mail.',
+  tag: 'admin',
+  consulta: ConsultaPaginada,
+  resposta: { status: 200, corpo: PaginaDeRejeicoes },
+});
+
 export const ROTAS_ADMIN = [
   iniciarImpersonacao,
   encerrarImpersonacao,
@@ -199,4 +285,7 @@ export const ROTAS_ADMIN = [
   alterarAssinatura,
   suspenderTenant,
   reativarTenant,
+  consultarIntegracoes,
+  resumirFilas,
+  listarRejeicoesDeEmail,
 ] as const;
