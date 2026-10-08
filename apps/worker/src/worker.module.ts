@@ -5,7 +5,11 @@ import { DESCRITOR_DJEN, FontePublicacoesDjen } from '@pz/adapter-djen';
 import { ArmazenamentoS3 } from '@pz/adapter-s3';
 import { criarProvedorEmailSes, DESCRITOR_SES, WebhooksSes } from '@pz/adapter-ses';
 import { DESCRITOR_SMTP, ProvedorEmailSmtp } from '@pz/adapter-smtp';
-import { PainelRedis, PublicarSituacaoDasIntegracoes } from '@pz/administracao';
+import {
+  ContadorDeUsoDeIaRedis,
+  PainelRedis,
+  PublicarSituacaoDasIntegracoes,
+} from '@pz/administracao';
 import {
   AuditarEvento,
   CadeiaPostgres,
@@ -34,7 +38,7 @@ import {
   TaxonomiaPostgres,
 } from '@pz/classificacao';
 import { Banco, BancoSistema, OutboxPostgres } from '@pz/db';
-import { configuracaoPadrao, ContadorDeUsoEmMemoria, PlataformaIa, promptsPadrao } from '@pz/ia';
+import { configuracaoPadrao, PlataformaIa, promptsPadrao } from '@pz/ia';
 import {
   ExportacaoDaIdentidadePostgres,
   CifraAesGcm,
@@ -299,6 +303,7 @@ function fonteDoAmbiente(
 function iaDoAmbiente(
   ambiente: AmbienteWorker,
   banco: Banco,
+  redis: Redis,
   relogio: Clock,
   registros: RegistroDeAdaptadores[],
 ): ClassificadorIa | undefined {
@@ -318,8 +323,8 @@ function iaDoAmbiente(
     configuracaoPadrao(),
     new Map([[DESCRITOR_ANTHROPIC.id, registro.obter('provedor-ia')]]),
     {
-      // Contador por instância (pendência: contador persistente do orçamento de IA).
-      contador: new ContadorDeUsoEmMemoria(),
+      // No Redis: compartilhado entre workers e preservado no reinício.
+      contador: new ContadorDeUsoDeIaRedis(redis),
       relogio,
       aoAlertar: (alerta) => {
         logger.warn(alerta, 'orçamento de IA acima de 80%');
@@ -472,9 +477,10 @@ export class WorkerModule {
       {
         // Classificação (HU21): regras rápidas e, com chave configurada, a plataforma de IA.
         provide: ClassificarPublicacao,
-        inject: [RELOGIO, BANCO],
-        useFactory: (relogio: Clock, banco: Banco) => {
-          const ia = opcoes.classificadorIa ?? iaDoAmbiente(ambiente, banco, relogio, registros);
+        inject: [RELOGIO, BANCO, REDIS],
+        useFactory: (relogio: Clock, banco: Banco, redis: Redis) => {
+          const ia =
+            opcoes.classificadorIa ?? iaDoAmbiente(ambiente, banco, redis, relogio, registros);
           return new ClassificarPublicacao({
             teores: new TeoresPostgres(),
             regras: new RegrasPostgres(),
