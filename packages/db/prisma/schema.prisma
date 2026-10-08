@@ -24,6 +24,15 @@ enum TipoTenant {
 }
 
 /// Escritório ou advogado autônomo: a unidade de isolamento de dados (RNF07).
+enum SituacaoAssinatura {
+  teste
+  ativa
+  inadimplente
+  cancelada
+
+  @@map("situacao_assinatura")
+}
+
 model Tenant {
   id           String     @id @db.Uuid
   nome         String
@@ -32,6 +41,12 @@ model Tenant {
   atualizadoEm DateTime   @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
   /// Encerramento efetivado (HU38): dados de negócio apagados, provas pseudonimizadas.
   encerradoEm  DateTime?  @map("encerrado_em") @db.Timestamptz(6)
+  /// Plano e situação da assinatura, manuais no MVP (HU39; gateway futuro via ProvedorCobranca).
+  plano              String?
+  situacaoAssinatura SituacaoAssinatura @default(teste) @map("situacao_assinatura")
+  /// Suspensão do acesso pelo administrador (HU39): login e renovação recusados; captura segue.
+  suspensoEm         DateTime?          @map("suspenso_em") @db.Timestamptz(6)
+  motivoSuspensao    String?            @map("motivo_suspensao")
 
   usuarios               Usuario[]
   eventosDominio         EventoDominio[]

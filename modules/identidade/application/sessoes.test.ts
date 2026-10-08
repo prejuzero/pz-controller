@@ -179,6 +179,30 @@ describe('autenticar', () => {
     expect(hasher.verificacoes).toBe(tentativas.length);
     expect(sessoes.mapa.size).toBe(0);
   });
+
+  it('escritório suspenso (HU39): senha certa é recusada com aviso; senha errada não revela', async () => {
+    const { autenticar, credenciais, sessoes, acessos } = montar();
+    const atual = credenciais.porEmail.get('advogada@exemplo.com');
+    if (atual === undefined) throw new Error('credencial ausente');
+    credenciais.porEmail.set('advogada@exemplo.com', { ...atual, tenantSuspenso: true });
+    expect(
+      await autenticar.executar(
+        { email: 'advogada@exemplo.com', senha: 'senha errada longa' },
+        CTX,
+      ),
+    ).toMatchObject({ ok: false, erro: { codigo: 'credenciais-invalidas' } });
+    expect(
+      await autenticar.executar(
+        { email: 'advogada@exemplo.com', senha: 'senha correta longa' },
+        CTX,
+      ),
+    ).toMatchObject({
+      ok: false,
+      erro: { codigo: 'tenant-suspenso', categoria: 'nao-autenticado' },
+    });
+    expect(sessoes.mapa.size).toBe(0);
+    expect(acessos.registrados.at(-1)).toMatchObject({ usuarioId: USUARIO, sucesso: false });
+  });
 });
 
 describe('validar e encerrar sessão', () => {

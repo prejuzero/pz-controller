@@ -61,8 +61,13 @@ import {
   ConsultarAcessos,
   ConsultarPermissoes,
   CredenciaisPostgres,
+  AlterarAssinatura,
+  DetalharTenant,
   EncerrarImpersonacao,
   IniciarImpersonacao,
+  ListarTenants,
+  ReativarTenant,
+  SuspenderTenant,
   TenantsPostgres,
   PerfisPostgres,
   ElevarSessao,
@@ -183,6 +188,7 @@ import type { Transacao } from '@pz/db';
 import type {
   Email,
   DependenciasDaImpersonacao,
+  RepositorioDeTenantsAdministrados,
   ArmazemDeRenovacoes,
   RepositorioDeDispositivos,
   ArmazemDeRedefinicoes,
@@ -241,6 +247,8 @@ export interface OpcoesApi {
       DependenciasDaImpersonacao<unknown>,
       'unidade' | 'tenants' | 'trilha'
     >;
+    /** Tenants da administração da plataforma (HU39); nos testes, em memória. */
+    readonly tenantsAdministrados?: RepositorioDeTenantsAdministrados<unknown>;
   };
   readonly janelaDeRequisicoes?: JanelaDeRequisicoes;
   /** DLQ, banco e trilha do reprocessamento e filas do painel nos testes (sem Redis). */
@@ -672,11 +680,14 @@ export class AppModule {
       opcoes.identidade?.dispositivos ?? new DispositivosPostgres(recursos.banco);
     const renovacoes = opcoes.identidade?.renovacoes ?? new RenovacoesRedis(recursos.redis);
     const perfis = opcoes.identidade?.perfis ?? new PerfisPostgres(recursos.banco);
+    const tenantsPostgres = new TenantsPostgres();
     const impersonacao = opcoes.identidade?.impersonacao ?? {
       unidade: recursos.banco,
-      tenants: new TenantsPostgres(),
+      tenants: tenantsPostgres,
       trilha: new TrilhaPostgres(),
     };
+    // Nos testes, o mesmo repositório em memória da impersonação, quando ele administra tenants.
+    const tenantsAdministrados = opcoes.identidade?.tenantsAdministrados ?? tenantsPostgres;
     const filas = opcoes.filas ?? filasDoAmbiente(recursos);
     const calendario = opcoes.calendario ?? {
       unidade: recursos.banco,
@@ -894,6 +905,21 @@ export class AppModule {
           }),
       },
       { provide: ReprocessarJobMorto, useValue: new ReprocessarJobMorto(filas.reprocessamento) },
+      ...[ListarTenants, DetalharTenant, AlterarAssinatura, SuspenderTenant, ReativarTenant].map(
+        (CasoDeUso) => ({
+          provide: CasoDeUso,
+          inject: [RELOGIO],
+          useFactory: (relogio: Clock) =>
+            new CasoDeUso({
+              unidade: impersonacao.unidade,
+              tenants: tenantsAdministrados,
+              trilha: impersonacao.trilha,
+              noTenant: noTenantDoBanco,
+              sessoes,
+              relogio,
+            }),
+        }),
+      ),
       { provide: FILAS_DO_PAINEL, useValue: filas.painel },
       ...provedoresDoCalendario(calendario),
       {

@@ -1,18 +1,78 @@
-import { Body, Controller, Delete, HttpCode, Inject, Param, Post, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Inject,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+} from '@nestjs/common';
 import { ReprocessarJobMorto } from '@pz/administracao';
-import { PedidoDeImpersonacao, PedidoDeReprocessamento } from '@pz/contracts';
-import { ConsultarPermissoes, EncerrarImpersonacao, IniciarImpersonacao } from '@pz/identidade';
+import {
+  ConsultaPaginada,
+  PedidoDeAssinatura,
+  PedidoDeImpersonacao,
+  PedidoDeReprocessamento,
+  PedidoDeSuspensao,
+  Uuid as UuidContrato,
+} from '@pz/contracts';
+import {
+  AlterarAssinatura,
+  ConsultarPermissoes,
+  DetalharTenant,
+  EncerrarImpersonacao,
+  IniciarImpersonacao,
+  ListarTenants,
+  ReativarTenant,
+  SuspenderTenant,
+} from '@pz/identidade';
 
 import { autenticacao, contextoDe, sessaoAtual, validar } from '../auth/auth.controller.js';
 import { RequerPermissao } from '../http/acesso.js';
 
 import type { RequisicaoAutenticada } from '../http/acesso.js';
-import type { SessaoAtual } from '@pz/contracts';
-import type { Uuid } from '@pz/kernel';
+import type { PaginaDeTenants, SessaoAtual, TenantAdministrado } from '@pz/contracts';
+import type { Administrador, TenantAdministrado as Tenant } from '@pz/identidade';
+import type { Result, Uuid } from '@pz/kernel';
+
+const ConsultaDeTenants = ConsultaPaginada.extend({ cursor: UuidContrato.optional() });
+
+function paraContrato(t: Tenant): TenantAdministrado {
+  return {
+    id: t.id,
+    nome: t.nome,
+    tipo: t.tipo,
+    plano: t.plano,
+    situacaoAssinatura: t.situacaoAssinatura,
+    suspensao:
+      t.suspensao === undefined
+        ? null
+        : { em: t.suspensao.em.paraIso(), motivo: t.suspensao.motivo },
+    encerradoEm: t.encerradoEm?.paraIso() ?? null,
+    criadoEm: t.criadoEm.paraIso(),
+  };
+}
+
+function tenantOuErro(r: Result<Tenant, Error>): TenantAdministrado {
+  if (!r.ok) throw r.erro;
+  return paraContrato(r.valor);
+}
+
+const idDoTenant = (id: string) => validar(UuidContrato, id) as Uuid;
+
+function administrador(requisicao: RequisicaoAutenticada): Administrador {
+  const { sessao } = autenticacao(requisicao);
+  return { usuarioId: sessao.usuarioId, tenantId: sessao.tenantId, ...contextoDe(requisicao) };
+}
 
 /**
  * Contratos `iniciarImpersonacao` e `encerrarImpersonacao` (regra no módulo identidade) e
- * `reprocessarJobMorto` (regra no módulo administracao), da HU07.
+ * `reprocessarJobMorto` (regra no módulo administracao), da HU07; tenants da plataforma (HU39,
+ * regra no módulo identidade).
  */
 @Controller('v1/admin')
 export class AdminController {
@@ -21,7 +81,70 @@ export class AdminController {
     @Inject(EncerrarImpersonacao) private readonly encerrar: EncerrarImpersonacao<unknown>,
     @Inject(ConsultarPermissoes) private readonly consultarPermissoes: ConsultarPermissoes,
     @Inject(ReprocessarJobMorto) private readonly reprocessar: ReprocessarJobMorto<unknown>,
+    @Inject(ListarTenants) private readonly listar: ListarTenants<unknown>,
+    @Inject(DetalharTenant) private readonly detalhar: DetalharTenant<unknown>,
+    @Inject(AlterarAssinatura) private readonly assinatura: AlterarAssinatura<unknown>,
+    @Inject(SuspenderTenant) private readonly suspender: SuspenderTenant<unknown>,
+    @Inject(ReativarTenant) private readonly reativar: ReativarTenant<unknown>,
   ) {}
+
+  @Get('tenants')
+  @RequerPermissao('admin:tenants')
+  async tenants(@Query() consulta: unknown): Promise<PaginaDeTenants> {
+    const { cursor, limite } = validar(ConsultaDeTenants, consulta);
+    const pagina = await this.listar.executar({
+      limite,
+      ...(cursor === undefined ? {} : { apos: cursor as Uuid }),
+    });
+    return { itens: pagina.itens.map(paraContrato), proximoCursor: pagina.proximoCursor };
+  }
+
+  @Get('tenants/:tenantId')
+  @RequerPermissao('admin:tenants')
+  async tenant(@Param('tenantId') tenantId: string): Promise<TenantAdministrado> {
+    return tenantOuErro(await this.detalhar.executar(idDoTenant(tenantId)));
+  }
+
+  @Patch('tenants/:tenantId/assinatura')
+  @RequerPermissao('admin:tenants')
+  async alterarAssinatura(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Param('tenantId') tenantId: string,
+    @Body() corpo: unknown,
+  ): Promise<TenantAdministrado> {
+    const { plano, situacaoAssinatura } = validar(PedidoDeAssinatura.esquema, corpo);
+    return tenantOuErro(
+      await this.assinatura.executar(administrador(requisicao), idDoTenant(tenantId), {
+        ...(plano === undefined ? {} : { plano }),
+        ...(situacaoAssinatura === undefined ? {} : { situacaoAssinatura }),
+      }),
+    );
+  }
+
+  @Post('tenants/:tenantId/suspensao')
+  @RequerPermissao('admin:tenants')
+  @HttpCode(200)
+  async suspenderTenant(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Param('tenantId') tenantId: string,
+    @Body() corpo: unknown,
+  ): Promise<TenantAdministrado> {
+    const { motivo } = validar(PedidoDeSuspensao.esquema, corpo);
+    return tenantOuErro(
+      await this.suspender.executar(administrador(requisicao), idDoTenant(tenantId), motivo),
+    );
+  }
+
+  @Delete('tenants/:tenantId/suspensao')
+  @RequerPermissao('admin:tenants')
+  async reativarTenant(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Param('tenantId') tenantId: string,
+  ): Promise<TenantAdministrado> {
+    return tenantOuErro(
+      await this.reativar.executar(administrador(requisicao), idDoTenant(tenantId)),
+    );
+  }
 
   @Post('impersonacao')
   @RequerPermissao('admin:impersonar')

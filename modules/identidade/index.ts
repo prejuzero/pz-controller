@@ -136,6 +136,25 @@ export type {
   DependenciasDaImpersonacao,
   RepositorioDeTenants,
 } from './application/impersonacao.js';
+export {
+  AlterarAssinatura,
+  DetalharTenant,
+  ListarTenants,
+  ReativarTenant,
+  SuspenderTenant,
+} from './application/administracao-de-tenants.js';
+export type {
+  Administrador,
+  DependenciasDaAdministracaoDeTenants,
+  PaginaDeTenants,
+  RepositorioDeTenantsAdministrados,
+} from './application/administracao-de-tenants.js';
+export { SITUACOES_DE_ASSINATURA } from './domain/tenant-administrado.js';
+export type {
+  AlteracaoDeAssinatura,
+  SituacaoDeAssinatura,
+  TenantAdministrado,
+} from './domain/tenant-administrado.js';
 export { TenantsEmMemoria } from './infra/em-memoria.js';
 export { TenantsPostgres } from './infra/tenants-postgres.js';
 export { ExportacaoDaIdentidadePostgres } from './infra/exportacao-postgres.js';

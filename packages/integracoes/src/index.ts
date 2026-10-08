@@ -44,6 +44,8 @@ export {
 export type { CanalNotificacao } from './portas/canal-notificacao.js';
 export { PublicacaoCapturada } from './portas/fonte-publicacoes.js';
 export type { FontePublicacoes } from './portas/fonte-publicacoes.js';
+export { AssinaturaCanonica } from './portas/provedor-cobranca.js';
+export type { ProvedorCobranca } from './portas/provedor-cobranca.js';
 export { EmailCanonico } from './portas/provedor-email.js';
 export type { ProvedorEmail } from './portas/provedor-email.js';
 export { MensagemIA, PromptIA } from './portas/provedor-ia.js';

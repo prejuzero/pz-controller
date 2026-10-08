@@ -88,6 +88,7 @@ beforeAll(async () => {
       acessos: new AcessosEmMemoria(),
       perfis,
       impersonacao: { unidade: new OutboxEmMemoria(), tenants, trilha },
+      tenantsAdministrados: tenants,
     },
     janelaDeRequisicoes: { registrar: () => Promise.resolve(1) },
     filas: {
@@ -274,5 +275,71 @@ describe('painel de filas em /admin/filas (HU07)', () => {
   it('a API do painel também passa pela guarda', async () => {
     const resposta = await api.inject({ method: 'GET', url: '/admin/filas/api/queues' });
     expect(resposta.statusCode).toBe(401);
+  });
+});
+
+describe('tenants da plataforma pela API (HU39)', () => {
+  const pedir = (method: 'GET' | 'PATCH' | 'POST' | 'DELETE', url: string, payload?: object) =>
+    api.inject({
+      method,
+      url,
+      headers: autorizacao,
+      ...(payload === undefined ? {} : { payload }),
+    });
+
+  it('lista com cursor e detalha; a plataforma não aparece no detalhe', async () => {
+    const pagina = await pedir('GET', '/v1/admin/tenants?limite=1');
+    expect(pagina.statusCode).toBe(200);
+    const corpo = pagina.json<{ itens: { id: string }[]; proximoCursor: string | null }>();
+    expect(corpo.itens).toHaveLength(1);
+    expect(corpo.proximoCursor).toBe(corpo.itens[0]?.id);
+    expect((await pedir('GET', `/v1/admin/tenants?cursor=nao-e-uuid`)).statusCode).toBe(400);
+    const detalhe = await pedir('GET', `/v1/admin/tenants/${ESCRITORIO}`);
+    expect(detalhe.json()).toMatchObject({ id: ESCRITORIO, suspensao: null, encerradoEm: null });
+    expect((await pedir('GET', `/v1/admin/tenants/${PLATAFORMA}`)).statusCode).toBe(404);
+  });
+
+  it('assinatura, suspensão e reativação com auditoria; motivo curto: 400', async () => {
+    const assinatura = await pedir('PATCH', `/v1/admin/tenants/${ESCRITORIO}/assinatura`, {
+      plano: 'Escritório 10',
+      situacaoAssinatura: 'ativa',
+    });
+    expect(assinatura.json()).toMatchObject({
+      plano: 'Escritório 10',
+      situacaoAssinatura: 'ativa',
+    });
+    expect(
+      (await pedir('PATCH', `/v1/admin/tenants/${ESCRITORIO}/assinatura`, {})).statusCode,
+    ).toBe(400);
+    expect(
+      (await pedir('POST', `/v1/admin/tenants/${ESCRITORIO}/suspensao`, { motivo: 'curto' }))
+        .statusCode,
+    ).toBe(400);
+    const suspenso = await pedir('POST', `/v1/admin/tenants/${ESCRITORIO}/suspensao`, {
+      motivo: 'Chamado 88: inadimplência confirmada',
+    });
+    expect(suspenso.statusCode).toBe(200);
+    expect(suspenso.json()).toMatchObject({
+      suspensao: { motivo: 'Chamado 88: inadimplência confirmada' },
+    });
+    const reativado = await pedir('DELETE', `/v1/admin/tenants/${ESCRITORIO}/suspensao`);
+    expect(reativado.json()).toMatchObject({ suspensao: null });
+    expect(registros.map((r) => [r.tenant, r.entrada.tipo])).toEqual([
+      [ESCRITORIO, 'identidade.assinatura-alterada'],
+      [PLATAFORMA, 'identidade.assinatura-alterada'],
+      [ESCRITORIO, 'identidade.tenant-suspenso'],
+      [PLATAFORMA, 'identidade.tenant-suspenso'],
+      [ESCRITORIO, 'identidade.tenant-reativado'],
+      [PLATAFORMA, 'identidade.tenant-reativado'],
+    ]);
+  });
+
+  it('sem admin:tenants: 403', async () => {
+    const resposta = await api.inject({
+      method: 'GET',
+      url: '/v1/admin/tenants',
+      headers: { authorization: `Bearer ${tokenSemPerfil}` },
+    });
+    expect(resposta.statusCode).toBe(403);
   });
 });

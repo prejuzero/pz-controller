@@ -36,12 +36,22 @@ import { ROTAS_TERMOS } from './termos.js';
 import { ROTAS_WEBHOOKS } from './webhooks/index.js';
 
 export {
+  alterarAssinatura,
+  consultarTenant,
   encerrarImpersonacao,
   iniciarImpersonacao,
+  listarTenants,
+  PaginaDeTenants,
+  PedidoDeAssinatura,
   PedidoDeImpersonacao,
   PedidoDeReprocessamento,
+  PedidoDeSuspensao,
+  reativarTenant,
   reprocessarJobMorto,
   ROTAS_ADMIN,
+  SituacaoAssinatura,
+  suspenderTenant,
+  TenantAdministrado,
 } from './admin/index.js';
 export {
   DispositivosDaConta,

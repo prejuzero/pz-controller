@@ -1,5 +1,8 @@
+import { Instant } from '@pz/kernel';
+
 import { PERFIS_PADRAO } from '../domain/perfis.js';
 
+import type { RepositorioDeTenantsAdministrados } from '../application/administracao-de-tenants.js';
 import type { RepositorioDePerfis } from '../application/autorizacao.js';
 import type { RepositorioDeTenants } from '../application/impersonacao.js';
 import type {
@@ -21,7 +24,8 @@ import type { PedidoDeRedefinicao } from '../application/redefinicao.js';
 import type { Email } from '../domain/credenciais.js';
 import type { CodigoPerfil } from '../domain/perfis.js';
 import type { Sessao } from '../domain/sessao.js';
-import type { EventoDominio, Instant, Uuid } from '@pz/kernel';
+import type { TenantAdministrado } from '../domain/tenant-administrado.js';
+import type { EventoDominio, Uuid } from '@pz/kernel';
 
 /** Credenciais em memória, para testes das apps (sem PostgreSQL). */
 export class CredenciaisEmMemoria implements RepositorioDeCredenciais {
@@ -280,14 +284,57 @@ export class PerfisEmMemoria implements RepositorioDePerfis {
 }
 
 /** Tipos de tenant para os testes sem banco (no Postgres, o RLS limita ao tenant da transação). */
-export class TenantsEmMemoria implements RepositorioDeTenants<unknown> {
-  readonly #tipos = new Map<Uuid, string>();
+export class TenantsEmMemoria
+  implements RepositorioDeTenants<unknown>, RepositorioDeTenantsAdministrados<unknown>
+{
+  readonly #tenants = new Map<Uuid, TenantAdministrado>();
+  readonly #usuarios = new Map<Uuid, Uuid[]>();
 
-  cadastrar(tenantId: Uuid, tipo: 'autonomo' | 'escritorio' | 'plataforma'): void {
-    this.#tipos.set(tenantId, tipo);
+  cadastrar(
+    tenantId: Uuid,
+    tipo: 'autonomo' | 'escritorio' | 'plataforma',
+    extra: Partial<Omit<TenantAdministrado, 'id' | 'tipo'>> & { usuarios?: Uuid[] } = {},
+  ): void {
+    const { usuarios = [], ...dados } = extra;
+    this.#tenants.set(tenantId, {
+      id: tenantId,
+      tipo,
+      nome: `Tenant ${tenantId.slice(-4)}`,
+      plano: null,
+      situacaoAssinatura: 'teste',
+      criadoEm: Instant.deEpochMs(0),
+      ...dados,
+    });
+    this.#usuarios.set(tenantId, usuarios);
   }
 
   tipo(_transacao: unknown, tenantId: Uuid): Promise<string | undefined> {
-    return Promise.resolve(this.#tipos.get(tenantId));
+    return Promise.resolve(this.#tenants.get(tenantId)?.tipo);
+  }
+
+  listar(
+    _transacao: unknown,
+    pagina: { readonly limite: number; readonly apos?: Uuid },
+  ): Promise<TenantAdministrado[]> {
+    const { apos } = pagina;
+    return Promise.resolve(
+      [...this.#tenants.values()]
+        .sort((a, b) => (a.id < b.id ? 1 : -1))
+        .filter((t) => apos === undefined || t.id < apos)
+        .slice(0, pagina.limite),
+    );
+  }
+
+  obter(_transacao: unknown, tenantId: Uuid): Promise<TenantAdministrado | undefined> {
+    return Promise.resolve(this.#tenants.get(tenantId));
+  }
+
+  gravar(_transacao: unknown, tenant: TenantAdministrado): Promise<void> {
+    this.#tenants.set(tenant.id, tenant);
+    return Promise.resolve();
+  }
+
+  usuarios(_transacao: unknown, tenantId: Uuid): Promise<Uuid[]> {
+    return Promise.resolve(this.#usuarios.get(tenantId) ?? []);
   }
 }
