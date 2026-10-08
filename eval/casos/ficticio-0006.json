@@ -1,0 +1,17 @@
+{
+  "id": "ficticio-0006",
+  "origem": "ficticio",
+  "ramo": "civel",
+  "teor": "Emende a parte autora a petição inicial, juntando o comprovante de residência atualizado, no prazo de 15 (quinze) dias, sob pena de indeferimento.",
+  "anotacao": {
+    "tipoAto": "emenda-inicial",
+    "trecho": "Emende a parte autora a petição inicial",
+    "prazoCitado": {
+      "quantidade": 15,
+      "unidade": "dias"
+    }
+  },
+  "anotador": "ficticio-01",
+  "revisor": null,
+  "anonimizacaoConferidaPor": null
+}

@@ -1,0 +1,32 @@
+{
+  "name": "@pz/eval",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Conjunto de avaliação da IA (HU22): casos anonimizados e anotados, anonimização e verificação.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint --max-warnings=0 .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --coverage",
+    "anonimizar": "tsx src/cli/anonimizar.ts",
+    "amostrar": "tsx src/cli/amostrar.ts"
+  },
+  "dependencies": {
+    "@pz/ia": "workspace:*",
+    "@pz/kernel": "workspace:*",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@pz/config": "workspace:*",
+    "@types/node": "24.19.1",
+    "@vitest/coverage-v8": "5.0.3",
+    "eslint": "10.12.0",
+    "fast-check": "4.10.2",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "id": "ficticio-0001",
+  "origem": "ficticio",
+  "ramo": "civel",
+  "teor": "Vistos. Recebo a inicial. Cite-se a parte ré, [NOME 1], para, querendo, contestar a ação no prazo de 15 (quinze) dias, sob pena de revelia. Processo [PROCESSO].",
+  "anotacao": {
+    "tipoAto": "citacao",
+    "trecho": "Cite-se a parte ré",
+    "prazoCitado": {
+      "quantidade": 15,
+      "unidade": "dias"
+    }
+  },
+  "anotador": "ficticio-01",
+  "revisor": null,
+  "anonimizacaoConferidaPor": null
+}

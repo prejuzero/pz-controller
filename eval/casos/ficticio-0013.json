@@ -1,0 +1,17 @@
+{
+  "id": "ficticio-0013",
+  "origem": "ficticio",
+  "ramo": "penal",
+  "teor": "Recebo a denúncia. Cite-se o acusado [NOME 1] para responder à acusação, por escrito, no prazo de 10 (dez) dias.",
+  "anotacao": {
+    "tipoAto": "citacao",
+    "trecho": "Cite-se o acusado",
+    "prazoCitado": {
+      "quantidade": 10,
+      "unidade": "dias"
+    }
+  },
+  "anotador": "ficticio-01",
+  "revisor": null,
+  "anonimizacaoConferidaPor": null
+}

@@ -1,0 +1,17 @@
+{
+  "id": "ficticio-0009",
+  "origem": "ficticio",
+  "ramo": "juizados",
+  "teor": "Diga a parte requerida, em 5 (cinco) dias, sobre o pedido de desistência formulado pela parte autora.",
+  "anotacao": {
+    "tipoAto": "intimacao-manifestacao",
+    "trecho": "Diga a parte requerida",
+    "prazoCitado": {
+      "quantidade": 5,
+      "unidade": "dias"
+    }
+  },
+  "anotador": "ficticio-01",
+  "revisor": null,
+  "anonimizacaoConferidaPor": null
+}

@@ -3,6 +3,7 @@ packages:
   - modules/*
   - packages/*
   - packages/adapters/*
+  - eval
 allowBuilds:
   unrs-resolver: false
   protobufjs: false # postinstall só confere a versão do Node; não é necessário

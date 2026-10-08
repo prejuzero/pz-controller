@@ -1,0 +1,17 @@
+{
+  "id": "ficticio-0012",
+  "origem": "ficticio",
+  "ramo": "trabalhista",
+  "teor": "Cite-se a executada para que pague a quantia devida em 48 (quarenta e oito) horas ou garanta a execução, sob pena de penhora.",
+  "anotacao": {
+    "tipoAto": "intimacao-pagamento",
+    "trecho": "pague a quantia devida",
+    "prazoCitado": {
+      "quantidade": 48,
+      "unidade": "horas"
+    }
+  },
+  "anotador": "ficticio-01",
+  "revisor": null,
+  "anonimizacaoConferidaPor": null
+}
