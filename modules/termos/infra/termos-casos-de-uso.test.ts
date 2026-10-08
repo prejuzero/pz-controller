@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
   AceitarDocumento,
+  ConsultarDocumentosVigentes,
   ConsultarTermosPendentes,
   ListarAceites,
 } from '../application/termos.js';
@@ -90,5 +91,24 @@ describe('aceite versionado (HU38)', () => {
       const r = await aceitar.executar(sessao, id, contexto);
       expect(!r.ok && r.erro.codigo).toBe('documento-inexistente');
     }
+  });
+});
+
+describe('documentos vigentes para as páginas públicas (HU38)', () => {
+  it('a versão mais recente de cada tipo já publicada, com o resumo das alterações', async () => {
+    const v1 = doc('termos', '1.0', '2026-09-01T00:00:00Z');
+    const v2 = {
+      ...doc('termos', '2.0', '2026-10-05T00:00:00Z'),
+      resumoAlteracoes: 'FICTÍCIO: item 3',
+    };
+    repo.documentos.push(v1, v2, doc('termos', '3.0', '2026-12-01T00:00:00Z'));
+    const unidade = new OutboxEmMemoria();
+    const vigentes = new ConsultarDocumentosVigentes(
+      { executar: <T>(_t: Uuid, f: (tx: TransacaoEmMemoria) => Promise<T>) => unidade.executar(f) },
+      repo,
+      relogio,
+      TENANT,
+    );
+    expect(await vigentes.executar()).toEqual([v2]);
   });
 });

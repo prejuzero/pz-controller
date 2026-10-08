@@ -32,6 +32,14 @@ export const chaves = {
     tipos: () => [...chaves.tabelaPrazos.todas, 'tipos'] as const,
     versoes: () => [...chaves.tabelaPrazos.todas, 'versoes'] as const,
   },
+  privacidade: {
+    todas: ['privacidade'] as const,
+    vigentes: () => [...chaves.privacidade.todas, 'vigentes'] as const,
+    pendentes: () => [...chaves.privacidade.todas, 'pendentes'] as const,
+    aceites: () => [...chaves.privacidade.todas, 'aceites'] as const,
+    exportacao: (id: string) => [...chaves.privacidade.todas, 'exportacao', id] as const,
+    encerramento: () => [...chaves.privacidade.todas, 'encerramento'] as const,
+  },
   clientes: {
     todas: ['clientes'] as const,
     lista: () => [...chaves.clientes.todas, 'lista'] as const,

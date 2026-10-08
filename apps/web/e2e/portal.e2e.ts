@@ -64,6 +64,7 @@ test.describe('acessibilidade (axe)', () => {
     '/configuracoes/perfil',
     '/configuracoes/oabs',
     '/processos/clientes',
+    '/configuracoes/privacidade',
   ]) {
     test(`sem violações em ${rota}`, async ({ page }) => {
       await page.goto(rota);
@@ -94,6 +95,9 @@ test.describe('acessibilidade (axe)', () => {
       '/redefinir-senha?token=e2e',
       '/cadastro',
       '/verificar-email',
+      '/termos',
+      '/privacidade',
+      '/cobertura',
     ]) {
       test(`sem violações em ${rota}`, async ({ page }) => {
         await page.goto(rota);

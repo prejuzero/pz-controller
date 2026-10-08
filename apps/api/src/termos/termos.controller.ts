@@ -1,15 +1,30 @@
 import { Controller, Get, HttpCode, Inject, Param, Post, Req } from '@nestjs/common';
-import { AceitarDocumento, ConsultarTermosPendentes, ListarAceites } from '@pz/termos';
+import {
+  AceitarDocumento,
+  ConsultarDocumentosVigentes,
+  ConsultarTermosPendentes,
+  ListarAceites,
+} from '@pz/termos';
 import { z } from 'zod';
 
 import { autenticacao, contextoDe, validar } from '../auth/auth.controller.js';
-import { PermiteTermosPendentes, RequerPermissao } from '../http/acesso.js';
+import { PermiteTermosPendentes, Publico, RequerPermissao } from '../http/acesso.js';
 
 import type { RequisicaoAutenticada } from '../http/acesso.js';
 import type { AceitesDoUsuario, DocumentosPendentes } from '@pz/contracts';
 import type { Uuid } from '@pz/kernel';
+import type { DocumentoLegal } from '@pz/termos';
 
 const Id = z.uuid();
+
+const documentoListado = (d: DocumentoLegal) => ({
+  id: d.id,
+  tipo: d.tipo,
+  versao: d.versao,
+  conteudo: d.conteudo,
+  resumoAlteracoes: d.resumoAlteracoes ?? null,
+  publicadoEm: d.publicadoEm.paraIso(),
+});
 
 /** Contratos dos termos e do aceite versionado (HU38); a regra fica no módulo termos. */
 @Controller('v1/termos')
@@ -19,7 +34,15 @@ export class TermosController {
     @Inject(ConsultarTermosPendentes) private readonly pendentes: ConsultarTermosPendentes<unknown>,
     @Inject(AceitarDocumento) private readonly aceitar: AceitarDocumento<unknown>,
     @Inject(ListarAceites) private readonly listar: ListarAceites<unknown>,
+    @Inject(ConsultarDocumentosVigentes)
+    private readonly vigentes: ConsultarDocumentosVigentes<unknown>,
   ) {}
+
+  @Get('vigentes')
+  @Publico()
+  async listarVigentes(): Promise<DocumentosPendentes> {
+    return { itens: (await this.vigentes.executar()).map(documentoListado) };
+  }
 
   @Get('pendentes')
   @RequerPermissao('conta:gerir')
@@ -30,9 +53,7 @@ export class TermosController {
       usuarioId: sessao.usuarioId,
       sessaoIniciadaEm: sessao.criadaEm,
     });
-    return {
-      itens: documentos.map((d) => ({ ...d, publicadoEm: d.publicadoEm.paraIso() })),
-    };
+    return { itens: documentos.map(documentoListado) };
   }
 
   @Post(':id/aceitar')

@@ -48,4 +48,11 @@ describe('rotas', () => {
     expect(tokenDoFragmento('#token=')).toBeUndefined();
     expect(tokenDoFragmento('')).toBeUndefined();
   });
+
+  it('documentos legais são públicos (HU38)', () => {
+    for (const rota of ['/termos', '/privacidade', '/cobertura']) {
+      expect(ehRotaPublica(rota)).toBe(true);
+    }
+    expect(ehRotaPublica('/aceitar-termos')).toBe(false);
+  });
 });

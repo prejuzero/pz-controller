@@ -46,6 +46,26 @@ export class ConsultarTermosPendentes<Transacao> {
   }
 }
 
+/**
+ * Versão vigente de cada documento, para as páginas públicas (HU38). Lê só a tabela global de
+ * documentos, no tenant técnico da plataforma (as tabelas de tenant ficam fora).
+ */
+export class ConsultarDocumentosVigentes<Transacao> {
+  constructor(
+    private readonly noTenant: UnidadeNoTenant<Transacao>,
+    private readonly documentos: RepositorioDeDocumentos<Transacao>,
+    private readonly relogio: Clock,
+    private readonly tenantPlataforma: Uuid,
+  ) {}
+
+  executar(): Promise<DocumentoLegal[]> {
+    const agora = this.relogio.agora();
+    return this.noTenant.executar(this.tenantPlataforma, async (tx) =>
+      pendentes(await this.documentos.publicadosAte(tx, agora), new Set(), agora),
+    );
+  }
+}
+
 /** Histórico de aceites do usuário (exportável, LGPD). */
 export class ListarAceites<Transacao> {
   constructor(

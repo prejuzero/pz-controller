@@ -117,6 +117,7 @@ import { ConsultarSituacao, VerificadorHttp, VerificadorTcp } from '@pz/saude';
 import {
   AceitarDocumento,
   AceitesPostgres,
+  ConsultarDocumentosVigentes,
   ConsultarTermosPendentes,
   DocumentosPostgres,
   ListarAceites,
@@ -184,7 +185,7 @@ import type {
   RepositorioDeSegundoFator,
 } from '@pz/identidade';
 import type { ReceptorWebhook, ArmazenamentoArquivos } from '@pz/integracoes';
-import type { Clock, Outbox, UnidadeDeTrabalho } from '@pz/kernel';
+import type { Clock, Outbox, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 import type {
   DestinosDoUsuario,
   ListaDeSupressao,
@@ -383,6 +384,8 @@ function arquivosDoAmbiente(ambiente: AmbienteApi): ArmazenamentoArquivos {
 }
 
 interface DependenciasDosTermos {
+  /** Tenant técnico das leituras públicas (TENANT_PLATAFORMA_ID). */
+  readonly tenantPlataforma?: string;
   readonly noTenant: UnidadeNoTenantDosTermos<unknown>;
   readonly documentos: RepositorioDeDocumentos<unknown>;
   readonly aceites: RepositorioDeAceites<unknown>;
@@ -397,6 +400,17 @@ function provedoresDosTermos(d: DependenciasDosTermos): Provider[] {
       useValue: new ConsultarTermosPendentes(d.noTenant, d.documentos, d.aceites),
     },
     { provide: ListarAceites, useValue: new ListarAceites(d.noTenant, d.aceites) },
+    {
+      provide: ConsultarDocumentosVigentes,
+      inject: [RELOGIO, AMBIENTE],
+      useFactory: (r: Clock, ambiente: AmbienteApi) =>
+        new ConsultarDocumentosVigentes(
+          d.noTenant,
+          d.documentos,
+          r,
+          (d.tenantPlataforma ?? ambiente.TENANT_PLATAFORMA_ID) as Uuid,
+        ),
+    },
     {
       provide: AceitarDocumento,
       inject: [RELOGIO],

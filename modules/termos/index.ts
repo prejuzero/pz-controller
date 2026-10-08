@@ -1,5 +1,10 @@
 // API pública do módulo termos (CLAUDE.md, seção 6): outros módulos e as apps só usam o que está aqui.
-export { AceitarDocumento, ConsultarTermosPendentes, ListarAceites } from './application/termos.js';
+export {
+  AceitarDocumento,
+  ConsultarDocumentosVigentes,
+  ConsultarTermosPendentes,
+  ListarAceites,
+} from './application/termos.js';
 export type { ContextoDoAceite, UsuarioDaSessao } from './application/termos.js';
 export type {
   NovoAceite,
