@@ -15,6 +15,7 @@ export {
   ErroIntegracao,
   ErroLimiteExcedido,
   ErroPermanente,
+  ErroSaidaInvalida,
   ErroTransitorio,
 } from './erros.js';
 export type { TipoErroIntegracao } from './erros.js';

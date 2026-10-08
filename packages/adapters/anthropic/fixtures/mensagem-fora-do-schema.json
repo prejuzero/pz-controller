@@ -1,0 +1,10 @@
+{
+  "id": "msg_ficticio_02",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-4-5",
+  "content": [{ "type": "text", "text": "{\"tipoAto\":\"citacao\",\"confianca\":1.7}" }],
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": { "input_tokens": 412, "output_tokens": 18 }
+}
