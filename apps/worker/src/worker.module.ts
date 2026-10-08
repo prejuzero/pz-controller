@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DiscoveryModule } from '@nestjs/core';
+import { DESCRITOR_ANTHROPIC, ProvedorIaAnthropic } from '@pz/adapter-anthropic';
 import { DESCRITOR_DJEN, FontePublicacoesDjen } from '@pz/adapter-djen';
 import { ArmazenamentoS3 } from '@pz/adapter-s3';
 import { criarProvedorEmailSes, DESCRITOR_SES, WebhooksSes } from '@pz/adapter-ses';
@@ -25,7 +26,15 @@ import {
   ManterAssinaturas,
   PlanejarCaptura,
 } from '@pz/captura';
+import {
+  ClassificacoesPostgres,
+  ClassificadorIaPlataforma,
+  ClassificarPublicacao,
+  RegrasPostgres,
+  TaxonomiaPostgres,
+} from '@pz/classificacao';
 import { Banco, BancoSistema, OutboxPostgres } from '@pz/db';
+import { configuracaoPadrao, ContadorDeUsoEmMemoria, PlataformaIa, promptsPadrao } from '@pz/ia';
 import {
   ExportacaoDaIdentidadePostgres,
   CifraAesGcm,
@@ -55,6 +64,7 @@ import {
   ExportacaoDasPublicacoesPostgres,
   IngerirCaptura,
   PublicacoesPostgres,
+  TeoresPostgres,
 } from '@pz/publicacoes';
 import {
   ConsultarSituacao,
@@ -69,6 +79,7 @@ import { ConsumidorDeAuditoria } from './auditoria/consumidor.js';
 import { ConsumidorDoCalendario } from './calendario/consumidor.js';
 import { alertasDaCaptura } from './captura/alertas.js';
 import { ConsumidorDaCaptura } from './captura/consumidor.js';
+import { ConsumidorDaClassificacao } from './classificacao/consumidor.js';
 import { DespachanteDeEventos } from './eventos/consome.js';
 import { RelayDoOutbox } from './eventos/relay.js';
 import {
@@ -108,6 +119,7 @@ import type { DynamicModule, Provider } from '@nestjs/common';
 import type { ArmazemDoPainel } from '@pz/administracao';
 import type { DestinoWorm } from '@pz/auditoria';
 import type { CacheDeDiasNaoUteis } from '@pz/calendario';
+import type { ClassificadorIa } from '@pz/classificacao';
 import type { ArmazenamentoArquivos, FontePublicacoes, ProvedorEmail } from '@pz/integracoes';
 import type { Clock, OutboxEmMemoria, Uuid } from '@pz/kernel';
 import type { EncerradorDeSessoes } from '@pz/privacidade';
@@ -126,6 +138,8 @@ export interface OpcoesWorker {
   readonly processadoresDeWebhook?: ReadonlyMap<string, ProcessadorDeWebhook>;
   /** Provedor de e-mail no lugar do SMTP (testes). */
   readonly email?: ProvedorEmail;
+  /** Classificador por IA (HU21); nos testes, falso. */
+  readonly classificadorIa?: ClassificadorIa;
   /** Painel do administrador (HU39); nos testes, em memória. */
   readonly painelDeIntegracoes?: ArmazemDoPainel;
   /** Destino WORM no lugar do S3 (testes). */
@@ -277,6 +291,42 @@ function fonteDoAmbiente(
   return registro.obter('fonte-publicacoes');
 }
 
+/**
+ * Classificador por IA (HU21) pela plataforma de IA (ADR-016) e pelo registro de adaptadores
+ * (ADR-005). Sem ANTHROPIC_API_KEY, desligado: as publicações sem regra ficam "a confirmar".
+ */
+function iaDoAmbiente(
+  ambiente: AmbienteWorker,
+  relogio: Clock,
+  registros: RegistroDeAdaptadores[],
+): ClassificadorIa | undefined {
+  const chave = ambiente.ANTHROPIC_API_KEY;
+  if (chave === undefined) {
+    logger.warn('ANTHROPIC_API_KEY ausente: classificação por IA desligada (só regras rápidas)');
+    return undefined;
+  }
+  const registro = new RegistroDeAdaptadores(
+    { padrao: { 'provedor-ia': DESCRITOR_ANTHROPIC.id } },
+    { relogio },
+  );
+  registro.registrar(DESCRITOR_ANTHROPIC, () => new ProvedorIaAnthropic({ chave }, relogio));
+  registro.validar();
+  registros.push(registro);
+  const plataforma = new PlataformaIa(
+    configuracaoPadrao(),
+    new Map([[DESCRITOR_ANTHROPIC.id, registro.obter('provedor-ia')]]),
+    {
+      // Contador por instância (pendência: contador persistente do orçamento de IA).
+      contador: new ContadorDeUsoEmMemoria(),
+      relogio,
+      aoAlertar: (alerta) => {
+        logger.warn(alerta, 'orçamento de IA acima de 80%');
+      },
+    },
+  );
+  return new ClassificadorIaPlataforma(plataforma, promptsPadrao());
+}
+
 /** Arquivos do sistema (exportações LGPD) no S3 ou RustFS local, só JSON e CSV. */
 function arquivosDoAmbiente(ambiente: AmbienteWorker, relogio: Clock): ArmazenamentoArquivos {
   return new ArmazenamentoS3(
@@ -409,6 +459,24 @@ export class WorkerModule {
       ConsumidorDaCaptura,
       ConsumidorDaPrivacidade,
       ConsumidorDasPublicacoes,
+      ConsumidorDaClassificacao,
+      {
+        // Classificação (HU21): regras rápidas e, com chave configurada, a plataforma de IA.
+        provide: ClassificarPublicacao,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) => {
+          const ia = opcoes.classificadorIa ?? iaDoAmbiente(ambiente, relogio, registros);
+          return new ClassificarPublicacao({
+            teores: new TeoresPostgres(),
+            regras: new RegrasPostgres(),
+            taxonomia: new TaxonomiaPostgres(),
+            ...(ia === undefined ? {} : { ia }),
+            classificacoes: new ClassificacoesPostgres(),
+            outbox: outboxPostgres,
+            relogio,
+          });
+        },
+      },
       {
         // O processo da publicação vem do cadastro, pela API pública dele (HU12, HU18).
         provide: IngerirCaptura,

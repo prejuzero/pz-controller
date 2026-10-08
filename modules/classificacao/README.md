@@ -24,3 +24,12 @@ Falsos positivos descartados: prazo já vencido ("prazo de 15 dias já decorrido
 ## Qualidade (PZ-155)
 
 `domain/corpus.test.ts` traz o corpus fictício de frases (numéricas, por extenso, mistas e falsos positivos) com o trecho exato esperado. Medição em 08/10/2026: prazo citado com 35 frases, precisão 100% e revocação 100%; regras de exemplo com 6 de 10 frases classificadas sem IA e precisão 100% (meta ≥ 99%). A precisão das regras reais da curadoria sobre teores anonimizados é medida no conjunto de avaliação da HU22.
+
+## Classificação de publicação nova (HU21)
+
+`ClassificarPublicacao` consome `PublicacaoNova` (worker) e grava uma classificação por conteúdo (tabela global `classificacao`), publicando `PublicacaoClassificada` uma vez:
+
+1. Regras rápidas; confiança ≥ 0,85 decide sem IA.
+2. Senão, a IA pela plataforma (`packages/ia`, tarefa `classificar-ato`, prompt versionado, Haiku como primário). A IA devolve só o código do ato, a confiança e o trecho literal; o prazo citado vem do extrator determinístico e nunca há data.
+3. "a_confirmar" quando a confiança é baixa, o ato é desconhecido ou fora da taxonomia, o trecho não está no teor, a IA está desligada (sem `ANTHROPIC_API_KEY`) ou sem orçamento. Saída inválida tem uma nova tentativa; repetida, vai para "revisao_manual".
+4. Falha passageira do provedor sobe: o job de evento tenta de novo e, esgotado, vai para a DLQ com alerta.

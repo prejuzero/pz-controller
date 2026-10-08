@@ -34,13 +34,13 @@ enum SituacaoAssinatura {
 }
 
 model Tenant {
-  id           String     @id @db.Uuid
-  nome         String
-  tipo         TipoTenant
-  criadoEm     DateTime   @default(now()) @map("criado_em") @db.Timestamptz(6)
-  atualizadoEm DateTime   @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+  id                 String             @id @db.Uuid
+  nome               String
+  tipo               TipoTenant
+  criadoEm           DateTime           @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm       DateTime           @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
   /// Encerramento efetivado (HU38): dados de negócio apagados, provas pseudonimizadas.
-  encerradoEm  DateTime?  @map("encerrado_em") @db.Timestamptz(6)
+  encerradoEm        DateTime?          @map("encerrado_em") @db.Timestamptz(6)
   /// Plano e situação da assinatura, manuais no MVP (HU39; gateway futuro via ProvedorCobranca).
   plano              String?
   situacaoAssinatura SituacaoAssinatura @default(teste) @map("situacao_assinatura")
@@ -288,8 +288,9 @@ model TipoAto {
   criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  versoes TabelaPrazo[]
-  regras  RegraClassificacao[]
+  versoes        TabelaPrazo[]
+  regras         RegraClassificacao[]
+  classificacoes Classificacao[]
 
   @@map("tipo_ato")
 }
@@ -313,6 +314,29 @@ model RegraClassificacao {
 
 /// Tabela de prazos por ato e ramo (HU15, ADR-007): versões com vigência e aprovação por quatro
 /// olhos. Global; versão aprovada é imutável (trigger pz_tabela_prazo_imutavel).
+/// Classificação de um conteúdo de publicação (HU21): uma por conteúdo global; nunca uma data.
+model Classificacao {
+  conteudoId   String   @id @map("conteudo_id") @db.Uuid
+  origem       String
+  situacao     String
+  tipoAto      String?  @map("tipo_ato")
+  confianca    Decimal? @db.Decimal(3, 2)
+  prazoCitado  Json?    @map("prazo_citado") @db.JsonB
+  evidencias   Json     @default("[]") @db.JsonB
+  regraCodigo  String?  @map("regra_codigo")
+  regraVersao  Int?     @map("regra_versao")
+  versaoPrompt String?  @map("versao_prompt")
+  modelo       String?
+  motivo       String?
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  tipo TipoAto? @relation(fields: [tipoAto], references: [codigo], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([situacao], map: "classificacao_situacao_idx")
+  @@map("classificacao")
+}
+
 model TabelaPrazo {
   id             String            @id @db.Uuid
   tipoAto        String            @map("tipo_ato")

@@ -18,6 +18,11 @@ const Regra = z.object({
   confianca: z.number().min(0).max(1),
 });
 
+/** Regras lidas do banco, validadas: padrão inválido lança (nunca é ignorado em silêncio). */
+export function regrasValidas(regras: readonly RegraRapida[]): RegraRapida[] {
+  return z.array(Regra).parse(regras);
+}
+
 /**
  * Primeiro elo da classificação (HU20): regras rápidas, sem IA. Regra mal cadastrada lança (o
  * erro aparece no job e no alerta): nunca é ignorada em silêncio. A IA (HU21) entra quando o
@@ -31,6 +36,6 @@ export class ClassificarPorRegras<Transacao> {
 
   async executar(teor: string): Promise<ResultadoDasRegras> {
     const regras = await this.unidade.executar((tx) => this.regras.vigentes(tx));
-    return classificarPorRegras(teor, z.array(Regra).parse(regras));
+    return classificarPorRegras(teor, regrasValidas(regras));
   }
 }

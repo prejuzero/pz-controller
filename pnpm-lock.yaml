@@ -421,6 +421,9 @@ importers:
       '@nestjs/core':
         specifier: 12.1.2
         version: 12.1.2(@nestjs/common@12.1.2(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@10.2.2))(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@pz/adapter-anthropic':
+        specifier: workspace:*
+        version: link:../../packages/adapters/anthropic
       '@pz/adapter-djen':
         specifier: workspace:*
         version: link:../../packages/adapters/djen
@@ -448,6 +451,9 @@ importers:
       '@pz/captura':
         specifier: workspace:*
         version: link:../../modules/captura
+      '@pz/classificacao':
+        specifier: workspace:*
+        version: link:../../modules/classificacao
       '@pz/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -457,6 +463,9 @@ importers:
       '@pz/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@pz/ia':
+        specifier: workspace:*
+        version: link:../../packages/ia
       '@pz/identidade':
         specifier: workspace:*
         version: link:../../modules/identidade
@@ -748,9 +757,18 @@ importers:
       '@pz/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@pz/ia':
+        specifier: workspace:*
+        version: link:../../packages/ia
+      '@pz/integracoes':
+        specifier: workspace:*
+        version: link:../../packages/integracoes
       '@pz/kernel':
         specifier: workspace:*
         version: link:../../packages/kernel
+      '@pz/prazos':
+        specifier: workspace:*
+        version: link:../prazos
       zod:
         specifier: 4.6.5
         version: 4.6.5

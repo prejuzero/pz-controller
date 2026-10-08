@@ -203,6 +203,7 @@ export {
   FonteDegradada,
   FonteRestabelecida,
   ProcessoMonitorado,
+  PublicacaoClassificada,
   PublicacaoNova,
   PublicacaoRecebida,
   RedefinicaoDeSenhaSolicitada,

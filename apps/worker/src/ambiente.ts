@@ -68,6 +68,12 @@ export const esquemaWorker = esquemaBase
       .int()
       .min(0)
       .default(10 * 60_000),
+    /**
+     * Chave da API da Anthropic (HU21). Ausente: a IA fica desligada e as publicações que as
+     * regras rápidas não classificam ficam "a confirmar" (decisão de 08/10/2026: sem custo até
+     * validar o produto).
+     */
+    ANTHROPIC_API_KEY: z.string().min(1).optional(),
     /** Adaptador de FontePublicacoes (ADR-005): trocar de fonte é configuração. */
     CAPTURA_FONTE: z.enum(['djen']).default('djen'),
     /**

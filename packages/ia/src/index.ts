@@ -14,3 +14,4 @@ export { PlataformaIa } from './plataforma.js';
 export type { ContextoDaTarefa, OrcamentoDaPlataforma, ResultadoDaTarefa } from './plataforma.js';
 export { ArquivoDePrompt, hashDoPrompt, problemasDeVersao, RegistroDePrompts } from './prompts.js';
 export type { PromptMontado } from './prompts.js';
+export { configuracaoPadrao, promptsPadrao } from './padrao.js';

@@ -1,4 +1,5 @@
 import { EVENTOS_AUDITADOS } from '@pz/auditoria';
+import { ClassificarPublicacao } from '@pz/classificacao';
 import { carregarAmbiente } from '@pz/config/env';
 import { FixedClock, gerarUuidV7, Instant, OutboxEmMemoria } from '@pz/kernel';
 import { EnviarNotificacao } from '@pz/notificacoes';
@@ -59,6 +60,15 @@ async function subir(outbox = new OutboxEmMemoria(), ajustes: Partial<typeof amb
   await worker.init();
   return { worker, outbox };
 }
+
+describe('classificação por IA pela configuração (HU21)', () => {
+  it('com ANTHROPIC_API_KEY, a IA entra no registro e na saúde das integrações', async () => {
+    const { worker: app } = await subir(new OutboxEmMemoria(), {
+      ANTHROPIC_API_KEY: 'chave-ficticia',
+    });
+    expect(app.get(ClassificarPublicacao)).toBeInstanceOf(ClassificarPublicacao);
+  });
+});
 
 describe('e-mail e webhooks de entrega pela configuração (HU30)', () => {
   const TOPICO = 'arn:aws:sns:sa-east-1:000000000000:pz-entregas';
@@ -144,6 +154,7 @@ describe('@Consome e o despachante', () => {
         ['SugestaoIaCorrigida@1', ['ConsumidorDeAuditoria.sugestaoIaCorrigida']],
         ['ExportacaoDeDadosSolicitada@1', ['ConsumidorDaPrivacidade.exportacaoSolicitada']],
         ['CapturaConcluida@1', ['ConsumidorDasPublicacoes.capturaConcluida']],
+        ['PublicacaoNova@1', ['ConsumidorDaClassificacao.publicacaoNova']],
       ]),
     );
   });

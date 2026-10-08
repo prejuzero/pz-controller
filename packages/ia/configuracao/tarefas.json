@@ -1,16 +1,16 @@
 {
-  "versao": "2026-10-07.2",
+  "versao": "2026-10-08.1",
   "tarefas": {
     "classificar-ato": {
       "descricao": "Classifica o tipo de ato de uma publicação na taxonomia única (HU21). Nunca devolve data.",
       "modelos": [
         {
           "provedor": "anthropic",
-          "modelo": "claude-sonnet-5-5"
+          "modelo": "claude-haiku-4-5"
         },
         {
           "provedor": "anthropic",
-          "modelo": "claude-opus-5-5"
+          "modelo": "claude-sonnet-5-5"
         }
       ],
       "temperatura": 0,

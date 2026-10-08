@@ -5,7 +5,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { ClassificarPorRegras } from '../application/classificar.js';
 
+import { ClassificacoesPostgres } from './classificacoes-postgres.js';
 import { RegrasPostgres } from './regras-postgres.js';
+import { TaxonomiaPostgres } from './taxonomia-postgres.js';
 
 import type { Transacao } from '@pz/db';
 import type { BancoDeTeste } from '@pz/db/teste';
@@ -112,5 +114,42 @@ describe('regras rápidas no PostgreSQL (HU20)', () => {
         banco.executar((tx) => new RegrasPostgres().vigentes(tx)),
       ),
     ).toEqual([]);
+  });
+
+  it('classificação: uma por conteúdo, a primeira vale; "ok" exige ato; taxonomia pelo módulo prazos (HU21)', async () => {
+    const repo = new ClassificacoesPostgres();
+    const conteudo = gerarUuidV7();
+    const noTenant = <T>(f: (tx: Transacao) => Promise<T>) =>
+      executarNoTenant(TENANT, () => banco.executar(f));
+    const base = {
+      origem: 'ia' as const,
+      situacao: 'ok' as const,
+      tipoAto: 'ficticio-citacao',
+      confianca: 0.93,
+      evidencias: [{ inicio: 0, fim: 7, trecho: 'Cite-se' }],
+      prazoCitado: null,
+      versaoPrompt: 'classificar-ato@0.1.0',
+      modelo: 'claude-haiku-4-5',
+    };
+    expect(await noTenant((tx) => repo.existe(tx, conteudo))).toBe(false);
+    expect(await noTenant((tx) => repo.gravar(tx, conteudo, base))).toBe(true);
+    expect(
+      await noTenant((tx) => repo.gravar(tx, conteudo, { ...base, situacao: 'a_confirmar' })),
+    ).toBe(false);
+    expect(await noTenant((tx) => repo.existe(tx, conteudo))).toBe(true);
+    const gravada = await sistema.executarComoSistema('conferir', (tx) =>
+      tx.classificacao.findUniqueOrThrow({ where: { conteudoId: conteudo } }),
+    );
+    expect(gravada).toMatchObject({
+      situacao: 'ok',
+      modelo: 'claude-haiku-4-5',
+      prazoCitado: null,
+    });
+    await expect(
+      noTenant((tx) => repo.gravar(tx, gerarUuidV7(), { ...base, tipoAto: null })),
+    ).rejects.toThrow();
+    expect(
+      (await noTenant((tx) => new TaxonomiaPostgres().listar(tx))).map((t) => t.codigo),
+    ).toContain('ficticio-citacao');
   });
 });
