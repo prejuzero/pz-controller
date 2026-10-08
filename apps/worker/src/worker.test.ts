@@ -143,6 +143,7 @@ describe('@Consome e o despachante', () => {
         ['ProcessoMonitorado@1', ['ConsumidorDaCaptura.processoMonitorado']],
         ['SugestaoIaCorrigida@1', ['ConsumidorDeAuditoria.sugestaoIaCorrigida']],
         ['ExportacaoDeDadosSolicitada@1', ['ConsumidorDaPrivacidade.exportacaoSolicitada']],
+        ['CapturaConcluida@1', ['ConsumidorDasPublicacoes.capturaConcluida']],
       ]),
     );
   });

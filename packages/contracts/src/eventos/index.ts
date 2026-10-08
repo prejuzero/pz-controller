@@ -227,6 +227,28 @@ export const ExportacaoDeDadosSolicitada = definirEvento(
   }),
 );
 
+/** Conteúdo de publicação visto pela primeira vez (HU18): segue para a classificação, uma vez. */
+export const PublicacaoNova = definirEvento(
+  'PublicacaoNova',
+  1,
+  z.object({
+    conteudoId: z.uuid(),
+    fonte: z.string().min(1),
+    hashConteudo: z.string().regex(/^[0-9a-f]{64}$/),
+  }),
+);
+
+/** Publicação chegou a um escritório (HU18): leitura, prazos e notificações reagem. */
+export const PublicacaoRecebida = definirEvento(
+  'PublicacaoRecebida',
+  1,
+  z.object({
+    conteudoId: z.uuid(),
+    processoId: z.uuid().nullable(),
+    dataDisponibilizacao: z.iso.date(),
+  }),
+);
+
 export const EVENTOS = catalogoDeEventos(
   SituacaoVerificada,
   RedefinicaoDeSenhaSolicitada,
@@ -245,4 +267,6 @@ export const EVENTOS = catalogoDeEventos(
   CapturaConcluida,
   SugestaoIaCorrigida,
   ExportacaoDeDadosSolicitada,
+  PublicacaoNova,
+  PublicacaoRecebida,
 );

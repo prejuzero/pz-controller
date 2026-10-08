@@ -33,6 +33,7 @@
     "@pz/notificacoes": "workspace:*",
     "@pz/observability": "workspace:*",
     "@pz/privacidade": "workspace:*",
+    "@pz/publicacoes": "workspace:*",
     "@pz/saude": "workspace:*",
     "@pz/termos": "workspace:*",
     "bullmq": "6.3.11",
