@@ -11,7 +11,11 @@ import {
   TrilhaPostgres,
   VerificarIntegridade,
 } from '@pz/auditoria';
-import { ExportacaoDoCadastroPostgres } from '@pz/cadastro';
+import {
+  ExportacaoDoCadastroPostgres,
+  ObterOuCriarProcesso,
+  ProcessosPostgres,
+} from '@pz/cadastro';
 import { CacheDeDiasNaoUteisRedis, InvalidarCacheDoCalendario } from '@pz/calendario';
 import {
   AssinaturasPostgres,
@@ -46,6 +50,11 @@ import {
   OperacoesDeEncerramentoPostgres,
   OperacoesDeRetencaoPostgres,
 } from '@pz/privacidade';
+import {
+  ExportacaoDasPublicacoesPostgres,
+  IngerirCaptura,
+  PublicacoesPostgres,
+} from '@pz/publicacoes';
 import {
   ConsultarSituacao,
   HistoricoEmMemoria,
@@ -84,6 +93,8 @@ import { RelayDeWebhooks } from './integracoes/webhooks.js';
 import { ConsumidorDeNotificacoes } from './notificacoes/consumidor.js';
 import { processadorDeEntregas } from './notificacoes/entregas.js';
 import { ConsumidorDaPrivacidade } from './privacidade/consumidor.js';
+import { ConsumidorDasPublicacoes } from './publicacoes/consumidor.js';
+import { noTenantDoBanco, processoPeloCadastro } from './publicacoes/processos.js';
 import { RecursosDoBanco } from './recursos.js';
 import { ConsumidorDeSituacao } from './saude/consumidor.js';
 
@@ -375,6 +386,28 @@ export class WorkerModule {
       ConsumidorDoCalendario,
       ConsumidorDaCaptura,
       ConsumidorDaPrivacidade,
+      ConsumidorDasPublicacoes,
+      {
+        // O processo da publicação vem do cadastro, pela API pública dele (HU12, HU18).
+        provide: IngerirCaptura,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) => {
+          const obterOuCriar = new ObterOuCriarProcesso(
+            noTenantDoBanco(banco),
+            new ProcessosPostgres(relogio),
+            new TrilhaPostgres(),
+            outboxPostgres,
+            relogio,
+          );
+          return new IngerirCaptura(
+            new PublicacoesPostgres(),
+            processoPeloCadastro(obterOuCriar),
+            outboxPostgres,
+            relogio,
+            (fonte) => `${fonte}@${ambiente.VERSAO}`,
+          );
+        },
+      },
       {
         provide: AplicarRetencao,
         inject: [RELOGIO],
@@ -416,6 +449,7 @@ export class WorkerModule {
               new ExportacaoDoCadastroPostgres(),
               new ExportacaoDosTermosPostgres(),
               new ExportacaoDasNotificacoesPostgres(),
+              new ExportacaoDasPublicacoesPostgres(),
             ],
             opcoes.arquivos ?? arquivosDoAmbiente(ambiente, relogio),
             relogio,

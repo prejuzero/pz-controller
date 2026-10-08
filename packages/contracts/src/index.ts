@@ -174,6 +174,8 @@ export {
   definirEvento,
   EVENTOS,
   ProcessoMonitorado,
+  PublicacaoNova,
+  PublicacaoRecebida,
   RedefinicaoDeSenhaSolicitada,
   SugestaoIaCorrigida,
   SituacaoVerificada,
