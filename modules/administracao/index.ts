@@ -31,5 +31,6 @@ export {
   TAREFA_DE_CLASSIFICACAO,
 } from './application/uso-ia.js';
 export type { ConsultaDeUsoDeIa, LinhaDeUsoDeIa, PainelDeUsoDeIa } from './application/uso-ia.js';
+export { ContadorDeUsoDeIaRedis } from './infra/contador-uso-ia-redis.js';
 export { UsoDeIaEmMemoria } from './infra/uso-ia-em-memoria.js';
 export { UsoDeIaPostgres } from './infra/uso-ia-postgres.js';
