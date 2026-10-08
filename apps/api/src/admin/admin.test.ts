@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 
 import { Controller, Get } from '@nestjs/common';
 import { FilaDeMortosEmMemoria, PainelEmMemoria, UsoDeIaEmMemoria } from '@pz/administracao';
+import { RevisaoManualEmMemoria } from '@pz/classificacao';
 import { carregarAmbiente } from '@pz/config/env';
 import { tenantAtual } from '@pz/db';
 import {
@@ -68,6 +69,9 @@ const mortos = new FilaDeMortosEmMemoria();
 const painel = new PainelEmMemoria();
 const supressoes = new SupressoesEmMemoria();
 const usoDeIa = new UsoDeIaEmMemoria();
+const revisaoManual = new RevisaoManualEmMemoria();
+const CURADOR = gerarUuidV7();
+const tokenCurador = randomBytes(32).toString('base64url');
 let api: NestFastifyApplication;
 
 beforeAll(async () => {
@@ -75,6 +79,7 @@ beforeAll(async () => {
   tenants.cadastrar(ESCRITORIO, 'escritorio');
   perfis.atribuir(ADMIN, 'admin_plataforma');
   perfis.atribuir(ADVOGADO, 'advogado');
+  perfis.atribuir(CURADOR, 'curador');
   api = await criarApi({
     termos: termosEmMemoria().dependencias,
     ambiente: carregarAmbiente(esquemaApi, {
@@ -105,7 +110,7 @@ beforeAll(async () => {
       contador: painel,
     },
     supressoes: { unidade: new OutboxEmMemoria(), consulta: supressoes },
-
+    revisaoManual: { unidade: new OutboxEmMemoria(), consulta: revisaoManual },
     usoDeIa: { unidade: new OutboxEmMemoria(), consulta: usoDeIa },
   });
   await api.init();
@@ -128,6 +133,15 @@ beforeEach(async () => {
     id: gerarUuidV7(),
     usuarioId: ADVOGADO,
     tenantId: ESCRITORIO,
+    nivel: 'completo',
+    segundoFatorAtivo: true,
+    criadaEm: agora,
+    ultimoUso: agora,
+  });
+  await sessoes.gravar(tokenCurador, {
+    id: gerarUuidV7(),
+    usuarioId: CURADOR,
+    tenantId: PLATAFORMA,
     nivel: 'completo',
     segundoFatorAtivo: true,
     criadaEm: agora,
@@ -437,6 +451,42 @@ describe('painel do administrador pela API (HU39)', () => {
     expect((await ler('/v1/admin/uso-ia?dias=91')).statusCode).toBe(400);
   });
 
+  it('fila de revisão manual: o curador lista; o administrador sem curadoria leva 403 (HU21)', async () => {
+    const agora = relogio.agora();
+    const conteudoId = gerarUuidV7();
+    revisaoManual.itens.push({
+      conteudoId,
+      origem: 'nenhuma',
+      motivo: 'saida-invalida',
+      tipoAto: null,
+      confianca: null,
+      evidencias: [],
+      versaoPrompt: null,
+      modelo: null,
+      criadaEm: agora,
+    });
+    const curador = { authorization: `Bearer ${tokenCurador}` };
+    const url = '/v1/admin/classificacoes/revisao-manual?limite=10';
+    expect((await ler(url, curador)).json()).toEqual({
+      itens: [
+        {
+          conteudoId,
+          origem: 'nenhuma',
+          motivo: 'saida-invalida',
+          tipoAto: null,
+          confianca: null,
+          evidencias: [],
+          versaoPrompt: null,
+          modelo: null,
+          criadaEm: agora.paraIso(),
+        },
+      ],
+      proximoCursor: null,
+    });
+    expect((await ler(`${url}&cursor=x`, curador)).statusCode).toBe(400);
+    expect((await ler(url)).statusCode).toBe(403);
+  });
+
   it('sem permissão de administrador: 403', async () => {
     const semPerfil = { authorization: `Bearer ${tokenSemPerfil}` };
     for (const url of [
@@ -462,6 +512,7 @@ describe('QA do painel administrativo (PZ-230)', () => {
       ['GET', '/v1/admin/filas'],
       ['GET', '/v1/admin/rejeicoes-email'],
       ['GET', '/v1/admin/uso-ia'],
+      ['GET', '/v1/admin/classificacoes/revisao-manual'],
       ['POST', '/v1/admin/impersonacao', { tenantId: PLATAFORMA, motivo: 'Chamado 1: tentativa' }],
       [
         'POST',

@@ -239,6 +239,9 @@ importers:
       '@pz/captura':
         specifier: workspace:*
         version: link:../../modules/captura
+      '@pz/classificacao':
+        specifier: workspace:*
+        version: link:../../modules/classificacao
       '@pz/config':
         specifier: workspace:*
         version: link:../../packages/config

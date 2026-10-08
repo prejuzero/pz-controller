@@ -7,5 +7,6 @@ export default criarConfigVitest({
     'infra/regras-postgres.ts',
     'infra/classificacoes-postgres.ts',
     'infra/taxonomia-postgres.ts',
+    'infra/fila-de-revisao-postgres.ts',
   ],
 });
