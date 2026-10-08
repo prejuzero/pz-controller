@@ -21,9 +21,32 @@ describe('JSON canônico (RFC 8785)', () => {
     expect(() => jsonCanonico({ a: 1n })).toThrow();
   });
 
+  // Chaves de um único caractere escapado ("\"", "\\", "\n"...) são verificadas pelo texto
+  // exato, sem JSON.parse: no V8 do Node 24 e 25, depois de ler uma chave assim, o JSON.parse
+  // devolve a mesma chave para qualquer outra do tipo (JSON.parse('{"\\\\":1}') seguido de
+  // JSON.parse('{"\\"":1}') dá a chave "\\"), o que quebrava o oráculo da propriedade abaixo.
+  it('chaves de um caractere escapado saem com o escape do ECMAScript', () => {
+    expect(jsonCanonico({ '"': 1, '\\': 2, '\n': 3, '\b': 4, '/': 5 })).toBe(
+      '{"\\b":4,"\\n":3,"\\"":1,"/":5,"\\\\":2}',
+    );
+  });
+
+  const chave = fc
+    .string()
+    .filter((texto) => texto.length !== 1 || JSON.stringify(texto).length === 3);
+  const valorJson = fc.object({
+    key: chave,
+    values: [
+      fc.constant(null),
+      fc.boolean(),
+      fc.double({ noNaN: true, noDefaultInfinity: true }),
+      fc.string(),
+    ],
+  });
+
   it('propriedade: a ordem das chaves não muda o resultado', () => {
     fc.assert(
-      fc.property(fc.dictionary(fc.string(), fc.jsonValue()), (objeto) => {
+      fc.property(valorJson, (objeto) => {
         const invertido = Object.fromEntries(Object.entries(objeto).reverse());
         expect(jsonCanonico(invertido)).toBe(jsonCanonico(objeto));
         expect(JSON.parse(jsonCanonico(objeto))).toEqual(JSON.parse(JSON.stringify(objeto)));
