@@ -6,7 +6,7 @@ import {
   type Classificacao,
   type RepositorioDeClassificacoes,
 } from '@pz/classificacao';
-import { configuracaoPadrao, PlataformaIa, promptsPadrao } from '@pz/ia';
+import { configuracaoPadrao, PlataformaIa, promptsPadrao, type RegistroDePrompts } from '@pz/ia';
 import { OutboxEmMemoria } from '@pz/kernel';
 
 import { SemGravacao, type Gravacao, type ProvedorDaAvaliacao } from './gravacoes.js';
@@ -47,13 +47,14 @@ class ClassificacoesDaAvaliacao implements RepositorioDeClassificacoes<Transacao
 /**
  * Roda cada caso pelo mesmo caso de uso da produção (HU21): regras rápidas, depois a plataforma
  * de IA com o prompt e a configuração versionados. Só o provedor muda: gravações no CI, a API
- * real com `--gravar`.
+ * real com `--gravar`. `prompts` só muda nos testes (simular uma versão nova do prompt).
  */
 export async function avaliar(
   casos: readonly CasoDeAvaliacao[],
   referencia: Referencia,
   provedor: ProvedorDaAvaliacao,
   relogio: Clock,
+  prompts: RegistroDePrompts = promptsPadrao(),
 ): Promise<ResultadoDoCaso[]> {
   const configuracao = configuracaoPadrao();
   const nomesDosProvedores = new Set(
@@ -69,7 +70,7 @@ export async function avaliar(
     teores: { teor: (_t, id) => Promise.resolve(teores.get(id)) },
     regras: new RegrasEmMemoria(regrasRapidas(referencia)),
     taxonomia: { listar: () => Promise.resolve(tiposDaTaxonomia(referencia)) },
-    ia: new ClassificadorIaPlataforma(plataforma, promptsPadrao()),
+    ia: new ClassificadorIaPlataforma(plataforma, prompts),
     classificacoes: new ClassificacoesDaAvaliacao(),
     outbox,
     relogio,
