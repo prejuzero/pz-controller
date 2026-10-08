@@ -1,0 +1,9 @@
+{
+  "extends": "@pz/config/tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules", "coverage"]
+}
