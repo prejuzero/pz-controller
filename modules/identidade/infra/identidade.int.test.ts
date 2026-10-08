@@ -62,6 +62,7 @@ const TENANT_B = '01a10e00-0000-7000-8000-0000000d0b01' as Uuid;
 const TENANT_P = '01a10e00-0000-7000-8000-0000000d0f01' as Uuid;
 const ANA = '01a10e00-0000-7000-8000-0000000d0a02' as Uuid;
 const BIA = '01a10e00-0000-7000-8000-0000000d0b02' as Uuid;
+const SENHA_DA_BIA = 'senha ficticia da bia 2026';
 const relogio = new FixedClock(Instant.deIso('2026-10-06T12:00:00Z'));
 const CTX = { ip: '203.0.113.7', userAgent: 'teste' };
 const protecao = () =>
@@ -597,7 +598,24 @@ describe('administração de tenants com PostgreSQL e Redis (HU39)', () => {
     );
     expect((await renovar.executar(emitidos.tokenDeRenovacao)).ok).toBe(false);
 
+    // QA (PZ-230): login real com a senha certa é recusado durante a suspensão e volta ao reativar.
+    const hasher = new HasherArgon2();
+    await executarNoTenant(TENANT_B, async () => {
+      await new CredenciaisPostgres(banco).definirSenha(BIA, await hasher.gerar(SENHA_DA_BIA));
+    });
+    const autenticar = new Autenticar(
+      new CredenciaisPostgres(banco),
+      hasher,
+      sessoes,
+      tokens,
+      relogio,
+      protecao(),
+    );
+    const login = () =>
+      autenticar.executar({ email: 'bia@exemplo.invalid', senha: SENHA_DA_BIA }, CTX);
+    expect(await login()).toMatchObject({ ok: false, erro: { codigo: 'tenant-suspenso' } });
     expect((await new ReativarTenant(deps).executar(admin, TENANT_B)).ok).toBe(true);
+    expect((await login()).ok).toBe(true);
     expect(
       (await new CredenciaisPostgres(banco).localizarPorEmail('bia@exemplo.invalid' as Email))
         ?.tenantSuspenso,
