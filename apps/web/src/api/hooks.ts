@@ -5,6 +5,7 @@ import { createContext, useContext } from 'react';
 
 import { permite, type Exigencia } from '../permissoes';
 
+import { consultasAdmin, mutacoesAdmin } from './admin';
 import { consultasCadastro, mutacoesCadastro } from './cadastro';
 import { consultasCalendario, mutacoesCalendario } from './calendario';
 import { consultasCaptura } from './captura';
@@ -147,3 +148,16 @@ export function useStatusDaCaptura() {
   const habilitado = usePermissao('publicacoes:ler') === true;
   return useQuery({ ...consultasCaptura(useApi()).status(), enabled: habilitado });
 }
+
+function useMutacoesAdmin() {
+  return mutacoesAdmin(useApi(), useQueryClient());
+}
+
+export const useTenants = () => useInfiniteQuery(consultasAdmin(useApi()).tenants());
+export const useIntegracoes = () => useQuery(consultasAdmin(useApi()).integracoes());
+export const useResumoDasFilas = () => useQuery(consultasAdmin(useApi()).filas());
+export const useRejeicoesDeEmail = () => useInfiniteQuery(consultasAdmin(useApi()).rejeicoes());
+export const useAlterarAssinatura = () => useMutation(useMutacoesAdmin().alterarAssinatura);
+export const useSuspenderTenant = () => useMutation(useMutacoesAdmin().suspender);
+export const useReativarTenant = () => useMutation(useMutacoesAdmin().reativar);
+export const useImpersonar = () => useMutation(useMutacoesAdmin().impersonar);

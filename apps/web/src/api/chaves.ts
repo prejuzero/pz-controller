@@ -40,6 +40,13 @@ export const chaves = {
     exportacao: (id: string) => [...chaves.privacidade.todas, 'exportacao', id] as const,
     encerramento: () => [...chaves.privacidade.todas, 'encerramento'] as const,
   },
+  admin: {
+    todas: ['admin'] as const,
+    tenants: () => [...chaves.admin.todas, 'tenants'] as const,
+    integracoes: () => [...chaves.admin.todas, 'integracoes'] as const,
+    filas: () => [...chaves.admin.todas, 'filas'] as const,
+    rejeicoes: () => [...chaves.admin.todas, 'rejeicoes'] as const,
+  },
   captura: {
     todas: ['captura'] as const,
     status: () => [...chaves.captura.todas, 'status'] as const,

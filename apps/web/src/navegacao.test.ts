@@ -12,6 +12,7 @@ describe('navegacao', () => {
       'processos',
       'calendario',
       'relatorios',
+      'admin',
       'configuracoes',
     ]);
     expect(ITENS_BARRA_INFERIOR.map((item) => item.chave)).toEqual([
@@ -33,7 +34,11 @@ describe('navegacao', () => {
   it('resolve a seção pelo segmento e recusa o que não está no menu', () => {
     expect(secaoDoSegmento('calendario')?.chave).toBe('calendario');
     expect(secaoDoSegmento('')).toBeUndefined();
-    expect(secaoDoSegmento('admin')).toBeUndefined();
+    expect(secaoDoSegmento('inexistente')).toBeUndefined();
+    // Administração da plataforma (HU39): oculta para qualquer outro perfil.
+    expect(secaoDoSegmento('admin')).toMatchObject({
+      permissao: { algum: ['admin:tenants', 'admin:filas'] },
+    });
   });
 
   it('exige a permissão de leitura das seções protegidas pela API (HU07)', () => {

@@ -10,6 +10,7 @@ import {
   Newspaper,
   Search,
   Settings,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -25,6 +26,7 @@ export const ICONES: Record<ChaveMenu, LucideIcon> = {
   processos: FolderOpen,
   calendario: CalendarDays,
   relatorios: ChartColumn,
+  admin: ShieldCheck,
   configuracoes: Settings,
 };
 
