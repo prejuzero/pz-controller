@@ -55,6 +55,7 @@ model Tenant {
   clientes               Cliente[]
   processos              Processo[]
   encerramento           EncerramentoConta?
+  publicacoes            PublicacaoDestinatario[]
 
   @@map("tenant")
 }
@@ -472,9 +473,11 @@ model Oab {
   criadoEm     DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm DateTime  @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  advogado Advogado @relation(fields: [advogadoId], references: [id], onDelete: Restrict)
+  tenant      Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  advogado    Advogado                 @relation(fields: [advogadoId], references: [id], onDelete: Restrict)
+  publicacoes PublicacaoDestinatario[]
 
+  @@unique([tenantId, id])
   @@index([tenantId, advogadoId])
   @@map("oab")
 }
@@ -522,10 +525,12 @@ model Processo {
   criadoEm        DateTime          @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm    DateTime          @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  cliente Cliente? @relation(fields: [tenantId, clienteId], references: [tenantId, id], onDelete: Restrict)
+  tenant      Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  cliente     Cliente?                 @relation(fields: [tenantId, clienteId], references: [tenantId, id], onDelete: Restrict)
+  publicacoes PublicacaoDestinatario[]
 
   @@unique([tenantId, numeroCnj])
+  @@unique([tenantId, id])
   @@index([tenantId, clienteId])
   @@map("processo")
 }
@@ -795,4 +800,65 @@ model EncerramentoConta {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@map("encerramento_conta")
+}
+
+/// Conteúdo global e imutável de uma publicação (HU18, ADR-014), particionado por mês. A
+/// aplicação não lê nem grava direto: escreve por `pz_registrar_publicacao` e lê pela view
+/// `publicacao_do_tenant`. `teor_tsv` (coluna gerada) fica fora do modelo.
+model PublicacaoConteudo {
+  id                   String    @db.Uuid
+  fonte                String
+  idExterno            String    @map("id_externo")
+  hashConteudo         String    @map("hash_conteudo")
+  dataDisponibilizacao DateTime  @map("data_disponibilizacao") @db.Date
+  dataPublicacao       DateTime? @map("data_publicacao") @db.Date
+  numeroCnj            String?   @map("numero_cnj") @db.Char(20)
+  teor                 String
+  urlFonte             String    @map("url_fonte")
+  metadados            Json      @default("{}") @db.JsonB
+  adaptadorVersao      String    @map("adaptador_versao")
+  capturadoEm          DateTime  @default(now()) @map("capturado_em") @db.Timestamptz(6)
+
+  chaves        PublicacaoChave[]
+  destinatarios PublicacaoDestinatario[]
+
+  @@id([id, capturadoEm])
+  @@map("publicacao_conteudo")
+}
+
+/// Deduplicação global por fonte + hash do teor normalizado (ADR-014).
+model PublicacaoChave {
+  fonte        String
+  hashConteudo String   @map("hash_conteudo")
+  conteudoId   String   @map("conteudo_id") @db.Uuid
+  capturadoEm  DateTime @map("capturado_em") @db.Timestamptz(6)
+
+  conteudo PublicacaoConteudo @relation(fields: [conteudoId, capturadoEm], references: [id, capturadoEm], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([fonte, hashConteudo])
+  @@map("publicacao_chave")
+}
+
+/// Publicação recebida por um tenant (RLS): processo e OAB do próprio tenant, leitura.
+model PublicacaoDestinatario {
+  tenantId            String    @map("tenant_id") @db.Uuid
+  conteudoId          String    @map("conteudo_id") @db.Uuid
+  conteudoCapturadoEm DateTime  @map("conteudo_capturado_em") @db.Timestamptz(6)
+  processoId          String?   @map("processo_id") @db.Uuid
+  oabId               String?   @map("oab_id") @db.Uuid
+  recebidaEm          DateTime  @default(now()) @map("recebida_em") @db.Timestamptz(6)
+  lidaEm              DateTime? @map("lida_em") @db.Timestamptz(6)
+  lidaPor             String?   @map("lida_por") @db.Uuid
+  criadoEm            DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm        DateTime  @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  tenant   Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  conteudo PublicacaoConteudo @relation(fields: [conteudoId, conteudoCapturadoEm], references: [id, capturadoEm], onDelete: Restrict, onUpdate: Restrict)
+  processo Processo?          @relation(fields: [tenantId, processoId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+  oab      Oab?               @relation(fields: [tenantId, oabId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([tenantId, conteudoId])
+  @@index([tenantId, recebidaEm])
+  @@index([tenantId, processoId])
+  @@map("publicacao_destinatario")
 }
