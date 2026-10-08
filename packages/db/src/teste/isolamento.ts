@@ -1,4 +1,4 @@
-import { randomInt, randomUUID } from 'node:crypto';
+import { randomBytes, randomInt, randomUUID } from 'node:crypto';
 
 import type pg from 'pg';
 
@@ -150,8 +150,10 @@ export async function criarLinha(
   profundidade = 0,
 ): Promise<Record<string, unknown>> {
   if (profundidade > 5) throw new Error(`Referências demais a partir de ${tabela}`);
-  const valores: Record<string, unknown> = {};
+  const publicacao = tabela === 'publicacao_destinatario';
+  const valores: Record<string, unknown> = publicacao ? await conteudoDePublicacao(cliente) : {};
   for (const coluna of await colunasObrigatorias(cliente, tabela)) {
+    if (publicacao && COLUNAS_DA_PUBLICACAO.has(coluna.nome)) continue;
     if (coluna.nome === 'tenant_id') valores[coluna.nome] = tenantId;
     else if (coluna.referencia === 'tenant') valores[coluna.nome] = tenantId;
     else if (coluna.referencia !== null && coluna.referencia in LINHAS_GLOBAIS)
@@ -179,8 +181,10 @@ export async function valoresDeLinhaNova(
   tabela: string,
   tenantId: string,
 ): Promise<Record<string, unknown>> {
-  const valores: Record<string, unknown> = {};
+  const publicacao = tabela === 'publicacao_destinatario';
+  const valores: Record<string, unknown> = publicacao ? await conteudoDePublicacao(cliente) : {};
   for (const coluna of await colunasObrigatorias(cliente, tabela)) {
+    if (publicacao && COLUNAS_DA_PUBLICACAO.has(coluna.nome)) continue;
     if (coluna.nome === 'tenant_id' || coluna.referencia === 'tenant')
       valores[coluna.nome] = tenantId;
     else if (coluna.referencia !== null && coluna.referencia in LINHAS_GLOBAIS)
@@ -191,6 +195,22 @@ export async function valoresDeLinhaNova(
   }
   return aplicarFixas(tabela, valores);
 }
+
+/**
+ * O conteúdo da publicação (global, imutável) só é gravado pela função de registro (ADR-014),
+ * e a referência do destinatário é composta (id + instante): os dois vêm da função.
+ */
+async function conteudoDePublicacao(cliente: pg.Client): Promise<Record<string, unknown>> {
+  const { rows } = await cliente.query<{ conteudo_id: string; capturado_em: Date }>(
+    `SELECT * FROM pz_registrar_publicacao($1, 'teste', 'x', $2, current_date, NULL,
+       'FICTÍCIO', 'https://exemplo.invalid', '{}'::jsonb, 'teste')`,
+    [randomUUID(), randomBytes(32).toString('hex')],
+  );
+  const conteudo = rows[0];
+  if (conteudo === undefined) throw new Error('pz_registrar_publicacao não devolveu o conteúdo');
+  return { conteudo_id: conteudo.conteudo_id, conteudo_capturado_em: conteudo.capturado_em };
+}
+const COLUNAS_DA_PUBLICACAO = new Set(['conteudo_id', 'conteudo_capturado_em']);
 
 function aplicarFixas(tabela: string, valores: Record<string, unknown>): Record<string, unknown> {
   for (const [nome, valor] of Object.entries(COLUNAS_FIXAS[tabela] ?? {}))
@@ -218,4 +238,5 @@ export const TABELAS_SEM_DELETE: readonly string[] = [
   'consentimento_canal',
   'processo',
   'encerramento_conta',
+  'publicacao_destinatario',
 ];
