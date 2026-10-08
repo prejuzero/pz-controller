@@ -152,6 +152,9 @@ describe('publicações do escritório (HU18)', () => {
     expect((await pedir('caio', 'POST', `/v1/publicacoes/${ID}/lida`)).statusCode).toBe(204);
     expect(auditados.filter((t) => t === 'publicacoes.publicacao-lida')).toHaveLength(1);
     expect((await pedir('caio', 'GET', `/v1/publicacoes/${gerarUuidV7()}`)).statusCode).toBe(404);
+    expect((await pedir('caio', 'POST', `/v1/publicacoes/${gerarUuidV7()}/lida`)).statusCode).toBe(
+      404,
+    );
     expect((await pedir('caio', 'GET', '/v1/publicacoes/abc')).statusCode).toBe(400);
     expect((await pedir('caio', 'GET', '/v1/publicacoes?limite=0')).statusCode).toBe(400);
   });
