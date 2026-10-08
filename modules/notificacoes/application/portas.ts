@@ -93,3 +93,11 @@ export interface EnviadorDeCanal {
     mensagem: MensagemRenderizada;
   }): Promise<ResultadoEnvio>;
 }
+
+/**
+ * Porta: quem responde pelo escritório da transação (quem administra a equipe). A composição liga
+ * à identidade pela API pública dela.
+ */
+export interface ResponsaveisDoEscritorio<Transacao> {
+  usuarios(transacao: Transacao): Promise<readonly Uuid[]>;
+}

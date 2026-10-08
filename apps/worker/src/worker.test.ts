@@ -147,6 +147,8 @@ describe('@Consome e o despachante', () => {
         ['SessaoRevogada@1', ['ConsumidorDeAuditoria.sessaoRevogada']],
         ['CalendarioAlterado@1', ['ConsumidorDoCalendario.alterado']],
         ['NotificacaoSolicitada@1', ['ConsumidorDeNotificacoes.solicitada']],
+        ['FonteDegradada@1', ['ConsumidorDeNotificacoes.fonteDegradada']],
+        ['FonteRestabelecida@1', ['ConsumidorDeNotificacoes.fonteRestabelecida']],
         ['NotificacaoRejeitada@1', ['ConsumidorDeAuditoria.notificacaoRejeitada']],
         ['OabAdicionada@1', ['ConsumidorDaCaptura.oabAdicionada']],
         ['OabRemovida@1', ['ConsumidorDaCaptura.oabRemovida']],
@@ -324,5 +326,62 @@ describe('notificações (HU30)', () => {
     });
     expect(enviados).toEqual([{ idempotencia: 'chave-1', para: ['ana@exemplo.invalid'] }]);
     expect(atualizados).toHaveLength(1);
+  });
+
+  it('FonteDegradada e FonteRestabelecida pedem e-mail a quem administra a equipe (PZ-311)', async () => {
+    await subir();
+    const gestora = gerarUuidV7(relogio);
+    const criadas: { tipo: string; usuarioId: string; dados: unknown }[] = [];
+    const eventos: string[] = [];
+    // Transação falsa no formato do Prisma: só o que os repositórios usam.
+    const transacao = {
+      usuarioPerfil: { findMany: () => Promise.resolve([{ usuarioId: gestora }]) },
+      usuario: { findUnique: () => Promise.resolve({ email: 'gestora@exemplo.invalid' }) },
+      advogado: { findUnique: () => Promise.resolve(null) },
+      preferenciaNotificacao: { findUnique: () => Promise.resolve(null) },
+      supressao: { findMany: () => Promise.resolve([]) },
+      notificacao: {
+        createMany: ({ data }: { data: { tipo: string; usuarioId: string; dados: unknown }[] }) => {
+          criadas.push(...data.map(({ tipo, usuarioId, dados }) => ({ tipo, usuarioId, dados })));
+          return Promise.resolve({ count: data.length });
+        },
+      },
+      eventoDominio: {
+        createMany: ({ data }: { data: { tipo: string }[] }) => {
+          eventos.push(...data.map((e) => e.tipo));
+          return Promise.resolve({ count: data.length });
+        },
+      },
+    };
+    const consumidor = worker?.get(ConsumidorDeNotificacoes);
+    const evento = (tipo: 'FonteDegradada' | 'FonteRestabelecida') => ({
+      id: gerarUuidV7(relogio),
+      tipo,
+      versao: 1,
+      tenantId: gerarUuidV7(relogio),
+      agregadoId: gerarUuidV7(relogio),
+      ocorridoEm: relogio.agora(),
+      payload: { fonte: 'djen' },
+    });
+    await consumidor?.fonteDegradada(transacao as never, evento('FonteDegradada'));
+    await consumidor?.fonteRestabelecida(transacao as never, evento('FonteRestabelecida'));
+    expect(criadas).toEqual([
+      {
+        tipo: 'fonte-degradada',
+        usuarioId: gestora,
+        dados: {
+          fonte: 'DJEN',
+          desde: '05/10/2026 09:00',
+          link: 'http://localhost:3001/configuracoes/cobertura',
+        },
+      },
+      expect.objectContaining({ tipo: 'fonte-restabelecida', usuarioId: gestora }),
+    ]);
+    expect(eventos).toEqual(['NotificacaoSolicitada', 'NotificacaoSolicitada']);
+
+    // Escritório sem quem avisar: não pede nada (e registra no log).
+    transacao.usuarioPerfil.findMany = () => Promise.resolve([]);
+    await consumidor?.fonteDegradada(transacao as never, evento('FonteDegradada'));
+    expect(criadas).toHaveLength(2);
   });
 });

@@ -37,7 +37,7 @@ import { AcessosPostgres } from './acessos-postgres.js';
 import { HasherArgon2 } from './argon2.js';
 import { CredenciaisPostgres } from './credenciais-postgres.js';
 import { DispositivosPostgres, RenovacoesRedis } from './dispositivos.js';
-import { PerfisPostgres } from './perfis-postgres.js';
+import { PerfisPostgres, UsuariosComPermissaoPostgres } from './perfis-postgres.js';
 import {
   EmailsDosUsuariosPostgres,
   noTenantDoBanco,
@@ -460,6 +460,22 @@ describe('perfis e permissões no PostgreSQL (HU07)', () => {
     );
     // Outro tenant não enxerga a atribuição.
     expect(await perfis.permissoesDoUsuario(TENANT_B, ANA)).toEqual([]);
+  });
+
+  it('lista só os usuários do tenant cujos perfis concedem a permissão (RLS)', async () => {
+    const usuarios = new UsuariosComPermissaoPostgres();
+    await executarNoTenant(TENANT_B, () =>
+      banco.executar((tx) =>
+        tx.usuarioPerfil.create({
+          data: { tenantId: TENANT_B, usuarioId: BIA, perfil: 'admin_escritorio' },
+        }),
+      ),
+    );
+    const listar = (tenant: Uuid) =>
+      executarNoTenant(tenant, () => banco.executar((tx) => usuarios.listar(tx, 'usuarios:gerir')));
+    expect(await listar(TENANT_B)).toEqual([BIA]);
+    // ANA (colaboradora) não administra a equipe; BIA é de outro tenant.
+    expect(await listar(TENANT_A)).toEqual([]);
   });
 
   it.each(['admin_plataforma', 'curador'])(

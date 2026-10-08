@@ -1,0 +1,16 @@
+Captura do DJEN com falhas: confira o diário
+
+PrejuZero
+
+
+CAPTURA DE PUBLICAÇÕES COM FALHAS
+
+A captura de publicações do DJEN está com falhas desde 07/10/2026 14:32. Novas intimações podem não aparecer no PrejuZero enquanto isso.
+
+Confira o diário diretamente até receber o aviso de que a captura voltou. Já estamos tentando de novo, e as publicações do período serão recapturadas.
+
+Ver no portal https://app.exemplo.invalid/configuracoes/cobertura
+
+----------------------------------------
+
+Você recebe este aviso porque monitora processos no PrejuZero. Ajuste as notificações em Configurações.

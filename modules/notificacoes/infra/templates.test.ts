@@ -60,6 +60,16 @@ const EXEMPLOS: Record<TipoDeNotificacao, unknown> = {
     link: PORTAL,
     linkCiencia: CIENCIA,
   },
+  'fonte-degradada': {
+    fonte: 'DJEN',
+    desde: '07/10/2026 14:32',
+    link: 'https://app.exemplo.invalid/configuracoes/cobertura',
+  },
+  'fonte-restabelecida': {
+    fonte: 'DJEN',
+    em: '07/10/2026 18:05',
+    link: 'https://app.exemplo.invalid/configuracoes/cobertura',
+  },
 };
 
 describe.each(TIPOS_DE_NOTIFICACAO)('template %s', (tipo) => {

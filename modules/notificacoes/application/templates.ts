@@ -18,6 +18,10 @@ import type { ReactNode } from 'react';
 const LinkDoPortal = z.url({ protocol: /^https?$/ }).max(2000);
 const NumeroDoProcesso = z.string().min(1).max(30);
 const Data = z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/);
+/** Horário do servidor no fuso do sistema (America/Sao_Paulo): "DD/MM/AAAA HH:MM". */
+const DataHora = z.string().regex(/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/);
+/** Nome da fonte de publicações para exibição (ex.: "DJEN"). */
+const NomeDaFonte = z.string().trim().min(1).max(40);
 /** Leva à tela de confirmação; o GET nunca confirma nada (CLAUDE.md, seção 14). */
 const LinkDeCiencia = LinkDoPortal.optional();
 
@@ -291,6 +295,58 @@ export const TEMPLATES = {
     minimo: () => ({
       assunto: 'Intimação encaminhada',
       texto: 'Uma intimação foi encaminhada para você. Confira no PrejuZero.',
+    }),
+  }),
+  'fonte-degradada': definir({
+    versao: 1,
+    dados: z.object({ fonte: NomeDaFonte, desde: DataHora, link: LinkDoPortal }).strict(),
+    email: (d) => ({
+      assunto: `Captura do ${d.fonte} com falhas: confira o diário`,
+      titulo: 'Captura de publicações com falhas',
+      previa: `A captura do ${d.fonte} está com falhas desde ${d.desde}.`,
+      corpo: [
+        paragrafo(
+          'A captura de publicações do ',
+          destaque(d.fonte),
+          ' está com falhas desde ',
+          destaque(d.desde),
+          '. Novas intimações podem não aparecer no PrejuZero enquanto isso.',
+        ),
+        paragrafo(
+          'Confira o diário diretamente até receber o aviso de que a captura voltou. Já estamos tentando de novo, e as publicações do período serão recapturadas.',
+        ),
+      ],
+      acoes: acoes(d.link),
+      link: d.link,
+    }),
+    minimo: (d) => ({
+      assunto: 'Captura com falhas',
+      texto: `A captura do ${d.fonte} está com falhas. Confira o diário e o PrejuZero.`,
+    }),
+  }),
+  'fonte-restabelecida': definir({
+    versao: 1,
+    dados: z.object({ fonte: NomeDaFonte, em: DataHora, link: LinkDoPortal }).strict(),
+    email: (d) => ({
+      assunto: `Captura do ${d.fonte} restabelecida`,
+      titulo: 'Captura de publicações restabelecida',
+      previa: `A captura do ${d.fonte} voltou a funcionar em ${d.em}.`,
+      corpo: [
+        paragrafo(
+          'A captura de publicações do ',
+          destaque(d.fonte),
+          ' voltou a funcionar em ',
+          destaque(d.em),
+          '. As publicações do período com falhas estão sendo recapturadas.',
+        ),
+        paragrafo('Confira no PrejuZero as intimações que chegarem nas próximas horas.'),
+      ],
+      acoes: acoes(d.link),
+      link: d.link,
+    }),
+    minimo: (d) => ({
+      assunto: 'Captura restabelecida',
+      texto: `A captura do ${d.fonte} voltou a funcionar. Confira no PrejuZero.`,
     }),
   }),
 } as const satisfies Record<TipoDeNotificacao, DefinicaoDeTemplate>;

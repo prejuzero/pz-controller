@@ -123,7 +123,7 @@ export type {
   RepositorioDePerfis,
 } from './application/autorizacao.js';
 export { PerfisEmMemoria } from './infra/em-memoria.js';
-export { PerfisPostgres } from './infra/perfis-postgres.js';
+export { PerfisPostgres, UsuariosComPermissaoPostgres } from './infra/perfis-postgres.js';
 export {
   DURACAO_DA_IMPERSONACAO_MS,
   MOTIVO_MAXIMO,
