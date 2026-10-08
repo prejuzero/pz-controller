@@ -26,3 +26,11 @@ export {
   TAREFA as TAREFA_DE_CLASSIFICACAO,
 } from './infra/classificador-ia-plataforma.js';
 export { TaxonomiaPostgres } from './infra/taxonomia-postgres.js';
+export { ListarRevisaoManual } from './application/fila-de-revisao.js';
+export type {
+  ConsultaDaRevisaoManual,
+  ItemDaRevisaoManual,
+  PaginaDaRevisaoManual,
+} from './application/fila-de-revisao.js';
+export { RevisaoManualEmMemoria } from './infra/fila-de-revisao-em-memoria.js';
+export { RevisaoManualPostgres } from './infra/fila-de-revisao-postgres.js';

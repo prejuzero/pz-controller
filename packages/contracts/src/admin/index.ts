@@ -328,6 +328,47 @@ export const consultarUsoDeIa = definirRota({
   resposta: { status: 200, corpo: PainelDeUsoDeIa },
 });
 
+export const ConsultaDaRevisaoManual = ConsultaPaginada.extend({ cursor: Uuid.optional() });
+
+export const ItemDaRevisaoManual = nomear(
+  'ItemDaRevisaoManual',
+  z.object({
+    conteudoId: Uuid,
+    origem: z.enum(['regra', 'ia', 'nenhuma']),
+    /** Por que caiu na revisão: saída da IA inválida, IA desligada ou orçamento diário esgotado. */
+    motivo: z.enum(['saida-invalida', 'ia-desligada', 'sem-orcamento']).nullable(),
+    tipoAto: z.string().nullable(),
+    confianca: z.number().min(0).max(1).nullable(),
+    /** Trechos do teor; nunca uma data (ADR-008). */
+    evidencias: z.array(
+      z.object({ inicio: z.number().int(), fim: z.number().int(), trecho: z.string() }),
+    ),
+    versaoPrompt: z.string().nullable(),
+    modelo: z.string().nullable(),
+    criadaEm: Instante,
+  }),
+);
+
+export const PaginaDaRevisaoManual = nomear(
+  'PaginaDaRevisaoManual',
+  pagina(ItemDaRevisaoManual.esquema),
+);
+export type PaginaDaRevisaoManual = z.infer<typeof PaginaDaRevisaoManual.esquema>;
+
+/**
+ * Fila de revisão manual do curador (HU21): exige `curadoria:classificacao`. Classificações
+ * globais (uma por conteúdo) que nem as regras nem a IA resolveram, da mais antiga à mais nova.
+ */
+export const listarRevisaoManual = definirRota({
+  id: 'listarRevisaoManual',
+  metodo: 'get',
+  caminho: '/v1/admin/classificacoes/revisao-manual',
+  resumo: 'Lista as publicações cuja classificação aguarda revisão do curador.',
+  tag: 'admin',
+  consulta: ConsultaDaRevisaoManual,
+  resposta: { status: 200, corpo: PaginaDaRevisaoManual },
+});
+
 export const ROTAS_ADMIN = [
   iniciarImpersonacao,
   encerrarImpersonacao,
@@ -341,4 +382,5 @@ export const ROTAS_ADMIN = [
   resumirFilas,
   listarRejeicoesDeEmail,
   consultarUsoDeIa,
+  listarRevisaoManual,
 ] as const;

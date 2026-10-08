@@ -17,7 +17,9 @@ import {
   ConsultarUsoDeIa,
   ReprocessarJobMorto,
 } from '@pz/administracao';
+import { ListarRevisaoManual } from '@pz/classificacao';
 import {
+  ConsultaDaRevisaoManual,
   ConsultaDeUsoDeIa,
   ConsultaPaginada,
   PedidoDeAssinatura,
@@ -43,6 +45,7 @@ import { RequerPermissao } from '../http/acesso.js';
 
 import type { RequisicaoAutenticada } from '../http/acesso.js';
 import type {
+  PaginaDaRevisaoManual,
   PaginaDeRejeicoes,
   PaginaDeTenants,
   PainelDeIntegracoes,
@@ -85,6 +88,7 @@ function administrador(requisicao: RequisicaoAutenticada): Administrador {
 }
 
 /**
+ * Fila de revisão manual da classificação (HU21, regra no módulo classificacao).
  * Contratos `iniciarImpersonacao` e `encerrarImpersonacao` (regra no módulo identidade) e
  * `reprocessarJobMorto` (regra no módulo administracao), da HU07; tenants da plataforma (HU39,
  * regra no módulo identidade).
@@ -105,6 +109,7 @@ export class AdminController {
     @Inject(ConsultarFilas) private readonly filas: ConsultarFilas,
     @Inject(ConsultarUsoDeIa) private readonly usoDeIa: ConsultarUsoDeIa<unknown>,
     @Inject(ListarSupressoes) private readonly supressoes: ListarSupressoes<unknown>,
+    @Inject(ListarRevisaoManual) private readonly revisao: ListarRevisaoManual<unknown>,
   ) {}
 
   @Get('integracoes')
@@ -141,6 +146,24 @@ export class AdminController {
       custoTotalUsd: painel.custoTotalUsd,
       classificacao: painel.classificacao,
       dias: painel.linhas.map((l) => ({ ...l, dia: l.dia.paraIso() })),
+    };
+  }
+
+  @Get('classificacoes/revisao-manual')
+  @RequerPermissao('curadoria:classificacao')
+  async revisaoManual(@Query() consulta: unknown): Promise<PaginaDaRevisaoManual> {
+    const { cursor, limite } = validar(ConsultaDaRevisaoManual, consulta);
+    const pagina = await this.revisao.executar({
+      limite,
+      ...(cursor === undefined ? {} : { apos: cursor as Uuid }),
+    });
+    return {
+      itens: pagina.itens.map((i) => ({
+        ...i,
+        evidencias: [...i.evidencias],
+        criadaEm: i.criadaEm.paraIso(),
+      })),
+      proximoCursor: pagina.proximoCursor,
     };
   }
 

@@ -6,11 +6,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ClassificarPorRegras } from '../application/classificar.js';
 
 import { ClassificacoesPostgres } from './classificacoes-postgres.js';
+import { RevisaoManualPostgres } from './fila-de-revisao-postgres.js';
 import { RegrasPostgres } from './regras-postgres.js';
 import { TaxonomiaPostgres } from './taxonomia-postgres.js';
 
 import type { Transacao } from '@pz/db';
 import type { BancoDeTeste } from '@pz/db/teste';
+import type { Uuid } from '@pz/kernel';
 
 // Taxonomia e regras FICTÍCIAS.
 const TENANT = gerarUuidV7();
@@ -151,5 +153,33 @@ describe('regras rápidas no PostgreSQL (HU20)', () => {
     expect(
       (await noTenant((tx) => new TaxonomiaPostgres().listar(tx))).map((t) => t.codigo),
     ).toContain('ficticio-citacao');
+  });
+
+  it('fila de revisão manual: só "revisao_manual", em ordem de conteúdo, com cursor (HU21)', async () => {
+    const repo = new ClassificacoesPostgres();
+    const noTenant = <T>(f: (tx: Transacao) => Promise<T>) =>
+      executarNoTenant(TENANT, () => banco.executar(f));
+    const semMotivo = {
+      origem: 'nenhuma' as const,
+      situacao: 'revisao_manual' as const,
+      tipoAto: null,
+      confianca: null,
+      evidencias: [],
+      prazoCitado: null,
+    };
+    const revisao = { ...semMotivo, motivo: 'saida-invalida' as const };
+    const [a, b] = [gerarUuidV7(), gerarUuidV7()].sort() as [Uuid, Uuid];
+    await noTenant((tx) => repo.gravar(tx, a, revisao));
+    await noTenant((tx) => repo.gravar(tx, b, revisao));
+    await noTenant((tx) =>
+      repo.gravar(tx, gerarUuidV7(), { ...semMotivo, situacao: 'a_confirmar' }),
+    );
+    const fila = new RevisaoManualPostgres();
+    const primeira = await noTenant((tx) => fila.listar(tx, { limite: 1 }));
+    expect(primeira).toEqual([
+      expect.objectContaining({ conteudoId: a, origem: 'nenhuma', motivo: 'saida-invalida' }),
+    ]);
+    const resto = await noTenant((tx) => fila.listar(tx, { limite: 10, apos: a }));
+    expect(resto.map((i) => i.conteudoId)).toEqual([b]);
   });
 });

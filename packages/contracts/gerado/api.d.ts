@@ -69,6 +69,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/classificacoes/revisao-manual": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista as publicações cuja classificação aguarda revisão do curador. */
+        get: operations["listarRevisaoManual"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/filas": {
         parameters: {
             query?: never;
@@ -1352,6 +1369,28 @@ export interface components {
             /** @enum {string} */
             tipo: "principal" | "suplementar";
         };
+        PaginaDaRevisaoManual: {
+            itens: {
+                /** Format: uuid */
+                conteudoId: string;
+                /** @enum {string} */
+                origem: "regra" | "ia" | "nenhuma";
+                motivo: ("saida-invalida" | "ia-desligada" | "sem-orcamento") | null;
+                tipoAto: string | null;
+                confianca: number | null;
+                evidencias: {
+                    inicio: number;
+                    fim: number;
+                    trecho: string;
+                }[];
+                versaoPrompt: string | null;
+                modelo: string | null;
+                /** Format: date-time */
+                criadaEm: string;
+            }[];
+            /** @description Nulo quando não há mais páginas. */
+            proximoCursor: string | null;
+        };
         PaginaDeClientes: {
             itens: components["schemas"]["ClienteDoTenant"][];
             /** @description Nulo quando não há mais páginas. */
@@ -2177,6 +2216,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResultadoDaImportacao"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarRevisaoManual: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                /** @description Quantidade de itens por página. */
+                limite?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginaDaRevisaoManual"];
                 };
             };
             /** @description Entrada inválida. */

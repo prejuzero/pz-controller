@@ -47,6 +47,7 @@ import {
   RevogarFeriadoLocal,
 } from '@pz/calendario';
 import { ConsultarStatusDaCaptura, LeituraDoStatusPostgres } from '@pz/captura';
+import { ListarRevisaoManual, RevisaoManualPostgres } from '@pz/classificacao';
 import { Banco, OutboxPostgres, WebhooksPostgres } from '@pz/db';
 import {
   AtivarSegundoFator,
@@ -198,6 +199,7 @@ import type {
   RepositorioDeFeriadosLocais,
 } from '@pz/calendario';
 import type { LeituraDoStatus } from '@pz/captura';
+import type { ConsultaDaRevisaoManual } from '@pz/classificacao';
 import type { Transacao } from '@pz/db';
 import type {
   Email,
@@ -297,6 +299,11 @@ export interface OpcoesApi {
   readonly supressoes?: {
     readonly unidade: UnidadeDeTrabalho<unknown>;
     readonly consulta: ConsultaDeSupressoes<unknown>;
+  };
+  /** Fila de revisão manual da classificação (HU21); nos testes, em memória. */
+  readonly revisaoManual?: {
+    readonly unidade: UnidadeDeTrabalho<unknown>;
+    readonly consulta: ConsultaDaRevisaoManual<unknown>;
   };
   /** Uso de IA para o painel do administrador (HU21); nos testes, em memória. */
   readonly usoDeIa?: {
@@ -950,6 +957,13 @@ export class AppModule {
           opcoes.supressoes === undefined
             ? new ListarSupressoes(recursos.banco, new SupressaoPostgres())
             : new ListarSupressoes(opcoes.supressoes.unidade, opcoes.supressoes.consulta),
+      },
+      {
+        provide: ListarRevisaoManual,
+        useValue:
+          opcoes.revisaoManual === undefined
+            ? new ListarRevisaoManual(recursos.banco, new RevisaoManualPostgres())
+            : new ListarRevisaoManual(opcoes.revisaoManual.unidade, opcoes.revisaoManual.consulta),
       },
       {
         provide: ConsultarUsoDeIa,

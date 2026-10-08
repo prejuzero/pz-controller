@@ -432,6 +432,92 @@
         }
       }
     },
+    "/v1/admin/classificacoes/revisao-manual": {
+      "get": {
+        "operationId": "listarRevisaoManual",
+        "summary": "Lista as publicações cuja classificação aguarda revisão do curador.",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "description": "Quantidade de itens por página.",
+            "schema": {
+              "default": 20,
+              "description": "Quantidade de itens por página.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaDaRevisaoManual"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/admin/filas": {
       "get": {
         "operationId": "resumirFilas",
@@ -7097,6 +7183,133 @@
           "numero",
           "uf",
           "tipo"
+        ],
+        "additionalProperties": false
+      },
+      "PaginaDaRevisaoManual": {
+        "type": "object",
+        "properties": {
+          "itens": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "conteudoId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "origem": {
+                  "type": "string",
+                  "enum": [
+                    "regra",
+                    "ia",
+                    "nenhuma"
+                  ]
+                },
+                "motivo": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "saida-invalida",
+                        "ia-desligada",
+                        "sem-orcamento"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tipoAto": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "confianca": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "evidencias": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "inicio": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "fim": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "trecho": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "inicio",
+                      "fim",
+                      "trecho"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "versaoPrompt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "modelo": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "criadaEm": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                }
+              },
+              "required": [
+                "conteudoId",
+                "origem",
+                "motivo",
+                "tipoAto",
+                "confianca",
+                "evidencias",
+                "versaoPrompt",
+                "modelo",
+                "criadaEm"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "proximoCursor": {
+            "description": "Nulo quando não há mais páginas.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "itens",
+          "proximoCursor"
         ],
         "additionalProperties": false
       },

@@ -44,6 +44,10 @@ export const CATALOGO_DE_PERMISSOES = {
     descricao: 'Manter a taxonomia de atos e propor e aprovar a tabela de prazos (curador).',
     leitura: false,
   },
+  'curadoria:classificacao': {
+    descricao: 'Acompanhar a fila de revisão manual da classificação de publicações (curador).',
+    leitura: false,
+  },
 } as const satisfies Record<string, { readonly descricao: string; readonly leitura: boolean }>;
 
 export type Permissao = keyof typeof CATALOGO_DE_PERMISSOES;

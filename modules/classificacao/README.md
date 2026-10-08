@@ -33,3 +33,4 @@ Falsos positivos descartados: prazo já vencido ("prazo de 15 dias já decorrido
 2. Senão, a IA pela plataforma (`packages/ia`, tarefa `classificar-ato`, prompt versionado, Haiku como primário). A IA devolve só o código do ato, a confiança e o trecho literal; o prazo citado vem do extrator determinístico e nunca há data.
 3. "a_confirmar" quando a confiança é baixa, o ato é desconhecido ou fora da taxonomia, o trecho não está no teor, a IA está desligada (sem `ANTHROPIC_API_KEY`) ou sem orçamento. Saída inválida tem uma nova tentativa; repetida, vai para "revisao_manual".
 4. Falha passageira do provedor sobe: o job de evento tenta de novo e, esgotado, vai para a DLQ com alerta.
+5. Fila de revisão manual do curador: `GET /v1/admin/classificacoes/revisao-manual` (permissão `curadoria:classificacao`), só leitura; a tela e a decisão do curador ficam para depois.
