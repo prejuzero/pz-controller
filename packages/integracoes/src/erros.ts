@@ -36,6 +36,12 @@ export class ErroPermanente extends ErroIntegracao {
   readonly indicaDegradacao = false;
 }
 
+/**
+ * O modelo de IA respondeu fora do schema pedido (ou truncado, ou recusou). Permanente: repetir a
+ * mesma chamada não garante saída válida; a plataforma de IA manda para revisão manual (seção 11).
+ */
+export class ErroSaidaInvalida extends ErroPermanente {}
+
 /** O provedor recusou por cota (ex.: HTTP 429). Tenta de novo depois, sem abrir o circuito. */
 export class ErroLimiteExcedido extends ErroIntegracao {
   readonly tipo = 'limite-excedido';

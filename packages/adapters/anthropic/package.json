@@ -1,0 +1,30 @@
+{
+  "name": "@pz/adapter-anthropic",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Adaptador ProvedorIA da Anthropic (Claude) com saída estruturada, ADR-005/016.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint --max-warnings=0 .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --coverage",
+    "test:int": "vitest run --config vitest.int.config.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.131.0",
+    "@pz/integracoes": "workspace:*",
+    "@pz/kernel": "workspace:*",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@pz/config": "workspace:*",
+    "@types/node": "24.19.1",
+    "@vitest/coverage-v8": "5.0.3",
+    "eslint": "10.12.0",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}
