@@ -26,7 +26,7 @@ Os casos `ficticio-*` foram escritos pela IA programadora, com códigos de ato p
 
 ## Avaliação e gate (`pnpm eval`)
 
-Roda cada caso pelo mesmo caso de uso da produção (regras rápidas, depois a plataforma de IA com o prompt e a configuração versionados) e gera `relatorio/relatorio.md` e `.json`: acurácia, acertos por tipo, matriz de confusão, prazo citado, origem e situação, custo estimado e latência. No CI o relatório vira o artefato `avaliacao-ia` e o resumo do job.
+Roda cada caso pelo mesmo caso de uso da produção (regras rápidas, depois a plataforma de IA com o prompt e a configuração versionados) e gera `relatorio/relatorio.md` e `.json`: acurácia, acertos por tipo, matriz de confusão, prazo citado, origem e situação, custo estimado e latência. No CI (workflow `avaliacao-ia.yml`, só quando mudam eval, IA, classificação ou o adaptador) o relatório vira o artefato `avaliacao-ia` e o resumo do job. QA do gate: [docs/qa/hu22-gate-ia.md](../docs/qa/hu22-gate-ia.md).
 
 - **Referência** ([referencia/](referencia/)): cópia versionada da taxonomia (HU15) e das regras rápidas vigentes (HU20). As atuais são **provisórias** (`provisoria: true`); trocar pela exportação aprovada pelo curador.
 - **Gravações** (`gravacoes/<tarefa@versao>.json`): respostas reais do modelo, reproduzidas no CI sem rede e sem custo. A chave de cada resposta é o hash do prompt montado (texto, versão, taxonomia, teor) e do modelo com seus parâmetros: mudou qualquer um, a gravação deixa de valer.

@@ -62,6 +62,9 @@ export const referencia: Referencia = {
 export class ProvedorDeMentira implements ProvedorIA {
   readonly modelos: string[] = [];
 
+  /** `regredido`: simula um prompt pior, que não reconhece mais nenhum ato. */
+  constructor(private readonly regredido = false) {}
+
   gerarEstruturado<Saida>(
     prompt: PromptIA,
     schema: z.ZodType<Saida>,
@@ -71,9 +74,10 @@ export class ProvedorDeMentira implements ProvedorIA {
     const texto = prompt.mensagens.map((m) => m.conteudo).join('\n');
     if (texto.includes('QUEBRA')) return Promise.reject(new ErroPermanente('fora do schema', 'ia'));
     if (texto.includes('REDE')) return Promise.reject(new ErroTransitorio('caiu', 'ia'));
-    const saida = texto.includes('Intime-se')
-      ? { tipoAto: 'intimacao-manifestacao', confianca: 0.97, trecho: 'Intime-se' }
-      : { tipoAto: 'desconhecido', confianca: 0.4, trecho: '' };
+    const saida =
+      !this.regredido && texto.includes('Intime-se')
+        ? { tipoAto: 'intimacao-manifestacao', confianca: 0.97, trecho: 'Intime-se' }
+        : { tipoAto: 'desconhecido', confianca: 0.4, trecho: '' };
     return Promise.resolve({
       saida: schema.parse(saida),
       modelo: opcoes.modelo,
