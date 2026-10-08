@@ -22,6 +22,8 @@ export const ITENS_MENU = [
     permissao: { algum: ['calendario:ler', 'curadoria:calendario'] },
   },
   { chave: 'relatorios', href: '/relatorios' },
+  // Administração da plataforma (HU39): só para o administrador PrejuZero.
+  { chave: 'admin', href: '/admin', permissao: { algum: ['admin:tenants', 'admin:filas'] } },
   { chave: 'configuracoes', href: '/configuracoes' },
 ] as const satisfies readonly { chave: string; href: string; permissao?: Exigencia }[];
 

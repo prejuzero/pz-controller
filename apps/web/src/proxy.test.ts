@@ -35,4 +35,13 @@ describe('proxy de sessão', () => {
       else process.env.API_URL = anterior;
     }
   });
+
+  it('encaminha o painel de filas (/admin/filas e seus arquivos) para a API', () => {
+    for (const caminho of ['/admin/filas', '/admin/filas/static/app.js']) {
+      expect(proxy(requisicao(caminho)).headers.get('x-middleware-rewrite')).toBe(
+        `http://localhost:3000${caminho}`,
+      );
+    }
+    expect(proxy(requisicao('/admin/integracoes')).headers.get('x-middleware-rewrite')).toBeNull();
+  });
 });

@@ -15,6 +15,9 @@ const arquivoTotp = (email: string) => `e2e/.sessao/totp-${email}.json`;
 export const CURADOR_1 = 'curadoria1@prejuzero.local';
 export const CURADOR_2 = 'curadoria2@prejuzero.local';
 export const ESTADO_CURADOR = 'e2e/.sessao/estado-curador.json';
+// Administrador FICTÍCIO do seed (tenant plataforma), para o painel da HU39.
+export const ADMIN = 'admin@prejuzero.local';
+export const ESTADO_ADMIN = 'e2e/.sessao/estado-admin.json';
 const PERIODO_S = 30;
 
 /** Rotas do menu (src/navegacao.ts) com o rótulo do catálogo pt-BR. */

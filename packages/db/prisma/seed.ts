@@ -14,18 +14,27 @@ const TENANT_DEMONSTRACAO = '01a10e00-0000-7000-8000-00000000d001';
 const USUARIO_DEMONSTRACAO = '01a10e00-0000-7000-8000-00000000d002';
 const ADVOGADO_DEMONSTRACAO = '01a10e00-0000-7000-8000-00000000d003';
 const OAB_DEMONSTRACAO = '01a10e00-0000-7000-8000-00000000d004';
-// Curadoria FICTÍCIA (HU13/HU15): dois curadores para exercitar a aprovação por quatro olhos.
+// Plataforma FICTÍCIA: dois curadores (HU13/HU15, aprovação por quatro olhos) e um administrador
+// (HU39, painel da plataforma).
 const TENANT_PLATAFORMA = '01a10e00-0000-7000-8000-00000000c001';
-const CURADORES = [
+const USUARIOS_PLATAFORMA = [
   {
     id: '01a10e00-0000-7000-8000-00000000c002',
     nome: 'Curadoria Um',
     email: 'curadoria1@prejuzero.local',
+    perfil: 'curador',
   },
   {
     id: '01a10e00-0000-7000-8000-00000000c003',
     nome: 'Curadoria Dois',
     email: 'curadoria2@prejuzero.local',
+    perfil: 'curador',
+  },
+  {
+    id: '01a10e00-0000-7000-8000-00000000c004',
+    nome: 'Administração Local',
+    email: 'admin@prejuzero.local',
+    perfil: 'admin_plataforma',
   },
 ];
 
@@ -92,25 +101,25 @@ try {
     [TENANT_PLATAFORMA],
   );
   await cliente.query(`SELECT set_config('app.tenant_id', $1, true)`, [TENANT_PLATAFORMA]);
-  for (const curador of CURADORES) {
+  for (const usuario of USUARIOS_PLATAFORMA) {
     await cliente.query(
       `INSERT INTO usuario (id, tenant_id, nome, email) VALUES ($1, $2, $3, $4)
        ON CONFLICT (id) DO NOTHING`,
-      [curador.id, TENANT_PLATAFORMA, curador.nome, curador.email],
+      [usuario.id, TENANT_PLATAFORMA, usuario.nome, usuario.email],
     );
     await cliente.query(
-      `INSERT INTO usuario_perfil (tenant_id, usuario_id, perfil) VALUES ($1, $2, 'curador')
+      `INSERT INTO usuario_perfil (tenant_id, usuario_id, perfil) VALUES ($1, $2, $3)
        ON CONFLICT DO NOTHING`,
-      [TENANT_PLATAFORMA, curador.id],
+      [TENANT_PLATAFORMA, usuario.id, usuario.perfil],
     );
     await cliente.query('UPDATE usuario SET senha_hash = $2 WHERE id = $1 AND senha_hash IS NULL', [
-      curador.id,
+      usuario.id,
       await hashArgon2id(SENHA),
     ]);
   }
   await cliente.query('COMMIT');
   process.stdout.write(
-    `Seeds aplicados (tenant ${TENANT_DEMONSTRACAO}; login demonstracao@prejuzero.local; curadoria1 e curadoria2@prejuzero.local).\n`,
+    `Seeds aplicados (tenant ${TENANT_DEMONSTRACAO}; login demonstracao@prejuzero.local; curadoria1 e curadoria2@prejuzero.local; admin@prejuzero.local).\n`,
   );
 } catch (erro) {
   await cliente.query('ROLLBACK');

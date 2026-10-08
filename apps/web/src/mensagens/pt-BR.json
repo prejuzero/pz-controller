@@ -77,7 +77,8 @@
     "fechar": "Fechar",
     "recolher": "Recolher menu",
     "expandir": "Expandir menu",
-    "pularParaConteudo": "Pular para o conteúdo"
+    "pularParaConteudo": "Pular para o conteúdo",
+    "admin": "Administração"
   },
   "cabecalho": {
     "marca": "PrejuZero",
@@ -585,5 +586,112 @@
     "manual": "O que exige conferência manual",
     "manualTexto": "Processos marcados com cobertura parcial ou manual (ex.: físicos ou de sistemas que não publicam no DJEN) não chegam pelas fontes públicas. Confira o diário ou o painel do tribunal.",
     "verProcessos": "Ver processos com cobertura manual"
+  },
+  "admin": {
+    "titulo": "Administração da plataforma",
+    "descricao": "Escritórios, assinaturas, saúde das integrações, filas e e-mails rejeitados. Toda alteração fica registrada na trilha de auditoria.",
+    "abas": {
+      "rotulo": "Seções da administração",
+      "tenants": "Escritórios",
+      "integracoes": "Integrações e filas",
+      "rejeicoes": "E-mails rejeitados",
+      "calendario": "Calendário forense",
+      "tabelaPrazos": "Tabela de prazos"
+    },
+    "tenants": {
+      "titulo": "Escritórios",
+      "vazio": "Nenhum escritório cadastrado.",
+      "carregarMais": "Carregar mais",
+      "colunas": {
+        "nome": "Nome",
+        "tipo": "Tipo",
+        "plano": "Plano",
+        "assinatura": "Assinatura",
+        "acesso": "Acesso",
+        "criadoEm": "Criado em",
+        "acoes": "Ações"
+      },
+      "tipos": {
+        "autonomo": "Autônomo",
+        "escritorio": "Escritório",
+        "plataforma": "Plataforma"
+      },
+      "situacoes": {
+        "teste": "Em teste",
+        "ativa": "Ativa",
+        "inadimplente": "Inadimplente",
+        "cancelada": "Cancelada"
+      },
+      "liberado": "Liberado",
+      "suspenso": "Suspenso",
+      "encerrado": "Encerrado",
+      "suspensoEm": "Desde {quando}",
+      "gerenciar": "Gerenciar",
+      "gerenciarTitulo": "Gerenciar {nome}",
+      "assinatura": "Assinatura",
+      "salvar": "Salvar assinatura",
+      "assinaturaSalva": "Assinatura atualizada.",
+      "suspensao": "Acesso suspenso",
+      "motivoAtual": "Motivo: {motivo}",
+      "reativar": "Reativar acesso",
+      "reativado": "Acesso reativado.",
+      "motivo": "Motivo",
+      "ajudaMotivo": "De 10 a 500 caracteres (ex.: número do chamado). Vai para a trilha de auditoria.",
+      "suspensoAviso": "Acesso suspenso. As sessões abertas foram encerradas.",
+      "suspender": {
+        "titulo": "Suspender acesso",
+        "explicacao": "Bloqueia o login e o app do escritório. A captura de publicações, o cálculo e os avisos de prazo continuam.",
+        "botao": "Suspender acesso"
+      },
+      "impersonar": {
+        "titulo": "Acessar como suporte",
+        "explicacao": "Abre o escritório só para leitura, por até 60 minutos. O escritório vê quem acessou e por quê.",
+        "botao": "Acessar escritório"
+      }
+    },
+    "integracoes": {
+      "adaptadores": "Integrações",
+      "falhas": "Falhas recentes",
+      "filas": "Filas",
+      "semAdaptadores": "Nenhuma instância do worker informou nos últimos 2 minutos.",
+      "semFalhas": "Nenhuma falha registrada.",
+      "semFilas": "Nenhuma fila no catálogo.",
+      "abrirPainelDeFilas": "Abrir painel detalhado das filas",
+      "estados": {
+        "operacional": "Operacional",
+        "degradado": "Degradada",
+        "indisponivel": "Indisponível"
+      },
+      "colunas": {
+        "adaptador": "Integração",
+        "estado": "Estado",
+        "ultimoSucesso": "Último sucesso",
+        "ultimaFalha": "Última falha",
+        "erro": "Erro",
+        "em": "Quando",
+        "instancia": "Instância",
+        "fila": "Fila",
+        "aguardando": "Aguardando",
+        "ativos": "Em execução",
+        "atrasados": "Agendados",
+        "falhos": "Com falha",
+        "mortos": "Na DLQ"
+      }
+    },
+    "rejeicoes": {
+      "titulo": "E-mails rejeitados",
+      "descricao": "Endereços que deixaram de receber e-mails por devolução (bounce) ou reclamação de spam. O usuário vê o aviso no portal para corrigir o endereço.",
+      "vazio": "Nenhum e-mail rejeitado.",
+      "carregarMais": "Carregar mais",
+      "motivos": {
+        "bounce": "Devolvido",
+        "spam": "Marcado como spam"
+      },
+      "colunas": {
+        "email": "E-mail",
+        "motivo": "Motivo",
+        "criadaEm": "Desde"
+      }
+    }
   }
 }
