@@ -34,12 +34,39 @@ const Tarefa = z
   })
   .strict();
 
+/** Preço de tabela do provedor, em US$ por milhão de tokens (só estimativa de custo). */
+const PrecoDoModelo = z
+  .object({
+    entrada: z.number().nonnegative(),
+    saida: z.number().nonnegative(),
+    cacheLido: z.number().nonnegative(),
+  })
+  .strict();
+
 export const ConfiguracaoDasTarefas = z
   .object({
     versao: z.string().min(1),
+    /** Página oficial de preços consultada e a data da consulta. */
+    fonteDosPrecos: z.string().min(1),
+    precos: z.record(z.string().min(1), PrecoDoModelo),
     tarefas: z.record(z.string().regex(/^[a-z][a-z0-9-]*$/), Tarefa),
   })
-  .strict();
+  .strict()
+  .superRefine(({ precos, tarefas }, ctx) => {
+    // Modelo sem preço deixaria o custo do painel subestimado sem ninguém notar.
+    for (const [nome, tarefa] of Object.entries(tarefas)) {
+      for (const { modelo } of tarefa.modelos) {
+        if (precos[modelo] === undefined) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['tarefas', nome, 'modelos'],
+            message: `Modelo ${modelo} sem preço em "precos".`,
+          });
+        }
+      }
+    }
+  });
+export type PrecoDoModelo = z.infer<typeof PrecoDoModelo>;
 export type ConfiguracaoDasTarefas = z.infer<typeof ConfiguracaoDasTarefas>;
 export type ConfiguracaoDaTarefa = z.infer<typeof Tarefa>;
 

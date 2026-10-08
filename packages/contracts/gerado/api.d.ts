@@ -277,6 +277,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/uso-ia": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chamadas, tokens e custo estimado de IA por dia, tarefa e modelo. */
+        get: operations["consultarUsoDeIa"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/2fa/ativar": {
         parameters: {
             query?: never;
@@ -1388,6 +1405,29 @@ export interface components {
                 /** Format: date-time */
                 em: string;
                 erro: string;
+            }[];
+        };
+        PainelDeUsoDeIa: {
+            /** Format: date */
+            de: string;
+            /** Format: date */
+            ate: string;
+            custoTotalUsd: number;
+            classificacao: {
+                chamadas: number;
+                custoMedioUsd: number | null;
+                metaUsd: number;
+            };
+            dias: {
+                /** Format: date */
+                dia: string;
+                tarefa: string;
+                modelo: string;
+                chamadas: number;
+                tokensEntrada: number;
+                tokensSaida: number;
+                tokensCacheLidos: number;
+                custoUsd: number;
             }[];
         };
         PedidoDeAssinatura: {
@@ -3192,6 +3232,65 @@ export interface operations {
             };
             /** @description Não encontrado. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    consultarUsoDeIa: {
+        parameters: {
+            query?: {
+                /** @description Dias até hoje (fuso de Brasília), inclusive. */
+                dias?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PainelDeUsoDeIa"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

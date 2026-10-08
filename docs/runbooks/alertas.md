@@ -2,16 +2,17 @@
 
 Alertas iniciais do PrejuZero (HU03, ADR-011), definidos como código em [infra/docker/observabilidade](/infra/docker/observabilidade). Todo alerta chega por e-mail (`ALERTAS_EMAIL`, padrão `prejuzero@gmail.com`) e no canal do Discord da equipe, e traz o link para a seção correspondente abaixo.
 
-| Alerta                                   | Dispara quando                                        | Severidade |
-| ---------------------------------------- | ----------------------------------------------------- | ---------- |
-| API com mais de 1% de erros 5xx          | 5xx acima de 1% das requisições por 5 minutos         | crítica    |
-| Fila sem progresso há mais de 15 minutos | job mais antigo aguardando há mais de 15 minutos      | crítica    |
-| Fila com jobs na DLQ                     | qualquer job na DLQ                                   | crítica    |
-| Adaptador de integração degradado        | circuit breaker aberto por 1 minuto                   | alta       |
-| Rejeição de e-mail                       | qualquer rejeição do provedor nos últimos 15 minutos  | alta       |
-| Orçamento de IA acima de 80%             | uso mensal de uma tarefa passou de 80% num escritório | média      |
-| Salto em saídas inválidas da IA          | mais de 5% das respostas recusadas em 30 minutos      | alta       |
-| IA sem modelo disponível                 | todos os modelos de uma tarefa falharam               | crítica    |
+| Alerta                                   | Dispara quando                                            | Severidade |
+| ---------------------------------------- | --------------------------------------------------------- | ---------- |
+| API com mais de 1% de erros 5xx          | 5xx acima de 1% das requisições por 5 minutos             | crítica    |
+| Fila sem progresso há mais de 15 minutos | job mais antigo aguardando há mais de 15 minutos          | crítica    |
+| Fila com jobs na DLQ                     | qualquer job na DLQ                                       | crítica    |
+| Adaptador de integração degradado        | circuit breaker aberto por 1 minuto                       | alta       |
+| Rejeição de e-mail                       | qualquer rejeição do provedor nos últimos 15 minutos      | alta       |
+| Orçamento de IA acima de 80%             | uso mensal de uma tarefa passou de 80% num escritório     | média      |
+| Custo diário de IA acima do orçamento    | custo estimado do dia passou de `IA_ORCAMENTO_DIARIO_USD` | média      |
+| Salto em saídas inválidas da IA          | mais de 5% das respostas recusadas em 30 minutos          | alta       |
+| IA sem modelo disponível                 | todos os modelos de uma tarefa falharam                   | crítica    |
 
 Primeiro passo em todos: abrir o dashboard da área no Grafana (pasta **PrejuZero**) e o trace de um caso com erro no Tempo, filtrando pelo `requestId` ou `trace_id` dos logs.
 
@@ -65,6 +66,12 @@ Primeiro passo em todos: abrir o dashboard da área no Grafana (pasta **PrejuZer
 1. No dashboard **PrejuZero · IA**, veja a tarefa e o consumo de tokens; no Tempo, filtre os spans `ia <tarefa>` por `pz.tenant_id` para achar o escritório.
 2. Uso legítimo (volume de publicações): ajuste `orcamentoMensalTokens` em `packages/ia/configuracao/tarefas.json` por PR. Uso anômalo (laço, reprocessamento): pare o job de origem.
 3. Ao esgotar, a tarefa recusa a chamada e a funcionalidade cai no fluxo manual ("a confirmar"): avise o escritório.
+
+## ia-orcamento-diario
+
+1. No portal, área do administrador, ou em `GET /v1/admin/uso-ia`: veja o dia, a tarefa e o modelo que concentram o custo e o custo médio por publicação contra a meta (seção 7.5 da especificação).
+2. Fallback frequente para o modelo mais caro (dashboard **PrejuZero · IA**, `pz_ia_fallbacks`) ou reprocessamento em laço: corrija a causa. Volume legítimo: ajuste `IA_ORCAMENTO_DIARIO_USD` no ambiente.
+3. O alerta não bloqueia chamadas; o bloqueio é o orçamento mensal por tarefa (`ia-orcamento`).
 
 ## ia-saidas-invalidas
 

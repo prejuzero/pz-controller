@@ -80,6 +80,7 @@ import { ConsumidorDoCalendario } from './calendario/consumidor.js';
 import { alertasDaCaptura } from './captura/alertas.js';
 import { ConsumidorDaCaptura } from './captura/consumidor.js';
 import { ConsumidorDaClassificacao } from './classificacao/consumidor.js';
+import { registroDeUsoDeIa } from './classificacao/uso-ia.js';
 import { DespachanteDeEventos } from './eventos/consome.js';
 import { RelayDoOutbox } from './eventos/relay.js';
 import {
@@ -297,6 +298,7 @@ function fonteDoAmbiente(
  */
 function iaDoAmbiente(
   ambiente: AmbienteWorker,
+  banco: Banco,
   relogio: Clock,
   registros: RegistroDeAdaptadores[],
 ): ClassificadorIa | undefined {
@@ -322,6 +324,10 @@ function iaDoAmbiente(
       aoAlertar: (alerta) => {
         logger.warn(alerta, 'orçamento de IA acima de 80%');
       },
+    },
+    {
+      registro: registroDeUsoDeIa(banco, ambiente.IA_ORCAMENTO_DIARIO_USD, logger),
+      relogio,
     },
   );
   return new ClassificadorIaPlataforma(plataforma, promptsPadrao());
@@ -463,9 +469,9 @@ export class WorkerModule {
       {
         // Classificação (HU21): regras rápidas e, com chave configurada, a plataforma de IA.
         provide: ClassificarPublicacao,
-        inject: [RELOGIO],
-        useFactory: (relogio: Clock) => {
-          const ia = opcoes.classificadorIa ?? iaDoAmbiente(ambiente, relogio, registros);
+        inject: [RELOGIO, BANCO],
+        useFactory: (relogio: Clock, banco: Banco) => {
+          const ia = opcoes.classificadorIa ?? iaDoAmbiente(ambiente, banco, relogio, registros);
           return new ClassificarPublicacao({
             teores: new TeoresPostgres(),
             regras: new RegrasPostgres(),

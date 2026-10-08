@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { SessaoAtual } from '../auth/index.js';
-import { ConsultaPaginada, Instante, pagina, Uuid } from '../comum.js';
+import { ConsultaPaginada, DataCivil, Instante, pagina, Uuid } from '../comum.js';
 import { definirRota, nomear } from '../rota.js';
 
 export const PedidoDeImpersonacao = nomear(
@@ -276,6 +276,58 @@ export const listarRejeicoesDeEmail = definirRota({
   resposta: { status: 200, corpo: PaginaDeRejeicoes },
 });
 
+export const ConsultaDeUsoDeIa = z.object({
+  dias: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(90)
+    .default(30)
+    .describe('Dias até hoje (fuso de Brasília), inclusive.'),
+});
+
+export const PainelDeUsoDeIa = nomear(
+  'PainelDeUsoDeIa',
+  z.object({
+    de: DataCivil,
+    ate: DataCivil,
+    /** Custos estimados em US$ pelo preço de tabela do provedor (não é a fatura). */
+    custoTotalUsd: z.number().nonnegative(),
+    classificacao: z.object({
+      chamadas: z.number().int().nonnegative(),
+      custoMedioUsd: z.number().nonnegative().nullable(),
+      metaUsd: z.number().positive(),
+    }),
+    dias: z.array(
+      z.object({
+        dia: DataCivil,
+        tarefa: z.string(),
+        modelo: z.string(),
+        chamadas: z.number().int().nonnegative(),
+        tokensEntrada: z.number().int().nonnegative(),
+        tokensSaida: z.number().int().nonnegative(),
+        tokensCacheLidos: z.number().int().nonnegative(),
+        custoUsd: z.number().nonnegative(),
+      }),
+    ),
+  }),
+);
+export type PainelDeUsoDeIa = z.infer<typeof PainelDeUsoDeIa.esquema>;
+
+/**
+ * Custo diário de IA por tarefa e modelo (HU21): exige `admin:filas` (operação da plataforma).
+ * O custo médio por publicação classificada é comparado à meta da especificação (seção 7.5).
+ */
+export const consultarUsoDeIa = definirRota({
+  id: 'consultarUsoDeIa',
+  metodo: 'get',
+  caminho: '/v1/admin/uso-ia',
+  resumo: 'Chamadas, tokens e custo estimado de IA por dia, tarefa e modelo.',
+  tag: 'admin',
+  consulta: ConsultaDeUsoDeIa,
+  resposta: { status: 200, corpo: PainelDeUsoDeIa },
+});
+
 export const ROTAS_ADMIN = [
   iniciarImpersonacao,
   encerrarImpersonacao,
@@ -288,4 +340,5 @@ export const ROTAS_ADMIN = [
   consultarIntegracoes,
   resumirFilas,
   listarRejeicoesDeEmail,
+  consultarUsoDeIa,
 ] as const;

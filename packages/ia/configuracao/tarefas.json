@@ -1,5 +1,11 @@
 {
-  "versao": "2026-10-08.1",
+  "versao": "2026-10-08.2",
+  "fonteDosPrecos": "https://www.anthropic.com/pricing (consultada em 08/10/2026; cache lido = 0,1 x entrada)",
+  "precos": {
+    "claude-haiku-4-5": { "entrada": 1, "saida": 5, "cacheLido": 0.1 },
+    "claude-haiku-4-5-20251001": { "entrada": 1, "saida": 5, "cacheLido": 0.1 },
+    "claude-sonnet-5-5": { "entrada": 2, "saida": 10, "cacheLido": 0.2 }
+  },
   "tarefas": {
     "classificar-ato": {
       "descricao": "Classifica o tipo de ato de uma publicação na taxonomia única (HU21). Nunca devolve data.",

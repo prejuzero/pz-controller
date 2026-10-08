@@ -5,9 +5,11 @@ import { DESCRITOR_SES, WebhooksSes } from '@pz/adapter-ses';
 import {
   ConsultarFilas,
   ConsultarIntegracoes,
+  ConsultarUsoDeIa,
   FilaDeMortosBullMq,
   PainelRedis,
   ReprocessarJobMorto,
+  UsoDeIaPostgres,
 } from '@pz/administracao';
 import { TrilhaPostgres } from '@pz/auditoria';
 import {
@@ -178,6 +180,7 @@ import type { DynamicModule, Provider, Type } from '@nestjs/common';
 import type {
   ArmazemDoPainel,
   ContadorDeFilas,
+  ConsultaDeUsoDeIa,
   DependenciasDoReprocessamento,
 } from '@pz/administracao';
 import type { TrilhaDeAuditoria } from '@pz/auditoria';
@@ -294,6 +297,11 @@ export interface OpcoesApi {
   readonly supressoes?: {
     readonly unidade: UnidadeDeTrabalho<unknown>;
     readonly consulta: ConsultaDeSupressoes<unknown>;
+  };
+  /** Uso de IA para o painel do administrador (HU21); nos testes, em memória. */
+  readonly usoDeIa?: {
+    readonly unidade: UnidadeDeTrabalho<unknown>;
+    readonly consulta: ConsultaDeUsoDeIa<unknown>;
   };
 }
 
@@ -942,6 +950,14 @@ export class AppModule {
           opcoes.supressoes === undefined
             ? new ListarSupressoes(recursos.banco, new SupressaoPostgres())
             : new ListarSupressoes(opcoes.supressoes.unidade, opcoes.supressoes.consulta),
+      },
+      {
+        provide: ConsultarUsoDeIa,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          opcoes.usoDeIa === undefined
+            ? new ConsultarUsoDeIa(recursos.banco, new UsoDeIaPostgres(), relogio)
+            : new ConsultarUsoDeIa(opcoes.usoDeIa.unidade, opcoes.usoDeIa.consulta, relogio),
       },
       ...[ListarTenants, DetalharTenant, AlterarAssinatura, SuspenderTenant, ReativarTenant].map(
         (CasoDeUso) => ({
