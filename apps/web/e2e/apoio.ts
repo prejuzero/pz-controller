@@ -110,3 +110,13 @@ export async function entrar(page: Page, senha = SENHA, email = EMAIL): Promise<
   }
   await page.waitForURL((url) => !url.pathname.startsWith('/entrar'));
 }
+
+/**
+ * Espera as animações em curso (abertura de diálogo, transições) terminarem: o axe mede o
+ * contraste das cores do momento e, no meio do fade, acusa falso "color-contrast".
+ */
+export async function aguardarAnimacoes(page: Page): Promise<void> {
+  await page.waitForFunction(() =>
+    document.getAnimations().every((animacao) => animacao.playState !== 'running'),
+  );
+}

@@ -7,6 +7,7 @@ import { permite, type Exigencia } from '../permissoes';
 
 import { consultasCadastro, mutacoesCadastro } from './cadastro';
 import { consultasCalendario, mutacoesCalendario } from './calendario';
+import { consultasCaptura } from './captura';
 import { consultasNotificacoes } from './notificacoes';
 import { consultasPrivacidade, mutacoesPrivacidade } from './privacidade';
 import { consultasProcessos, mutacoesProcessos, type FiltrosProcessos } from './processos';
@@ -140,3 +141,9 @@ export const usePublicacoes = (filtros: FiltrosPublicacoes) =>
 export const usePublicacao = (id: string) => useQuery(consultasPublicacoes(useApi()).detalhe(id));
 export const useMarcarPublicacaoLida = () =>
   useMutation(mutacoesPublicacoes(useApi(), useQueryClient()).marcarLida);
+
+/** Status da captura (HU19): faixa do topo e página de cobertura; só com `publicacoes:ler`. */
+export function useStatusDaCaptura() {
+  const habilitado = usePermissao('publicacoes:ler') === true;
+  return useQuery({ ...consultasCaptura(useApi()).status(), enabled: habilitado });
+}

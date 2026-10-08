@@ -1,4 +1,4 @@
-import type { AvisosDeEntrega, SessaoAtual } from '@pz/contracts';
+import type { AvisosDeEntrega, SessaoAtual, StatusDaCaptura } from '@pz/contracts';
 
 /**
  * Avisos da faixa do topo (HU23). A impersonação vem da sessão (HU07); captura atrasada e ciência
@@ -6,7 +6,7 @@ import type { AvisosDeEntrega, SessaoAtual } from '@pz/contracts';
  */
 export type Aviso =
   | { tipo: 'impersonacao'; motivo: string; expiraEm: string }
-  | { tipo: 'captura-atrasada' }
+  | { tipo: 'captura-atrasada'; fonte: string; desde: string | null }
   | { tipo: 'ciencia-pendente'; quantidade: number }
   | { tipo: 'email-rejeitado'; emails: readonly string[] }
   | { tipo: 'equipe-com-rejeicao'; quantidade: number };
@@ -29,4 +29,12 @@ export function avisosDeEntrega(avisos: AvisosDeEntrega): Aviso[] {
   if (equipe !== null && equipe > 0)
     resultado.push({ tipo: 'equipe-com-rejeicao', quantidade: equipe });
   return resultado;
+}
+
+/** Fonte degradada (HU19): a faixa some sozinha quando a fonte volta (consulta periódica). */
+export function avisosDaCaptura(status: StatusDaCaptura): Aviso[] {
+  const { fonte } = status;
+  return fonte.situacao === 'degradada'
+    ? [{ tipo: 'captura-atrasada', fonte: fonte.id.toUpperCase(), desde: fonte.desde }]
+    : [];
 }

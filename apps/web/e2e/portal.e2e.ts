@@ -4,12 +4,13 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Cookie, type Page } from '@playwright/test';
 import { COOKIE_SESSAO } from '@pz/contracts';
 
-import { entrar, ESTADO_SESSAO, ROTAS_MENU } from './apoio';
+import { aguardarAnimacoes, entrar, ESTADO_SESSAO, ROTAS_MENU } from './apoio';
 
 const SEM_SESSAO = { cookies: [], origins: [] };
 
 /** axe sem violações nas regras WCAG 2.1 A e AA (CLAUDE.md, seção 13). */
 async function semViolacoes(page: Page): Promise<void> {
+  await aguardarAnimacoes(page);
   const { violations } = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .analyze();
@@ -65,6 +66,7 @@ test.describe('acessibilidade (axe)', () => {
     '/configuracoes/oabs',
     '/processos/clientes',
     '/configuracoes/privacidade',
+    '/configuracoes/cobertura',
   ]) {
     test(`sem violações em ${rota}`, async ({ page }) => {
       await page.goto(rota);

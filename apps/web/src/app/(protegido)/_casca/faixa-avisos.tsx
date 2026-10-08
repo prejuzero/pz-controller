@@ -4,8 +4,8 @@ import { TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
-import { useAvisosDeEntrega, useSessao } from '../../../api/hooks';
-import { avisosDaSessao, avisosDeEntrega, type Aviso } from '../../../avisos';
+import { useAvisosDeEntrega, useSessao, useStatusDaCaptura } from '../../../api/hooks';
+import { avisosDaCaptura, avisosDaSessao, avisosDeEntrega, type Aviso } from '../../../avisos';
 import { formatarInstante } from '../../../i18n/formatar';
 
 /** Faixa de avisos do topo: some quando não há nada a avisar. */
@@ -13,8 +13,10 @@ export function FaixaAvisos() {
   const t = useTranslations('avisos');
   const sessao = useSessao();
   const entrega = useAvisosDeEntrega();
+  const captura = useStatusDaCaptura();
   const avisos = [
     ...(sessao.data === undefined ? [] : avisosDaSessao(sessao.data)),
+    ...(captura.data === undefined ? [] : avisosDaCaptura(captura.data)),
     ...(entrega.data === undefined ? [] : avisosDeEntrega(entrega.data)),
   ];
   if (avisos.length === 0) return null;
@@ -27,7 +29,9 @@ export function FaixaAvisos() {
           expiraEm: formatarInstante(aviso.expiraEm),
         });
       case 'captura-atrasada':
-        return t('capturaAtrasada');
+        return aviso.desde === null
+          ? t('capturaAtrasada', { fonte: aviso.fonte })
+          : t('capturaAtrasadaDesde', { fonte: aviso.fonte, desde: formatarInstante(aviso.desde) });
       case 'ciencia-pendente':
         return t('cienciaPendente', { quantidade: aviso.quantidade });
       case 'email-rejeitado':
@@ -49,6 +53,14 @@ export function FaixaAvisos() {
             <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
             <span>
               {texto(aviso)}
+              {aviso.tipo === 'captura-atrasada' && (
+                <>
+                  {' '}
+                  <Link href="/configuracoes/cobertura" className="font-medium underline">
+                    {t('capturaAtrasadaAcao')}
+                  </Link>
+                </>
+              )}
               {aviso.tipo === 'email-rejeitado' && (
                 <>
                   {' '}
