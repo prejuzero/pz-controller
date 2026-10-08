@@ -7,21 +7,26 @@
  * basta para regras de palavra-chave: repetição apenas sobre um átomo (caractere, escape,
  * classe ou `.`), grupo só opcional (`?`, `{0,1}`, `{1}`), sem retrovisor nem lookaround e com
  * tamanho limitado. Assim a altura de estrela é no máximo 1 e não há retrocesso exponencial.
+ *
+ * Repetições ilimitadas em sequência ainda dão retrocesso polinomial (`a.*b.*c` leva segundos
+ * em poucos milhares de caracteres, PZ-321). Por isso toda repetição tem limite (`{m,n}`, `?`)
+ * e o produto das escolhas de todas elas (n + 1 por quantificador) cabe num orçamento fixo: o
+ * trabalho por posição inicial fica constante e a busca, linear no tamanho do teor.
  */
 
 export const TAMANHO_MAXIMO_DO_PADRAO = 300;
+export const ORCAMENTO_DE_REPETICAO = 1000;
 
 type Anterior = 'nada' | 'atomo' | 'grupo' | 'quantificador';
 
 const QUANTIFICADOR_CHAVES = /^\{(\d+)(,(\d*))?\}/;
 
-/** Grupo quantificado por `?`, `{0,1}` ou `{n}` com n ≤ 1 não repete. */
-function soOpcional(quantificador: string): boolean {
+/** Máximo de repetições do quantificador (`Infinity` para `*`, `+` e `{n,}`). */
+function maximoDe(quantificador: string): number {
   const chaves = QUANTIFICADOR_CHAVES.exec(quantificador);
-  if (chaves === null) return quantificador === '?';
+  if (chaves === null) return quantificador === '?' ? 1 : Infinity;
   const minimo = Number(chaves[1]);
-  const maximo = chaves[2] === undefined ? minimo : chaves[3] === '' ? Infinity : Number(chaves[3]);
-  return maximo <= 1;
+  return chaves[2] === undefined ? minimo : chaves[3] === '' ? Infinity : Number(chaves[3]);
 }
 
 /** Fim da classe `[...]` que começa em `inicio` (índice logo após o `]`). */
@@ -46,6 +51,7 @@ export function motivoDaRecusa(padrao: string): string | undefined {
     return 'expressão regular mal formada';
   }
   let anterior: Anterior = 'nada';
+  let escolhas = 1;
   let i = 0;
   while (i < padrao.length) {
     const c = padrao[i];
@@ -75,8 +81,16 @@ export function motivoDaRecusa(padrao: string): string | undefined {
         i += 1;
         anterior = quantificador === undefined ? 'atomo' : 'nada';
       } else {
-        if (anterior === 'grupo' && !soOpcional(quantificador)) {
+        const maximo = maximoDe(quantificador);
+        if (anterior === 'grupo' && maximo > 1) {
           return 'repetição de grupo (ex.: (a+)+, (a|b)*) não é permitida: repita só um caractere ou classe';
+        }
+        if (maximo === Infinity) {
+          return 'repetição ilimitada (*, +, {n,}) não é permitida: use um limite, ex.: \\s{1,5}';
+        }
+        escolhas *= maximo + 1;
+        if (escolhas > ORCAMENTO_DE_REPETICAO) {
+          return `repetições demais: o produto dos limites passa de ${String(ORCAMENTO_DE_REPETICAO)}`;
         }
         i += quantificador.length;
         anterior = 'quantificador';
