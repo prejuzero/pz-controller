@@ -330,7 +330,10 @@ function iaDoAmbiente(
       relogio,
     },
   );
-  return new ClassificadorIaPlataforma(plataforma, promptsPadrao());
+  return new ClassificadorIaPlataforma(plataforma, promptsPadrao(), (deteccao) => {
+    // Só o nome dos padrões e o tenant: o teor da publicação não vai para o log.
+    logger.warn(deteccao, 'instrução embutida no teor da publicação (tratada como dado)');
+  });
 }
 
 /** Arquivos do sistema (exportações LGPD) no S3 ou RustFS local, só JSON e CSV. */

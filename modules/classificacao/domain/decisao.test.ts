@@ -72,6 +72,24 @@ describe('decisão da classificação (HU21)', () => {
     );
   });
 
+  // Limiar exato do card PZ-159: 0,84 fica a confirmar, 0,85 já decide (CLAUDE.md §11).
+  it.each([
+    [0.84, 'a_confirmar'],
+    [0.85, 'ok'],
+  ])('limiar: IA com confiança %s fica %s', (confianca, situacao) => {
+    expect(
+      decidir({ teor: TEOR, taxonomia: TAXONOMIA, regras: nenhuma, ia: ia('citacao', confianca) }),
+    ).toMatchObject({ origem: 'ia', situacao, tipoAto: 'citacao' });
+  });
+
+  it('limiar: regra com 0,84 chama a IA; com 0,85 decide sozinha', () => {
+    expect(decidir({ teor: TEOR, taxonomia: TAXONOMIA, regras: porRegra(0.84) })).toBeUndefined();
+    expect(decidir({ teor: TEOR, taxonomia: TAXONOMIA, regras: porRegra(0.85) })).toMatchObject({
+      origem: 'regra',
+      situacao: 'ok',
+    });
+  });
+
   it('saída inválida: revisão manual; IA desligada ou sem orçamento: a confirmar com a regra fraca', () => {
     expect(
       decidir({ teor: TEOR, taxonomia: TAXONOMIA, regras: nenhuma, ia: { tipo: 'invalida' } }),

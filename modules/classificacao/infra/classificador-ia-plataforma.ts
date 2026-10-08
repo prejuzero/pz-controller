@@ -9,6 +9,13 @@ import type { Uuid } from '@pz/kernel';
 
 export const TAREFA = 'classificar-ato';
 
+/** Instrução embutida detectada no teor (o texto segue como dado): vira log na composição. */
+export interface InstrucaoEmbutida {
+  readonly tenantId: Uuid;
+  readonly tarefa: string;
+  readonly alertas: readonly { readonly variavel: string; readonly padroes: readonly string[] }[];
+}
+
 /**
  * Saída pedida à IA: o código do ato (ou "desconhecido"), a confiança e o trecho literal que a
  * justifica. Sem data e sem fundamento legal (ADR-008); o prazo citado vem do extrator
@@ -36,16 +43,18 @@ export class ClassificadorIaPlataforma implements ClassificadorIa {
   constructor(
     private readonly plataforma: PlataformaIa,
     private readonly prompts: RegistroDePrompts,
+    private readonly aoDetectarInstrucao: (deteccao: InstrucaoEmbutida) => void = () => undefined,
   ) {}
 
   async classificar(
     entrada: { readonly teor: string; readonly taxonomia: readonly TipoDaTaxonomia[] },
     tenantId: Uuid,
   ): Promise<RespostaDaIa> {
-    const { prompt } = this.prompts.montar(TAREFA, {
+    const { prompt, alertas } = this.prompts.montar(TAREFA, {
       taxonomia: taxonomiaComoTexto(entrada.taxonomia),
       publicacao: entrada.teor,
     });
+    if (alertas.length > 0) this.aoDetectarInstrucao({ tenantId, tarefa: TAREFA, alertas });
     try {
       const r = await this.plataforma.executarTarefa(TAREFA, prompt, SaidaDaClassificacao, {
         tenantId,
