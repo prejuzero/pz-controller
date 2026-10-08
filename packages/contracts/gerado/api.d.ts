@@ -762,6 +762,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/publicacoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Publicações do escritório, da mais nova para a mais antiga. */
+        get: operations["listarPublicacoes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/publicacoes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detalhe da publicação com o teor integral. */
+        get: operations["consultarPublicacao"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/publicacoes/{id}/lida": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Registra a leitura (indício de conhecimento, não ciência). Idempotente. */
+        post: operations["marcarPublicacaoLida"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/saude": {
         parameters: {
             query?: never;
@@ -1157,6 +1208,11 @@ export interface components {
             /** @description Nulo quando não há mais páginas. */
             proximoCursor: string | null;
         };
+        PaginaDePublicacoes: {
+            itens: components["schemas"]["PublicacaoDoTenant"][];
+            /** @description Nulo quando não há mais páginas. */
+            proximoCursor: string | null;
+        };
         PedidoDeCadastro: {
             nome: string;
             /** @description Com ou sem máscara. */
@@ -1391,6 +1447,33 @@ export interface components {
             cobertura: "automatica" | "parcial" | "manual";
             motivoCobertura: string | null;
             clienteId: string | null;
+        };
+        PublicacaoDoTenant: {
+            /** Format: uuid */
+            id: string;
+            /** @description Adaptador de origem (ex.: djen). */
+            fonte: string;
+            idExterno: string;
+            /** @description 20 dígitos, quando a fonte informa. */
+            numeroCnj: string | null;
+            /** Format: date */
+            dataDisponibilizacao: string;
+            /** @description Teor integral, normalizado. */
+            teor: string;
+            /** @description Certidão pública na fonte (não abre o expediente no tribunal). */
+            urlFonte: string;
+            processoId: string | null;
+            siglaTribunal: string | null;
+            tipoComunicacao: string | null;
+            /** Format: date-time */
+            recebidaEm: string;
+            /**
+             * Format: date-time
+             * @description Instante da captura, gravado pelo banco (prova).
+             */
+            capturadoEm: string;
+            /** @description Primeira leitura no escritório: indício, não ciência. */
+            lidaEm: string | null;
         };
         RedefinicaoDeSenha: {
             /** @description Token do link enviado por e-mail. */
@@ -5111,6 +5194,206 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DiasNaoUteisDoProcesso"];
                 };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarPublicacoes: {
+        parameters: {
+            query?: {
+                /** @description Cursor devolvido na página anterior. */
+                cursor?: string;
+                /** @description Quantidade de itens por página. */
+                limite?: number;
+                /** @description true: só as não lidas. */
+                novas?: "true" | "false";
+                /** @description Disponibilização a partir de. */
+                de?: string;
+                /** @description Disponibilização até. */
+                ate?: string;
+                processoId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginaDePublicacoes"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    consultarPublicacao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicacaoDoTenant"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    marcarPublicacaoLida: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso, sem corpo. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Entrada inválida. */
             400: {

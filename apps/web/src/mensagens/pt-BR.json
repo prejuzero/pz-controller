@@ -527,5 +527,37 @@
     "cancelar": "Cancelar o encerramento",
     "cancelado": "Encerramento cancelado.",
     "voltar": "Cancelar"
+  },
+  "publicacoes": {
+    "titulo": "Publicações",
+    "descricao": "Intimações capturadas nas fontes públicas para as OABs do escritório. Abrir uma publicação registra a leitura, que não substitui a ciência nem confirma prazo.",
+    "vazio": "Nenhuma publicação recebida ainda.",
+    "vazioFiltro": "Nenhuma publicação com esses filtros.",
+    "carregarMais": "Carregar mais",
+    "somenteNovas": "Somente novas",
+    "de": "Disponibilizada de",
+    "ate": "Até",
+    "nova": "Nova",
+    "lida": "Lida",
+    "semProcesso": "Sem processo vinculado",
+    "colunas": {
+      "data": "Disponibilização",
+      "processo": "Processo",
+      "tribunal": "Tribunal",
+      "tipo": "Tipo",
+      "situacao": "Situação",
+      "trecho": "Trecho"
+    },
+    "detalhe": {
+      "voltar": "Voltar para publicações",
+      "teor": "Teor integral",
+      "fonte": "Ver certidão na fonte",
+      "capturadaEm": "Capturada em",
+      "recebidaEm": "Recebida em",
+      "lidaEm": "Lida pela primeira vez em",
+      "origem": "Fonte",
+      "processo": "Ver processo",
+      "indicio": "A leitura fica registrada como indício de conhecimento. Ela não é ciência e não confirma prazo."
+    }
   }
 }

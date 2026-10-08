@@ -266,6 +266,9 @@ importers:
       '@pz/privacidade':
         specifier: workspace:*
         version: link:../../modules/privacidade
+      '@pz/publicacoes':
+        specifier: workspace:*
+        version: link:../../modules/publicacoes
       '@pz/saude':
         specifier: workspace:*
         version: link:../../modules/saude
@@ -938,6 +941,9 @@ importers:
 
   modules/publicacoes:
     dependencies:
+      '@pz/auditoria':
+        specifier: workspace:*
+        version: link:../auditoria
       '@pz/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -948,9 +954,6 @@ importers:
         specifier: 4.6.5
         version: 4.6.5
     devDependencies:
-      '@pz/auditoria':
-        specifier: workspace:*
-        version: link:../auditoria
       '@pz/cadastro':
         specifier: workspace:*
         version: link:../cadastro

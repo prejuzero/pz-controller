@@ -29,6 +29,7 @@ import { ROTAS_NOTIFICACOES } from './notificacoes/index.js';
 import { gerarOpenApi } from './openapi.js';
 import { ROTAS_TABELA_PRAZOS } from './prazos/index.js';
 import { ROTAS_PRIVACIDADE } from './privacidade.js';
+import { ROTAS_PUBLICACOES } from './publicacoes.js';
 import { ROTAS_SAUDE } from './saude/index.js';
 import { ROTAS_TERMOS } from './termos.js';
 import { ROTAS_WEBHOOKS } from './webhooks/index.js';
@@ -141,6 +142,14 @@ export {
 export { formatarNumeroCnj, lerNumeroCnj, TRIBUNAIS, tribunalDoNumero } from './cnj.js';
 export { OrigemIa } from './ia.js';
 export {
+  consultarPublicacao,
+  listarPublicacoes,
+  marcarPublicacaoLida,
+  PaginaDePublicacoes,
+  PublicacaoDoTenant,
+  ROTAS_PUBLICACOES,
+} from './publicacoes.js';
+export {
   cancelarEncerramento,
   consultarEncerramento,
   consultarExportacao,
@@ -213,6 +222,7 @@ export const ROTAS = [
   ...ROTAS_TABELA_PRAZOS,
   ...ROTAS_TERMOS,
   ...ROTAS_PRIVACIDADE,
+  ...ROTAS_PUBLICACOES,
   ...ROTAS_NOTIFICACOES,
   ...ROTAS_SAUDE,
   ...ROTAS_WEBHOOKS,
