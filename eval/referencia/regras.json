@@ -1,0 +1,21 @@
+{
+  "versao": "provisoria-2026-10-08",
+  "provisoria": true,
+  "observacao": "Regras de exemplo (as mesmas do corpus da HU20) só para exercitar o runner. Substituir pela exportação das regras vigentes aprovadas pelo curador.",
+  "regras": [
+    {
+      "codigo": "ex-citacao",
+      "versao": 1,
+      "tipoAto": "citacao",
+      "padroes": ["\\bcite-se\\b"],
+      "confianca": 0.95
+    },
+    {
+      "codigo": "ex-sentenca",
+      "versao": 1,
+      "tipoAto": "sentenca",
+      "padroes": ["\\bjulgo\\s+(?:im)?procedente", "\\bjulgo\\s+extinto"],
+      "confianca": 0.95
+    }
+  ]
+}

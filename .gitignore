@@ -51,3 +51,6 @@ next-env.d.ts
 apps/web/e2e/.sessao/
 apps/web/e2e/.relatorio/
 apps/web/e2e/.resultados/
+
+# Relatório local da avaliação da IA (no CI vira artefato)
+eval/relatorio/

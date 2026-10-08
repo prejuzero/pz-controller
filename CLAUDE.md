@@ -340,12 +340,7 @@ pnpm gen:module <nome> # novo módulo hexagonal com exemplo ponta a ponta
 pnpm db:migrate        # aplicar migrações (db:revert reverte a última; db:seed dados fictícios)
 pnpm alertas:testar    # dispara um alerta controlado (com infra:up:obs no ar)
 pnpm e2e               # Playwright do portal: smoke, axe e regressão visual (e2e:atualizar regrava capturas)
-```
-
-Previstos (criados nas histórias indicadas):
-
-```
-pnpm eval              # avaliação da IA (HU22)
+pnpm eval              # avaliação da IA com as respostas gravadas e gate de 98% (--gravar chama a API e regrava)
 ```
 
 ## 19. Ordem de implementação

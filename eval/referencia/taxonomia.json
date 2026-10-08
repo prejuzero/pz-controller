@@ -1,0 +1,52 @@
+{
+  "versao": "provisoria-2026-10-08",
+  "provisoria": true,
+  "observacao": "Rascunho escrito pela IA programadora só para exercitar o runner. Substituir pela exportação da taxonomia aprovada pelo curador (HU15) antes de medir a meta.",
+  "tipos": [
+    {
+      "codigo": "audiencia-designada",
+      "nome": "Audiência designada",
+      "descricao": "Designação de audiência"
+    },
+    {
+      "codigo": "citacao",
+      "nome": "Citação",
+      "descricao": "Ordem de citação da parte para integrar o processo"
+    },
+    {
+      "codigo": "despacho-mero-expediente",
+      "nome": "Despacho de mero expediente",
+      "descricao": "Movimentação sem prazo para a parte"
+    },
+    {
+      "codigo": "emenda-inicial",
+      "nome": "Emenda à inicial",
+      "descricao": "Determinação para emendar ou completar a petição inicial"
+    },
+    {
+      "codigo": "intimacao-alegacoes-finais",
+      "nome": "Alegações finais",
+      "descricao": "Intimação para alegações finais ou memoriais"
+    },
+    {
+      "codigo": "intimacao-contrarrazoes",
+      "nome": "Contrarrazões",
+      "descricao": "Intimação para contrarrazões a recurso"
+    },
+    {
+      "codigo": "intimacao-manifestacao",
+      "nome": "Manifestação",
+      "descricao": "Intimação para se manifestar nos autos"
+    },
+    {
+      "codigo": "intimacao-pagamento",
+      "nome": "Pagamento",
+      "descricao": "Intimação ou citação para pagar"
+    },
+    {
+      "codigo": "sentenca",
+      "nome": "Sentença",
+      "descricao": "Sentença com ou sem resolução do mérito"
+    }
+  ]
+}

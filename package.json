@@ -11,6 +11,7 @@
   "scripts": {
     "build": "turbo run build",
     "e2e": "pnpm --filter @pz/web e2e",
+    "eval": "pnpm --filter @pz/eval avaliar",
     "e2e:atualizar": "pnpm --filter @pz/web e2e:atualizar",
     "dev": "pnpm infra:up && pnpm db:migrate && pnpm db:seed && turbo run dev",
     "lint": "turbo run lint && pnpm lint:raiz && pnpm depcruise",
