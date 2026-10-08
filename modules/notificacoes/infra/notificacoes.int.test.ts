@@ -14,6 +14,7 @@ import {
   Notificar,
   RegistrarDesfechosDeEntrega,
 } from '../application/notificacoes.js';
+import { ListarSupressoes } from '../application/supressoes.js';
 
 import { ConsentimentosPostgres, DestinosPushPostgres } from './consentimentos-postgres.js';
 import {
@@ -191,6 +192,14 @@ describe('notificações no PostgreSQL (HU30)', () => {
       'NotificacaoEntregue',
       'NotificacaoRejeitada',
     ]);
+    // QA da HU39 (PZ-230): a rejeição aparece na lista do administrador, lida de outro tenant.
+    const painel = await new ListarSupressoes(
+      { executar: <T>(trabalho: (tx: Transacao) => Promise<T>) => noTenant(OUTRO, trabalho) },
+      new SupressaoPostgres(),
+    ).executar({ limite: 100 });
+    expect(painel.itens).toContainEqual(
+      expect.objectContaining({ email: 'ana@exemplo.invalid', motivo: 'bounce' }),
+    );
     const r = await noTenant(TENANT, (tx) =>
       notificar.executar(tx, {
         ...pedido,

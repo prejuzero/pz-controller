@@ -1,8 +1,11 @@
-import { Instant } from '@pz/kernel';
+import { definirDescritor, ErroPermanente, RegistroDeAdaptadores } from '@pz/integracoes';
+import { FixedClock, gerarUuidV7, Instant } from '@pz/kernel';
 import { RedisContainer } from '@testcontainers/redis';
 import { Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { ConsultarIntegracoes, PublicarSituacaoDasIntegracoes } from '../application/painel.js';
 
 import { FilaDeMortosBullMq } from './fila-de-mortos-bullmq.js';
 import { PainelRedis } from './painel-redis.js';
@@ -124,6 +127,61 @@ describe('painel do administrador no Redis (HU39)', () => {
       ]);
       await redis.hset('pz:admin:integracoes', 'w9', '{"lixo":true}');
       await expect(painel.retratos()).rejects.toThrow('registro inválido');
+    } finally {
+      redis.disconnect();
+    }
+  });
+});
+
+describe('QA do painel (PZ-230)', () => {
+  it('falha simulada de integração aparece no painel com estado, erro e histórico', async () => {
+    const relogio = new FixedClock(Instant.deIso('2026-10-08T12:00:00Z'));
+    const registro = new RegistroDeAdaptadores(
+      { padrao: { 'armazenamento-arquivos': 'falso' } },
+      { relogio, politica: { tentativas: 1, falhasParaAbrir: 1, timeoutMs: 100 } },
+    );
+    registro.registrar(
+      definirDescritor({
+        id: 'falso',
+        porta: 'armazenamento-arquivos',
+        versao: '1.0.0',
+        capacidades: {},
+        limites: {},
+        requerCredenciais: false,
+      }),
+      () => ({
+        metadados: () => Promise.reject(new ErroPermanente('HTTP 403 simulado', 'falso')),
+        gravar: () => Promise.resolve(),
+        urlAssinada: () => Promise.resolve('https://exemplo.invalid'),
+        remover: () => Promise.resolve(),
+        saude: () =>
+          Promise.resolve({ estado: 'operacional' as const, verificadoEm: relogio.agora() }),
+      }),
+    );
+    await expect(
+      registro.obter('armazenamento-arquivos').metadados(gerarUuidV7(relogio), 'a.pdf'),
+    ).rejects.toThrow();
+
+    const redis = new Redis(conteiner.getConnectionUrl());
+    try {
+      await redis.del('pz:admin:integracoes', 'pz:admin:integracoes:falhas');
+      const painel = new PainelRedis(redis);
+      await new PublicarSituacaoDasIntegracoes(painel, relogio).executar(
+        'w-qa',
+        registro.situacao(),
+      );
+      const r = await new ConsultarIntegracoes(painel, relogio).executar();
+      expect(r.adaptadores).toEqual([
+        expect.objectContaining({
+          adaptador: 'falso',
+          ultimaFalha: relogio.agora(),
+          instancias: 1,
+        }),
+      ]);
+      expect(r.adaptadores[0]?.erro).toContain('HTTP 403 simulado');
+      expect(r.falhas).toEqual([
+        expect.objectContaining({ adaptador: 'falso', instancia: 'w-qa', em: relogio.agora() }),
+      ]);
     } finally {
       redis.disconnect();
     }

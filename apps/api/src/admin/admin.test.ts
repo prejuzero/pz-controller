@@ -62,6 +62,8 @@ const token = randomBytes(32).toString('base64url');
 const autorizacao = { authorization: `Bearer ${token}` };
 const SEM_PERFIL = gerarUuidV7();
 const tokenSemPerfil = randomBytes(32).toString('base64url');
+const ADVOGADO = gerarUuidV7();
+const tokenAdvogado = randomBytes(32).toString('base64url');
 const mortos = new FilaDeMortosEmMemoria();
 const painel = new PainelEmMemoria();
 const supressoes = new SupressoesEmMemoria();
@@ -71,6 +73,7 @@ beforeAll(async () => {
   tenants.cadastrar(PLATAFORMA, 'plataforma');
   tenants.cadastrar(ESCRITORIO, 'escritorio');
   perfis.atribuir(ADMIN, 'admin_plataforma');
+  perfis.atribuir(ADVOGADO, 'advogado');
   api = await criarApi({
     termos: termosEmMemoria().dependencias,
     ambiente: carregarAmbiente(esquemaApi, {
@@ -113,6 +116,15 @@ beforeEach(async () => {
     id: gerarUuidV7(),
     usuarioId: ADMIN,
     tenantId: PLATAFORMA,
+    nivel: 'completo',
+    segundoFatorAtivo: true,
+    criadaEm: agora,
+    ultimoUso: agora,
+  });
+  await sessoes.gravar(tokenAdvogado, {
+    id: gerarUuidV7(),
+    usuarioId: ADVOGADO,
+    tenantId: ESCRITORIO,
     nivel: 'completo',
     segundoFatorAtivo: true,
     criadaEm: agora,
@@ -395,5 +407,36 @@ describe('painel do administrador pela API (HU39)', () => {
     for (const url of ['/v1/admin/integracoes', '/v1/admin/filas', '/v1/admin/rejeicoes-email']) {
       expect((await ler(url, semPerfil)).statusCode).toBe(403);
     }
+  });
+});
+
+describe('QA do painel administrativo (PZ-230)', () => {
+  it('advogado do escritório recebe 403 em toda rota de administração', async () => {
+    const rotas: [method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, payload?: object][] = [
+      ['GET', '/v1/admin/tenants'],
+      ['GET', `/v1/admin/tenants/${ESCRITORIO}`],
+      ['PATCH', `/v1/admin/tenants/${ESCRITORIO}/assinatura`, { situacaoAssinatura: 'ativa' }],
+      ['POST', `/v1/admin/tenants/${ESCRITORIO}/suspensao`, { motivo: 'Chamado 1: tentativa' }],
+      ['DELETE', `/v1/admin/tenants/${ESCRITORIO}/suspensao`],
+      ['GET', '/v1/admin/integracoes'],
+      ['GET', '/v1/admin/filas'],
+      ['GET', '/v1/admin/rejeicoes-email'],
+      ['POST', '/v1/admin/impersonacao', { tenantId: PLATAFORMA, motivo: 'Chamado 1: tentativa' }],
+      [
+        'POST',
+        '/v1/admin/filas/notificacoes/dlq/x/reprocessar',
+        { motivo: 'Chamado 1: tentativa' },
+      ],
+    ];
+    for (const [method, url, payload] of rotas) {
+      const resposta = await api.inject({
+        method,
+        url,
+        headers: { authorization: `Bearer ${tokenAdvogado}` },
+        ...(payload === undefined ? {} : { payload }),
+      });
+      expect([url, resposta.statusCode]).toEqual([url, 403]);
+    }
+    expect(registros).toEqual([]);
   });
 });

@@ -363,7 +363,7 @@ Dentro de cada história: Dados → Back-end/Integração → Front-end → Test
 - [ ] **M2 · Captura e classificação** — HU17–HU22 (HU17, HU18, HU19 e HU20 concluídas; HU58, plataforma de IA, concluída)
 - [ ] **M3 · Portal** — HU23–HU29
 - [ ] **M4 · Notificação e ciência** — HU30–HU36
-- [ ] **M5 · Produção** — HU37–HU40
+- [ ] **M5 · Produção** — HU37–HU40 (HU39 concluída)
 
 Ao concluir uma história, marque-a aqui no mesmo PR.
 
