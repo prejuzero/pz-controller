@@ -1,0 +1,36 @@
+import { z } from 'zod';
+
+import { classificarPorRegras, padraoValido } from '../domain/regras.js';
+
+import type { RegraRapida, ResultadoDasRegras } from '../domain/regras.js';
+import type { UnidadeDeTrabalho } from '@pz/kernel';
+
+/** Porta: regras vigentes (maior versão ativa de cada código). */
+export interface RepositorioDeRegras<Transacao> {
+  vigentes(transacao: Transacao): Promise<RegraRapida[]>;
+}
+
+const Regra = z.object({
+  codigo: z.string().min(1),
+  versao: z.number().int().min(1),
+  tipoAto: z.string().min(1),
+  padroes: z.array(z.string().refine(padraoValido, 'expressão regular inválida')).min(1),
+  confianca: z.number().min(0).max(1),
+});
+
+/**
+ * Primeiro elo da classificação (HU20): regras rápidas, sem IA. Regra mal cadastrada lança (o
+ * erro aparece no job e no alerta): nunca é ignorada em silêncio. A IA (HU21) entra quando o
+ * resultado for "nenhuma" ou de baixa confiança.
+ */
+export class ClassificarPorRegras<Transacao> {
+  constructor(
+    private readonly unidade: UnidadeDeTrabalho<Transacao>,
+    private readonly regras: RepositorioDeRegras<Transacao>,
+  ) {}
+
+  async executar(teor: string): Promise<ResultadoDasRegras> {
+    const regras = await this.unidade.executar((tx) => this.regras.vigentes(tx));
+    return classificarPorRegras(teor, z.array(Regra).parse(regras));
+  }
+}

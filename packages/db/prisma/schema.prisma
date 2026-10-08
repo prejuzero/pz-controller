@@ -274,8 +274,26 @@ model TipoAto {
   atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
   versoes TabelaPrazo[]
+  regras  RegraClassificacao[]
 
   @@map("tipo_ato")
+}
+
+/// Regra rápida de classificação (HU20): versão imutável; vigente = maior versão ativa por código.
+model RegraClassificacao {
+  codigo       String
+  versao       Int
+  tipoAto      String   @map("tipo_ato")
+  padroes      String[]
+  confianca    Decimal  @db.Decimal(3, 2)
+  ativa        Boolean  @default(true)
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  tipo TipoAto @relation(fields: [tipoAto], references: [codigo], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([codigo, versao])
+  @@map("regra_classificacao")
 }
 
 /// Tabela de prazos por ato e ramo (HU15, ADR-007): versões com vigência e aprovação por quatro
