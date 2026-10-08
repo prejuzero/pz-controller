@@ -10,6 +10,7 @@ import { consultasCalendario, mutacoesCalendario } from './calendario';
 import { consultasNotificacoes } from './notificacoes';
 import { consultasPrivacidade, mutacoesPrivacidade } from './privacidade';
 import { consultasProcessos, mutacoesProcessos, type FiltrosProcessos } from './processos';
+import { consultasPublicacoes, mutacoesPublicacoes, type FiltrosPublicacoes } from './publicacoes';
 import { consultasSessao, mutacoesSessao } from './sessao';
 import { consultasTabelaPrazos, mutacoesTabelaPrazos } from './tabela-prazos';
 
@@ -133,3 +134,9 @@ export const useAlterarCobertura = () => useMutation(useMutacoesProcessos().alte
 export const useCadastrarCliente = () => useMutation(useMutacoesProcessos().cadastrarCliente);
 export const useAtualizarCliente = () => useMutation(useMutacoesProcessos().atualizarCliente);
 export const useRemoverCliente = () => useMutation(useMutacoesProcessos().removerCliente);
+
+export const usePublicacoes = (filtros: FiltrosPublicacoes) =>
+  useInfiniteQuery(consultasPublicacoes(useApi()).lista(filtros));
+export const usePublicacao = (id: string) => useQuery(consultasPublicacoes(useApi()).detalhe(id));
+export const useMarcarPublicacaoLida = () =>
+  useMutation(mutacoesPublicacoes(useApi(), useQueryClient()).marcarLida);

@@ -14,12 +14,12 @@
     "test:int": "vitest run --config vitest.int.config.ts"
   },
   "dependencies": {
+    "@pz/auditoria": "workspace:*",
     "@pz/db": "workspace:*",
     "@pz/kernel": "workspace:*",
     "zod": "4.6.5"
   },
   "devDependencies": {
-    "@pz/auditoria": "workspace:*",
     "@pz/cadastro": "workspace:*",
     "@pz/config": "workspace:*",
     "@types/node": "24.19.1",

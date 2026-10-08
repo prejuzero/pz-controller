@@ -6,8 +6,10 @@ import { FixedClock, gerarUuidV7, Instant } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { IngerirCaptura } from '../application/ingestao.js';
+import { ListarPublicacoes, MarcarComoLida } from '../application/leitura.js';
 
 import { ExportacaoDasPublicacoesPostgres } from './exportacao-postgres.js';
+import { LeituraPostgres } from './leitura-postgres.js';
 import { PublicacoesPostgres } from './publicacoes-postgres.js';
 
 import type { Transacao } from '@pz/db';
@@ -152,5 +154,34 @@ describe('ingestão no PostgreSQL (HU18)', () => {
     expect(secao?.linhas).toEqual([
       expect.objectContaining({ numeroCnj: '10000040620268260100', fonte: 'djen' }),
     ]);
+  });
+
+  it('leitura: lista pela view com filtros e cursor; marcar lida audita uma vez; outro tenant não vê', async () => {
+    const noA = <T>(f: () => Promise<T>) => executarNoTenant(A, f);
+    const listar = new ListarPublicacoes(banco, new LeituraPostgres());
+    const novas = await noA(() => listar.executar({ novas: 'true', limite: '1' }));
+    if (!novas.ok) throw novas.erro;
+    expect(novas.valor.itens).toHaveLength(1);
+    const [item] = novas.valor.itens;
+    if (item === undefined) throw new Error('sem publicação');
+    expect(item).toMatchObject({
+      siglaTribunal: 'TJSP',
+      numeroCnj: '10000040620268260100',
+      lidaEm: null,
+    });
+
+    const marcar = new MarcarComoLida(banco, new LeituraPostgres(), new TrilhaPostgres(), relogio);
+    const leitor = { usuarioId: gerarUuidV7(), canal: 'portal' as const };
+    expect((await noA(() => marcar.executar(leitor, item.id))).ok).toBe(true);
+    expect((await noA(() => marcar.executar(leitor, item.id))).ok).toBe(true);
+    const depois = await noA(() => listar.executar({ novas: 'true' }));
+    expect(depois.ok && depois.valor.itens).toEqual([]);
+    const trilha = await sistema.executarComoSistema('conferir', (tx) =>
+      tx.eventoAuditoria.count({ where: { tipo: 'publicacoes.publicacao-lida' } }),
+    );
+    expect(trilha).toBe(1);
+
+    const doB = await executarNoTenant(B, () => marcar.executar(leitor, gerarUuidV7()));
+    expect(!doB.ok && doB.erro.codigo).toBe('publicacao-inexistente');
   });
 });

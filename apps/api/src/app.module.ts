@@ -113,6 +113,12 @@ import {
   SolicitarEncerramento,
   SolicitarExportacao,
 } from '@pz/privacidade';
+import {
+  ConsultarPublicacao,
+  LeituraPostgres,
+  ListarPublicacoes,
+  MarcarComoLida,
+} from '@pz/publicacoes';
 import { ConsultarSituacao, VerificadorHttp, VerificadorTcp } from '@pz/saude';
 import {
   AceitarDocumento,
@@ -146,6 +152,7 @@ import { NotificacoesController } from './notificacoes/notificacoes.controller.j
 import { OpenApiController } from './openapi.controller.js';
 import { TabelaPrazosController } from './prazos/tabela-prazos.controller.js';
 import { PrivacidadeController } from './privacidade/privacidade.controller.js';
+import { PublicacoesController } from './publicacoes/publicacoes.controller.js';
 import { SaudeController, SondasController } from './saude/saude.controller.js';
 import { TermosController } from './termos/termos.controller.js';
 import { WebhooksController } from './webhooks/webhooks.controller.js';
@@ -195,6 +202,7 @@ import type {
 } from '@pz/notificacoes';
 import type { RepositorioDaTabela, RepositorioDeTiposDeAto } from '@pz/prazos';
 import type { RepositorioDeEncerramentos, RepositorioDeExportacoes } from '@pz/privacidade';
+import type { RepositorioDeLeitura } from '@pz/publicacoes';
 import type { VerificadorDeDependencia } from '@pz/saude';
 import type {
   RepositorioDeAceites,
@@ -237,6 +245,8 @@ export interface OpcoesApi {
   readonly calendario?: DependenciasDoCalendario;
   /** Tabela de prazos (HU15); nos testes, repositórios em memória. */
   readonly tabelaDePrazos?: DependenciasDaTabelaDePrazos;
+  /** Leitura das publicações (HU18); nos testes, repositório em memória. */
+  readonly publicacoes?: DependenciasDasPublicacoes;
   /** Exportação de dados (HU38); nos testes, repositório e armazenamento em memória. */
   readonly privacidade?: DependenciasDaPrivacidade;
   /** Termos e aceite versionado (HU38); nos testes, repositórios em memória. */
@@ -315,6 +325,25 @@ interface DependenciasDaTabelaDePrazos {
   readonly tabela: RepositorioDaTabela<unknown>;
   readonly trilha: TrilhaDeAuditoria<unknown>;
   readonly outbox: Outbox<unknown>;
+}
+
+interface DependenciasDasPublicacoes {
+  readonly unidade: UnidadeDeTrabalho<unknown>;
+  readonly leitura: RepositorioDeLeitura<unknown>;
+  readonly trilha: TrilhaDeAuditoria<unknown>;
+}
+
+/** Leitura das publicações do escritório (HU18). */
+function provedoresDasPublicacoes(d: DependenciasDasPublicacoes): Provider[] {
+  return [
+    { provide: ListarPublicacoes, useValue: new ListarPublicacoes(d.unidade, d.leitura) },
+    { provide: ConsultarPublicacao, useValue: new ConsultarPublicacao(d.unidade, d.leitura) },
+    {
+      provide: MarcarComoLida,
+      inject: [RELOGIO],
+      useFactory: (r: Clock) => new MarcarComoLida(d.unidade, d.leitura, d.trilha, r),
+    },
+  ];
 }
 
 interface DependenciasDaPrivacidade {
@@ -859,6 +888,13 @@ export class AppModule {
       { provide: ReprocessarJobMorto, useValue: new ReprocessarJobMorto(filas.reprocessamento) },
       { provide: FILAS_DO_PAINEL, useValue: filas.painel },
       ...provedoresDoCalendario(calendario),
+      ...provedoresDasPublicacoes(
+        opcoes.publicacoes ?? {
+          unidade: recursos.banco,
+          leitura: new LeituraPostgres(),
+          trilha: new TrilhaPostgres(),
+        },
+      ),
       ...provedoresDaPrivacidade(
         opcoes.privacidade ?? {
           unidade: recursos.banco,
@@ -922,6 +958,7 @@ export class AppModule {
         TabelaPrazosController,
         TermosController,
         PrivacidadeController,
+        PublicacoesController,
         CadastroController,
         ProcessosController,
         NotificacoesController,
