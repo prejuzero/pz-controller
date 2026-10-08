@@ -22,6 +22,8 @@ export const esquemaApi = esquemaBase
      * como os documentos legais. Padrão: o do seed local.
      */
     TENANT_PLATAFORMA_ID: z.uuid().default('01a10e00-0000-7000-8000-00000000c001'),
+    /** Fonte de publicações da captura (HU19), a mesma do worker: o status mostra a saúde dela. */
+    CAPTURA_FONTE: z.enum(['djen']).default('djen'),
     /** Versão implantada (SHA do commit), gravada na imagem pelo build. */
     VERSAO: z.string().min(1).default('dev'),
     /** Chave AES-256 (32 bytes em base64) que cifra segredos da aplicação, como o do 2FA. */

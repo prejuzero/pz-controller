@@ -227,6 +227,23 @@ export const ExportacaoDeDadosSolicitada = definirEvento(
   }),
 );
 
+/**
+ * Fonte de publicações degradada (HU19): um por escritório que assina algum alvo. A captura está
+ * parada até a fonte voltar; o escritório é avisado (transparência de cobertura).
+ */
+export const FonteDegradada = definirEvento(
+  'FonteDegradada',
+  1,
+  z.object({ fonte: z.string().min(1) }),
+);
+
+/** Fonte restabelecida (HU19): os alvos em recuo foram antecipados para a recaptura. */
+export const FonteRestabelecida = definirEvento(
+  'FonteRestabelecida',
+  1,
+  z.object({ fonte: z.string().min(1), antecipados: z.number().int().nonnegative() }),
+);
+
 /** Conteúdo de publicação visto pela primeira vez (HU18): segue para a classificação, uma vez. */
 export const PublicacaoNova = definirEvento(
   'PublicacaoNova',
@@ -269,4 +286,6 @@ export const EVENTOS = catalogoDeEventos(
   ExportacaoDeDadosSolicitada,
   PublicacaoNova,
   PublicacaoRecebida,
+  FonteDegradada,
+  FonteRestabelecida,
 );

@@ -675,6 +675,25 @@ model AlvoMonitoramento {
   @@map("alvo_monitoramento")
 }
 
+enum SituacaoFonte {
+  operacional
+  degradada
+
+  @@map("situacao_fonte")
+}
+
+/// Saúde de uma fonte de publicações (HU19): global, mantida pela captura.
+model FonteCaptura {
+  id                 String        @id
+  situacao           SituacaoFonte @default(operacional)
+  desde              DateTime      @default(now()) @db.Timestamptz(6)
+  falhasConsecutivas Int           @default(0) @map("falhas_consecutivas")
+  criadoEm           DateTime      @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm       DateTime      @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  @@map("fonte_captura")
+}
+
 /// Quem assina o alvo (HU17): por tenant, com RLS; `referencia` é a OAB ou o processo do tenant.
 model AlvoAssinante {
   alvoId       String   @map("alvo_id") @db.Uuid

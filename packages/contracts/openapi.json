@@ -2348,6 +2348,58 @@
         }
       }
     },
+    "/v1/captura/status": {
+      "get": {
+        "operationId": "consultarStatusDaCaptura",
+        "summary": "Situação da fonte e da captura de cada OAB do escritório.",
+        "tags": [
+          "captura"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusDaCaptura"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/clientes": {
       "get": {
         "operationId": "listarClientes",
@@ -7537,6 +7589,107 @@
           "situacao",
           "versao",
           "verificadoEm"
+        ],
+        "additionalProperties": false
+      },
+      "StatusDaCaptura": {
+        "type": "object",
+        "properties": {
+          "fonte": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Fonte de publicações (ex.: djen)."
+              },
+              "situacao": {
+                "type": "string",
+                "enum": [
+                  "operacional",
+                  "degradada"
+                ]
+              },
+              "desde": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Desde quando está na situação atual."
+              }
+            },
+            "required": [
+              "id",
+              "situacao",
+              "desde"
+            ],
+            "additionalProperties": false
+          },
+          "oabs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "oabId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "oab": {
+                  "type": "string",
+                  "description": "Número/UF, ex.: 123456/SP."
+                },
+                "ultimoSucesso": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Última captura bem-sucedida."
+                },
+                "proximaExecucao": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Próxima tentativa após falha; nulo: na próxima rodada do agendamento."
+                },
+                "falhasConsecutivas": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "oabId",
+                "oab",
+                "ultimoSucesso",
+                "proximaExecucao",
+                "falhasConsecutivas"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "fonte",
+          "oabs"
         ],
         "additionalProperties": false
       },

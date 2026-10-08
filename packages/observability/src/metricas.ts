@@ -17,6 +17,8 @@ export const NOMES_METRICAS = {
   emailRejeicoes: 'pz.email.rejeicoes',
   webhooksRecusados: 'pz.integracao.webhook.recusados',
   auditoriaDivergencias: 'pz.auditoria.divergencias',
+  capturaFonteDegradada: 'pz.captura.fonte.degradada',
+  capturaAlvoFalhando: 'pz.captura.alvo.falhando',
   erros: 'pz.erros',
 } as const;
 
@@ -33,6 +35,8 @@ interface Instrumentos {
   readonly emailRejeicoes: Counter;
   readonly webhooksRecusados: Counter;
   readonly auditoriaDivergencias: Counter;
+  readonly capturaFonteDegradada: Gauge;
+  readonly capturaAlvoFalhando: Counter;
   readonly erros: Counter;
 }
 
@@ -66,6 +70,13 @@ function instrumentos(): Instrumentos {
       }),
       emailRejeicoes: medidor.createCounter(NOMES_METRICAS.emailRejeicoes, {
         description: 'E-mails rejeitados pelo provedor (bounce ou reclamação).',
+      }),
+      capturaFonteDegradada: medidor.createGauge(NOMES_METRICAS.capturaFonteDegradada, {
+        description: 'Fonte de publicações degradada (1) ou operacional (0), por fonte (HU19).',
+      }),
+      capturaAlvoFalhando: medidor.createCounter(NOMES_METRICAS.capturaAlvoFalhando, {
+        description:
+          'Alvos de captura (OAB ou processo) que atingiram o limite de falhas seguidas.',
       }),
       erros: medidor.createCounter(NOMES_METRICAS.erros, {
         description: 'Erros inesperados registrados, por origem.',
@@ -107,6 +118,16 @@ export function registrarWebhookRecusado(adaptador: string): void {
 
 export function registrarRejeicaoEmail(motivo: string): void {
   instrumentos().emailRejeicoes.add(1, { motivo });
+}
+
+/** Situação da fonte de publicações (HU19): alimenta o alerta "fonte degradada". */
+export function registrarSituacaoDaFonte(fonte: string, degradada: boolean): void {
+  instrumentos().capturaFonteDegradada.record(degradada ? 1 : 0, { fonte });
+}
+
+/** Alvo de captura com falhas seguidas acima do limite (HU19). */
+export function registrarAlvoFalhando(): void {
+  instrumentos().capturaAlvoFalhando.add(1);
 }
 
 export function registrarErroInesperado(origem: string): void {

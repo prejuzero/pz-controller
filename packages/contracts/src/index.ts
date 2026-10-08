@@ -25,6 +25,7 @@ export {
 } from './cadastro/processos.js';
 import { ROTAS_PROCESSOS } from './cadastro/processos.js';
 import { ROTAS_CALENDARIO } from './calendario/index.js';
+import { ROTAS_CAPTURA } from './captura.js';
 import { ROTAS_NOTIFICACOES } from './notificacoes/index.js';
 import { gerarOpenApi } from './openapi.js';
 import { ROTAS_TABELA_PRAZOS } from './prazos/index.js';
@@ -141,6 +142,7 @@ export {
 } from './comum.js';
 export { formatarNumeroCnj, lerNumeroCnj, TRIBUNAIS, tribunalDoNumero } from './cnj.js';
 export { OrigemIa } from './ia.js';
+export { consultarStatusDaCaptura, ROTAS_CAPTURA, StatusDaCaptura } from './captura.js';
 export {
   consultarPublicacao,
   listarPublicacoes,
@@ -182,6 +184,8 @@ export {
   ContaBloqueada,
   definirEvento,
   EVENTOS,
+  FonteDegradada,
+  FonteRestabelecida,
   ProcessoMonitorado,
   PublicacaoNova,
   PublicacaoRecebida,
@@ -223,6 +227,7 @@ export const ROTAS = [
   ...ROTAS_TERMOS,
   ...ROTAS_PRIVACIDADE,
   ...ROTAS_PUBLICACOES,
+  ...ROTAS_CAPTURA,
   ...ROTAS_NOTIFICACOES,
   ...ROTAS_SAUDE,
   ...ROTAS_WEBHOOKS,

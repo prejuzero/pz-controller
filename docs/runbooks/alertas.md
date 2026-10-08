@@ -41,6 +41,19 @@ Primeiro passo em todos: abrir o dashboard da área no Grafana (pasta **PrejuZer
 2. Confirme se a fonte está fora do ar (página de status do provedor, outros clientes).
 3. O circuit breaker tenta sozinho (meio-aberto). Enquanto estiver aberto, a cobertura daquela fonte fica comprometida: informe os usuários afetados (CLAUDE.md, seção 2, transparência de cobertura).
 
+## captura-fonte-degradada
+
+1. A fonte falhou seguidamente (indisponibilidade, não cota). Nenhum alvo está sendo capturado: é risco direto de prazo perdido.
+2. Confirme a indisponibilidade na fonte (ex.: comunicaapi.pje.jus.br) e o alerta `integracao-degradada` do adaptador.
+3. Os escritórios afetados recebem `FonteDegradada`. Não é preciso recapturar à mão: no primeiro sucesso a fonte volta a operacional, todos os alvos em recuo são antecipados e cada janela vai do último sucesso até hoje.
+4. Se a indisponibilidade passar de 1 dia, oriente os escritórios a conferir o diário/painel do tribunal (transparência de cobertura).
+
+## captura-alvo-falhando
+
+1. Uma OAB ou processo falhou na captura várias vezes seguidas, com a fonte operacional: o problema é do alvo.
+2. Procure no log `captura.alvo-falhando` (traz o id do alvo) e o erro do job na DLQ da fila `captura`.
+3. Causas comuns: número de OAB ou CNJ mal cadastrado, resposta inválida da fonte para aquele alvo. Corrija o cadastro e reprocesse o job da DLQ.
+
 ## email-rejeicao
 
 1. No dashboard **PrejuZero · E-mail**, veja o motivo (bounce ou reclamação).
