@@ -262,6 +262,20 @@ describe('processos e clientes pela API (HU12)', () => {
     expect((await pedir('DELETE', `/v1/clientes/${clienteId}`)).statusCode).toBe(204);
   });
 
+  // Sem depender do Postgres local: no CI de unitários não há banco (a matriz de autorização
+  // cobria estes ramos só quando havia).
+  it('processo e cliente inexistentes são 404', async () => {
+    const inexistente = gerarUuidV7();
+    for (const [metodo, rota, corpo] of [
+      ['GET', `/v1/processos/${inexistente}`, undefined],
+      ['PATCH', `/v1/processos/${inexistente}`, { sigiloso: true }],
+      ['GET', `/v1/clientes/${inexistente}`, undefined],
+      ['PATCH', `/v1/clientes/${inexistente}`, { nome: 'Outro Nome' }],
+    ] as const) {
+      expect((await pedir(metodo, rota, corpo)).statusCode).toBe(404);
+    }
+  });
+
   it('sem sessão, processos exigem autenticação', async () => {
     expect((await api.inject({ method: 'GET', url: '/v1/processos' })).statusCode).toBe(401);
   });
