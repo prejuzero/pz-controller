@@ -8,6 +8,8 @@ export interface CredencialArmazenada {
   /** null: usuário ainda sem senha definida (não consegue entrar). */
   readonly senhaHash: string | null;
   readonly segundoFatorAtivo: boolean;
+  /** Escritório suspenso pelo administrador (HU39): a senha certa não abre sessão. */
+  readonly tenantSuspenso?: boolean;
 }
 
 export interface RepositorioDeCredenciais {

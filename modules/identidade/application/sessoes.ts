@@ -21,6 +21,11 @@ import type { Clock, Result, Uuid, Validacao } from '@pz/kernel';
 /** Mensagem única para qualquer falha de login: não revela se o e-mail existe. */
 const credenciaisInvalidas = () =>
   new NaoAutenticado('credenciais-invalidas', 'E-mail ou senha inválidos.');
+const tenantSuspenso = () =>
+  new NaoAutenticado(
+    'tenant-suspenso',
+    'O acesso deste escritório está suspenso. Fale com o suporte do PrejuZero.',
+  );
 const sessaoInvalida = () => new NaoAutenticado('sessao-invalida', 'Sessão expirada ou inválida.');
 
 export interface SessaoCriada {
@@ -154,6 +159,17 @@ export class Autenticar implements ProvedorIdentidade {
         await this.protecao.falhou(chave, acesso);
       }
       return err(credenciaisInvalidas());
+    }
+    // Só depois da senha certa: quem não sabe a senha não descobre que o escritório está suspenso.
+    if (credencial.tenantSuspenso === true) {
+      await this.protecao.registrar({
+        usuarioId: credencial.usuarioId,
+        tenantId: credencial.tenantId,
+        tipo: 'login',
+        ...contexto,
+        sucesso: false,
+      });
+      return err(tenantSuspenso());
     }
     await this.protecao.passou(chave, {
       ...acesso,

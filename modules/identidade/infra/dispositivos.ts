@@ -55,7 +55,10 @@ export class DispositivosPostgres implements RepositorioDeDispositivos {
   async ativo(id: Uuid, usuarioId: Uuid): Promise<boolean> {
     return (
       (await this.banco.executar((tx) =>
-        tx.sessaoDispositivo.count({ where: { id, usuarioId, revogadaEm: null } }),
+        // Escritório suspenso (HU39) não renova tokens do app: o acesso volta só ao reativar.
+        tx.sessaoDispositivo.count({
+          where: { id, usuarioId, revogadaEm: null, tenant: { suspensoEm: null } },
+        }),
       )) === 1
     );
   }

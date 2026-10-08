@@ -9,6 +9,11 @@ import { Redis } from 'ioredis';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
+  ListarTenants,
+  ReativarTenant,
+  SuspenderTenant,
+} from '../application/administracao-de-tenants.js';
+import {
   RegistrarDispositivo,
   RenovarTokens,
   RevogarDispositivo,
@@ -109,6 +114,7 @@ describe('credenciais no PostgreSQL (HU06)', () => {
       tenantId: TENANT_B,
       senhaHash: null,
       segundoFatorAtivo: false,
+      tenantSuspenso: false,
     });
     expect(
       await credenciais().localizarPorEmail('ninguem@exemplo.invalid' as Email),
@@ -522,6 +528,89 @@ describe('impersonação com PostgreSQL e Redis (HU07)', () => {
       );
       expect(rows.map((x) => x.tenant_id).sort()).toEqual([TENANT_A, TENANT_P].sort());
       expect(rows.every((x) => x.usuario_id === admin.usuarioId)).toBe(true);
+    } finally {
+      await direto.end();
+    }
+  });
+});
+
+describe('administração de tenants com PostgreSQL e Redis (HU39)', () => {
+  it('a plataforma lista todos; o escritório só se vê; suspensão barra login e renovação', async () => {
+    const sessoes = new SessoesRedis(redis);
+    const deps = {
+      unidade: banco,
+      tenants: new TenantsPostgres(),
+      trilha: new TrilhaPostgres(),
+      noTenant: noTenantDoBanco,
+      sessoes,
+      relogio,
+    };
+    const listar = new ListarTenants(deps);
+    const ids = async (tenant: Uuid) =>
+      (await executarNoTenant(tenant, () => listar.executar({ limite: 10 }))).itens.map(
+        (t) => t.id,
+      );
+    expect((await ids(TENANT_P)).sort()).toEqual([TENANT_A, TENANT_B, TENANT_P].sort());
+    expect(await ids(TENANT_A)).toEqual([TENANT_A]);
+
+    const dispositivos = new DispositivosPostgres(banco);
+    const renovacoes = new RenovacoesRedis(redis);
+    const tokens = new GeradorDeTokensSeguro();
+    const publicador = new PublicadorOutbox(banco);
+    const sessaoDaBia = {
+      id: gerarUuidV7(),
+      usuarioId: BIA,
+      tenantId: TENANT_B,
+      nivel: 'completo' as const,
+      segundoFatorAtivo: true,
+      criadaEm: relogio.agora(),
+      ultimoUso: relogio.agora(),
+    };
+    const emitidos = await executarNoTenant(TENANT_B, () =>
+      new RegistrarDispositivo(
+        dispositivos,
+        sessoes,
+        renovacoes,
+        tokens,
+        publicador,
+        relogio,
+      ).executar(sessaoDaBia, { tipoCliente: 'mobile', nome: 'Celular' }),
+    );
+
+    const admin = { usuarioId: gerarUuidV7(), tenantId: TENANT_P, ...CTX };
+    const motivo = 'Chamado 9: inadimplência confirmada';
+    const suspenso = await new SuspenderTenant(deps).executar(admin, TENANT_B, motivo);
+    expect(suspenso.ok && suspenso.valor.suspensao?.motivo).toBe(motivo);
+    expect(await sessoes.obter(emitidos.tokenDeAcesso)).toBeUndefined();
+    const credencial = await new CredenciaisPostgres(banco).localizarPorEmail(
+      'bia@exemplo.invalid' as Email,
+    );
+    expect(credencial?.tenantSuspenso).toBe(true);
+    const renovar = new RenovarTokens(
+      dispositivos,
+      sessoes,
+      renovacoes,
+      tokens,
+      publicador,
+      relogio,
+      noTenantDoBanco,
+    );
+    expect((await renovar.executar(emitidos.tokenDeRenovacao)).ok).toBe(false);
+
+    expect((await new ReativarTenant(deps).executar(admin, TENANT_B)).ok).toBe(true);
+    expect(
+      (await new CredenciaisPostgres(banco).localizarPorEmail('bia@exemplo.invalid' as Email))
+        ?.tenantSuspenso,
+    ).toBe(false);
+
+    const direto = await postgres.conectar('pz_sistema');
+    try {
+      const { rows } = await direto.query<{ tenant_id: string; tipo: string }>(
+        `SELECT tenant_id, tipo FROM evento_auditoria
+          WHERE tipo IN ('identidade.tenant-suspenso', 'identidade.tenant-reativado')`,
+      );
+      expect(rows).toHaveLength(4);
+      expect(new Set(rows.map((x) => x.tenant_id))).toEqual(new Set([TENANT_B, TENANT_P]));
     } finally {
       await direto.end();
     }
