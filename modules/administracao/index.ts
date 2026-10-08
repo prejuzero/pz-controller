@@ -24,3 +24,12 @@ export { consolidar, VALIDADE_DO_RETRATO_MS } from './domain/integracoes.js';
 export type { FalhaDeIntegracao, IntegracaoConsolidada, Retrato } from './domain/integracoes.js';
 export { PainelEmMemoria } from './infra/painel-em-memoria.js';
 export { PainelRedis } from './infra/painel-redis.js';
+export {
+  ConsultarUsoDeIa,
+  DIAS_MAXIMOS_DO_PAINEL,
+  META_CUSTO_POR_PUBLICACAO_USD,
+  TAREFA_DE_CLASSIFICACAO,
+} from './application/uso-ia.js';
+export type { ConsultaDeUsoDeIa, LinhaDeUsoDeIa, PainelDeUsoDeIa } from './application/uso-ia.js';
+export { UsoDeIaEmMemoria } from './infra/uso-ia-em-memoria.js';
+export { UsoDeIaPostgres } from './infra/uso-ia-postgres.js';

@@ -34,6 +34,7 @@ export {
   NOMES_METRICAS_IA,
   registrarAlertaDeOrcamentoIa,
   registrarCorrecaoDeIa,
+  registrarOrcamentoDiarioIaExcedido,
   registrarTarefaIaSemModelo,
 } from './ia.js';
 export type { ChamadaIa, DesfechoChamadaIa, ResultadoChamadaIa } from './ia.js';

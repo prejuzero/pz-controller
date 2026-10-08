@@ -46,6 +46,8 @@ function plataforma(gerar: ProvedorIA['gerarEstruturado'], orcamento?: number) {
   return new PlataformaIa(
     {
       versao: 'teste',
+      fonteDosPrecos: 'tabela fictícia',
+      precos: { 'modelo-ficticio': { entrada: 1, saida: 5, cacheLido: 0.1 } },
       tarefas: {
         [TAREFA]: {
           descricao: 'teste',

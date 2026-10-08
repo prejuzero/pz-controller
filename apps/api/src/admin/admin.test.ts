@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 
 import { Controller, Get } from '@nestjs/common';
-import { FilaDeMortosEmMemoria, PainelEmMemoria } from '@pz/administracao';
+import { FilaDeMortosEmMemoria, PainelEmMemoria, UsoDeIaEmMemoria } from '@pz/administracao';
 import { carregarAmbiente } from '@pz/config/env';
 import { tenantAtual } from '@pz/db';
 import {
@@ -14,7 +14,7 @@ import {
   TenantsEmMemoria,
   TentativasEmMemoria,
 } from '@pz/identidade';
-import { FixedClock, gerarUuidV7, Instant, OutboxEmMemoria } from '@pz/kernel';
+import { FixedClock, gerarUuidV7, Instant, LocalDate, OutboxEmMemoria } from '@pz/kernel';
 import { SupressoesEmMemoria } from '@pz/notificacoes';
 import { obterContexto } from '@pz/observability';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -67,6 +67,7 @@ const tokenAdvogado = randomBytes(32).toString('base64url');
 const mortos = new FilaDeMortosEmMemoria();
 const painel = new PainelEmMemoria();
 const supressoes = new SupressoesEmMemoria();
+const usoDeIa = new UsoDeIaEmMemoria();
 let api: NestFastifyApplication;
 
 beforeAll(async () => {
@@ -104,6 +105,8 @@ beforeAll(async () => {
       contador: painel,
     },
     supressoes: { unidade: new OutboxEmMemoria(), consulta: supressoes },
+
+    usoDeIa: { unidade: new OutboxEmMemoria(), consulta: usoDeIa },
   });
   await api.init();
   await api.getHttpAdapter().getInstance().ready();
@@ -402,9 +405,46 @@ describe('painel do administrador pela API (HU39)', () => {
     });
   });
 
+  it('custo de IA por dia, tarefa e modelo, com o custo médio por publicação e a meta (HU21)', async () => {
+    usoDeIa.linhas.push({
+      dia: LocalDate.de(2026, 10, 6),
+      tarefa: 'classificar-ato',
+      modelo: 'claude-haiku-4-5',
+      chamadas: 2,
+      tokensEntrada: 2000,
+      tokensSaida: 200,
+      tokensCacheLidos: 1000,
+      custoUsd: 0.0032,
+    });
+    expect((await ler('/v1/admin/uso-ia?dias=7')).json()).toEqual({
+      de: '2026-09-30',
+      ate: '2026-10-06',
+      custoTotalUsd: 0.0032,
+      classificacao: { chamadas: 2, custoMedioUsd: 0.0016, metaUsd: 0.0045 },
+      dias: [
+        {
+          dia: '2026-10-06',
+          tarefa: 'classificar-ato',
+          modelo: 'claude-haiku-4-5',
+          chamadas: 2,
+          tokensEntrada: 2000,
+          tokensSaida: 200,
+          tokensCacheLidos: 1000,
+          custoUsd: 0.0032,
+        },
+      ],
+    });
+    expect((await ler('/v1/admin/uso-ia?dias=91')).statusCode).toBe(400);
+  });
+
   it('sem permissão de administrador: 403', async () => {
     const semPerfil = { authorization: `Bearer ${tokenSemPerfil}` };
-    for (const url of ['/v1/admin/integracoes', '/v1/admin/filas', '/v1/admin/rejeicoes-email']) {
+    for (const url of [
+      '/v1/admin/integracoes',
+      '/v1/admin/filas',
+      '/v1/admin/rejeicoes-email',
+      '/v1/admin/uso-ia',
+    ]) {
       expect((await ler(url, semPerfil)).statusCode).toBe(403);
     }
   });
@@ -421,6 +461,7 @@ describe('QA do painel administrativo (PZ-230)', () => {
       ['GET', '/v1/admin/integracoes'],
       ['GET', '/v1/admin/filas'],
       ['GET', '/v1/admin/rejeicoes-email'],
+      ['GET', '/v1/admin/uso-ia'],
       ['POST', '/v1/admin/impersonacao', { tenantId: PLATAFORMA, motivo: 'Chamado 1: tentativa' }],
       [
         'POST',

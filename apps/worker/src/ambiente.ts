@@ -74,6 +74,11 @@ export const esquemaWorker = esquemaBase
      * validar o produto).
      */
     ANTHROPIC_API_KEY: z.string().min(1).optional(),
+    /**
+     * Orçamento diário de IA da plataforma em US$ (HU21), pelo custo estimado de tabela. Acima
+     * dele, alerta uma vez por dia; não bloqueia (o bloqueio é o orçamento mensal por tarefa).
+     */
+    IA_ORCAMENTO_DIARIO_USD: z.coerce.number().positive().default(20),
     /** Adaptador de FontePublicacoes (ADR-005): trocar de fonte é configuração. */
     CAPTURA_FONTE: z.enum(['djen']).default('djen'),
     /**

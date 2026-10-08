@@ -23,6 +23,11 @@ const Classificacao = z.object({ tipoAto: z.string(), confianca: z.number(), tre
 const CONTEXTO = { tenantId: 'tenant-ficticio' };
 const configuracao = lerConfiguracaoDasTarefas({
   versao: 'qa',
+  fonteDosPrecos: 'tabela fictícia',
+  precos: {
+    'modelo-p': { entrada: 1, saida: 5, cacheLido: 0.1 },
+    'modelo-r': { entrada: 2, saida: 10, cacheLido: 0.2 },
+  },
   tarefas: {
     classificar: {
       descricao: 'qa',

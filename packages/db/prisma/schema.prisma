@@ -337,6 +337,23 @@ model Classificacao {
   @@map("classificacao")
 }
 
+/// Uso de IA da plataforma por dia (Brasília), tarefa e modelo, com custo estimado (HU21).
+model UsoIa {
+  dia              DateTime @db.Date
+  tarefa           String
+  modelo           String
+  chamadas         Int      @default(0)
+  tokensEntrada    BigInt   @default(0) @map("tokens_entrada")
+  tokensSaida      BigInt   @default(0) @map("tokens_saida")
+  tokensCacheLidos BigInt   @default(0) @map("tokens_cache_lidos")
+  custoEstimadoUsd Decimal  @default(0) @map("custo_estimado_usd") @db.Decimal(14, 6)
+  criadoEm         DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm     DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  @@id([dia, tarefa, modelo])
+  @@map("uso_ia")
+}
+
 model TabelaPrazo {
   id             String            @id @db.Uuid
   tipoAto        String            @map("tipo_ato")

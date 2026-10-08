@@ -6,6 +6,7 @@ import {
   medirChamadaIa,
   NOMES_METRICAS_IA,
   registrarAlertaDeOrcamentoIa,
+  registrarOrcamentoDiarioIaExcedido,
   registrarCorrecaoDeIa,
   registrarTarefaIaSemModelo,
 } from './ia.js';
@@ -113,5 +114,10 @@ describe('observabilidade de IA (HU58)', () => {
     ]) {
       expect(await pontos(nome)).toEqual([{ atributos: { tarefa: 'classificar-ato' }, valor: 1 }]);
     }
+  });
+
+  it('orçamento diário da plataforma excedido (HU21)', async () => {
+    registrarOrcamentoDiarioIaExcedido();
+    expect(await pontos(NOMES_METRICAS_IA.orcamentoDiario)).toEqual([{ atributos: {}, valor: 1 }]);
   });
 });

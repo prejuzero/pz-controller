@@ -11,8 +11,14 @@ import {
   Query,
   Req,
 } from '@nestjs/common';
-import { ConsultarFilas, ConsultarIntegracoes, ReprocessarJobMorto } from '@pz/administracao';
 import {
+  ConsultarFilas,
+  ConsultarIntegracoes,
+  ConsultarUsoDeIa,
+  ReprocessarJobMorto,
+} from '@pz/administracao';
+import {
+  ConsultaDeUsoDeIa,
   ConsultaPaginada,
   PedidoDeAssinatura,
   PedidoDeImpersonacao,
@@ -40,6 +46,7 @@ import type {
   PaginaDeRejeicoes,
   PaginaDeTenants,
   PainelDeIntegracoes,
+  PainelDeUsoDeIa,
   ResumoDasFilas,
   SessaoAtual,
   TenantAdministrado,
@@ -96,6 +103,7 @@ export class AdminController {
     @Inject(ReativarTenant) private readonly reativar: ReativarTenant<unknown>,
     @Inject(ConsultarIntegracoes) private readonly integracoes: ConsultarIntegracoes,
     @Inject(ConsultarFilas) private readonly filas: ConsultarFilas,
+    @Inject(ConsultarUsoDeIa) private readonly usoDeIa: ConsultarUsoDeIa<unknown>,
     @Inject(ListarSupressoes) private readonly supressoes: ListarSupressoes<unknown>,
   ) {}
 
@@ -120,6 +128,20 @@ export class AdminController {
   @RequerPermissao('admin:filas')
   async resumirFilas(): Promise<ResumoDasFilas> {
     return { filas: await this.filas.executar() };
+  }
+
+  @Get('uso-ia')
+  @RequerPermissao('admin:filas')
+  async consultarUsoDeIa(@Query() consulta: unknown): Promise<PainelDeUsoDeIa> {
+    const { dias } = validar(ConsultaDeUsoDeIa, consulta);
+    const painel = await this.usoDeIa.executar(dias);
+    return {
+      de: painel.de.paraIso(),
+      ate: painel.ate.paraIso(),
+      custoTotalUsd: painel.custoTotalUsd,
+      classificacao: painel.classificacao,
+      dias: painel.linhas.map((l) => ({ ...l, dia: l.dia.paraIso() })),
+    };
   }
 
   @Get('rejeicoes-email')

@@ -8,9 +8,11 @@ import {
 
 import { verificarSaidaSemDatas } from './guardrails.js';
 import { mesDoOrcamento, OrcamentoDeIaEsgotado } from './orcamento.js';
+import { custoEstimadoUsd, diaDoUso } from './uso.js';
 
 import type { ConfiguracaoDaTarefa, ConfiguracaoDasTarefas } from './configuracao.js';
 import type { AlertaDeOrcamento, ContadorDeUsoDeIa } from './orcamento.js';
+import type { RegistroDeUsoDeIa } from './uso.js';
 import type { OpcoesIA, PromptIA, ProvedorIA, RespostaIA } from '@pz/integracoes';
 import type { Clock } from '@pz/kernel';
 import type { z } from 'zod';
@@ -49,6 +51,12 @@ export interface OrcamentoDaPlataforma {
   readonly aoAlertar: (alerta: AlertaDeOrcamento) => void;
 }
 
+/** Registro do uso por dia, tarefa e modelo, com custo estimado (painel do administrador, HU21). */
+export interface UsoDaPlataforma {
+  readonly registro: RegistroDeUsoDeIa;
+  readonly relogio: Clock;
+}
+
 /** Quem pede a tarefa: o orçamento é por tenant. */
 export interface ContextoDaTarefa {
   readonly tenantId: string;
@@ -61,6 +69,7 @@ export class PlataformaIa {
     private readonly configuracao: ConfiguracaoDasTarefas,
     private readonly provedores: ReadonlyMap<string, ProvedorIA>,
     private readonly orcamento?: OrcamentoDaPlataforma,
+    private readonly uso?: UsoDaPlataforma,
   ) {
     for (const [nome, tarefa] of Object.entries(configuracao.tarefas)) {
       for (const { provedor } of tarefa.modelos) {
@@ -137,6 +146,18 @@ export class PlataformaIa {
                 mes,
                 tokensEntrada + tokensSaida,
               );
+            }
+            if (this.uso !== undefined) {
+              // Preço garantido pela validação da configuração (todo modelo de tarefa tem preço).
+              const preco = this.configuracao.precos[modelo];
+              if (preco === undefined) throw new Error(`Modelo ${modelo} sem preço.`);
+              await this.uso.registro.registrar({
+                dia: diaDoUso(this.uso.relogio),
+                tarefa: nome,
+                modelo,
+                uso: gerada.uso,
+                custoUsd: custoEstimadoUsd(preco, gerada.uso),
+              });
             }
             if (tarefa.saidaSemDatas !== undefined) {
               verificarSaidaSemDatas(gerada.saida, tarefa.saidaSemDatas.excetoCampos);

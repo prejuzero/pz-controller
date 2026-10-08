@@ -257,6 +257,31 @@ groups:
         annotations:
           summary: 'A tarefa de IA {{ $labels.tarefa }} passou de 80% do orçamento mensal de algum escritório.'
           runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#ia-orcamento'
+      - uid: pz-ia-orcamento-diario
+        title: 'Custo diário de IA acima do orçamento'
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: 'sum(increase(pz_ia_orcamento_diario_excedido_total[1h]))'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions: [{ evaluator: { type: gt, params: [0] } }]
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels: { severidade: media }
+        annotations:
+          summary: 'O custo estimado de IA da plataforma passou do orçamento diário (IA_ORCAMENTO_DIARIO_USD).'
+          runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#ia-orcamento-diario'
       - uid: pz-ia-saidas-invalidas
         title: 'Salto em saídas inválidas da IA'
         condition: C

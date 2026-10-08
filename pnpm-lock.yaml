@@ -548,6 +548,12 @@ importers:
       '@pz/auditoria':
         specifier: workspace:*
         version: link:../auditoria
+      '@pz/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@pz/ia':
+        specifier: workspace:*
+        version: link:../../packages/ia
       '@pz/integracoes':
         specifier: workspace:*
         version: link:../../packages/integracoes

@@ -6,13 +6,14 @@ import {
   ErroPermanente,
   ErroTransitorio,
 } from '@pz/integracoes';
-import { FixedClock, Instant } from '@pz/kernel';
+import { FixedClock, Instant, LocalDate } from '@pz/kernel';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import { lerConfiguracaoDasTarefas } from './configuracao.js';
 import { ContadorDeUsoEmMemoria, OrcamentoDeIaEsgotado } from './orcamento.js';
 import { PlataformaIa } from './plataforma.js';
+import { RegistroDeUsoEmMemoria } from './uso.js';
 
 import type { OpcoesIA, PromptIA, ProvedorIA } from '@pz/integracoes';
 
@@ -26,6 +27,12 @@ const CONTEXTO = { tenantId: 'tenant-ficticio' };
 
 const configuracao = lerConfiguracaoDasTarefas({
   versao: 'teste',
+  fonteDosPrecos: 'tabela fictícia',
+  precos: {
+    'modelo-a1': { entrada: 1, saida: 5, cacheLido: 0.1 },
+    'modelo-a2': { entrada: 2, saida: 10, cacheLido: 0.2 },
+    'modelo-b1': { entrada: 3, saida: 15, cacheLido: 0.3 },
+  },
   tarefas: {
     classificar: {
       descricao: 'teste',
@@ -188,6 +195,12 @@ describe('PlataformaIa (HU58)', () => {
   });
 });
 
+const semTarefas = {
+  versao: 'v',
+  fonteDosPrecos: 'tabela fictícia',
+  precos: { m: { entrada: 1, saida: 1, cacheLido: 0 } },
+};
+
 describe('configuração versionada (HU58)', () => {
   it('o arquivo do repositório é válido e toda tarefa tem modelo primário', () => {
     const bruta: unknown = JSON.parse(
@@ -195,8 +208,10 @@ describe('configuração versionada (HU58)', () => {
     );
     const lida = lerConfiguracaoDasTarefas(bruta);
     expect(Object.keys(lida.tarefas)).toContain('classificar-ato');
-    for (const tarefa of Object.values(lida.tarefas))
+    for (const tarefa of Object.values(lida.tarefas)) {
       expect(tarefa.modelos.length).toBeGreaterThan(0);
+      for (const { modelo } of tarefa.modelos) expect(lida.precos[modelo]).toBeDefined();
+    }
   });
 
   it('recusa configuração sem modelo, com campo desconhecido ou temperatura fora da faixa', () => {
@@ -206,14 +221,29 @@ describe('configuração versionada (HU58)', () => {
       { ...base, modelos: [{ provedor: 'a', modelo: 'm' }], extra: true },
       { ...base, modelos: [{ provedor: 'a', modelo: 'm' }], temperatura: 2 },
     ]) {
-      expect(() => lerConfiguracaoDasTarefas({ versao: 'v', tarefas: { t: tarefa } })).toThrow();
+      expect(() => lerConfiguracaoDasTarefas({ ...semTarefas, tarefas: { t: tarefa } })).toThrow();
     }
+  });
+
+  it('recusa modelo de tarefa sem preço (o custo do painel ficaria subestimado)', () => {
+    const tarefa = {
+      descricao: 'x',
+      maxTokensSaida: 1,
+      cachePrompt: false,
+      lote: false,
+      modelos: [{ provedor: 'a', modelo: 'sem-preco' }],
+    };
+    expect(() => lerConfiguracaoDasTarefas({ ...semTarefas, tarefas: { t: tarefa } })).toThrow(
+      'Modelo sem-preco sem preço',
+    );
   });
 });
 
 describe('guardrails na plataforma (HU58)', () => {
   const comGuardrails = lerConfiguracaoDasTarefas({
     versao: 'teste',
+    fonteDosPrecos: 'tabela fictícia',
+    precos: { 'modelo-a1': { entrada: 1, saida: 5, cacheLido: 0.1 } },
     tarefas: {
       classificar: {
         descricao: 'teste',
@@ -278,5 +308,33 @@ describe('guardrails na plataforma (HU58)', () => {
     await plataforma.executarTarefa('classificar', prompt, ComTrecho, { tenantId: 'outro' });
     expect(await contador.usoNoMes('tenant-ficticio', 'classificar', '2026-10')).toBe(36);
     expect(await contador.usoNoMes('outro', 'classificar', '2026-10')).toBe(12);
+  });
+});
+
+describe('uso e custo por chamada (HU21)', () => {
+  it('registra dia de Brasília, tarefa, modelo que respondeu, tokens e custo pelo preço de tabela', async () => {
+    const registro = new RegistroDeUsoEmMemoria();
+    // 02h UTC de 09/10 ainda é 08/10 em Brasília.
+    const relogio = new FixedClock(Instant.deIso('2026-10-09T02:00:00Z'));
+    const plataforma = new PlataformaIa(
+      configuracao,
+      new Map([
+        ['a', provedor({ 'modelo-a1': new ErroTransitorio('fora', 'a') })],
+        ['b', provedor()],
+      ]),
+      undefined,
+      { registro, relogio },
+    );
+    await plataforma.executarTarefa('classificar', prompt, Saida, CONTEXTO);
+    // Só a tentativa que respondeu: 10 entrada x 2 + 2 saída x 10 + 8 cache x 0,2 (modelo-a2).
+    expect(registro.chamadas).toEqual([
+      {
+        dia: LocalDate.de(2026, 10, 8),
+        tarefa: 'classificar',
+        modelo: 'modelo-a2',
+        uso: { tokensEntrada: 10, tokensSaida: 2, tokensCacheLidos: 8 },
+        custoUsd: (10 * 2 + 2 * 10 + 8 * 0.2) / 1_000_000,
+      },
+    ]);
   });
 });

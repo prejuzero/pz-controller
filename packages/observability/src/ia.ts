@@ -12,6 +12,7 @@ export const NOMES_METRICAS_IA = {
   fallbacks: 'pz.ia.fallbacks',
   esgotadas: 'pz.ia.tarefas_sem_modelo',
   orcamentoAlertas: 'pz.ia.orcamento.alertas',
+  orcamentoDiario: 'pz.ia.orcamento_diario.excedido',
   correcoes: 'pz.ia.correcoes',
 } as const;
 
@@ -43,6 +44,7 @@ interface InstrumentosIa {
   readonly fallbacks: Counter;
   readonly esgotadas: Counter;
   readonly orcamentoAlertas: Counter;
+  readonly orcamentoDiario: Counter;
   readonly correcoes: Counter;
 }
 
@@ -70,6 +72,9 @@ function instrumentos(): InstrumentosIa {
       }),
       orcamentoAlertas: medidor.createCounter(NOMES_METRICAS_IA.orcamentoAlertas, {
         description: 'Chamadas com uso acima de 80% do orçamento mensal da tarefa.',
+      }),
+      orcamentoDiario: medidor.createCounter(NOMES_METRICAS_IA.orcamentoDiario, {
+        description: 'Dias em que o custo estimado de IA da plataforma passou do orçamento diário.',
       }),
       correcoes: medidor.createCounter(NOMES_METRICAS_IA.correcoes, {
         description: 'Sugestões de IA corrigidas pelo advogado, por tarefa.',
@@ -157,6 +162,10 @@ export function registrarTarefaIaSemModelo(tarefa: string): void {
 
 export function registrarAlertaDeOrcamentoIa(tarefa: string): void {
   instrumentos().orcamentoAlertas.add(1, { tarefa });
+}
+
+export function registrarOrcamentoDiarioIaExcedido(): void {
+  instrumentos().orcamentoDiario.add(1);
 }
 
 export function registrarCorrecaoDeIa(tarefa: string): void {
