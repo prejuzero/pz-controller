@@ -30,6 +30,6 @@ describe('ClassificarPorRegras (HU20)', () => {
     ]);
     await expect(
       new ClassificarPorRegras(new OutboxEmMemoria(), regras).executar('qualquer'),
-    ).rejects.toThrow(/expressão regular inválida/);
+    ).rejects.toThrow(/expressão regular mal formada/);
   });
 });

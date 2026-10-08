@@ -1,3 +1,4 @@
+import { motivoDaRecusa } from './padrao-seguro.js';
 import { extrairPrazosCitados, type PrazoCitado } from './prazo-citado.js';
 import { evidencia, normalizar, type Evidencia } from './texto.js';
 
@@ -26,21 +27,17 @@ export type ResultadoDasRegras =
     }
   | { readonly situacao: 'nenhuma'; readonly prazoCitado?: PrazoCitado };
 
-/** Padrão inválido é erro de cadastro: recusa antes de a regra entrar em uso. */
+/**
+ * Padrão inválido ou sujeito a ReDoS é erro de cadastro: recusa antes de a regra entrar em uso
+ * (PZ-316, ver padrao-seguro.ts).
+ */
 export function padraoValido(padrao: string): boolean {
-  try {
-    // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- padrão vem do cadastro de regras do curador, não do usuário; checagem de ReDoS no cadastro é pendência
-    new RegExp(padrao, 'g');
-    return true;
-  } catch {
-    // Expressão mal formada: o chamador recusa a regra (não é falha silenciosa).
-    return false;
-  }
+  return motivoDaRecusa(padrao) === undefined;
 }
 
 function evidenciasDa(regra: RegraRapida, teor: string, texto: string): Evidencia[] {
   return regra.padroes.flatMap((padrao) =>
-    // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- padrão do cadastro do curador, já validado por padraoValido
+    // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- padrão do cadastro do curador, já recusado se mal formado ou sujeito a ReDoS (padraoValido)
     [...texto.matchAll(new RegExp(padrao, 'g'))]
       .filter((m) => m[0].length > 0)
       .map((m) => evidencia(teor, m.index, m.index + m[0].length)),

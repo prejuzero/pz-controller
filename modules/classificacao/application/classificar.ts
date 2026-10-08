@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-import { classificarPorRegras, padraoValido } from '../domain/regras.js';
+import { motivoDaRecusa } from '../domain/padrao-seguro.js';
+import { classificarPorRegras } from '../domain/regras.js';
 
 import type { RegraRapida, ResultadoDasRegras } from '../domain/regras.js';
 import type { UnidadeDeTrabalho } from '@pz/kernel';
@@ -14,11 +15,18 @@ const Regra = z.object({
   codigo: z.string().min(1),
   versao: z.number().int().min(1),
   tipoAto: z.string().min(1),
-  padroes: z.array(z.string().refine(padraoValido, 'expressão regular inválida')).min(1),
+  padroes: z
+    .array(
+      z.string().superRefine((padrao, ctx) => {
+        const motivo = motivoDaRecusa(padrao);
+        if (motivo !== undefined) ctx.addIssue({ code: 'custom', message: motivo });
+      }),
+    )
+    .min(1),
   confianca: z.number().min(0).max(1),
 });
 
-/** Regras lidas do banco, validadas: padrão inválido lança (nunca é ignorado em silêncio). */
+/** Regras lidas do banco, validadas: padrão inválido ou sujeito a ReDoS lança (nunca é ignorado em silêncio). */
 export function regrasValidas(regras: readonly RegraRapida[]): RegraRapida[] {
   return z.array(Regra).parse(regras);
 }
