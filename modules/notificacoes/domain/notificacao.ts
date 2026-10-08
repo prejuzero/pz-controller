@@ -11,6 +11,8 @@ export const TIPOS_DE_NOTIFICACAO = [
   'ciencia-confirmada',
   'email-rejeitado',
   'envio-manual',
+  'fonte-degradada',
+  'fonte-restabelecida',
 ] as const;
 export type TipoDeNotificacao = (typeof TIPOS_DE_NOTIFICACAO)[number];
 export type Canal = (typeof CANAIS)[number];

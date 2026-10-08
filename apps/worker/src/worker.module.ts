@@ -18,6 +18,7 @@ import {
   VerificarIntegridade,
 } from '@pz/auditoria';
 import {
+  AdvogadosPostgres,
   ExportacaoDoCadastroPostgres,
   ObterOuCriarProcesso,
   ProcessosPostgres,
@@ -45,13 +46,18 @@ import {
   EmailsDosUsuariosPostgres,
   EnviarAvisosDeSeguranca,
   SessoesRedis,
+  UsuariosComPermissaoPostgres,
 } from '@pz/identidade';
 import { RegistroDeAdaptadores } from '@pz/integracoes';
 import { SystemClock } from '@pz/kernel';
 import {
+  AvisarSituacaoDaFonte,
+  ConsentimentosPostgres,
   ExportacaoDasNotificacoesPostgres,
   EnviarNotificacao,
+  Notificar,
   NotificacoesPostgres,
+  PreferenciasPostgres,
   RegistrarDesfechosDeEntrega,
   SupressaoPostgres,
 } from '@pz/notificacoes';
@@ -125,6 +131,7 @@ import type { ArmazemDoPainel } from '@pz/administracao';
 import type { DestinoWorm } from '@pz/auditoria';
 import type { CacheDeDiasNaoUteis } from '@pz/calendario';
 import type { ClassificadorIa } from '@pz/classificacao';
+import type { Transacao } from '@pz/db';
 import type { ArmazenamentoArquivos, FontePublicacoes, ProvedorEmail } from '@pz/integracoes';
 import type { Clock, OutboxEmMemoria, Uuid } from '@pz/kernel';
 import type { EncerradorDeSessoes } from '@pz/privacidade';
@@ -361,6 +368,33 @@ function arquivosDoAmbiente(ambiente: AmbienteWorker, relogio: Clock): Armazenam
       tiposPermitidos: ['application/json', 'text/csv'],
       tamanhoMaximoBytes: 100 * 1024 * 1024,
     },
+    relogio,
+  );
+}
+
+/**
+ * Pedido de notificações no banco (HU30). Destinos pelas APIs públicas, como na API: e-mail da
+ * conta (identidade) e cópias do advogado (cadastro).
+ */
+function notificarDoBanco(relogio: Clock): Notificar<Transacao> {
+  const contas = new EmailsDosUsuariosPostgres();
+  const advogados = new AdvogadosPostgres(relogio);
+  return new Notificar(
+    new NotificacoesPostgres(),
+    new PreferenciasPostgres(),
+    {
+      emails: async (tx, usuarioId) => {
+        const principal = await contas.emailDe(tx, usuarioId);
+        const advogado = await advogados.buscarPorUsuario(tx, usuarioId);
+        return {
+          ...(principal === undefined ? {} : { principal }),
+          copias: advogado?.estado.emailsAdicionais ?? [],
+        };
+      },
+    },
+    new SupressaoPostgres(),
+    new ConsentimentosPostgres(),
+    new OutboxPostgres(),
     relogio,
   );
 }
@@ -649,6 +683,19 @@ export class WorkerModule {
             relogio,
           );
         },
+      },
+      {
+        provide: AvisarSituacaoDaFonte,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new AvisarSituacaoDaFonte(
+            notificarDoBanco(relogio),
+            {
+              // Quem administra a equipe responde pelo escritório (PZ-311).
+              usuarios: (tx) => new UsuariosComPermissaoPostgres().listar(tx, 'usuarios:gerir'),
+            },
+            ambiente.PORTAL_URL,
+          ),
       },
       {
         provide: PublicacaoDaSaudeDasIntegracoes,

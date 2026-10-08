@@ -7,6 +7,8 @@ export {
   PedidoDeNotificacao,
   RegistrarDesfechosDeEntrega,
 } from './application/notificacoes.js';
+export { AvisarSituacaoDaFonte } from './application/avisos-da-fonte.js';
+export type { SituacaoDaFonte } from './application/avisos-da-fonte.js';
 export type {
   AvisosDeEntrega,
   ResultadoDoPedido,
@@ -21,6 +23,7 @@ export type {
   RepositorioDeConsentimentos,
   RepositorioDeDestinosPush,
   RepositorioDeNotificacoes,
+  ResponsaveisDoEscritorio,
 } from './application/portas.js';
 export {
   CANAIS_COM_CONSENTIMENTO,
