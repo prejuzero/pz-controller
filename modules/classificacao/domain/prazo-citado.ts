@@ -31,10 +31,24 @@ const PADROES = [
   new RegExp(`\\b${N}\\s+${UNIDADE}\\b`, 'g'),
   // "prazo de 15 (quinze)" sem unidade
   new RegExp(
-    `\\bprazo\\s+de\\s+${N}(?:\\s*\\(\\s*${N}\\s*\\))?(?!\\s*\\(|\\s+(?:dias?|horas?|mes|meses|anos?)\\b)`,
+    `\\bprazo\\s+de\\s+${N}\\b(?:\\s*\\(\\s*${N}\\s*\\))?(?!\\s*\\(|\\s+(?:dias?|horas?|mes|meses|anos?)\\b)`,
     'g',
   ),
 ];
+
+// Falsos positivos conhecidos (PZ-155): prazo já vencido, tempo passado, pena, idade. Não são
+// prazo para a parte; descartá-los evita sugerir prazo inexistente.
+const ESGOTADO = '(?:decorrid|transcorrid|escoad|esgotad|expirad|findo|finda)';
+const DEPOIS_DESCARTA = new RegExp(
+  `^(?:-multa|\\s*,?\\s*(?:ja\\s+)?${ESGOTADO}|(?:\\s+e\\s+[^.;,]{1,30}?)?\\s+de\\s+(?:reclusao|detencao|prisao|idade)\\b)`,
+);
+const ANTES_DESCARTA = new RegExp(
+  `(?:\\bha\\s+|\\b(?:decorreu|transcorreu|escoou|esgotou|expirou)\\b[^.;]{0,20}?\\bo\\s+prazo\\s+de\\s+)$`,
+);
+
+const descartavel = (texto: string, inicio: number, fim: number): boolean =>
+  DEPOIS_DESCARTA.test(texto.slice(fim, fim + 60)) ||
+  ANTES_DESCARTA.test(texto.slice(Math.max(0, inicio - 60), inicio));
 
 const valor = (texto: string | undefined): number | undefined =>
   texto === undefined ? undefined : /^\d+$/.test(texto) ? Number(texto) : lerNumeral(texto);
@@ -57,7 +71,7 @@ export function extrairPrazosCitados(teor: string): PrazoCitado[] {
     for (const m of texto.matchAll(padrao)) {
       const inicio = m.index;
       const fim = inicio + m[0].length;
-      if (ocupado(inicio, fim)) continue;
+      if (ocupado(inicio, fim) || descartavel(texto, inicio, fim)) continue;
       const implicita = indice === 2;
       const a = valor(m[1]);
       const b = indice === 1 ? undefined : valor(m[2]);

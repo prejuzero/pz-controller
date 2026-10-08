@@ -18,3 +18,9 @@ Classificação das publicações (HU20, HU21; ADR-008). A IA nunca devolve data
 ## Prazo citado
 
 Lê "15 (quinze) dias", "quinze (15) dias", "cinco dias úteis", "48 horas", "2 (dois) meses". Unidade ausente vira `dias` com `unidadeImplicita`; algarismo e extenso divergentes viram o **menor** valor com `divergente` (na dúvida, a data mais cedo; CLAUDE.md, seção 4.4). Quem decide a contagem é o motor.
+
+Falsos positivos descartados: prazo já vencido ("prazo de 15 dias já decorrido", "decorreu o prazo de 5 dias"), tempo passado ("há 15 dias"), pena ("10 dias-multa", "2 anos de reclusão") e idade ("70 anos de idade"). "Sob pena de prisão" depois do prazo não descarta.
+
+## Qualidade (PZ-155)
+
+`domain/corpus.test.ts` traz o corpus fictício de frases (numéricas, por extenso, mistas e falsos positivos) com o trecho exato esperado. Medição em 08/10/2026: prazo citado com 35 frases, precisão 100% e revocação 100%; regras de exemplo com 6 de 10 frases classificadas sem IA e precisão 100% (meta ≥ 99%). A precisão das regras reais da curadoria sobre teores anonimizados é medida no conjunto de avaliação da HU22.
