@@ -79,6 +79,19 @@ export class CapturaEmMemoria
     );
   }
 
+  sonda(): Promise<AlvoDevido | undefined> {
+    const [alvo] = [...this.alvos.values()]
+      .filter((a) => a.ativo && this.assinaturas.some((s) => s.alvoId === a.id))
+      .sort((x, y) => (x.proximaExecucao?.epochMs ?? 0) - (y.proximaExecucao?.epochMs ?? 0));
+    if (alvo === undefined) return Promise.resolve(undefined);
+    return Promise.resolve({
+      id: alvo.id,
+      tipo: alvo.tipo,
+      valor: alvo.valor,
+      ...(alvo.ultimaJanelaFim === undefined ? {} : { ultimaJanelaFim: alvo.ultimaJanelaFim }),
+    });
+  }
+
   travar(_tx: TransacaoEmMemoria, alvoId: Uuid): Promise<AlvoParaEntrega | undefined> {
     const alvo = this.alvos.get(alvoId);
     if (alvo === undefined) return Promise.resolve(undefined);

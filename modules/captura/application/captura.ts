@@ -111,11 +111,17 @@ export interface CapturaPlanejada {
 export interface OpcoesDaCaptura {
   /** Dias para trás na primeira captura de um alvo novo. */
   readonly diasIniciais: number;
+  /** Fonte cuja saúde decide a sonda (HU19). */
+  readonly fonte: string;
 }
 
 /**
  * Planejamento (HU17): os alvos ativos com assinante e fora do recuo de falhas, cada um com a
  * janela desde a última captura. Quem enfileira (com jitter) é o job; aqui só a decisão.
+ *
+ * Sonda (HU19): com a fonte degradada, todos os alvos podem estar em recuo e ninguém perceberia a
+ * volta da fonte até o recuo vencer (até 6 h). Cada rodada inclui então o alvo em recuo mais
+ * antigo; o primeiro sucesso restabelece a fonte e antecipa os demais.
  */
 export class PlanejarCaptura<Transacao> {
   constructor(
@@ -128,7 +134,15 @@ export class PlanejarCaptura<Transacao> {
   async executar(): Promise<CapturaPlanejada[]> {
     const agora = this.relogio.agora();
     const hoje = LocalDate.doInstante(agora, FUSO);
-    const devidos = await this.unidade.executar((tx) => this.captura.devidos(tx, agora));
+    const devidos = await this.unidade.executar(async (tx) => {
+      const lista = await this.captura.devidos(tx, agora);
+      const fonte = await this.captura.estadoDaFonte(tx, this.opcoes.fonte);
+      if (fonte.situacao !== 'degradada') return lista;
+      const sonda = await this.captura.sonda(tx);
+      return sonda === undefined || lista.some((a) => a.id === sonda.id)
+        ? lista
+        : [...lista, sonda];
+    });
     return devidos.map((alvo) => {
       const janela = janelaDaCaptura(alvo.ultimaJanelaFim, hoje, this.opcoes.diasIniciais);
       return {

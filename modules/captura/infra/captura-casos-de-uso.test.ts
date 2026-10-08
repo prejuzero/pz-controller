@@ -73,6 +73,7 @@ beforeEach(() => {
   manter = new ManterAssinaturas(repo, relogio);
   planejar = new PlanejarCaptura(outbox, repo, relogio, {
     diasIniciais: 7,
+    fonte: 'falsa',
   });
   alertas = [];
   executar = new ExecutarCaptura(outbox, repo, fonte, outbox, relogio, 'falsa', alertasFalsos());
@@ -238,7 +239,10 @@ describe('saúde da fonte e recaptura (HU19)', () => {
 
   it('ao restabelecer: antecipa os alvos em recuo, avisa e a janela cobre a indisponibilidade', async () => {
     const relogioProprio = new FixedClock(Instant.deIso('2026-10-01T12:00:00Z'));
-    const planejar2 = new PlanejarCaptura(outbox, repo, relogioProprio, { diasIniciais: 7 });
+    const planejar2 = new PlanejarCaptura(outbox, repo, relogioProprio, {
+      diasIniciais: 7,
+      fonte: 'falsa',
+    });
     const executar2 = new ExecutarCaptura(
       outbox,
       repo,

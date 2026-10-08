@@ -472,6 +472,7 @@ export class WorkerModule {
             relogio,
             {
               diasIniciais: ambiente.CAPTURA_DIAS_INICIAIS,
+              fonte: ambiente.CAPTURA_FONTE,
             },
           ),
       },
