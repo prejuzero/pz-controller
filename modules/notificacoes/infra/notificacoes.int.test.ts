@@ -122,6 +122,17 @@ describe('notificações no PostgreSQL (HU30)', () => {
     expect(await noTenant(OUTRO, (tx) => tx.notificacao.count())).toBe(0);
   });
 
+  it('lista as supressões globais em ordem de e-mail (HU39)', async () => {
+    const lista = await noTenant(OUTRO, (tx) => new SupressaoPostgres().listar(tx, { limite: 10 }));
+    expect(lista).toContainEqual(
+      expect.objectContaining({ email: 'rejeitou@exemplo.invalid', motivo: 'bounce' }),
+    );
+    const apos = await noTenant(OUTRO, (tx) =>
+      new SupressaoPostgres().listar(tx, { limite: 10, apos: 'rejeitou@exemplo.invalid' }),
+    );
+    expect(apos.every((s) => s.email > 'rejeitou@exemplo.invalid')).toBe(true);
+  });
+
   it('preferência desativada e notificação sem DELETE', async () => {
     await noTenant(TENANT, (tx) =>
       tx.preferenciaNotificacao.create({

@@ -69,6 +69,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/filas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contagem de jobs por fila do catálogo, com a DLQ. */
+        get: operations["resumirFilas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/filas/{fila}/dlq/{jobId}/reprocessar": {
         parameters: {
             query?: never;
@@ -99,6 +116,40 @@ export interface paths {
         post: operations["iniciarImpersonacao"];
         /** Encerra a impersonação em curso (sem efeito se não houver). */
         delete: operations["encerrarImpersonacao"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/integracoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Estado de cada adaptador e o histórico recente de falhas. */
+        get: operations["consultarIntegracoes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/rejeicoes-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista os e-mails que não recebem mais envios (bounce ou spam), por e-mail. */
+        get: operations["listarRejeicoesDeEmail"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1299,10 +1350,45 @@ export interface components {
             /** @description Nulo quando não há mais páginas. */
             proximoCursor: string | null;
         };
+        PaginaDeRejeicoes: {
+            itens: {
+                email: string;
+                /** @enum {string} */
+                motivo: "bounce" | "spam";
+                /** Format: date-time */
+                criadaEm: string;
+            }[];
+            /** @description Nulo quando não há mais páginas. */
+            proximoCursor: string | null;
+        };
         PaginaDeTenants: {
             itens: components["schemas"]["TenantAdministrado"][];
             /** @description Nulo quando não há mais páginas. */
             proximoCursor: string | null;
+        };
+        PainelDeIntegracoes: {
+            /** @description Só adaptadores de instâncias que informaram nos últimos 2 minutos. */
+            adaptadores: {
+                adaptador: string;
+                /**
+                 * @description Pior estado entre as instâncias do worker.
+                 * @enum {string}
+                 */
+                estado: "operacional" | "degradado" | "indisponivel";
+                instancias: number;
+                ultimoSucesso: string | null;
+                ultimaFalha: string | null;
+                /** @description Mensagem da última falha, sem dados do processo. */
+                erro: string | null;
+            }[];
+            /** @description Falhas mais recentes primeiro (até 50). */
+            falhas: {
+                adaptador: string;
+                instancia: string;
+                /** Format: date-time */
+                em: string;
+                erro: string;
+            }[];
         };
         PedidoDeAssinatura: {
             plano?: string | null;
@@ -1593,6 +1679,17 @@ export interface components {
             }[];
             /** @description Rascunhos gravados (vazio na prévia). */
             propostos: components["schemas"]["EventoDoCalendario"][];
+        };
+        ResumoDasFilas: {
+            filas: {
+                fila: string;
+                aguardando: number;
+                ativos: number;
+                atrasados: number;
+                falhos: number;
+                /** @description Jobs na DLQ da fila. */
+                mortos: number;
+            }[];
         };
         SegundoFatorAtivado: {
             sessao: components["schemas"]["SessaoAtual"];
@@ -2080,6 +2177,53 @@ export interface operations {
             };
         };
     };
+    resumirFilas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResumoDasFilas"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
     reprocessarJobMorto: {
         parameters: {
             query?: never;
@@ -2252,6 +2396,114 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    consultarIntegracoes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PainelDeIntegracoes"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarRejeicoesDeEmail: {
+        parameters: {
+            query?: {
+                /** @description Cursor devolvido na página anterior. */
+                cursor?: string;
+                /** @description Quantidade de itens por página. */
+                limite?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginaDeRejeicoes"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
             };
             /** @description Não autenticado. */
             401: {

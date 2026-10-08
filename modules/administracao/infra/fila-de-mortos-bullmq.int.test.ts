@@ -1,8 +1,11 @@
+import { Instant } from '@pz/kernel';
 import { RedisContainer } from '@testcontainers/redis';
 import { Queue, Worker } from 'bullmq';
+import { Redis } from 'ioredis';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { FilaDeMortosBullMq } from './fila-de-mortos-bullmq.js';
+import { PainelRedis } from './painel-redis.js';
 
 import type { StartedRedisContainer } from '@testcontainers/redis';
 import type { ConnectionOptions } from 'bullmq';
@@ -91,5 +94,38 @@ describe('DLQ no BullMQ (HU07)', () => {
     const nomes = mortos.todas().map((fila) => fila.name);
     expect(nomes).toContain('notificacoes');
     expect(nomes).toContain('notificacoes-dlq');
+  });
+});
+
+describe('painel do administrador no Redis (HU39)', () => {
+  it('resumo por fila conta falhos e mortos da DLQ', async () => {
+    await matar('job-do-resumo');
+    const notificacoes = (await mortos.resumo()).find((r) => r.fila === 'notificacoes');
+    expect(notificacoes?.falhos).toBeGreaterThanOrEqual(1);
+    expect(notificacoes?.mortos).toBeGreaterThanOrEqual(1);
+  });
+
+  it('grava e lê retratos e falhas, validando o que vem do Redis', async () => {
+    const redis = new Redis(conteiner.getConnectionUrl());
+    try {
+      const painel = new PainelRedis(redis);
+      const em = Instant.deIso('2026-10-08T12:00:00Z');
+      const retrato = {
+        instancia: 'w1',
+        em,
+        situacoes: [
+          { adaptador: 'smtp', estado: 'degradado' as const, ultimaFalha: em, erro: 'x' },
+        ],
+      };
+      await painel.gravar(retrato, [{ adaptador: 'smtp', instancia: 'w1', em, erro: 'x' }]);
+      expect(await painel.retratos()).toEqual([retrato]);
+      expect(await painel.falhas(10)).toEqual([
+        { adaptador: 'smtp', instancia: 'w1', em, erro: 'x' },
+      ]);
+      await redis.hset('pz:admin:integracoes', 'w9', '{"lixo":true}');
+      await expect(painel.retratos()).rejects.toThrow('registro inválido');
+    } finally {
+      redis.disconnect();
+    }
   });
 });

@@ -4,6 +4,7 @@ import { DESCRITOR_DJEN, FontePublicacoesDjen } from '@pz/adapter-djen';
 import { ArmazenamentoS3 } from '@pz/adapter-s3';
 import { criarProvedorEmailSes, DESCRITOR_SES, WebhooksSes } from '@pz/adapter-ses';
 import { DESCRITOR_SMTP, ProvedorEmailSmtp } from '@pz/adapter-smtp';
+import { PainelRedis, PublicarSituacaoDasIntegracoes } from '@pz/administracao';
 import {
   AuditarEvento,
   CadeiaPostgres,
@@ -90,6 +91,7 @@ import {
 import { Filas } from './filas/runtime.js';
 import { ServicoDeFilas } from './filas/servico.js';
 import { ConsumidorDeAvisosDeIdentidade } from './identidade/consumidor.js';
+import { PublicacaoDaSaudeDasIntegracoes } from './integracoes/saude-das-integracoes.js';
 import { RelayDeWebhooks } from './integracoes/webhooks.js';
 import { ConsumidorDeNotificacoes } from './notificacoes/consumidor.js';
 import { processadorDeEntregas } from './notificacoes/entregas.js';
@@ -103,6 +105,7 @@ import type { AmbienteWorker } from './ambiente.js';
 import type { FonteDoRelay } from './eventos/relay.js';
 import type { ProcessadorDeWebhook } from './integracoes/webhooks.js';
 import type { DynamicModule, Provider } from '@nestjs/common';
+import type { ArmazemDoPainel } from '@pz/administracao';
 import type { DestinoWorm } from '@pz/auditoria';
 import type { CacheDeDiasNaoUteis } from '@pz/calendario';
 import type { ArmazenamentoArquivos, FontePublicacoes, ProvedorEmail } from '@pz/integracoes';
@@ -123,6 +126,8 @@ export interface OpcoesWorker {
   readonly processadoresDeWebhook?: ReadonlyMap<string, ProcessadorDeWebhook>;
   /** Provedor de e-mail no lugar do SMTP (testes). */
   readonly email?: ProvedorEmail;
+  /** Painel do administrador (HU39); nos testes, em memória. */
+  readonly painelDeIntegracoes?: ArmazemDoPainel;
   /** Destino WORM no lugar do S3 (testes). */
   readonly worm?: DestinoWorm;
   /** Cache do calendário no lugar do Redis (testes). */
@@ -215,7 +220,11 @@ function wormDoAmbiente(ambiente: AmbienteWorker, relogio: Clock): DestinoWorm {
  * E-mail pelo registro de adaptadores (resiliência, telemetria e saúde padrão, ADR-005). O
  * provedor sai de EMAIL_PROVEDOR: trocar SMTP por SES é configuração, não código (HU30).
  */
-function emailDoAmbiente(ambiente: AmbienteWorker, relogio: Clock): ProvedorEmail {
+function emailDoAmbiente(
+  ambiente: AmbienteWorker,
+  relogio: Clock,
+  registros: RegistroDeAdaptadores[],
+): ProvedorEmail {
   const registro = new RegistroDeAdaptadores(
     { padrao: { 'provedor-email': ambiente.EMAIL_PROVEDOR } },
     { relogio },
@@ -245,6 +254,7 @@ function emailDoAmbiente(ambiente: AmbienteWorker, relogio: Clock): ProvedorEmai
     );
   });
   registro.validar();
+  registros.push(registro);
   return registro.obter('provedor-email');
 }
 
@@ -252,13 +262,18 @@ function emailDoAmbiente(ambiente: AmbienteWorker, relogio: Clock): ProvedorEmai
  * Fonte de publicações pelo registro de adaptadores (resiliência, cota e saúde padrão, ADR-005).
  * O adaptador sai de CAPTURA_FONTE: trocar de fonte é configuração (HU17).
  */
-function fonteDoAmbiente(ambiente: AmbienteWorker, relogio: Clock): FontePublicacoes {
+function fonteDoAmbiente(
+  ambiente: AmbienteWorker,
+  relogio: Clock,
+  registros: RegistroDeAdaptadores[],
+): FontePublicacoes {
   const registro = new RegistroDeAdaptadores(
     { padrao: { 'fonte-publicacoes': ambiente.CAPTURA_FONTE } },
     { relogio },
   );
   registro.registrar(DESCRITOR_DJEN, () => new FontePublicacoesDjen({ relogio }));
   registro.validar();
+  registros.push(registro);
   return registro.obter('fonte-publicacoes');
 }
 
@@ -327,6 +342,12 @@ export class WorkerModule {
     const sistema = new BancoSistema({ url: ambiente.DATABASE_URL_SISTEMA, maxConexoes: 4 });
     const outboxPostgres = new OutboxPostgres();
     const emMemoria = opcoes.outbox;
+    // Registros de adaptadores criados nesta instância: a saúde deles vai para o painel (HU39).
+    const registros: RegistroDeAdaptadores[] = [];
+    // Um só provedor de e-mail por instância (avisos de segurança e notificações compartilham).
+    let email: ProvedorEmail | undefined;
+    const emailUnico = (relogio: Clock) =>
+      opcoes.email ?? (email ??= emailDoAmbiente(ambiente, relogio, registros));
 
     const provedores: Provider[] = [
       { provide: REDIS, useValue: redis },
@@ -483,7 +504,7 @@ export class WorkerModule {
           new ExecutarCaptura(
             sistema.unidade('captura: entrega aos tenants assinantes'),
             new CapturaPostgres(),
-            opcoes.fonteDePublicacoes ?? fonteDoAmbiente(ambiente, relogio),
+            opcoes.fonteDePublicacoes ?? fonteDoAmbiente(ambiente, relogio, registros),
             outboxPostgres,
             relogio,
             ambiente.CAPTURA_FONTE,
@@ -517,7 +538,7 @@ export class WorkerModule {
         inject: [RELOGIO],
         useFactory: (relogio: Clock) =>
           new EnviarAvisosDeSeguranca(
-            opcoes.email ?? emailDoAmbiente(ambiente, relogio),
+            emailUnico(relogio),
             new EmailsDosUsuariosPostgres(),
             new CifraAesGcm(ambiente.CHAVE_CIFRAGEM),
             ambiente.PORTAL_URL,
@@ -527,7 +548,7 @@ export class WorkerModule {
         provide: EnviarNotificacao,
         inject: [RELOGIO],
         useFactory: (relogio: Clock) => {
-          const email = opcoes.email ?? emailDoAmbiente(ambiente, relogio);
+          const email = emailUnico(relogio);
           return new EnviarNotificacao(
             new NotificacoesPostgres(),
             {
@@ -545,6 +566,18 @@ export class WorkerModule {
             relogio,
           );
         },
+      },
+      {
+        provide: PublicacaoDaSaudeDasIntegracoes,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new PublicacaoDaSaudeDasIntegracoes(
+            new PublicarSituacaoDasIntegracoes(
+              opcoes.painelDeIntegracoes ?? new PainelRedis(redis),
+              relogio,
+            ),
+            registros,
+          ),
       },
     ];
     return { module: WorkerModule, imports: [DiscoveryModule], providers: provedores };

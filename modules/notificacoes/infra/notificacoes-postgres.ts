@@ -7,6 +7,7 @@ import type {
   PreferenciasDeNotificacao,
   RepositorioDeNotificacoes,
 } from '../application/portas.js';
+import type { ConsultaDeSupressoes, Supressao } from '../application/supressoes.js';
 import type { Canal, TipoDeNotificacao } from '../domain/notificacao.js';
 import type { Transacao } from '@pz/db';
 import type { Uuid } from '@pz/kernel';
@@ -128,7 +129,26 @@ export class PreferenciasPostgres implements PreferenciasDeNotificacao<Transacao
   }
 }
 
-export class SupressaoPostgres implements ListaDeSupressao<Transacao> {
+export class SupressaoPostgres
+  implements ListaDeSupressao<Transacao>, ConsultaDeSupressoes<Transacao>
+{
+  async listar(
+    tx: Transacao,
+    pagina: { readonly limite: number; readonly apos?: string },
+  ): Promise<Supressao[]> {
+    const linhas = await tx.supressao.findMany({
+      ...(pagina.apos === undefined ? {} : { where: { email: { gt: pagina.apos } } }),
+      orderBy: { email: 'asc' },
+      take: pagina.limite,
+    });
+    return linhas.map((l) => ({
+      email: l.email,
+      // O banco só aceita estes dois (CHECK supressao_motivo).
+      motivo: l.motivo === 'spam' ? 'spam' : 'bounce',
+      criadaEm: Instant.deEpochMs(l.criadaEm.getTime()),
+    }));
+  }
+
   async suprimidos(tx: Transacao, emails: readonly string[]): Promise<ReadonlySet<string>> {
     if (emails.length === 0) return new Set();
     const linhas = await tx.supressao.findMany({

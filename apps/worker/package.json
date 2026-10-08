@@ -20,6 +20,7 @@
     "@pz/adapter-s3": "workspace:*",
     "@pz/adapter-ses": "workspace:*",
     "@pz/adapter-smtp": "workspace:*",
+    "@pz/administracao": "workspace:*",
     "@pz/auditoria": "workspace:*",
     "@pz/cadastro": "workspace:*",
     "@pz/calendario": "workspace:*",

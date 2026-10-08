@@ -61,3 +61,10 @@ export {
   SupressaoPostgres,
 } from './infra/notificacoes-postgres.js';
 export { ExportacaoDasNotificacoesPostgres } from './infra/exportacao-postgres.js';
+export { ListarSupressoes } from './application/supressoes.js';
+export type {
+  ConsultaDeSupressoes,
+  PaginaDeSupressoes,
+  Supressao,
+} from './application/supressoes.js';
+export { SupressoesEmMemoria } from './infra/em-memoria.js';
