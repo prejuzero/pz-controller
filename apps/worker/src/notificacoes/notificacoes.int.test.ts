@@ -5,7 +5,7 @@ import { carregarAmbiente } from '@pz/config/env';
 import { Banco, executarNoTenant, OutboxPostgres, WebhooksPostgres } from '@pz/db';
 import { subirBancoDeTeste } from '@pz/db/teste';
 import { EmailsDosUsuariosPostgres } from '@pz/identidade';
-import { gerarUuidV7, SystemClock } from '@pz/kernel';
+import { FixedClock, gerarUuidV7, Instant, SystemClock } from '@pz/kernel';
 import {
   ConsultarAvisosDeEntrega,
   Notificar,
@@ -322,7 +322,9 @@ describe('QA das notificações por e-mail (HU30, PZ-195)', () => {
         },
       },
       new SupressaoPostgres(),
-      relogio,
+      // Relógio fixo perto dos eventos do webhook (07/10/2026): com o relógio real, os eventos
+      // saíam da janela de 7 dias do aviso e o teste quebrava a partir de 14/10/2026.
+      new FixedClock(Instant.deIso('2026-10-07T13:00:00.000Z')),
     );
     expect(await avisos.executar(ANA, false)).toEqual({
       emailsRejeitados: ['ana@exemplo.invalid'],
