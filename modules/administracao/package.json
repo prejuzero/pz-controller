@@ -24,12 +24,12 @@
   },
   "devDependencies": {
     "@pz/config": "workspace:*",
-    "@testcontainers/redis": "12.2.0",
-    "@types/node": "24.19.1",
-    "@vitest/coverage-v8": "5.0.3",
+    "@testcontainers/redis": "12.2.1",
+    "@types/node": "24.19.2",
+    "@vitest/coverage-v8": "5.0.4",
     "eslint": "10.12.0",
     "ioredis": "6.0.0",
     "typescript": "6.0.3",
-    "vitest": "5.0.3"
+    "vitest": "5.0.4"
   }
 }
