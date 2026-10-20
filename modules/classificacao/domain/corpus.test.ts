@@ -97,7 +97,7 @@ const REGRAS: RegraRapida[] = [
     codigo: 'ex-sentenca',
     versao: 1,
     tipoAto: 'sentenca',
-    padroes: ['\\bjulgo\\s+(?:im)?procedente', '\\bjulgo\\s+extinto'],
+    padroes: ['\\bjulgo\\s{1,5}(?:im)?procedente', '\\bjulgo\\s{1,5}extinto'],
     confianca: 0.95,
   },
   {

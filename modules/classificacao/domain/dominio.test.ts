@@ -202,7 +202,7 @@ describe('regras rápidas (HU20)', () => {
       codigo: 'v',
       versao: 1,
       tipoAto: 'x',
-      padroes: ['x*'],
+      padroes: ['x{0,3}'],
       confianca: 1,
     };
     expect(classificarPorRegras('abc', [vazio])).toEqual({ situacao: 'nenhuma' });
