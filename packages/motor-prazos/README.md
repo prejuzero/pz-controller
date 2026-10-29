@@ -6,12 +6,13 @@ Motor puro de cálculo de prazos (ADR-007): sem IO, sem relógio e sem IA. Só i
 
 ## Peças
 
-| Arquivo         | O que faz                                                                                                                                                                       |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `modelo.ts`     | Entrada (ramo, meio, data de referência, prazo da tabela, condições, fuso do juízo, calendário) e saída (`calculado` com memória de cálculo ou `a-confirmar` com o motivo)      |
-| `calendario.ts` | Interface `CalendarioForense`: o módulo calendario entrega as ocorrências da jurisdição; o motor decide o efeito (`sem-expediente`, `suspensao-de-prazos`, `indisponibilidade`) |
-| `dias.ts`       | Aritmética: critérios de contagem (dias úteis com sábado e domingo fora, CPC, art. 216; dias corridos) e contagem com registro de cada dia desconsiderado                       |
-| `regras.ts`     | `calcularPrazo`: RN01 a RN08 aprovadas pela curadoria (V1 e V2), com fundamento de cada passo e alternativas quando a regra deixa uma decisão em aberto                         |
+| Arquivo         | O que faz                                                                                                                                                                                    |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `modelo.ts`     | Entrada (ramo, meio, data de referência, prazo da tabela, condições, fuso do juízo, calendário) e saída (`calculado` com memória de cálculo ou `a-confirmar` com o motivo)                   |
+| `calendario.ts` | Interface `CalendarioForense`: o módulo calendario entrega as ocorrências da jurisdição; o motor decide o efeito (`sem-expediente`, `suspensao-de-prazos`, `indisponibilidade`)              |
+| `dias.ts`       | Aritmética: critérios de contagem (dias úteis com sábado e domingo fora, CPC, art. 216; dias corridos) e contagem com registro de cada dia desconsiderado                                    |
+| `memoria.ts`    | `serializarResultado` (JSON canônico: mesma entrada, mesmos bytes; para gravar no prazo e comparar em recálculos) e `formatarMemoria` (memória em português para portal, e-mail e relatório) |
+| `regras.ts`     | `calcularPrazo`: RN01 a RN08 aprovadas pela curadoria (V1 e V2), com fundamento de cada passo e alternativas quando a regra deixa uma decisão em aberto                                      |
 
 ## Estado (HU14)
 
@@ -33,5 +34,5 @@ Ficam "a confirmar" até nova resposta da curadoria: 10º dia do portal em dia n
 
 A suspensão de 20/12 a 20/01 é regra do motor (RN02): o módulo calendario não deve entregar esses dias como `suspensao-de-prazos` nacional, só os atos próprios de cada tribunal.
 
-- PZ-134: memória de cálculo completa e versionamento.
+- PZ-134: memória de cálculo completa e versionamento. O resultado traz `fimDoPrazo` (24h do vencimento no fuso do juízo, CPC, art. 213, parágrafo único; ADR-013), `avisos` (feriados locais não verificados, fuso diferente de Brasília, alternativas e alerta da linha da tabela) e `versaoDoMotor`, que muda a cada alteração de regra ou de saída.
 - PZ-135: casos com datas reais assinados pela curadoria e teste de mutação (Stryker).

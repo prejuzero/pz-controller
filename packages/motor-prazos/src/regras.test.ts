@@ -116,7 +116,10 @@ describe('casos sem cálculo automático (CLAUDE.md, seção 4.4)', () => {
   });
 
   it('calendário que nunca deixa contar vira "a confirmar"', () => {
-    const tudoSuspenso = { ocorrencias: () => [suspensao('2027-03-01')] };
+    const tudoSuspenso = {
+      ocorrencias: () => [suspensao('2027-03-01')],
+      feriadosLocaisVerificados: true,
+    };
     const r = calcularPrazo(entrada({ calendario: tudoSuspenso }));
     expect(r).toMatchObject({ situacao: 'a-confirmar', motivo: 'calendario-esgotado' });
   });
@@ -124,6 +127,7 @@ describe('casos sem cálculo automático (CLAUDE.md, seção 4.4)', () => {
   // Calendário (cadastro errado) que fecha tudo a partir de uma data: cada etapa vira "a confirmar".
   const aPartirDe = (inicio: string, gerar: (iso: string) => OcorrenciaDatada) => ({
     ocorrencias: (data: LocalDate) => (data.ehAntesDe(d(inicio)) ? [] : [gerar(data.paraIso())]),
+    feriadosLocaisVerificados: true,
   });
   it.each([
     ['publicação (DJEN)', entrada({ calendario: aPartirDe('2027-03-02', feriado) })],

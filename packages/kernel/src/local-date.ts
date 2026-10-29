@@ -1,7 +1,7 @@
 import { Validacao } from './erros.js';
+import { Instant } from './instant.js';
 import { err, ok } from './result.js';
 
-import type { Instant } from './instant.js';
 import type { Result } from './result.js';
 
 export const DiaDaSemana = {
@@ -122,6 +122,44 @@ export class LocalDate {
     }).formatToParts(new Date(instante.epochMs));
     const valor = (tipo: string) => Number(partes.find((parte) => parte.type === tipo)?.value);
     return LocalDate.de(valor('year'), valor('month'), valor('day'));
+  }
+
+  /**
+   * Primeiro instante deste dia no fuso IANA. O prazo que vence neste dia termina às 24h do
+   * juízo, isto é, em `vencimento.maisDias(1).inicioNoFuso(fuso)` (CPC, art. 213, parágrafo único;
+   * ADR-013). Com horário de verão que começa à meia-noite, o dia começa à 01h.
+   */
+  inicioNoFuso(fuso: string): Instant {
+    const formato = new Intl.DateTimeFormat('en-US', {
+      timeZone: fuso,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+    });
+    const relogioDeParede = (epochMs: number) => {
+      const partes = formato.formatToParts(new Date(epochMs));
+      const valor = (tipo: string) => Number(partes.find((parte) => parte.type === tipo)?.value);
+      return Date.UTC(
+        valor('year'),
+        valor('month') - 1,
+        valor('day'),
+        valor('hour'),
+        valor('minute'),
+        valor('second'),
+      );
+    };
+    const meiaNoite = Date.UTC(this.ano, this.mes - 1, this.dia);
+    // Dois palpites: com o deslocamento antes e depois de uma eventual mudança de horário.
+    const antes = meiaNoite - (relogioDeParede(meiaNoite) - meiaNoite);
+    const depois = meiaNoite - (relogioDeParede(antes) - antes);
+    const doDia = [antes, depois].filter((epochMs) =>
+      LocalDate.doInstante(Instant.deEpochMs(epochMs), fuso).igual(this),
+    );
+    return Instant.deEpochMs(Math.min(...doDia));
   }
 
   maisDias(quantidade: number): LocalDate {

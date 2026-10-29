@@ -1,6 +1,6 @@
 import type { CalendarioForense } from './calendario.js';
 import type { DiaDesconsiderado } from './dias.js';
-import type { LocalDate } from '@pz/kernel';
+import type { Instant, LocalDate } from '@pz/kernel';
 
 /**
  * Ramos com contagem própria (CLAUDE.md, seção 4.5). `juizados` é o juizado especial cível;
@@ -52,6 +52,8 @@ export interface PrazoDaTabela {
   /** Versão da tabela usada, gravada no prazo (ADR-007). */
   readonly versao: string;
   readonly dobro: PoliticaDeDobro;
+  /** "Alerta ao advogado" da linha da tabela (V2, aba 9), repassado como aviso. */
+  readonly alerta?: string;
 }
 
 export interface Condicoes {
@@ -109,10 +111,15 @@ export interface MemoriaDeCalculo {
   readonly ciencia?: LocalDate;
   readonly inicio: LocalDate;
   readonly vencimento: LocalDate;
+  /** 24h do vencimento no horário do juízo: o prazo vale até este instante, exclusive (ADR-013). */
+  readonly fimDoPrazo: Instant;
+  readonly fusoDoJuizo: string;
   readonly diasDesconsiderados: readonly DiaDesconsiderado[];
   readonly fundamentos: readonly string[];
   /** Datas mais tardias possíveis; a sugerida (`vencimento`) é sempre a mais cedo. */
   readonly alternativas: readonly Alternativa[];
+  /** O que o advogado precisa conferir antes de confirmar (CLAUDE.md, seções 2.6 e 4.4). */
+  readonly avisos: readonly string[];
   readonly versaoDoMotor: string;
   readonly versaoDaTabela: string;
 }
