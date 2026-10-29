@@ -31,6 +31,7 @@ blockExoticSubdeps: true # subdependências só do registro, nunca de git ou URL
 overrides:
   '@prisma/config>deepmerge-ts': 8.0.2 # GHSA-ggr8-5vv4-36mx (estouro de pilha com objetos recursivos)
   'prisma>mysql2': 3.24.5 # GHSA-3f6p-5ww8-9rcr (só usado pelo Prisma em MySQL; o PrejuZero usa PostgreSQL)
+  'testcontainers>undici': 8.12.3 # DoS por excesso de content-encodings; o testcontainers 12.2.1 ainda resolve 8.11.2 (só testes)
 # Alertas sem versão corrigida publicada, aceitos com justificativa. Revisar a cada atualização.
 auditConfig:
   ignoreGhsas:

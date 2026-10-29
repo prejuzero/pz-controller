@@ -19,7 +19,7 @@
     "@pz/integracoes": "workspace:*",
     "@pz/kernel": "workspace:*",
     "@pz/prazos": "workspace:*",
-    "zod": "4.6.5"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@pz/config": "workspace:*",
