@@ -7,8 +7,8 @@ build/
 .next/
 .turbo/
 coverage/
-.stryker-tmp/
-reports/mutacao/
+**/.stryker-tmp/
+**/reports/mutacao/
 *.tsbuildinfo
 
 # Configuração local de ferramentas de IA (cada pessoa configura a sua)
