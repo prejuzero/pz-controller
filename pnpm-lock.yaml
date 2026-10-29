@@ -1615,14 +1615,14 @@ importers:
         specifier: workspace:*
         version: link:../config
       '@types/node':
-        specifier: 24.19.1
-        version: 24.19.1
+        specifier: 24.19.2
+        version: 24.19.2
       '@vitest/coverage-v8':
-        specifier: 5.0.3
-        version: 5.0.3(@vitest/browser@5.0.3)(vitest@5.0.3)
+        specifier: 5.0.4
+        version: 5.0.4(@vitest/browser@5.0.4)(vitest@5.0.4)
       eslint:
         specifier: 10.12.0
-        version: 10.12.0(jiti@2.6.1)(supports-color@10.2.2)
+        version: 10.12.0(jiti@2.6.1)(supports-color@7.2.0)
       fast-check:
         specifier: 4.10.2
         version: 4.10.2
@@ -1630,8 +1630,8 @@ importers:
         specifier: 6.0.3
         version: 6.0.3
       vitest:
-        specifier: 5.0.3
-        version: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@24.19.1)(@vitest/browser-playwright@5.0.3)(@vitest/coverage-v8@5.0.3)(@vitest/ui@5.0.3)(vite@8.3.2(@types/node@24.19.1)(jiti@2.6.1)(tsx@4.23.15))
+        specifier: 5.0.4
+        version: 5.0.4(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(@vitest/browser-playwright@5.0.4)(@vitest/coverage-v8@5.0.4)(@vitest/ui@5.0.4)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/observability:
     dependencies:
