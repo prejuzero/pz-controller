@@ -15,6 +15,18 @@ Material de revisão para o advogado curador (CLAUDE.md, seções 4 e 15). Nada 
 
 Células amarelas são do curador. A equipe preencheu só o que está na Especificação (seção 3) e no CLAUDE.md (seção 4.5), sempre marcado "a conferir"; datas esperadas ficam em branco para o curador calcular.
 
+### Revisões
+
+| Versão          | Arquivo                                                                                    | Situação                                                                                                                                                                                                                                                                                              |
+| --------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| V1 (08/10/2026) | [hu14-pacote-do-curador-v1-revisado.xlsx](hu14-pacote-do-curador-v1-revisado.xlsx)         | Assinada pela curadora. Aprovou RN01, RN03–RN08 e o fim do prazo pelo fuso do juízo; respondeu às 12 questões; tabela com ~100 atos sem link e vigência; calendário e casos de teste em branco.                                                                                                       |
+| V2 (pendências) | [hu14-pendencias-do-curador-v2.xlsx](hu14-pendencias-do-curador-v2.xlsx)                   | Só o que falta: 4 contradições (penal, prazo do texto x tabela, suspensão penal, fundamento da ciência pelo portal), 6 questões novas, links e vigência das regras, pendências por linha da tabela, calendário, os 27 casos de teste e, na aba 7, o resumo anônimo do prazo do texto x tabela.        |
+| V2 (29/10/2026) | [hu14-pendencias-do-curador-v2-revisado.xlsx](hu14-pendencias-do-curador-v2-revisado.xlsx) | Assinada pela curadora. Resolveu C01–C04 e Q13–Q18; links e vigência das regras; decisão por linha da tabela (aba 9, tabela consolidada do motor); calendário de 61 tribunais e 2.540 comarcas; 27 casos de teste assinados. Itens ainda abertos no card "Pendência · Curadoria V2 da HU14" (Notion). |
+
+Os casos reais do prazo do texto x tabela (23 publicações com processo e trecho) vão à curadora numa planilha **confidencial, fora do repositório**: dados reais de processos não entram aqui (CLAUDE.md, seção 3).
+
+O motor é implementado para as regras aprovadas na V1 e na V2. O que a V2 deixou em aberto (penal com vencimento no sábado, 10º dia do portal em dia não útil, meses e anos, horas, prazo do texto x tabela) fica "a confirmar" até nova resposta. Nenhuma regra vai para produção sem os casos de teste assinados (aba 6) e sem link e vigência (abas 3 e 4).
+
 Depois da revisão: a tabela de prazos entra pela tela de aprovação (HU15, quatro olhos), o calendário vira dado versionado do módulo calendário e os casos viram as fixtures assinadas do motor (PZ-135). A planilha revisada volta para esta pasta com a versão no nome.
 
 Gerada por script a partir do conteúdo citado; para mudar, edite a planilha e registre a versão na aba Leia-me.
