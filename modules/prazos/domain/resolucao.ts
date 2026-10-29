@@ -1,6 +1,14 @@
 import { selecionarVigente } from './tabela.js';
 
-import type { Ramo, Unidade, VersaoDaTabela } from './tabela.js';
+import type {
+  Calculo,
+  Contagem,
+  LocalDoAto,
+  PoliticaDeDobro,
+  Ramo,
+  Unidade,
+  VersaoDaTabela,
+} from './tabela.js';
 import type { LocalDate } from '@pz/kernel';
 
 /**
@@ -27,6 +35,12 @@ export interface PrazoDaTabela {
   readonly unidade: Unidade;
   readonly fundamento: string;
   readonly fonteUrl: string;
+  readonly contagem: Contagem;
+  readonly politicaDobro: PoliticaDeDobro;
+  readonly calculo: Calculo;
+  readonly marcoInicial: string | null;
+  readonly localDoAto: LocalDoAto | null;
+  readonly alerta: string | null;
 }
 
 export type AvisoDaResolucao =
@@ -65,6 +79,12 @@ function paraPrazoDaTabela(versao: VersaoDaTabela): PrazoDaTabela {
     unidade: e.unidade,
     fundamento: e.fundamento,
     fonteUrl: e.fonteUrl,
+    contagem: e.contagem,
+    politicaDobro: e.politicaDobro,
+    calculo: e.calculo,
+    marcoInicial: e.marcoInicial ?? null,
+    localDoAto: e.localDoAto ?? null,
+    alerta: e.alerta ?? null,
   };
 }
 

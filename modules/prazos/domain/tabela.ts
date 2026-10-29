@@ -10,9 +10,45 @@ import type {
   Uuid,
 } from '@pz/kernel';
 
-/** Ramos com contagem própria (CLAUDE.md, seção 4.5); a contagem em si é do motor. */
-export const RAMOS = ['civel', 'juizados', 'trabalhista', 'penal'] as const;
+/**
+ * Ramos com contagem própria (CLAUDE.md, seção 4.5); a contagem em si é do motor. O juizado
+ * criminal conta como o penal (curadoria V2, Q17).
+ */
+export const RAMOS = ['civel', 'juizados', 'trabalhista', 'penal', 'juizado-criminal'] as const;
 export type Ramo = (typeof RAMOS)[number];
+
+/** Dias úteis ou corridos, conforme a linha aprovada (o motor confere com a regra do ramo). */
+export const CONTAGENS = ['uteis', 'corridos'] as const;
+export type Contagem = (typeof CONTAGENS)[number];
+
+/** Quem dobra naquele ato (curadoria V2, aba 9; mesmos valores do motor, `PoliticaDeDobro`). */
+export const POLITICAS_DE_DOBRO = [
+  'entes-cpc',
+  'so-defensoria',
+  'fazenda-para-recorrer',
+  'nao-dobra',
+  'verificar',
+] as const;
+export type PoliticaDeDobro = (typeof POLITICAS_DE_DOBRO)[number];
+
+/**
+ * Como o prazo é calculado: `automatico` a partir da publicação ou ciência; `data-informada`
+ * quando o marco é outro (citação, audiência, interposição) e o advogado informa a data;
+ * `nao-calcula` quando a linha só orienta (ato sem prazo calculável).
+ */
+export const CALCULOS = ['automatico', 'data-informada', 'nao-calcula'] as const;
+export type Calculo = (typeof CALCULOS)[number];
+
+/** Órgão cujo calendário vale para o ato (curadoria V2, aba 8, "Calendário por órgão"). */
+export const LOCAIS_DO_ATO = [
+  'orgao-do-processo',
+  'juizo-de-origem',
+  'tribunal-de-segundo-grau',
+  'orgao-da-decisao',
+  'tribunal-superior',
+  'nao-se-aplica',
+] as const;
+export type LocalDoAto = (typeof LOCAIS_DO_ATO)[number];
 
 /** Unidade do prazo; fora de `dias`, só há cálculo com regra específica (CLAUDE.md, seção 4.4). */
 export const UNIDADES = ['dias', 'horas', 'meses', 'anos'] as const;
@@ -38,6 +74,14 @@ export interface ConteudoDaVersao {
   readonly fonteUrl: string;
   readonly vigenciaInicio: LocalDate;
   readonly vigenciaFim?: LocalDate;
+  readonly contagem: Contagem;
+  readonly politicaDobro: PoliticaDeDobro;
+  readonly calculo: Calculo;
+  /** Marco inicial em texto (ex.: "juntada do mandado"), quando não é a publicação. */
+  readonly marcoInicial?: string;
+  readonly localDoAto?: LocalDoAto;
+  /** "Alerta ao advogado" da linha, repassado pelo motor como aviso. */
+  readonly alerta?: string;
 }
 
 export interface EstadoDaVersao extends ConteudoDaVersao {
@@ -78,6 +122,15 @@ export function validarConteudo(conteudo: ConteudoDaVersao): ProblemaValidacao[]
   }
   if (!/^https:\/\/\S+$/.test(conteudo.fonteUrl)) {
     problemas.push({ campo: 'fonteUrl', mensagem: 'Informe o link HTTPS da fonte oficial.' });
+  }
+  if (conteudo.marcoInicial?.trim().length === 0) {
+    problemas.push({
+      campo: 'marcoInicial',
+      mensagem: 'Informe o marco inicial ou deixe em branco.',
+    });
+  }
+  if (conteudo.alerta?.trim().length === 0) {
+    problemas.push({ campo: 'alerta', mensagem: 'Informe o alerta ou deixe em branco.' });
   }
   if (conteudo.vigenciaFim?.ehAntesDe(conteudo.vigenciaInicio) === true) {
     problemas.push({ campo: 'vigenciaFim', mensagem: 'O fim da vigência é anterior ao início.' });

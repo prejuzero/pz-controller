@@ -20,11 +20,17 @@ const paraInstante = (instante: Instant) => new Date(instante.epochMs);
 
 type Linha = Awaited<ReturnType<Transacao['tabelaPrazo']['findFirstOrThrow']>>;
 
+// Enums do banco em snake_case; no domínio, kebab-case (os mesmos valores do motor).
+type Snake<T extends string> = T extends `${infer A}-${infer B}` ? `${A}_${Snake<B>}` : T;
+type Kebab<T extends string> = T extends `${infer A}_${infer B}` ? `${A}-${Kebab<B>}` : T;
+const paraBanco = <T extends string>(valor: T) => valor.replaceAll('-', '_') as Snake<T>;
+const doBanco = <T extends string>(valor: T) => valor.replaceAll('_', '-') as Kebab<T>;
+
 function restaurar(linha: Linha): VersaoDaTabela {
   return VersaoDaTabela.restaurar({
     id: linha.id as Uuid,
     tipoAto: linha.tipoAto,
-    ramo: linha.ramo,
+    ramo: doBanco(linha.ramo),
     versao: linha.versao,
     dias: linha.dias,
     unidade: linha.unidade,
@@ -32,6 +38,12 @@ function restaurar(linha: Linha): VersaoDaTabela {
     fonteUrl: linha.fonteUrl,
     vigenciaInicio: daData(linha.vigenciaInicio),
     ...(linha.vigenciaFim === null ? {} : { vigenciaFim: daData(linha.vigenciaFim) }),
+    contagem: linha.contagem,
+    politicaDobro: doBanco(linha.politicaDobro),
+    calculo: doBanco(linha.calculo),
+    ...(linha.marcoInicial === null ? {} : { marcoInicial: linha.marcoInicial }),
+    ...(linha.localDoAto === null ? {} : { localDoAto: doBanco(linha.localDoAto) }),
+    ...(linha.alerta === null ? {} : { alerta: linha.alerta }),
     status: linha.status,
     propostoPor: linha.propostoPor as Uuid,
     propostoEm: Instant.deEpochMs(linha.propostoEm.getTime()),
@@ -46,7 +58,7 @@ function restaurar(linha: Linha): VersaoDaTabela {
 export class TabelaPostgres implements RepositorioDaTabela<Transacao> {
   async proximaVersao(transacao: Transacao, tipoAto: string, ramo: Ramo): Promise<number> {
     const { _max } = await transacao.tabelaPrazo.aggregate({
-      where: { tipoAto, ramo },
+      where: { tipoAto, ramo: paraBanco(ramo) },
       _max: { versao: true },
     });
     return (_max.versao ?? 0) + 1;
@@ -59,7 +71,7 @@ export class TabelaPostgres implements RepositorioDaTabela<Transacao> {
         {
           id: e.id,
           tipoAto: e.tipoAto,
-          ramo: e.ramo,
+          ramo: paraBanco(e.ramo),
           versao: e.versao,
           dias: e.dias,
           unidade: e.unidade,
@@ -67,6 +79,12 @@ export class TabelaPostgres implements RepositorioDaTabela<Transacao> {
           fonteUrl: e.fonteUrl,
           vigenciaInicio: paraData(e.vigenciaInicio),
           vigenciaFim: e.vigenciaFim === undefined ? null : paraData(e.vigenciaFim),
+          contagem: e.contagem,
+          politicaDobro: paraBanco(e.politicaDobro),
+          calculo: paraBanco(e.calculo),
+          marcoInicial: e.marcoInicial ?? null,
+          localDoAto: e.localDoAto === undefined ? null : paraBanco(e.localDoAto),
+          alerta: e.alerta ?? null,
           status: e.status,
           propostoPor: e.propostoPor,
           propostoEm: paraInstante(e.propostoEm),
@@ -102,7 +120,7 @@ export class TabelaPostgres implements RepositorioDaTabela<Transacao> {
     const linhas = await transacao.tabelaPrazo.findMany({
       where: {
         ...(filtro.tipoAto === undefined ? {} : { tipoAto: filtro.tipoAto }),
-        ...(filtro.ramo === undefined ? {} : { ramo: filtro.ramo }),
+        ...(filtro.ramo === undefined ? {} : { ramo: paraBanco(filtro.ramo) }),
       },
       orderBy: [{ tipoAto: 'asc' }, { ramo: 'asc' }, { versao: 'asc' }],
     });

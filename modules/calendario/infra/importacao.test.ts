@@ -96,3 +96,15 @@ describe('ImportarCalendario (HU13)', () => {
     }
   });
 });
+
+describe('arquivo de carga da curadoria V2 (docs/curadoria/carga)', () => {
+  it('passa na prévia sem problemas', async () => {
+    const { readFileSync } = await import('node:fs');
+    const arquivo = new URL('../../../docs/curadoria/carga/calendario-01.csv', import.meta.url);
+    const { importar } = montar();
+    const r = await importar.executar(ana, { csv: readFileSync(arquivo, 'utf8') });
+    if (!r.ok) throw r.erro;
+    expect(r.valor.linhas.filter((l) => l.problemas.length > 0)).toEqual([]);
+    expect(r.valor.linhas).toHaveLength(686);
+  });
+});

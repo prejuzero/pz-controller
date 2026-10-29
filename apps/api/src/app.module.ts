@@ -116,6 +116,7 @@ import {
   AprovarVersaoDaTabela,
   CadastrarTipoDeAto,
   ConsultarTabelaDePrazos,
+  ImportarTabelaDePrazos,
   ProporVersaoDaTabela,
   TabelaPostgres,
   TiposDeAtoPostgres,
@@ -516,6 +517,12 @@ function provedoresDaTabelaDePrazos(d: DependenciasDaTabelaDePrazos): Provider[]
       provide: ProporVersaoDaTabela,
       inject: [RELOGIO],
       useFactory: (r: Clock) => new ProporVersaoDaTabela(d.unidade, d.tipos, d.tabela, d.trilha, r),
+    },
+    {
+      provide: ImportarTabelaDePrazos,
+      inject: [RELOGIO],
+      useFactory: (r: Clock) =>
+        new ImportarTabelaDePrazos(d.unidade, d.tipos, d.tabela, d.trilha, r),
     },
     {
       provide: AprovarVersaoDaTabela,

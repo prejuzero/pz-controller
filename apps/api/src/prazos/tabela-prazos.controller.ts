@@ -3,6 +3,7 @@ import {
   AprovarVersaoDaTabela,
   CadastrarTipoDeAto,
   ConsultarTabelaDePrazos,
+  ImportarTabelaDePrazos,
   ProporVersaoDaTabela,
   RAMOS,
 } from '@pz/prazos';
@@ -12,7 +13,13 @@ import { autenticacao, validar } from '../auth/auth.controller.js';
 import { RequerPermissao } from '../http/acesso.js';
 
 import type { RequisicaoAutenticada } from '../http/acesso.js';
-import type { TipoDeAto, TiposDeAto, VersaoDaTabela, VersoesDaTabela } from '@pz/contracts';
+import type {
+  ResultadoDaImportacaoDaTabela,
+  TipoDeAto,
+  TiposDeAto,
+  VersaoDaTabela,
+  VersoesDaTabela,
+} from '@pz/contracts';
 import type { Uuid } from '@pz/kernel';
 import type { CuradorEmAcao } from '@pz/prazos';
 
@@ -38,7 +45,24 @@ export class TabelaPrazosController {
     @Inject(ProporVersaoDaTabela) private readonly propor: ProporVersaoDaTabela<unknown>,
     @Inject(AprovarVersaoDaTabela) private readonly aprovar: AprovarVersaoDaTabela<unknown>,
     @Inject(ConsultarTabelaDePrazos) private readonly consultar: ConsultarTabelaDePrazos<unknown>,
+    @Inject(ImportarTabelaDePrazos) private readonly importar: ImportarTabelaDePrazos<unknown>,
   ) {}
+
+  @Post('importacao')
+  @RequerPermissao('curadoria:tabela-prazos')
+  @HttpCode(200)
+  async importarCsv(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Body() corpo: unknown,
+  ): Promise<ResultadoDaImportacaoDaTabela> {
+    const r = await this.importar.executar(curadorDe(requisicao), corpo);
+    if (!r.ok) throw r.erro;
+    return {
+      linhas: r.valor.linhas.map((l) => ({ linha: l.linha, problemas: [...l.problemas] })),
+      tiposNovos: [...r.valor.tiposNovos],
+      propostos: r.valor.propostos.map((v) => v as VersaoDaTabela),
+    };
+  }
 
   @Get('tipos-de-ato')
   @RequerPermissao('curadoria:tabela-prazos')

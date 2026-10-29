@@ -27,6 +27,9 @@ export const conteudo = (parcial: Partial<ConteudoDaVersao> = {}): ConteudoDaVer
   fundamento: 'FICTÍCIO: Lei de Teste, art. 1º',
   fonteUrl: 'https://exemplo.invalid/ficticio',
   vigenciaInicio: LocalDate.de(2020, 1, 1),
+  contagem: 'uteis',
+  politicaDobro: 'entes-cpc',
+  calculo: 'automatico',
   ...parcial,
 });
 

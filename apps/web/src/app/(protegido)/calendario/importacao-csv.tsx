@@ -6,18 +6,51 @@ import { useState, type ReactNode } from 'react';
 
 import { useImportarCalendario } from '../../../api/hooks';
 
-import type { ResultadoDaImportacao } from '@pz/contracts';
+/** O que a tela precisa do resultado de uma importação com prévia (calendário, tabela de prazos). */
+export interface ResultadoComPrevia {
+  readonly linhas: readonly {
+    readonly linha: number;
+    readonly problemas: readonly { readonly campo: string; readonly mensagem: string }[];
+  }[];
+  readonly propostos: readonly unknown[];
+}
+
+export interface ImportacaoComPrevia {
+  readonly isPending: boolean;
+  mutate(
+    corpo: { csv: string; somentePrevia: boolean },
+    opcoes: { onSuccess: (resultado: ResultadoComPrevia) => void },
+  ): void;
+}
+
+/** Importação de eventos do calendário por CSV (HU13). */
+export function ImportacaoCsv({ gatilho }: { gatilho: ReactNode }) {
+  return (
+    <ImportacaoCsvComPrevia
+      gatilho={gatilho}
+      importar={useImportarCalendario()}
+      mensagens="calendario.importar"
+    />
+  );
+}
 
 /**
- * Importação de eventos por CSV (HU13): primeiro a prévia (nada é gravado); só um arquivo sem
- * problemas pode ser gravado, e os eventos entram como rascunho para a aprovação de outro curador.
+ * Importação por CSV: primeiro a prévia (nada é gravado); só um arquivo sem problemas pode ser
+ * gravado, e os itens entram como rascunho para a aprovação de outro curador.
  */
-export function ImportacaoCsv({ gatilho }: { gatilho: ReactNode }) {
-  const t = useTranslations('calendario.importar');
-  const importar = useImportarCalendario();
+export function ImportacaoCsvComPrevia({
+  gatilho,
+  importar,
+  mensagens,
+}: {
+  gatilho: ReactNode;
+  importar: ImportacaoComPrevia;
+  mensagens: 'calendario.importar' | 'tabelaPrazos.importar';
+}) {
+  const t = useTranslations(mensagens);
   const [aberto, setAberto] = useState(false);
   const [csv, setCsv] = useState('');
-  const [previa, setPrevia] = useState<ResultadoDaImportacao | null>(null);
+  const [previa, setPrevia] = useState<ResultadoComPrevia | null>(null);
   const problemas = previa?.linhas.filter((linha) => linha.problemas.length > 0) ?? [];
 
   const mudarCsv = (valor: string) => {

@@ -444,7 +444,8 @@
       "civel": "Cível",
       "juizados": "Juizados",
       "trabalhista": "Trabalhista",
-      "penal": "Penal"
+      "penal": "Penal",
+      "juizado-criminal": "Juizado criminal"
     },
     "unidades": {
       "dias": "dias",
@@ -463,7 +464,12 @@
       "fundamento": "Fundamento legal",
       "fonteUrl": "Link da fonte oficial",
       "vigenciaInicio": "Vigência a partir de",
-      "vigenciaFim": "Vigência até"
+      "vigenciaFim": "Vigência até",
+      "politicaDobro": "Prazo em dobro",
+      "calculo": "Cálculo",
+      "localDoAto": "Onde o ato é praticado",
+      "marcoInicial": "Marco inicial",
+      "alerta": "Alerta ao advogado"
     },
     "ajudaCodigo": "Letras minúsculas, números e hífens (ex.: contestacao). Não muda depois.",
     "ajudaFundamento": "Dispositivo exato: lei ou ato, artigo, parágrafo e inciso.",
@@ -477,8 +483,54 @@
       "fundamento": "Fundamento",
       "fonteUrl": "Fonte",
       "vigenciaInicio": "Início da vigência",
-      "vigenciaFim": "Fim da vigência"
-    }
+      "vigenciaFim": "Fim da vigência",
+      "contagem": "Contagem",
+      "politicaDobro": "Prazo em dobro",
+      "calculo": "Cálculo",
+      "marcoInicial": "Marco inicial",
+      "localDoAto": "Onde o ato é praticado",
+      "alerta": "Alerta ao advogado"
+    },
+    "contagens": {
+      "uteis": "dias úteis",
+      "corridos": "dias corridos"
+    },
+    "politicasDobro": {
+      "entes-cpc": "Fazenda, MP e Defensoria (CPC) e litisconsortes em autos físicos",
+      "so-defensoria": "Só a Defensoria",
+      "fazenda-para-recorrer": "Só a Fazenda, para recorrer",
+      "nao-dobra": "Não dobra (prazo próprio ou rito sem prazo diferenciado)",
+      "verificar": "Verificar caso a caso (sugere o simples e mostra o dobro)"
+    },
+    "calculos": {
+      "automatico": "Automático (publicação ou ciência)",
+      "data-informada": "Pela data informada pelo advogado",
+      "nao-calcula": "Não calcula (só orienta)"
+    },
+    "locaisDoAto": {
+      "orgao-do-processo": "Órgão onde o processo tramita",
+      "juizo-de-origem": "1º grau (juízo de origem)",
+      "tribunal-de-segundo-grau": "Tribunal de 2º grau",
+      "orgao-da-decisao": "Órgão que proferiu a decisão",
+      "tribunal-superior": "Tribunal superior",
+      "nao-se-aplica": "Não se aplica"
+    },
+    "ajudaMarcoInicial": "Preencha quando o prazo não corre da publicação (ex.: juntada do mandado, audiência).",
+    "ajudaAlerta": "Aparece para o advogado junto da data sugerida.",
+    "ajudaContagem": "A contagem segue o ramo: corridos no penal e no juizado criminal, úteis nos demais.",
+    "importar": {
+      "titulo": "Importar a tabela por CSV",
+      "descricao": "Cabeçalho: tipoAto;nomeDoAto;ramo;dias;unidade;contagem;politicaDobro;calculo;marcoInicial;localDoAto;alerta;fundamento;fonteUrl;vigenciaInicio;vigenciaFim (separador ; ou ,). Tipos de ato novos são cadastrados com o nome da linha; as versões entram como rascunho e cada uma precisa da aprovação de outro curador.",
+      "arquivo": "Arquivo CSV",
+      "conteudo": "Conteúdo do CSV",
+      "validar": "Validar",
+      "gravar": "Gravar rascunhos",
+      "semProblemas": "{linhas, plural, one {# linha válida} other {# linhas válidas}}. Confira e grave os rascunhos.",
+      "comProblemas": "Corrija as linhas abaixo e valide de novo. Nada foi gravado.",
+      "linha": "Linha {linha}",
+      "gravados": "{total, plural, one {# rascunho gravado} other {# rascunhos gravados}}."
+    },
+    "importarCsv": "Importar CSV"
   },
   "legal": {
     "termos": "Termos de uso",

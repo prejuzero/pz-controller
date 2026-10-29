@@ -17,6 +17,7 @@ import { useState } from 'react';
 import {
   useAprovarVersao,
   useCadastrarTipoDeAto,
+  useImportarTabelaDePrazos,
   useProporVersao,
   useSessao,
   useTiposDeAto,
@@ -24,6 +25,7 @@ import {
 } from '../../../api/hooks';
 import { agruparVersoes, diferencas, type GrupoDaTabela } from '../../../api/tabela-prazos';
 import { formatarDataCivil, formatarInstante } from '../../../i18n/formatar';
+import { ImportacaoCsvComPrevia } from '../calendario/importacao-csv';
 
 import { FormularioTipoDeAto, FormularioVersao } from './formularios';
 
@@ -84,6 +86,7 @@ export function TabelaDePrazos() {
         <p className="max-w-3xl text-texto-suave">{t('descricao')}</p>
       </div>
       <div className="flex flex-wrap justify-end gap-2">
+        <ImportarTabela />
         <NovoTipoDeAto />
         <NovaVersao tipos={tipos.data?.itens ?? []} />
       </div>
@@ -106,7 +109,8 @@ function Prazo({ versao }: { versao: VersaoDaTabela }) {
   const t = useTranslations('tabelaPrazos');
   return (
     <span>
-      {t('prazo', { dias: versao.dias, unidade: t(`unidades.${versao.unidade}`) })} ·{' '}
+      {t('prazo', { dias: versao.dias, unidade: t(`unidades.${versao.unidade}`) })} (
+      {t(`contagens.${versao.contagem}`)}) ·{' '}
       <a
         href={versao.fonteUrl}
         target="_blank"
@@ -218,6 +222,18 @@ function ItemDoHistorico({
         </div>
       ) : null}
     </li>
+  );
+}
+
+/** Carga em lote da tabela aprovada pela curadoria (CSV com prévia); tudo entra como rascunho. */
+function ImportarTabela() {
+  const t = useTranslations('tabelaPrazos');
+  return (
+    <ImportacaoCsvComPrevia
+      gatilho={<Botao variante="secundaria">{t('importarCsv')}</Botao>}
+      importar={useImportarTabelaDePrazos()}
+      mensagens="tabelaPrazos.importar"
+    />
   );
 }
 
