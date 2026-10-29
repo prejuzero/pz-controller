@@ -2,8 +2,11 @@ import type { CalendarioForense } from './calendario.js';
 import type { DiaDesconsiderado } from './dias.js';
 import type { LocalDate } from '@pz/kernel';
 
-/** Ramos com contagem própria (CLAUDE.md, seção 4.5). */
-export const RAMOS = ['civel', 'juizados', 'trabalhista', 'penal'] as const;
+/**
+ * Ramos com contagem própria (CLAUDE.md, seção 4.5). `juizados` é o juizado especial cível;
+ * o criminal segue a contagem penal (curadoria V2, Q17: CPP, art. 798, c/c Lei 9.099/1995, art. 92).
+ */
+export const RAMOS = ['civel', 'juizados', 'trabalhista', 'penal', 'juizado-criminal'] as const;
 export type Ramo = (typeof RAMOS)[number];
 
 /** Meio da intimação: define publicação e início (RN03, RN04). `manual`: o advogado informa a ciência. */
@@ -21,6 +24,24 @@ export type Contagem = (typeof CONTAGENS)[number];
 export const ENTES = ['fazenda-publica', 'ministerio-publico', 'defensoria'] as const;
 export type Ente = (typeof ENTES)[number];
 
+/**
+ * Quem tem prazo em dobro naquele ato, conforme a tabela aprovada (curadoria V2, aba 9, coluna
+ * "Prazo em dobro"; Q16):
+ * - `entes-cpc`: Fazenda, MP e Defensoria (CPC, arts. 180, 183 e 186) e litisconsortes (art. 229).
+ * - `so-defensoria`: só a Defensoria (LC 80/1994); o MP não dobra no processo penal.
+ * - `fazenda-para-recorrer`: só a Fazenda, para recorrer (Decreto-Lei 779/1969, art. 1º, III).
+ * - `nao-dobra`: prazo próprio do ente ou rito sem prazo diferenciado.
+ * - `verificar`: sem dobro automático; o motor sugere o simples e mostra o dobro como alternativa.
+ */
+export const POLITICAS_DE_DOBRO = [
+  'entes-cpc',
+  'so-defensoria',
+  'fazenda-para-recorrer',
+  'nao-dobra',
+  'verificar',
+] as const;
+export type PoliticaDeDobro = (typeof POLITICAS_DE_DOBRO)[number];
+
 /** Prazo da tabela aprovada pelo curador (dado versionado, nunca código: ADR-007). */
 export interface PrazoDaTabela {
   readonly quantidade: number;
@@ -30,8 +51,7 @@ export interface PrazoDaTabela {
   readonly fundamento: string;
   /** Versão da tabela usada, gravada no prazo (ADR-007). */
   readonly versao: string;
-  /** A tabela marca o prazo como próprio do ente: não dobra (CPC, arts. 180, 183 e 186). */
-  readonly proprioDoEnte?: boolean;
+  readonly dobro: PoliticaDeDobro;
 }
 
 export interface Condicoes {
@@ -40,6 +60,11 @@ export interface Condicoes {
   readonly litisconsortesComProcuradoresDistintos?: boolean;
   /** Informado pelo advogado; só autos físicos dobram por litisconsórcio (CPC, art. 229, §2º). */
   readonly autosFisicos?: boolean;
+  /**
+   * Processo penal com réu preso, da Lei Maria da Penha ou medida urgente (CPP, art. 798-A, I a
+   * III): não suspende no fim do ano. Ausente: não informado, e o motor mostra as duas datas.
+   */
+  readonly excecaoDaSuspensaoPenal?: boolean;
 }
 
 /** O que o motor recebe. Datas jurídicas como LocalDate; nada de relógio (ADR-013). */
@@ -68,6 +93,16 @@ export const MOTIVOS_A_CONFIRMAR = [
 ] as const;
 export type MotivoAConfirmar = (typeof MOTIVOS_A_CONFIRMAR)[number];
 
+/**
+ * Outra data possível quando falta um dado ou a regra admite leituras diferentes: o motor sugere
+ * a mais cedo e mostra as demais com o fundamento (CLAUDE.md, seção 4.4).
+ */
+export interface Alternativa {
+  readonly vencimento: LocalDate;
+  readonly descricao: string;
+  readonly fundamentos: readonly string[];
+}
+
 /** Memória de cálculo: toda data exibida vem com ela (CLAUDE.md, seção 4.4). */
 export interface MemoriaDeCalculo {
   readonly publicacao?: LocalDate;
@@ -76,6 +111,8 @@ export interface MemoriaDeCalculo {
   readonly vencimento: LocalDate;
   readonly diasDesconsiderados: readonly DiaDesconsiderado[];
   readonly fundamentos: readonly string[];
+  /** Datas mais tardias possíveis; a sugerida (`vencimento`) é sempre a mais cedo. */
+  readonly alternativas: readonly Alternativa[];
   readonly versaoDoMotor: string;
   readonly versaoDaTabela: string;
 }
