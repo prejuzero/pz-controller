@@ -102,6 +102,43 @@ describe('LocalDate', () => {
     expect(() => LocalDate.doInstante(instante, 'Fuso/Inexistente')).toThrow(RangeError);
   });
 
+  it('primeiro instante do dia no fuso do juízo (ADR-013)', () => {
+    const outubro = LocalDate.de(2026, 10, 1);
+    expect(outubro.inicioNoFuso('America/Sao_Paulo').paraIso()).toBe('2026-10-01T03:00:00.000Z');
+    expect(outubro.inicioNoFuso('America/Manaus').paraIso()).toBe('2026-10-01T04:00:00.000Z');
+    expect(outubro.inicioNoFuso('America/Rio_Branco').paraIso()).toBe('2026-10-01T05:00:00.000Z');
+    expect(outubro.inicioNoFuso('UTC').paraIso()).toBe('2026-10-01T00:00:00.000Z');
+    // Horário de verão de 2018: em 04/11 a meia-noite não existiu e o dia começou à 01h (-02:00).
+    const semMeiaNoite = LocalDate.de(2018, 11, 4).inicioNoFuso('America/Sao_Paulo');
+    expect(semMeiaNoite.paraIso()).toBe('2018-11-04T03:00:00.000Z');
+    expect(LocalDate.doInstante(semMeiaNoite.maisMs(-1), 'America/Sao_Paulo').paraIso()).toBe(
+      '2018-11-03',
+    );
+    // Fim do horário de verão de 2019: 23h de 16/02 se repetiu; 17/02 começa uma vez só.
+    expect(LocalDate.de(2019, 2, 17).inicioNoFuso('America/Sao_Paulo').paraIso()).toBe(
+      '2019-02-17T03:00:00.000Z',
+    );
+    expect(() => outubro.inicioNoFuso('Fuso/Inexistente')).toThrow(RangeError);
+  });
+
+  it('propriedade: o início no fuso é do próprio dia e o instante anterior é da véspera', () => {
+    const fusos = fc.constantFrom(
+      'America/Sao_Paulo',
+      'America/Manaus',
+      'America/Rio_Branco',
+      'America/Noronha',
+      'UTC',
+    );
+    fc.assert(
+      fc.property(fc.integer({ min: 0, max: 20000 }), fusos, (n, fuso) => {
+        const data = LocalDate.de(1990, 1, 1).maisDias(n);
+        const inicio = data.inicioNoFuso(fuso);
+        expect(LocalDate.doInstante(inicio, fuso).igual(data)).toBe(true);
+        expect(LocalDate.doInstante(inicio.maisMs(-1), fuso).igual(data.maisDias(-1))).toBe(true);
+      }),
+    );
+  });
+
   describe('propriedades (calendário gregoriano)', () => {
     it('concorda com o calendário de referência ao somar dias', () => {
       fc.assert(

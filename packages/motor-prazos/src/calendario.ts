@@ -22,6 +22,11 @@ export interface Ocorrencia {
 /** Calendário da jurisdição do processo, já filtrado pelo módulo calendario. Puro e síncrono. */
 export interface CalendarioForense {
   ocorrencias(data: LocalDate): readonly Ocorrencia[];
+  /**
+   * Os feriados municipais da comarca foram levantados. Falso: o motor calcula com o que há e
+   * avisa o advogado (curadoria V2, aba 8).
+   */
+  readonly feriadosLocaisVerificados: boolean;
 }
 
 export interface OcorrenciaDatada extends Ocorrencia {
@@ -29,11 +34,14 @@ export interface OcorrenciaDatada extends Ocorrencia {
 }
 
 /** Calendário a partir de uma lista de ocorrências datadas (adaptadores e testes). */
-export function calendarioDeOcorrencias(lista: readonly OcorrenciaDatada[]): CalendarioForense {
+export function calendarioDeOcorrencias(
+  lista: readonly OcorrenciaDatada[],
+  { feriadosLocaisVerificados = false }: { feriadosLocaisVerificados?: boolean } = {},
+): CalendarioForense {
   const porData = new Map<string, Ocorrencia[]>();
   for (const { data, ...ocorrencia } of lista) {
     const chave = data.paraIso();
     porData.set(chave, [...(porData.get(chave) ?? []), ocorrencia]);
   }
-  return { ocorrencias: (data) => porData.get(data.paraIso()) ?? [] };
+  return { ocorrencias: (data) => porData.get(data.paraIso()) ?? [], feriadosLocaisVerificados };
 }

@@ -20,8 +20,28 @@ import type {
 } from './modelo.js';
 import type { Result } from '@pz/kernel';
 
-/** Gravada em cada prazo calculado (ADR-007): muda a cada alteração de regra. */
-export const VERSAO_DO_MOTOR = '1.0.0';
+/** Gravada em cada prazo calculado (ADR-007): muda a cada alteração de regra ou de saída. */
+export const VERSAO_DO_MOTOR = '1.1.0';
+
+/** Texto aprovado pela curadoria (V2, aba 8) para comarca sem feriados locais levantados. */
+export const AVISO_FERIADO_LOCAL =
+  'Feriado local não verificado — confira o calendário da comarca e a legislação aplicável antes de considerar o prazo definitivo.';
+export const AVISO_ALTERNATIVAS =
+  'Há outras datas possíveis: confira as alternativas e o fundamento de cada uma antes de confirmar.';
+const FUSO_DE_BRASILIA = 'America/Sao_Paulo';
+const avisoDeFuso = (fuso: string) =>
+  `O prazo termina às 24h no horário do juízo (${fuso}), diferente do horário de Brasília.`;
+
+function fusoValido(fuso: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: fuso });
+    return true;
+  } catch {
+    // O Intl só recusa fuso desconhecido (RangeError): é dado de entrada inválido e vira
+    // "a confirmar" com o motivo, não exceção.
+    return false;
+  }
+}
 
 // Toda regra abaixo vem da revisão da curadoria (docs/curadoria, V1 de 08/10/2026 e V2 de
 // 29/10/2026). Vigências da aba 3 da V2. Nada aqui é memória do modelo (CLAUDE.md, seção 4).
@@ -460,6 +480,14 @@ export function calcularPrazo(entrada: EntradaDoCalculo): ResultadoDoCalculo {
       fundamentos: [prazo.fundamento],
     };
   }
+  if (!fusoValido(entrada.fusoDoJuizo)) {
+    return {
+      situacao: 'a-confirmar',
+      motivo: 'dados-insuficientes',
+      detalhe: `fuso do juízo desconhecido: ${entrada.fusoDoJuizo}`,
+      fundamentos: ['CPC, art. 213, parágrafo único'],
+    };
+  }
   const regime = REGIMES[entrada.ramo];
   if (prazo.contagem !== regime.contagem) {
     return {
@@ -491,10 +519,20 @@ export function calcularPrazo(entrada: EntradaDoCalculo): ResultadoDoCalculo {
     });
   }
 
+  const avisos = [
+    ...(entrada.calendario.feriadosLocaisVerificados ? [] : [AVISO_FERIADO_LOCAL]),
+    ...(entrada.fusoDoJuizo === FUSO_DE_BRASILIA ? [] : [avisoDeFuso(entrada.fusoDoJuizo)]),
+    ...(alternativas.length === 0 ? [] : [AVISO_ALTERNATIVAS]),
+    ...(prazo.alerta === undefined ? [] : [prazo.alerta]),
+  ];
   return {
     situacao: 'calculado',
     ...calculo,
+    // CPC, art. 213, parágrafo único; Lei 11.419/2006, art. 3º, parágrafo único.
+    fimDoPrazo: calculo.vencimento.maisDias(1).inicioNoFuso(entrada.fusoDoJuizo),
+    fusoDoJuizo: entrada.fusoDoJuizo,
     alternativas,
+    avisos,
     versaoDoMotor: VERSAO_DO_MOTOR,
     versaoDaTabela: prazo.versao,
   };
