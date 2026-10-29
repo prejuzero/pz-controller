@@ -11,10 +11,27 @@ Motor puro de cálculo de prazos (ADR-007): sem IO, sem relógio e sem IA. Só i
 | `modelo.ts`     | Entrada (ramo, meio, data de referência, prazo da tabela, condições, fuso do juízo, calendário) e saída (`calculado` com memória de cálculo ou `a-confirmar` com o motivo)      |
 | `calendario.ts` | Interface `CalendarioForense`: o módulo calendario entrega as ocorrências da jurisdição; o motor decide o efeito (`sem-expediente`, `suspensao-de-prazos`, `indisponibilidade`) |
 | `dias.ts`       | Aritmética: critérios de contagem (dias úteis com sábado e domingo fora, CPC, art. 216; dias corridos) e contagem com registro de cada dia desconsiderado                       |
+| `regras.ts`     | `calcularPrazo`: RN01 a RN08 aprovadas pela curadoria (V1 e V2), com fundamento de cada passo e alternativas quando a regra deixa uma decisão em aberto                         |
 
 ## Estado (HU14)
 
 - PZ-132 (este pacote): modelo e aritmética. Testes sobre calendários fictícios e propriedades (fast-check).
-- PZ-133: regras aprovadas na revisão V1 da curadoria (`docs/curadoria`). Penal, prazo do texto x tabela e unidades fora de dias ficam "a confirmar" até a V2.
+- PZ-133: regras aprovadas nas revisões V1 e V2 da curadoria (`docs/curadoria`).
+
+## Ordem das regras (`calcularPrazo`)
+
+1. Sem prazo na tabela, unidade fora de dias (V2, Q14 e Q15) ou contagem da tabela diferente da do ramo: "a confirmar".
+2. Marco inicial: DJEN (RN03, Lei 11.419/2006, art. 4º), portal (RN04, art. 5º, §§1º a 3º, e CPC, art. 231, V) ou ciência informada.
+3. Vigência da regra do ramo na data de início (CPC, art. 14): antes dela, "a confirmar".
+4. Prazo em dobro (RN06) pela política da linha da tabela (`dobro`, aba 9 da V2).
+5. Contagem (RN01, RN07): úteis no cível, juizado cível e trabalhista; corridos no penal e no juizado criminal. Calendário (RN05) e suspensão de 20/12 a 20/01 por ramo (RN02).
+6. Prorrogação do vencimento (RN08; penal: CPP, art. 798, §3º).
+
+Na dúvida, a data sugerida é a mais cedo e as demais vão em `alternativas` (CLAUDE.md, seção 4.4): penal sem a informação das exceções do CPP, art. 798-A (C03), penal com vencimento no sábado (C01) e dobro "verificar caso a caso".
+
+Ficam "a confirmar" até nova resposta da curadoria: 10º dia do portal em dia não útil (C04), ciência pelo portal no penal e prazos iniciados antes da vigência da regra cadastrada.
+
+A suspensão de 20/12 a 20/01 é regra do motor (RN02): o módulo calendario não deve entregar esses dias como `suspensao-de-prazos` nacional, só os atos próprios de cada tribunal.
+
 - PZ-134: memória de cálculo completa e versionamento.
 - PZ-135: casos com datas reais assinados pela curadoria e teste de mutação (Stryker).
