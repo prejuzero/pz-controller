@@ -117,6 +117,12 @@ describe('serialização estável (gravar no prazo e comparar em recálculos)', 
       fimDoPrazo: '2027-03-31T03:00:00.000Z',
     });
     expect(objeto).not.toHaveProperty('ciencia');
+    expect(objeto.fundamentos).toEqual([
+      'Lei 11.419/2006, art. 4º, §§3º e 4º',
+      'CPC, art. 224, §§2º e 3º',
+      'CPC, arts. 219 e 224',
+      'CPC, art. 335',
+    ]);
     // compacto: sem indentação nem quebra de linha
     expect(json).toBe(JSON.stringify(objeto));
   });

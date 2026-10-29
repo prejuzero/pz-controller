@@ -3,7 +3,12 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 
 import { calendarioDeOcorrencias, type Efeito, type OcorrenciaDatada } from './calendario.js';
-import { calcularPrazo, VERSAO_DO_MOTOR } from './regras.js';
+import {
+  AVISO_ALTERNATIVAS,
+  AVISO_FERIADO_LOCAL,
+  calcularPrazo,
+  VERSAO_DO_MOTOR,
+} from './regras.js';
 
 import type { EntradaDoCalculo, PrazoDaTabela, ResultadoDoCalculo } from './modelo.js';
 
@@ -551,5 +556,161 @@ describe('propriedades', () => {
         expect(r.vencimento.ehDepoisDe(r.publicacao ?? data)).toBe(true);
       }),
     );
+  });
+});
+
+describe('casos de borda (achados pelo teste de mutação)', () => {
+  it('texto do aviso de feriado local é o aprovado pela curadoria (V2, aba 8)', () => {
+    expect(AVISO_FERIADO_LOCAL).toBe(
+      'Feriado local não verificado — confira o calendário da comarca e a legislação aplicável antes de considerar o prazo definitivo.',
+    );
+    expect(AVISO_ALTERNATIVAS).toBe(
+      'Há outras datas possíveis: confira as alternativas e o fundamento de cada uma antes de confirmar.',
+    );
+  });
+
+  it('autos físicos sem litisconsortes com procuradores distintos não dobram', () => {
+    expect(iso(calculado(entrada({ condicoes: { autosFisicos: true } })).vencimento)).toBe(
+      '2027-03-23',
+    );
+  });
+
+  it('dobro decidido pela tabela não gera alternativa', () => {
+    for (const e of [
+      entrada({ condicoes: { ente: 'fazenda-publica' } }),
+      entrada({ prazo: prazo({ dobro: 'nao-dobra' }), condicoes: { ente: 'fazenda-publica' } }),
+      entrada({ condicoes: { litisconsortesComProcuradoresDistintos: true, autosFisicos: true } }),
+    ]) {
+      expect(calculado(e).alternativas).toEqual([]);
+    }
+  });
+
+  it('a alternativa do dobro cita o fundamento', () => {
+    const r = calculado(
+      entrada({
+        ramo: 'trabalhista',
+        prazo: prazo({ quantidade: 8, dobro: 'verificar' }),
+        condicoes: { ente: 'fazenda-publica' },
+      }),
+    );
+    expect(r.alternativas[0]?.fundamentos).toEqual(['CPC, art. 183, c/c CLT, art. 769']);
+  });
+
+  it('prorrogação no cível não gera alternativa', () => {
+    const calendario = calendarioDeOcorrencias([indisponibilidade('2027-03-23')]);
+    expect(calculado(entrada({ calendario })).alternativas).toEqual([]);
+  });
+
+  it('penal no DJEN cita a Lei 11.419/2006', () => {
+    expect(calculado(penal()).fundamentos[0]).toBe('Lei 11.419/2006, art. 4º, §§3º e 4º');
+  });
+
+  it('feriado ou suspensão no dia do início adia o início (cível e penal)', () => {
+    const feriadoNoInicio = calendarioDeOcorrencias([feriado('2027-03-03')]);
+    expect(resumo(entrada({ calendario: feriadoNoInicio })).inicio).toBe('2027-03-04');
+    const suspensaoNoInicio = calendarioDeOcorrencias([suspensao('2027-03-03')]);
+    expect(resumo(penal({ calendario: suspensaoNoInicio })).inicio).toBe('2027-03-04');
+    expect(resumo(penal({ calendario: feriadoNoInicio })).inicio).toBe('2027-03-04');
+  });
+
+  it('ciência manual no cível: indisponibilidade no dia seguinte adia o início', () => {
+    const calendario = calendarioDeOcorrencias([indisponibilidade('2027-03-02')]);
+    const r = calculado(entrada({ meio: 'manual', calendario }));
+    expect(iso(r.inicio)).toBe('2027-03-03');
+    expect(r.fundamentos[0]).toBe('CPC, art. 224, caput e §3º');
+  });
+
+  it('penal: sábado que também é feriado prorroga sem alternativa (CPP, art. 798, §3º)', () => {
+    const calendario = calendarioDeOcorrencias([feriado('2027-03-06')]);
+    const r = calculado(
+      penal({
+        calendario,
+        prazo: prazo({ quantidade: 4, contagem: 'corridos', dobro: 'so-defensoria' }),
+      }),
+    );
+    expect(iso(r.vencimento)).toBe('2027-03-08');
+    expect(r.alternativas).toEqual([]);
+    expect(r.fundamentos).toContain('CPP, art. 798, §3º');
+    expect(r.fundamentos).not.toContain('Lei 11.419/2006, art. 10, §2º');
+  });
+
+  it('penal: feriado no vencimento cita o CPP, não a Lei 11.419/2006', () => {
+    const calendario = calendarioDeOcorrencias([feriado('2027-03-05')]);
+    const r = calculado(
+      penal({
+        calendario,
+        prazo: prazo({ quantidade: 3, contagem: 'corridos', dobro: 'so-defensoria' }),
+      }),
+    );
+    expect(iso(r.vencimento)).toBe('2027-03-08');
+    expect(r.fundamentos).toContain('CPP, art. 798, §3º');
+    expect(r.fundamentos).not.toContain('Lei 11.419/2006, art. 10, §2º');
+  });
+
+  it('penal com vencimento exatamente em 20/12 mostra a alternativa com a suspensão', () => {
+    const r = calculado(penal({ dataDeReferencia: d('2027-12-14') }));
+    expect(iso(r.vencimento)).toBe('2027-12-20');
+    expect(r.alternativas.map((a) => iso(a.vencimento))).toEqual(['2028-01-21']);
+  });
+
+  it('a suspensão de fim de ano aparece na memória com o motivo', () => {
+    const r = calculado(entrada({ dataDeReferencia: d('2027-12-14') }));
+    expect(r.diasDesconsiderados.find((dia) => iso(dia.data) === '2027-12-20')?.motivo).toBe(
+      'suspensão de prazos de 20/12 a 20/01',
+    );
+  });
+
+  it('portal: dias até a ciência entram na memória', () => {
+    const naConsulta = calculado(entrada({ meio: 'portal', dataDaConsulta: d('2027-03-06') }));
+    expect(desconsiderados(naConsulta).slice(0, 2)).toEqual([
+      '2027-03-06 sábado',
+      '2027-03-07 domingo',
+    ]);
+    const tacita = calculado(entrada({ meio: 'portal' }));
+    expect(desconsiderados(tacita)[0]).toBe('2027-03-13 sábado');
+  });
+
+  it('"a confirmar" traz o detalhe e os fundamentos', () => {
+    expect(calcularPrazo(penal({ meio: 'portal' }))).toEqual({
+      situacao: 'a-confirmar',
+      motivo: 'ramo-sem-regra',
+      detalhe: 'ciência pelo portal no processo penal sem regra cadastrada',
+      fundamentos: ['CPC, art. 335'],
+    });
+    expect(
+      calcularPrazo(entrada({ meio: 'portal', dataDaConsulta: d('2027-02-26') })),
+    ).toMatchObject({
+      detalhe: 'consulta anterior ao envio da intimação',
+    });
+    expect(
+      calcularPrazo(entrada({ meio: 'portal', dataDeReferencia: d('2027-03-03') })),
+    ).toMatchObject({
+      detalhe: 'ciência tácita em dia não útil: regra pendente com a curadoria',
+    });
+    expect(calcularPrazo(entrada({ dataDeReferencia: d('2016-03-14') }))).toMatchObject({
+      detalhe: 'regra de contagem vigente em 2016-03-16 não cadastrada',
+    });
+    expect(calcularPrazo(entrada({ fusoDoJuizo: 'Fuso/Inexistente' }))).toEqual({
+      situacao: 'a-confirmar',
+      motivo: 'dados-insuficientes',
+      detalhe: 'fuso do juízo desconhecido: Fuso/Inexistente',
+      fundamentos: ['CPC, art. 213, parágrafo único'],
+    });
+    expect(calcularPrazo(entrada({ prazo: prazo({ contagem: 'corridos' }) }))).toEqual({
+      situacao: 'a-confirmar',
+      motivo: 'dados-insuficientes',
+      detalhe: 'a tabela conta em dias corridos e a regra do ramo em dias uteis',
+      fundamentos: ['CPC, art. 335', 'CPC, arts. 219 e 224'],
+    });
+    const tudoSuspenso = {
+      ocorrencias: () => [suspensao('2027-03-01')],
+      feriadosLocaisVerificados: true,
+    };
+    expect(calcularPrazo(entrada({ calendario: tudoSuspenso }))).toEqual({
+      situacao: 'a-confirmar',
+      motivo: 'calendario-esgotado',
+      detalhe: 'calendário sem dia útil a partir de 2027-03-03',
+      fundamentos: ['CPC, art. 335'],
+    });
   });
 });

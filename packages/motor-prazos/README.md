@@ -35,4 +35,7 @@ Ficam "a confirmar" até nova resposta da curadoria: 10º dia do portal em dia n
 A suspensão de 20/12 a 20/01 é regra do motor (RN02): o módulo calendario não deve entregar esses dias como `suspensao-de-prazos` nacional, só os atos próprios de cada tribunal.
 
 - PZ-134: memória de cálculo completa e versionamento. O resultado traz `fimDoPrazo` (24h do vencimento no fuso do juízo, CPC, art. 213, parágrafo único; ADR-013), `avisos` (feriados locais não verificados, fuso diferente de Brasília, alternativas e alerta da linha da tabela) e `versaoDoMotor`, que muda a cada alteração de regra ou de saída.
-- PZ-135: casos com datas reais assinados pela curadoria e teste de mutação (Stryker).
+- PZ-135: suíte do motor.
+  - `fixtures/casos-curadoria-v2.json`: os 27 casos da aba 6 da V2 (assinados pela curadora em 29/10/2026), com entrada, dias listados por ela e resultado esperado; rodados em `src/casos-curadoria.test.ts`. CT18 e CT26 ficam em `divergencias` (regra pendente com a curadoria) e o teste fixa a resposta atual do motor. Mudar um caso exige nova assinatura.
+  - `src/propriedades.test.ts`: propriedades com calendários aleatórios (vencimento não antes do início, vencimento em dia útil, determinismo, dobro nunca encurta).
+  - Mutação: `pnpm --filter @pz/motor-prazos mutacao` (Stryker; quebra abaixo de 90%, também no CI). Relatório em `reports/mutacao/`.

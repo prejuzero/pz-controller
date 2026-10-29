@@ -1,0 +1,1390 @@
+{
+  "origem": "docs/curadoria/hu14-pendencias-do-curador-v2-revisado.xlsx, aba 6 (casos de teste assinados pela curadora em 29/10/2026)",
+  "aviso": "O calendário de cada caso traz só os dias que a curadora listou na coluna \"Dias desconsiderados e motivo\"; sábados e domingos vêm do motor (CPC, art. 216) e a suspensão de 20/12 a 20/01 também (RN02). Mudar um caso exige nova assinatura da curadora.",
+  "casos": [
+    {
+      "id": "CT01",
+      "regra": "RN01",
+      "cenario": "Cível, DJEN, 15 dias úteis, semana sem feriado",
+      "tribunal": "TJSP · Comarca de São Paulo (Capital)",
+      "entrada": {
+        "ramo": "civel",
+        "meio": "djen",
+        "dataDeReferencia": "2026-03-03",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 15,
+          "contagem": "uteis",
+          "dobro": "entes-cpc",
+          "fundamento": "CPC, art. 335"
+        },
+        "condicoes": {}
+      },
+      "calendario": [],
+      "esperado": {
+        "publicacao": "2026-03-04",
+        "inicio": "2026-03-05",
+        "vencimento": "2026-03-25"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026"
+    },
+    {
+      "id": "CT02",
+      "regra": "RN03",
+      "cenario": "Disponibilização numa sexta-feira",
+      "tribunal": "TJSP · Comarca de São Paulo (Capital)",
+      "entrada": {
+        "ramo": "civel",
+        "meio": "djen",
+        "dataDeReferencia": "2026-03-06",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 15,
+          "contagem": "uteis",
+          "dobro": "entes-cpc",
+          "fundamento": "CPC, art. 335"
+        },
+        "condicoes": {}
+      },
+      "calendario": [],
+      "esperado": {
+        "publicacao": "2026-03-09",
+        "inicio": "2026-03-10",
+        "vencimento": "2026-03-30"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026"
+    },
+    {
+      "id": "CT03",
+      "regra": "RN03",
+      "cenario": "Disponibilização na véspera de feriado nacional",
+      "tribunal": "TJSP · Comarca de São Paulo (Capital)",
+      "entrada": {
+        "ramo": "civel",
+        "meio": "djen",
+        "dataDeReferencia": "2026-11-19",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 15,
+          "contagem": "uteis",
+          "dobro": "entes-cpc",
+          "fundamento": "CPC, art. 335"
+        },
+        "condicoes": {}
+      },
+      "calendario": [
+        {
+          "data": "2026-11-20",
+          "efeito": "sem-expediente",
+          "motivo": "Consciência Negra",
+          "atoNormativo": "Lei 14.759/2023"
+        },
+        {
+          "data": "2026-12-07",
+          "efeito": "sem-expediente",
+          "motivo": "suspensão do expediente",
+          "atoNormativo": "Prov. CSM 2.813/2025"
+        },
+        {
+          "data": "2026-12-08",
+          "efeito": "sem-expediente",
+          "motivo": "Dia da Justiça",
+          "atoNormativo": "Lei 1.408/1951, art. 5º"
+        }
+      ],
+      "esperado": {
+        "publicacao": "2026-11-23",
+        "inicio": "2026-11-24",
+        "vencimento": "2026-12-16"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026"
+    },
+    {
+      "id": "CT04",
+      "regra": "RN04",
+      "cenario": "Portal com consulta antes de 10 dias",
+      "tribunal": "TJSP · Comarca de São Paulo (Capital)",
+      "entrada": {
+        "ramo": "civel",
+        "meio": "portal",
+        "dataDeReferencia": "2026-03-02",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 15,
+          "contagem": "uteis",
+          "dobro": "entes-cpc",
+          "fundamento": "CPC, art. 335"
+        },
+        "condicoes": {},
+        "dataDaConsulta": "2026-03-05"
+      },
+      "calendario": [],
+      "esperado": {
+        "ciencia": "2026-03-05",
+        "inicio": "2026-03-06",
+        "vencimento": "2026-03-26"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026"
+    },
+    {
+      "id": "CT05",
+      "regra": "RN04",
+      "cenario": "Portal sem consulta (ciência tácita)",
+      "tribunal": "TJSP · Comarca de São Paulo (Capital)",
+      "entrada": {
+        "ramo": "civel",
+        "meio": "portal",
+        "dataDeReferencia": "2026-03-02",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 15,
+          "contagem": "uteis",
+          "dobro": "entes-cpc",
+          "fundamento": "CPC, art. 335"
+        },
+        "condicoes": {}
+      },
+      "calendario": [
+        {
+          "data": "2026-04-02",
+          "efeito": "sem-expediente",
+          "motivo": "Endoenças",
+          "atoNormativo": "Prov. CSM 2.813/2025"
+        },
+        {
+          "data": "2026-04-03",
+          "efeito": "sem-expediente",
+          "motivo": "Sexta-feira da Paixão",
+          "atoNormativo": "Lei 1.408/1951, art. 5º"
+        }
+      ],
+      "esperado": {
+        "ciencia": "2026-03-12",
+        "inicio": "2026-03-13",
+        "vencimento": "2026-04-06"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026"
+    },
+    {
+      "id": "CT06",
+      "regra": "RN02",
+      "cenario": "Prazo que atravessa o recesso de 20/12 a 20/01",
+      "tribunal": "TJSP · Comarca de São Paulo (Capital)",
+      "entrada": {
+        "ramo": "civel",
+        "meio": "djen",
+        "dataDeReferencia": "2025-12-09",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 15,
+          "contagem": "uteis",
+          "dobro": "entes-cpc",
+          "fundamento": "CPC, art. 335"
+        },
+        "condicoes": {}
+      },
+      "calendario": [
+        {
+          "data": "2025-12-20",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-21",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-22",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-23",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-24",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-25",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-26",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-27",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-28",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-29",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-30",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-31",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2026-01-01",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2026-01-02",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2026-01-03",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2026-01-04",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2026-01-05",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2026-01-06",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        }
+      ],
+      "esperado": {
+        "publicacao": "2025-12-10",
+        "inicio": "2025-12-11",
+        "vencimento": "2026-01-30"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026"
+    },
+    {
+      "id": "CT07",
+      "regra": "RN02",
+      "cenario": "Disponibilização durante a suspensão",
+      "tribunal": "TJSP · Comarca de São Paulo (Capital)",
+      "entrada": {
+        "ramo": "civel",
+        "meio": "djen",
+        "dataDeReferencia": "2026-01-07",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 15,
+          "contagem": "uteis",
+          "dobro": "entes-cpc",
+          "fundamento": "CPC, art. 335"
+        },
+        "condicoes": {}
+      },
+      "calendario": [
+        {
+          "data": "2025-12-20",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-21",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-22",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-23",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-24",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-25",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-26",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-27",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-28",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-29",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-30",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-31",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2026-01-01",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2026-01-02",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2026-01-03",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2026-01-04",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2026-01-05",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2026-01-06",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        }
+      ],
+      "esperado": {
+        "publicacao": "2026-01-08",
+        "inicio": "2026-01-21",
+        "vencimento": "2026-02-10"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026"
+    },
+    {
+      "id": "CT08",
+      "regra": "RN02",
+      "cenario": "Trabalhista atravessando o recesso",
+      "tribunal": "TRT-2 · São Paulo (Capital)",
+      "entrada": {
+        "ramo": "trabalhista",
+        "meio": "djen",
+        "dataDeReferencia": "2025-12-10",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 8,
+          "contagem": "uteis",
+          "dobro": "fazenda-para-recorrer",
+          "fundamento": "CLT, art. 895; Lei 5.584/1970, art. 6º"
+        },
+        "condicoes": {}
+      },
+      "calendario": [
+        {
+          "data": "2025-12-20",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-21",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-22",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-23",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-24",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-25",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-26",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-27",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-28",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-29",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-30",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2025-12-31",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2026-01-01",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2026-01-02",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2026-01-03",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2026-01-04",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2026-01-05",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        },
+        {
+          "data": "2026-01-06",
+          "efeito": "sem-expediente",
+          "motivo": "recesso forense",
+          "atoNormativo": "Prov. CSM 2.765/2024 e 2.813/2025"
+        }
+      ],
+      "esperado": {
+        "publicacao": "2025-12-11",
+        "inicio": "2025-12-12",
+        "vencimento": "2026-01-22"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026",
+      "observacao": "A curadora pediu conferir no calendário do TRT-2 se houve outra suspensão entre 11 e 19/12/2025."
+    },
+    {
+      "id": "CT09",
+      "regra": "RN05",
+      "cenario": "Feriado municipal só da comarca do processo",
+      "tribunal": "TJSP · Comarca de Santos",
+      "entrada": {
+        "ramo": "civel",
+        "meio": "djen",
+        "dataDeReferencia": "2026-08-31",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 15,
+          "contagem": "uteis",
+          "dobro": "entes-cpc",
+          "fundamento": "CPC, art. 335"
+        },
+        "condicoes": {}
+      },
+      "calendario": [
+        {
+          "data": "2026-09-07",
+          "efeito": "sem-expediente",
+          "motivo": "Independência",
+          "atoNormativo": "Lei 662/1949"
+        },
+        {
+          "data": "2026-09-08",
+          "efeito": "sem-expediente",
+          "motivo": "Nossa Senhora do Monte Serrat",
+          "atoNormativo": "feriado municipal de Santos"
+        }
+      ],
+      "esperado": {
+        "publicacao": "2026-09-01",
+        "inicio": "2026-09-02",
+        "vencimento": "2026-09-24"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026"
+    },
+    {
+      "id": "CT10",
+      "regra": "RN05",
+      "cenario": "Carnaval e Quarta-feira de Cinzas com ato do tribunal",
+      "tribunal": "TJSP · Comarca de São Paulo (Capital)",
+      "entrada": {
+        "ramo": "civel",
+        "meio": "djen",
+        "dataDeReferencia": "2026-02-12",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 15,
+          "contagem": "uteis",
+          "dobro": "entes-cpc",
+          "fundamento": "CPC, art. 335"
+        },
+        "condicoes": {}
+      },
+      "calendario": [
+        {
+          "data": "2026-02-16",
+          "efeito": "sem-expediente",
+          "motivo": "Carnaval",
+          "atoNormativo": "Prov. CSM 2.813/2025"
+        },
+        {
+          "data": "2026-02-17",
+          "efeito": "sem-expediente",
+          "motivo": "terça-feira de Carnaval",
+          "atoNormativo": "Lei 1.408/1951, art. 5º"
+        },
+        {
+          "data": "2026-02-18",
+          "efeito": "indisponibilidade",
+          "motivo": "Cinzas: expediente a partir das 13h",
+          "atoNormativo": "Prov. CSM 2.813/2025, art. 2º, §2º"
+        }
+      ],
+      "esperado": {
+        "publicacao": "2026-02-13",
+        "inicio": "2026-02-19",
+        "vencimento": "2026-03-11"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026"
+    },
+    {
+      "id": "CT11",
+      "regra": "RN05",
+      "cenario": "Semana Santa na Justiça Federal",
+      "tribunal": "TRF3 · Seção Judiciária de São Paulo",
+      "entrada": {
+        "ramo": "civel",
+        "meio": "djen",
+        "dataDeReferencia": "2026-03-25",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 15,
+          "contagem": "uteis",
+          "dobro": "entes-cpc",
+          "fundamento": "CPC, art. 335"
+        },
+        "condicoes": {}
+      },
+      "calendario": [
+        {
+          "data": "2026-04-01",
+          "efeito": "sem-expediente",
+          "motivo": "Semana Santa",
+          "atoNormativo": "Lei 5.010/1966, art. 62, II"
+        },
+        {
+          "data": "2026-04-02",
+          "efeito": "sem-expediente",
+          "motivo": "Semana Santa",
+          "atoNormativo": "Lei 5.010/1966, art. 62, II"
+        },
+        {
+          "data": "2026-04-03",
+          "efeito": "sem-expediente",
+          "motivo": "Semana Santa",
+          "atoNormativo": "Lei 5.010/1966, art. 62, II"
+        },
+        {
+          "data": "2026-04-04",
+          "efeito": "sem-expediente",
+          "motivo": "Semana Santa",
+          "atoNormativo": "Lei 5.010/1966, art. 62, II"
+        },
+        {
+          "data": "2026-04-05",
+          "efeito": "sem-expediente",
+          "motivo": "Semana Santa",
+          "atoNormativo": "Lei 5.010/1966, art. 62, II"
+        },
+        {
+          "data": "2026-04-20",
+          "efeito": "sem-expediente",
+          "motivo": "sem expediente",
+          "atoNormativo": "Portaria CATRF3R 48/2025"
+        },
+        {
+          "data": "2026-04-21",
+          "efeito": "sem-expediente",
+          "motivo": "Tiradentes",
+          "atoNormativo": "Lei 662/1949"
+        }
+      ],
+      "esperado": {
+        "publicacao": "2026-03-26",
+        "inicio": "2026-03-27",
+        "vencimento": "2026-04-23"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026"
+    },
+    {
+      "id": "CT12",
+      "regra": "RN05",
+      "cenario": "Corpus Christi",
+      "tribunal": "TJSP · Comarca de São Paulo (Capital)",
+      "entrada": {
+        "ramo": "civel",
+        "meio": "djen",
+        "dataDeReferencia": "2026-06-01",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 15,
+          "contagem": "uteis",
+          "dobro": "entes-cpc",
+          "fundamento": "CPC, art. 335"
+        },
+        "condicoes": {}
+      },
+      "calendario": [
+        {
+          "data": "2026-06-04",
+          "efeito": "sem-expediente",
+          "motivo": "Corpus Christi",
+          "atoNormativo": "Prov. CSM 2.813/2025"
+        },
+        {
+          "data": "2026-06-05",
+          "efeito": "sem-expediente",
+          "motivo": "suspensão do expediente",
+          "atoNormativo": "Prov. CSM 2.813/2025"
+        },
+        {
+          "data": "2026-06-24",
+          "efeito": "indisponibilidade",
+          "motivo": "expediente reduzido",
+          "atoNormativo": "Prov. CSM 2.813/2025"
+        }
+      ],
+      "esperado": {
+        "publicacao": "2026-06-02",
+        "inicio": "2026-06-03",
+        "vencimento": "2026-06-25"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026"
+    },
+    {
+      "id": "CT13",
+      "regra": "RN05",
+      "cenario": "Feriado que cai em fim de semana",
+      "tribunal": "TJSP · Comarca de São Paulo (Capital)",
+      "entrada": {
+        "ramo": "civel",
+        "meio": "djen",
+        "dataDeReferencia": "2026-11-09",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 15,
+          "contagem": "uteis",
+          "dobro": "entes-cpc",
+          "fundamento": "CPC, art. 335"
+        },
+        "condicoes": {}
+      },
+      "calendario": [
+        {
+          "data": "2026-11-15",
+          "efeito": "sem-expediente",
+          "motivo": "Proclamação da República",
+          "atoNormativo": "Lei 662/1949"
+        },
+        {
+          "data": "2026-11-20",
+          "efeito": "sem-expediente",
+          "motivo": "Consciência Negra",
+          "atoNormativo": "Lei 14.759/2023"
+        }
+      ],
+      "esperado": {
+        "publicacao": "2026-11-10",
+        "inicio": "2026-11-11",
+        "vencimento": "2026-12-02"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026"
+    },
+    {
+      "id": "CT14",
+      "regra": "RN05",
+      "cenario": "Feriados encadeados (feriado + ponte)",
+      "tribunal": "TJSP · Comarca de São Paulo (Capital)",
+      "entrada": {
+        "ramo": "civel",
+        "meio": "djen",
+        "dataDeReferencia": "2026-07-06",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 15,
+          "contagem": "uteis",
+          "dobro": "entes-cpc",
+          "fundamento": "CPC, art. 335"
+        },
+        "condicoes": {}
+      },
+      "calendario": [
+        {
+          "data": "2026-07-09",
+          "efeito": "sem-expediente",
+          "motivo": "Data Magna",
+          "atoNormativo": "Lei Estadual 9.497/1997"
+        },
+        {
+          "data": "2026-07-10",
+          "efeito": "sem-expediente",
+          "motivo": "ponte",
+          "atoNormativo": "Prov. CSM 2.813/2025"
+        },
+        {
+          "data": "2026-07-22",
+          "efeito": "indisponibilidade",
+          "motivo": "indisponibilidade do sistema",
+          "atoNormativo": "certidão do tribunal"
+        },
+        {
+          "data": "2026-07-23",
+          "efeito": "indisponibilidade",
+          "motivo": "indisponibilidade do sistema",
+          "atoNormativo": "certidão do tribunal"
+        }
+      ],
+      "esperado": {
+        "publicacao": "2026-07-07",
+        "inicio": "2026-07-08",
+        "vencimento": "2026-07-30"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026"
+    },
+    {
+      "id": "CT15",
+      "regra": "RN05",
+      "cenario": "Portaria de suspensão publicada depois da intimação (recálculo)",
+      "tribunal": "TJSP · Comarca de Fernandópolis",
+      "entrada": {
+        "ramo": "civel",
+        "meio": "djen",
+        "dataDeReferencia": "2026-07-01",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 30,
+          "contagem": "uteis",
+          "dobro": "nao-dobra",
+          "fundamento": "CPC, art. 535"
+        },
+        "condicoes": {
+          "ente": "fazenda-publica"
+        }
+      },
+      "calendario": [
+        {
+          "data": "2026-07-09",
+          "efeito": "sem-expediente",
+          "motivo": "Data Magna",
+          "atoNormativo": "Lei Estadual 9.497/1997"
+        },
+        {
+          "data": "2026-07-10",
+          "efeito": "sem-expediente",
+          "motivo": "ponte",
+          "atoNormativo": "Prov. CSM 2.813/2025"
+        },
+        {
+          "data": "2026-08-17",
+          "efeito": "suspensao-de-prazos",
+          "motivo": "suspensão de prazos",
+          "atoNormativo": "Comunicado Conjunto TJSP 558/2026"
+        },
+        {
+          "data": "2026-08-18",
+          "efeito": "suspensao-de-prazos",
+          "motivo": "suspensão de prazos",
+          "atoNormativo": "Comunicado Conjunto TJSP 558/2026"
+        },
+        {
+          "data": "2026-08-19",
+          "efeito": "suspensao-de-prazos",
+          "motivo": "suspensão de prazos",
+          "atoNormativo": "Comunicado Conjunto TJSP 558/2026"
+        },
+        {
+          "data": "2026-08-20",
+          "efeito": "suspensao-de-prazos",
+          "motivo": "suspensão de prazos",
+          "atoNormativo": "Comunicado Conjunto TJSP 558/2026"
+        },
+        {
+          "data": "2026-08-21",
+          "efeito": "suspensao-de-prazos",
+          "motivo": "suspensão de prazos",
+          "atoNormativo": "Comunicado Conjunto TJSP 558/2026"
+        }
+      ],
+      "esperado": {
+        "publicacao": "2026-07-02",
+        "inicio": "2026-07-03",
+        "vencimento": "2026-08-24"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026",
+      "observacao": "Antes do comunicado (sem os dias de 17 a 21/08) o vencimento era 17/08/2026."
+    },
+    {
+      "id": "CT16",
+      "regra": "RN06",
+      "cenario": "Fazenda Pública, prazo em dobro",
+      "tribunal": "TJSP · Comarca de São Paulo (Capital)",
+      "entrada": {
+        "ramo": "civel",
+        "meio": "djen",
+        "dataDeReferencia": "2026-08-03",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 15,
+          "contagem": "uteis",
+          "dobro": "entes-cpc",
+          "fundamento": "CPC, arts. 1.003, §5º"
+        },
+        "condicoes": {
+          "ente": "fazenda-publica"
+        }
+      },
+      "calendario": [
+        {
+          "data": "2026-09-07",
+          "efeito": "sem-expediente",
+          "motivo": "Independência",
+          "atoNormativo": "Lei 662/1949"
+        }
+      ],
+      "esperado": {
+        "publicacao": "2026-08-04",
+        "inicio": "2026-08-05",
+        "vencimento": "2026-09-16"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026"
+    },
+    {
+      "id": "CT17",
+      "regra": "RN06",
+      "cenario": "Ente com prazo próprio fixado em lei (sem dobro)",
+      "tribunal": "TJSP · Comarca de São Paulo (Capital)",
+      "entrada": {
+        "ramo": "civel",
+        "meio": "djen",
+        "dataDeReferencia": "2026-10-01",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 30,
+          "contagem": "uteis",
+          "dobro": "nao-dobra",
+          "fundamento": "CPC, art. 535"
+        },
+        "condicoes": {
+          "ente": "fazenda-publica"
+        }
+      },
+      "calendario": [
+        {
+          "data": "2026-10-12",
+          "efeito": "sem-expediente",
+          "motivo": "Nossa Senhora Aparecida",
+          "atoNormativo": "Lei 6.802/1980"
+        },
+        {
+          "data": "2026-10-28",
+          "efeito": "sem-expediente",
+          "motivo": "Dia do Servidor",
+          "atoNormativo": "Prov. CSM 2.813/2025"
+        },
+        {
+          "data": "2026-11-02",
+          "efeito": "sem-expediente",
+          "motivo": "Finados",
+          "atoNormativo": "Lei 662/1949"
+        }
+      ],
+      "esperado": {
+        "publicacao": "2026-10-02",
+        "inicio": "2026-10-05",
+        "vencimento": "2026-11-18"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026"
+    },
+    {
+      "id": "CT19",
+      "regra": "RN07",
+      "cenario": "Juizado especial cível em dias úteis",
+      "tribunal": "TJSP · Juizado Especial Cível da Capital",
+      "entrada": {
+        "ramo": "juizados",
+        "meio": "djen",
+        "dataDeReferencia": "2026-10-05",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 10,
+          "contagem": "uteis",
+          "dobro": "nao-dobra",
+          "fundamento": "Lei 9.099/1995, art. 42"
+        },
+        "condicoes": {}
+      },
+      "calendario": [
+        {
+          "data": "2026-10-12",
+          "efeito": "sem-expediente",
+          "motivo": "Nossa Senhora Aparecida",
+          "atoNormativo": "Lei 6.802/1980"
+        }
+      ],
+      "esperado": {
+        "publicacao": "2026-10-06",
+        "inicio": "2026-10-07",
+        "vencimento": "2026-10-21"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026"
+    },
+    {
+      "id": "CT20",
+      "regra": "RN07",
+      "cenario": "Penal em dias corridos terminando em domingo",
+      "tribunal": "TJSP · Comarca de São Paulo (Capital)",
+      "entrada": {
+        "ramo": "penal",
+        "meio": "djen",
+        "dataDeReferencia": "2026-08-31",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 5,
+          "contagem": "corridos",
+          "dobro": "so-defensoria",
+          "fundamento": "CPP, art. 593"
+        },
+        "condicoes": {}
+      },
+      "calendario": [
+        {
+          "data": "2026-09-07",
+          "efeito": "sem-expediente",
+          "motivo": "Independência",
+          "atoNormativo": "Lei 662/1949"
+        }
+      ],
+      "esperado": {
+        "publicacao": "2026-09-01",
+        "inicio": "2026-09-02",
+        "vencimento": "2026-09-08"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026"
+    },
+    {
+      "id": "CT21",
+      "regra": "RN07",
+      "cenario": "Penal em dias corridos terminando em feriado",
+      "tribunal": "TJSP · Comarca de São Paulo (Capital)",
+      "entrada": {
+        "ramo": "penal",
+        "meio": "djen",
+        "dataDeReferencia": "2026-10-06",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 5,
+          "contagem": "corridos",
+          "dobro": "so-defensoria",
+          "fundamento": "CPP, art. 586"
+        },
+        "condicoes": {}
+      },
+      "calendario": [
+        {
+          "data": "2026-10-12",
+          "efeito": "sem-expediente",
+          "motivo": "Nossa Senhora Aparecida",
+          "atoNormativo": "Lei 6.802/1980"
+        }
+      ],
+      "esperado": {
+        "publicacao": "2026-10-07",
+        "inicio": "2026-10-08",
+        "vencimento": "2026-10-13"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026"
+    },
+    {
+      "id": "CT22",
+      "regra": "RN08",
+      "cenario": "Vencimento em dia com indisponibilidade certificada",
+      "tribunal": "TJSP · Comarca de São Paulo (Capital)",
+      "entrada": {
+        "ramo": "civel",
+        "meio": "djen",
+        "dataDeReferencia": "2026-06-29",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 15,
+          "contagem": "uteis",
+          "dobro": "entes-cpc",
+          "fundamento": "CPC, art. 335"
+        },
+        "condicoes": {}
+      },
+      "calendario": [
+        {
+          "data": "2026-07-09",
+          "efeito": "sem-expediente",
+          "motivo": "Data Magna",
+          "atoNormativo": "Lei Estadual 9.497/1997"
+        },
+        {
+          "data": "2026-07-10",
+          "efeito": "sem-expediente",
+          "motivo": "ponte",
+          "atoNormativo": "Prov. CSM 2.813/2025"
+        },
+        {
+          "data": "2026-07-23",
+          "efeito": "indisponibilidade",
+          "motivo": "indisponibilidade do e-SAJ das 0h às 9h48",
+          "atoNormativo": "Res. CNJ 185/2013, art. 11"
+        }
+      ],
+      "esperado": {
+        "publicacao": "2026-06-30",
+        "inicio": "2026-07-01",
+        "vencimento": "2026-07-24"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026"
+    },
+    {
+      "id": "CT23",
+      "regra": "RN08",
+      "cenario": "Vencimento em dia com expediente encerrado antes do horário normal",
+      "tribunal": "TJSP · Comarca de São Paulo (Capital)",
+      "entrada": {
+        "ramo": "civel",
+        "meio": "djen",
+        "dataDeReferencia": "2026-06-03",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 15,
+          "contagem": "uteis",
+          "dobro": "entes-cpc",
+          "fundamento": "CPC, art. 335"
+        },
+        "condicoes": {}
+      },
+      "calendario": [
+        {
+          "data": "2026-06-04",
+          "efeito": "sem-expediente",
+          "motivo": "Corpus Christi",
+          "atoNormativo": "Prov. CSM 2.813/2025"
+        },
+        {
+          "data": "2026-06-05",
+          "efeito": "sem-expediente",
+          "motivo": "ponte",
+          "atoNormativo": "Prov. CSM 2.813/2025"
+        },
+        {
+          "data": "2026-06-29",
+          "efeito": "indisponibilidade",
+          "motivo": "expediente das 8h às 13h",
+          "atoNormativo": "Comunicado TJSP 184/2026"
+        }
+      ],
+      "esperado": {
+        "publicacao": "2026-06-08",
+        "inicio": "2026-06-09",
+        "vencimento": "2026-06-30"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026"
+    },
+    {
+      "id": "CT24",
+      "regra": "Fim do prazo",
+      "cenario": "Juízo em outro fuso",
+      "tribunal": "TJAM · Comarca de Manaus",
+      "entrada": {
+        "ramo": "civel",
+        "meio": "djen",
+        "dataDeReferencia": "2026-09-08",
+        "fusoDoJuizo": "America/Manaus",
+        "prazo": {
+          "quantidade": 15,
+          "contagem": "uteis",
+          "dobro": "entes-cpc",
+          "fundamento": "CPC, art. 335"
+        },
+        "condicoes": {}
+      },
+      "calendario": [],
+      "esperado": {
+        "publicacao": "2026-09-09",
+        "inicio": "2026-09-10",
+        "vencimento": "2026-09-30",
+        "fimDoPrazo": "2026-10-01T04:00:00.000Z"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026"
+    },
+    {
+      "id": "CT25",
+      "regra": "Ano bissexto",
+      "cenario": "Prazo atravessando 29/02/2028",
+      "tribunal": "TJSP · Comarca de São Paulo (Capital), 2028",
+      "entrada": {
+        "ramo": "penal",
+        "meio": "djen",
+        "dataDeReferencia": "2028-02-18",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 10,
+          "contagem": "corridos",
+          "dobro": "so-defensoria",
+          "fundamento": "CPP, art. 396"
+        },
+        "condicoes": {}
+      },
+      "calendario": [
+        {
+          "data": "2028-02-28",
+          "efeito": "sem-expediente",
+          "motivo": "Carnaval",
+          "atoNormativo": "ato do TJSP de 2028 (a publicar)"
+        },
+        {
+          "data": "2028-02-29",
+          "efeito": "sem-expediente",
+          "motivo": "Carnaval",
+          "atoNormativo": "ato do TJSP de 2028 (a publicar)"
+        },
+        {
+          "data": "2028-03-01",
+          "efeito": "indisponibilidade",
+          "motivo": "Cinzas",
+          "atoNormativo": "ato do TJSP de 2028 (a publicar)"
+        }
+      ],
+      "esperado": {
+        "publicacao": "2028-02-21",
+        "inicio": "2028-02-22",
+        "vencimento": "2028-03-02"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026",
+      "observacao": "A curadora pediu conferir o provimento do TJSP de 2028 quando publicado."
+    },
+    {
+      "id": "CT27",
+      "regra": "Prazo do ato",
+      "cenario": "Publicação fixa prazo diferente da tabela (lei omissa: vale o do juiz)",
+      "tribunal": "TJSP · Comarca de São Paulo (Capital)",
+      "entrada": {
+        "ramo": "civel",
+        "meio": "djen",
+        "dataDeReferencia": "2026-10-14",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 15,
+          "contagem": "uteis",
+          "dobro": "entes-cpc",
+          "fundamento": "CPC, art. 218, §1º"
+        },
+        "condicoes": {}
+      },
+      "calendario": [
+        {
+          "data": "2026-10-28",
+          "efeito": "sem-expediente",
+          "motivo": "Dia do Servidor",
+          "atoNormativo": "Prov. CSM 2.813/2025"
+        },
+        {
+          "data": "2026-11-02",
+          "efeito": "sem-expediente",
+          "motivo": "Finados",
+          "atoNormativo": "Lei 662/1949"
+        }
+      ],
+      "esperado": {
+        "publicacao": "2026-10-15",
+        "inicio": "2026-10-16",
+        "vencimento": "2026-11-09"
+      },
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026",
+      "observacao": "Pela tabela (5 dias úteis, CPC, art. 218, §3º) seria 22/10/2026. A escolha do prazo é da HU16 (C02)."
+    }
+  ],
+  "divergencias": [
+    {
+      "id": "CT18",
+      "cenario": "Litisconsortes com procuradores distintos, autos físicos, ciência informada pelo advogado",
+      "entrada": {
+        "ramo": "civel",
+        "meio": "manual",
+        "dataDeReferencia": "2026-09-11",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 15,
+          "contagem": "uteis",
+          "dobro": "entes-cpc",
+          "fundamento": "CPC, art. 335"
+        },
+        "condicoes": {
+          "litisconsortesComProcuradoresDistintos": true,
+          "autosFisicos": true
+        }
+      },
+      "calendario": [
+        {
+          "data": "2026-10-12",
+          "efeito": "sem-expediente",
+          "motivo": "Nossa Senhora Aparecida",
+          "atoNormativo": "Lei 6.802/1980"
+        }
+      ],
+      "esperadoPelaCuradora": {
+        "publicacao": "2026-09-14",
+        "inicio": "2026-09-15",
+        "vencimento": "2026-10-27"
+      },
+      "respostaDoMotor": {
+        "ciencia": "2026-09-11",
+        "inicio": "2026-09-14",
+        "vencimento": "2026-10-26"
+      },
+      "pendencia": "A curadora tratou a data informada como disponibilização; o motor trata como ciência. Definir o que o advogado informa no meio manual.",
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026"
+    },
+    {
+      "id": "CT26",
+      "cenario": "Mudança de lei durante o prazo (juizado, 2018)",
+      "entrada": {
+        "ramo": "juizados",
+        "meio": "djen",
+        "dataDeReferencia": "2018-10-26",
+        "fusoDoJuizo": "America/Sao_Paulo",
+        "prazo": {
+          "quantidade": 10,
+          "contagem": "uteis",
+          "dobro": "nao-dobra",
+          "fundamento": "Lei 9.099/1995, art. 42"
+        },
+        "condicoes": {}
+      },
+      "calendario": [],
+      "esperadoPelaCuradora": {
+        "publicacao": "2018-10-29",
+        "inicio": "2018-10-30",
+        "vencimento": "2018-11-08"
+      },
+      "respostaDoMotor": {
+        "situacao": "a-confirmar",
+        "motivo": "sem-regra-legal"
+      },
+      "pendencia": "A regra dos juizados anterior à Lei 13.728/2018 (dias corridos) não está cadastrada.",
+      "assinatura": "Monnalyza Sodré de Freitas (OAB/GO 63.977) - 29/10/2026"
+    }
+  ]
+}
