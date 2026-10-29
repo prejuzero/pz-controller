@@ -10,13 +10,16 @@
   "scripts": {
     "lint": "eslint --max-warnings=0 .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run --coverage"
+    "test": "vitest run --coverage",
+    "mutacao": "stryker run"
   },
   "dependencies": {
     "@pz/kernel": "workspace:*"
   },
   "devDependencies": {
     "@pz/config": "workspace:*",
+    "@stryker-mutator/core": "10.1.1",
+    "@stryker-mutator/vitest-runner": "10.1.1",
     "@types/node": "24.19.2",
     "@vitest/coverage-v8": "5.0.4",
     "eslint": "10.12.0",

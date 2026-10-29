@@ -37,6 +37,8 @@ export default defineConfig(
       '**/dist/**',
       '**/build/**',
       '**/coverage/**',
+      '**/.stryker-tmp/**', // sandbox do teste de mutação (Stryker)
+      '**/reports/mutacao/**',
       '**/.next/**',
       '**/.turbo/**',
       // Código gerado (ex.: tipos do cliente da API em packages/contracts/gerado).
