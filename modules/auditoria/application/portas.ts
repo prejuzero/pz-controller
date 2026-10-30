@@ -15,6 +15,8 @@ export const TIPOS_DE_AUDITORIA = [
   'prazos.tipo-de-ato-cadastrado',
   'prazos.versao-da-tabela-proposta',
   'prazos.versao-da-tabela-aprovada',
+  'prazos.prazo-sugerido',
+  'prazos.prazo-recalculado',
   'calendario.evento-proposto',
   'calendario.evento-aprovado',
   'calendario.evento-revogado',

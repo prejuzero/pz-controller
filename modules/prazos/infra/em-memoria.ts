@@ -1,11 +1,15 @@
+import { Prazo, STATUS_RECALCULAVEIS } from '../domain/prazo.js';
 import { VersaoDaTabela } from '../domain/tabela.js';
 
 import type {
+  AlcanceDaAlteracao,
   FiltroDeVersoes,
+  RepositorioDePrazos,
   RepositorioDaTabela,
   RepositorioDeTiposDeAto,
   TipoDeAto,
 } from '../application/portas.js';
+import type { EstadoDoPrazo } from '../domain/prazo.js';
 import type { EstadoDaVersao, Ramo } from '../domain/tabela.js';
 import type { TransacaoEmMemoria, Uuid } from '@pz/kernel';
 
@@ -76,5 +80,76 @@ export class TabelaEmMemoria
     if (this.#versoes.get(versao.id)?.status !== 'rascunho') return Promise.resolve(false);
     transacao.aoConfirmar(() => this.#versoes.set(versao.id, versao.estado));
     return Promise.resolve(true);
+  }
+}
+
+/** Prazos em memória, com o filtro de alcance do Postgres. Só para testes. */
+export class PrazosEmMemoria implements RepositorioDePrazos<TransacaoEmMemoria> {
+  readonly #prazos = new Map<string, EstadoDoPrazo>();
+
+  inserir(_transacao: TransacaoEmMemoria, prazo: Prazo): Promise<void> {
+    if (this.#prazos.has(prazo.id)) return Promise.reject(new Error('prazo repetido'));
+    this.#prazos.set(prazo.id, prazo.estado);
+    return Promise.resolve();
+  }
+
+  buscar(_transacao: TransacaoEmMemoria, id: Uuid): Promise<Prazo | undefined> {
+    const estado = this.#prazos.get(id);
+    return Promise.resolve(estado === undefined ? undefined : Prazo.restaurar(estado));
+  }
+
+  atualizar(_transacao: TransacaoEmMemoria, prazo: Prazo, versaoLida: number): Promise<boolean> {
+    const atual = this.#prazos.get(prazo.id);
+    if (atual?.versaoOtimista !== versaoLida) return Promise.resolve(false);
+    this.#prazos.set(prazo.id, prazo.estado);
+    return Promise.resolve(true);
+  }
+
+  /** Simula outra gravação no meio (concorrência otimista). */
+  alterarVersao(id: Uuid): void {
+    const atual = this.#prazos.get(id);
+    if (atual !== undefined)
+      this.#prazos.set(id, { ...atual, versaoOtimista: atual.versaoOtimista + 1 });
+  }
+
+  afetados(
+    _transacao: TransacaoEmMemoria,
+    alcance: AlcanceDaAlteracao,
+    depoisDe: Uuid | null,
+    limite: number,
+  ): Promise<Prazo[]> {
+    return Promise.resolve(
+      this.#alcancados(alcance)
+        .filter((e) => depoisDe === null || e.id > depoisDe)
+        .slice(0, limite)
+        .map((e) => Prazo.restaurar(e)),
+    );
+  }
+
+  tenantsAfetados(_transacao: TransacaoEmMemoria, alcance: AlcanceDaAlteracao): Promise<Uuid[]> {
+    return Promise.resolve([...new Set(this.#alcancados(alcance).map((e) => e.tenantId))].sort());
+  }
+
+  #alcancados(alcance: AlcanceDaAlteracao): EstadoDoPrazo[] {
+    return [...this.#prazos.values()]
+      .filter((e) => {
+        const referencia = (e.entrada as { dataDeReferencia?: string } | null)?.dataDeReferencia;
+        const j = e.jurisdicao;
+        const vencimento = e.calculo.vencimento;
+        return (
+          STATUS_RECALCULAVEIS.includes(e.status) &&
+          !e.vencimentoManual &&
+          referencia !== undefined &&
+          referencia <= alcance.fim.paraIso() &&
+          !vencimento?.ehAntesDe(alcance.inicio) &&
+          (alcance.abrangencia === 'nacional' ||
+            (alcance.abrangencia === 'uf' && j.uf === alcance.uf) ||
+            (alcance.abrangencia === 'tribunal' && j.tribunal === alcance.tribunal) ||
+            (alcance.abrangencia === 'comarca' &&
+              j.tribunal === alcance.tribunal &&
+              j.comarca === alcance.comarca))
+        );
+      })
+      .sort((a, b) => a.id.localeCompare(b.id));
   }
 }

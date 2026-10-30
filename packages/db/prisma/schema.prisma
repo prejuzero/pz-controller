@@ -71,6 +71,7 @@ model Tenant {
   processos              Processo[]
   encerramento           EncerramentoConta?
   publicacoes            PublicacaoDestinatario[]
+  prazos                 Prazo[]
 
   @@map("tenant")
 }
@@ -645,6 +646,7 @@ model Processo {
   tenant      Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   cliente     Cliente?                 @relation(fields: [tenantId, clienteId], references: [tenantId, id], onDelete: Restrict)
   publicacoes PublicacaoDestinatario[]
+  prazos      Prazo[]
 
   @@unique([tenantId, numeroCnj])
   @@unique([tenantId, id])
@@ -997,4 +999,69 @@ model PublicacaoDestinatario {
   @@index([tenantId, recebidaEm])
   @@index([tenantId, processoId])
   @@map("publicacao_destinatario")
+}
+
+enum OrigemPrazo {
+  djen
+  manual
+  painel
+
+  @@map("origem_prazo")
+}
+
+enum StatusPrazo {
+  a_confirmar
+  pendente
+  cumprido
+  vencido
+  cancelado
+
+  @@map("status_prazo")
+}
+
+enum StatusCienciaPrazo {
+  pendente
+  confirmada
+
+  @@map("status_ciencia_prazo")
+}
+
+/// Prazo de um ato do processo (HU16): sugerido pelo motor, só vale depois de confirmado.
+model Prazo {
+  id                   String             @id @db.Uuid
+  tenantId             String             @map("tenant_id") @db.Uuid
+  processoId           String             @map("processo_id") @db.Uuid
+  /// Destinatário da publicação de origem (tenant_id + conteudo_id), quando houver.
+  publicacaoConteudoId String?            @map("publicacao_conteudo_id") @db.Uuid
+  tipoAto              String             @map("tipo_ato")
+  ramo                 RamoProcessual?
+  dias                 Int?
+  unidade              UnidadePrazo?
+  inicio               DateTime?          @db.Date
+  vencimento           DateTime?          @db.Date
+  fimDoPrazo           DateTime?          @map("fim_do_prazo") @db.Timestamptz(6)
+  fusoDoJuizo          String?            @map("fuso_do_juizo")
+  vencimentoManual     Boolean            @default(false) @map("vencimento_manual")
+  memoriaCalculo       Json               @map("memoria_calculo")
+  entradaCalculo       Json?              @map("entrada_calculo")
+  fundamento           String?
+  origem               OrigemPrazo
+  status               StatusPrazo        @default(a_confirmar)
+  statusCiencia        StatusCienciaPrazo @default(pendente) @map("status_ciencia")
+  responsavelId        String?            @map("responsavel_id") @db.Uuid
+  versaoMotor          String?            @map("versao_motor")
+  versaoTabela         Int?               @map("versao_tabela")
+  jurisdicao           Json
+  criadoEm             DateTime           @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm         DateTime           @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+  versaoOtimista       Int                @default(1) @map("versao_otimista")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  processo Processo @relation(fields: [tenantId, processoId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([tenantId, vencimento])
+  @@index([tenantId, status])
+  @@index([tenantId, responsavelId, vencimento])
+  @@index([tenantId, processoId])
+  @@map("prazo")
 }

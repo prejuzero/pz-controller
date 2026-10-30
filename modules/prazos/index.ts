@@ -57,5 +57,41 @@ export type {
   TabelaPrazoAprovada,
   Unidade,
 } from './domain/tabela.js';
-export { TabelaEmMemoria } from './infra/em-memoria.js';
+export {
+  CalcularPrazoParaProcesso,
+  CriarPrazo,
+  EntradaDoCalculoDoProcesso,
+  lerAlteracaoDoCalendario,
+  LOTE_DO_RECALCULO,
+  prazoListado,
+  RecalcularPrazosPorCalendario,
+  SugestaoDePrazo,
+  TenantsAfetadosPeloCalendario,
+} from './application/prazos.js';
+export type {
+  AlteracaoDoCalendario,
+  AutorDoPrazo,
+  DadosDoNovoPrazo,
+  PrazoListado,
+  ResultadoDoLote,
+} from './application/prazos.js';
+export { TIPOS_DE_DIA } from './application/portas.js';
+export type {
+  AlcanceDaAlteracao,
+  DiaDoCalendario,
+  LocalizadorDoProcesso,
+  ProcessoNoCalendario,
+  RepositorioDePrazos,
+  TipoDeDia,
+} from './application/portas.js';
+export { ORIGENS_DO_PRAZO, Prazo, STATUS_DO_PRAZO } from './domain/prazo.js';
+export type {
+  CalculoDoPrazo,
+  EstadoDoPrazo,
+  JurisdicaoDoPrazo,
+  OrigemDoPrazo,
+  StatusDoPrazo,
+} from './domain/prazo.js';
+export { PrazosEmMemoria, TabelaEmMemoria } from './infra/em-memoria.js';
+export { PrazosPostgres } from './infra/prazos-postgres.js';
 export { TabelaPostgres, TiposDeAtoPostgres } from './infra/tabela-postgres.js';

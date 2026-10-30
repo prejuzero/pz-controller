@@ -21,3 +21,17 @@ Módulo prazos, gerado por `pnpm gen:module` no desenho hexagonal (ADR-001).
 - **Sem conteúdo jurídico no código:** a taxonomia e a tabela reais entram só pelo fluxo de aprovação do curador. Os testes usam dados fictícios marcados (`teste/ficticios.ts`).
 - **Campos do motor** em cada versão: contagem (úteis ou corridos; ausente na proposta, a do ramo), política de dobro (`verificar` por padrão), cálculo (`automatico`, `data-informada` ou `nao-calcula`), marco inicial, onde o ato é praticado e alerta ao advogado (curadoria V2, aba 9). Entram no conteúdo imutável da versão aprovada.
 - **Importação por CSV** (`ImportarTabelaDePrazos`, `POST /v1/admin/tabela-prazos/importacao`): prévia sem gravar; tudo ou nada; cadastra os tipos de ato que faltam com o nome da linha e propõe cada linha como rascunho, com auditoria. A aprovação continua uma a uma, por outro curador. Arquivo da curadoria V2 em `docs/curadoria/carga/`.
+
+## Agregado Prazo, cálculo e recálculo (HU16)
+
+Área de alto risco (CLAUDE.md, seção 15). Nenhuma data é calculada aqui: todas saem de `@pz/motor-prazos` (ADR-007).
+
+- **Tabela `prazo`** (tenant, RLS, sem DELETE): processo, ato, ramo, dias e unidade, início, vencimento, fim do prazo (24h no fuso do juízo), memória de cálculo, entrada do motor (para o recálculo), fundamento, origem (`djen`, `manual`, `painel`), status (`a_confirmar`, `pendente`, `cumprido`, `vencido`, `cancelado`), ciência, responsável, versões do motor e da tabela, jurisdição e `versao_otimista`. O encerramento de conta (HU38) apaga os prazos do tenant.
+- **`CalcularPrazoParaProcesso`** monta a sugestão: o processo (ramo do tribunal, jurisdição e fuso, pela porta `LocalizadorDoProcesso`, composta nas apps pelas APIs do cadastro e do calendario), o prazo aplicável (`ResolverPrazoAplicavel`, pela vigência na data de referência) e o calendário do período. Lê uma janela do calendário e a dobra até cobrir a data mais tardia do cálculo (vencimento e alternativas).
+  - Sem ramo informado, só a Justiça do Trabalho é dedutível (`trabalhista`); nos demais, "a confirmar".
+  - Linha da tabela com cálculo `data-informada` ou `nao-calcula`: "a confirmar", com o marco no detalhe.
+  - Prazo só do texto (sem linha na tabela): contagem do ramo e dobro `verificar` (o motor mostra as duas datas).
+  - Tipos do calendário no motor: feriado e recesso → sem expediente; portaria → suspensão de prazos; indisponibilidade → só prorroga (correspondência da carga V2).
+  - Fuso do juízo pelo tribunal (`fusoDoJuizo`, módulo calendario, curadoria V2, aba 5); tribunal com unidades em mais de um fuso usa o de fim mais cedo e avisa.
+- **`CriarPrazo`** grava só sugestão vinda do cálculo (`SugestaoDePrazo`), sempre "a confirmar", com trilha `prazos.prazo-sugerido` e `PrazoSugerido` na mesma transação.
+- **`RecalcularPrazosPorCalendario`** (consumidor de `CalendarioAlterado` no worker, fila `prazos`): um job por tenant alcançado (no global, listados como sistema por `TenantsAfetadosPeloCalendario`), lotes de 500 por id. Recalcula os abertos (`a_confirmar`, `pendente`) calculados pelo motor cuja jurisdição o evento alcança e cujo intervalo (referência até vencimento) cruza o período. Se o vencimento muda: grava, volta a "a confirmar", trilha `prazos.prazo-recalculado` com antes e depois e `PrazoRecalculado`. Idempotente (mesmo calendário, mesmo resultado); concorrência otimista; o calendário é lido sem cache.

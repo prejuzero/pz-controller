@@ -2,7 +2,7 @@
   "name": "@pz/prazos",
   "version": "0.0.0",
   "private": true,
-  "description": "Módulo prazos: taxonomia de atos e tabela de prazos versionada (HU15).",
+  "description": "Módulo prazos: taxonomia de atos, tabela de prazos versionada (HU15) e agregado Prazo com cálculo e recálculo (HU16).",
   "type": "module",
   "exports": {
     ".": "./index.ts"
@@ -17,9 +17,11 @@
     "@pz/auditoria": "workspace:*",
     "@pz/db": "workspace:*",
     "@pz/kernel": "workspace:*",
+    "@pz/motor-prazos": "workspace:*",
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@pz/calendario": "workspace:*",
     "@pz/config": "workspace:*",
     "@types/node": "24.19.2",
     "@vitest/coverage-v8": "5.0.4",

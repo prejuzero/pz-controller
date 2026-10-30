@@ -7,6 +7,7 @@ import {
   AVISO_ALTERNATIVAS,
   AVISO_FERIADO_LOCAL,
   calcularPrazo,
+  contagemDoRamo,
   VERSAO_DO_MOTOR,
 } from './regras.js';
 
@@ -712,5 +713,15 @@ describe('casos de borda (achados pelo teste de mutação)', () => {
       detalhe: 'calendário sem dia útil a partir de 2027-03-03',
       fundamentos: ['CPC, art. 335'],
     });
+  });
+});
+
+describe('contagemDoRamo', () => {
+  it('é a contagem da regra de cada ramo (RN01, RN07)', () => {
+    expect(contagemDoRamo('civel')).toBe('uteis');
+    expect(contagemDoRamo('juizados')).toBe('uteis');
+    expect(contagemDoRamo('trabalhista')).toBe('uteis');
+    expect(contagemDoRamo('penal')).toBe('corridos');
+    expect(contagemDoRamo('juizado-criminal')).toBe('corridos');
   });
 });

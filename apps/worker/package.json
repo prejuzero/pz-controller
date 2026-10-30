@@ -36,6 +36,7 @@
     "@pz/kernel": "workspace:*",
     "@pz/notificacoes": "workspace:*",
     "@pz/observability": "workspace:*",
+    "@pz/prazos": "workspace:*",
     "@pz/privacidade": "workspace:*",
     "@pz/publicacoes": "workspace:*",
     "@pz/saude": "workspace:*",

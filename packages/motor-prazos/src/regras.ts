@@ -98,6 +98,14 @@ const REGIMES: Readonly<Record<Ramo, Regime>> = {
   },
 };
 
+/**
+ * Contagem do ramo (RN01, RN07), para quem monta a entrada sem linha na tabela (prazo fixado só
+ * no ato judicial, CPC, art. 218, §1º): a contagem continua sendo a da regra do ramo.
+ */
+export function contagemDoRamo(ramo: Ramo): 'uteis' | 'corridos' {
+  return REGIMES[ramo].contagem;
+}
+
 const ehPenal = (ramo: Ramo) => ramo === 'penal' || ramo === 'juizado-criminal';
 
 /** Variações que o motor testa para mostrar as datas possíveis (CLAUDE.md, seção 4.4). */

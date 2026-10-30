@@ -290,6 +290,39 @@ export const PublicacaoClassificada = definirEvento(
   }),
 );
 
+const DataIso = z.iso.date();
+
+/** Prazo sugerido pelo motor ou "a confirmar" (HU16): nasce sempre à espera do advogado. */
+export const PrazoSugerido = definirEvento(
+  'PrazoSugerido',
+  1,
+  z.object({
+    prazoId: z.uuid(),
+    processoId: z.uuid(),
+    tipoAto: z.string().min(1),
+    origem: z.enum(['djen', 'manual', 'painel']),
+    situacao: z.enum(['calculado', 'a-confirmar']),
+    vencimento: DataIso.nullable(),
+  }),
+);
+
+/**
+ * O calendário mudou e o vencimento de um prazo aberto também (HU16): as notificações avisam o
+ * responsável, e o prazo volta a "a confirmar".
+ */
+export const PrazoRecalculado = definirEvento(
+  'PrazoRecalculado',
+  1,
+  z.object({
+    prazoId: z.uuid(),
+    processoId: z.uuid(),
+    vencimentoAnterior: DataIso.nullable(),
+    vencimentoNovo: DataIso.nullable(),
+    statusAnterior: z.enum(['a-confirmar', 'pendente']),
+    eventoCalendarioId: z.uuid(),
+  }),
+);
+
 export const EVENTOS = catalogoDeEventos(
   SituacaoVerificada,
   RedefinicaoDeSenhaSolicitada,
@@ -313,4 +346,6 @@ export const EVENTOS = catalogoDeEventos(
   PublicacaoRecebida,
   FonteDegradada,
   FonteRestabelecida,
+  PrazoSugerido,
+  PrazoRecalculado,
 );
