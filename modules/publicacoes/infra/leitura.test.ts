@@ -2,6 +2,7 @@ import { FixedClock, gerarUuidV7, Instant, OutboxEmMemoria } from '@pz/kernel';
 import { describe, expect, it } from 'vitest';
 
 import {
+  BuscarPublicacoes,
   ConsultarPublicacao,
   ContarPublicacoesNovas,
   ListarPublicacoes,
@@ -9,6 +10,7 @@ import {
 } from '../application/leitura.js';
 
 import type {
+  FiltroDaBuscaDePublicacoes,
   FiltroDePublicacoes,
   PublicacaoDoTenant,
   RepositorioDeLeitura,
@@ -51,6 +53,16 @@ class Leitura implements RepositorioDeLeitura<TransacaoEmMemoria> {
   buscar(_tx: TransacaoEmMemoria, id: Uuid) {
     return Promise.resolve(ids.includes(id) ? pub(id) : undefined);
   }
+  buscarComFiltros(_tx: TransacaoEmMemoria, f: FiltroDaBuscaDePublicacoes) {
+    return Promise.resolve(ids.slice(0, f.limite).map(pub));
+  }
+  contarNaBusca(_tx: TransacaoEmMemoria, _f: FiltroDaBuscaDePublicacoes, teto: number) {
+    return Promise.resolve(Math.min(this.total, teto));
+  }
+  conteudosComTexto(_tx: TransacaoEmMemoria, _texto: string, limite: number) {
+    return Promise.resolve(Array.from({ length: Math.min(this.total, limite) }, () => ids[0]));
+  }
+  total = 3;
   contarNovas() {
     return Promise.resolve(ids.filter((id) => !this.lidas.has(id)).length);
   }
@@ -112,5 +124,22 @@ describe('leitura de publicações (HU18)', () => {
     expect(await contar.executar()).toBe(3);
     repo.lidas.add(ids[0]);
     expect(await contar.executar()).toBe(2);
+  });
+
+  it('busca (HU28): página com cursor, teto da contagem e do filtro por teor', async () => {
+    const repo = new Leitura();
+    const buscar = new BuscarPublicacoes(new OutboxEmMemoria(), repo);
+    const r = await buscar.executar({ ordem: 'desc', limite: 2 });
+    expect(r.itens).toHaveLength(2);
+    expect(r.ultimo).toEqual({ data: r.itens[1]?.dataDisponibilizacao, id: ids[1] });
+    expect(r).toMatchObject({ totalAproximado: 3, totalLimitado: false });
+    expect((await buscar.executar({ ordem: 'asc', limite: 5 })).ultimo).toBeNull();
+    expect(await buscar.conteudosComTexto('x')).toHaveLength(3);
+    repo.total = 20_000;
+    expect(await buscar.executar({ ordem: 'desc', limite: 1 })).toMatchObject({
+      totalAproximado: 1000,
+      totalLimitado: true,
+    });
+    expect(await buscar.conteudosComTexto('x')).toBeUndefined();
   });
 });

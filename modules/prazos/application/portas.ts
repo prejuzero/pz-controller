@@ -113,6 +113,10 @@ export interface RepositorioDePrazos<Transacao> {
     fim: LocalDate,
     recorte: RecorteDoPainel,
   ): Promise<{ data: LocalDate; quantidade: number }[]>;
+  /** Busca avançada (HU28): pela data alvo e id, na ordem pedida; sem data por último. */
+  buscarComFiltros(transacao: Transacao, filtro: FiltroDaBuscaDePrazos): Promise<Prazo[]>;
+  /** Total da busca até `teto` (para "mais de N"). */
+  contarNaBusca(transacao: Transacao, filtro: FiltroDaBuscaDePrazos, teto: number): Promise<number>;
   /** Abertos com vencimento a partir de `hoje`, do mais próximo ao mais distante. */
   abertosAPartirDe(
     transacao: Transacao,
@@ -120,6 +124,28 @@ export interface RepositorioDePrazos<Transacao> {
     recorte: RecorteDoPainel,
     limite: number,
   ): Promise<Prazo[]>;
+}
+
+/**
+ * Busca avançada de prazos (HU28). `undefined` não filtra; lista vazia não encontra nada. Ids de
+ * processo e de conteúdo vêm resolvidos pelo módulo busca (cadastro e publicações).
+ */
+export interface FiltroDaBuscaDePrazos {
+  readonly processoIds?: readonly Uuid[];
+  readonly conteudoIds?: readonly Uuid[];
+  readonly responsavelIds?: readonly Uuid[];
+  readonly tiposAto?: readonly string[];
+  readonly status?: readonly StatusDoPrazo[];
+  readonly statusCiencia?: readonly ('pendente' | 'confirmada')[];
+  readonly ramo?: Ramo;
+  readonly origem?: readonly ('djen' | 'manual' | 'painel')[];
+  readonly campoData: 'vencimento' | 'inicio';
+  readonly de?: LocalDate;
+  readonly ate?: LocalDate;
+  readonly ordem: 'asc' | 'desc';
+  /** Id do último da página anterior (a ordem é data alvo + id). */
+  readonly depoisDe?: Uuid;
+  readonly limite: number;
 }
 
 /** Recorte do dashboard (filtro global). */

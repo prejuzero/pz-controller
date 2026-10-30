@@ -2,6 +2,7 @@ import { Processo } from '../domain/processo.js';
 
 import type {
   FiltroDeProcessos,
+  FiltroDeProcessosNaBusca,
   Paginacao,
   RepositorioDeClientes,
   RepositorioDeProcessos,
@@ -57,6 +58,28 @@ export class ProcessosEmMemoria implements RepositorioDeProcessos<TransacaoEmMem
   salvar(tx: TransacaoEmMemoria, processo: Processo): Promise<void> {
     tx.aoConfirmar(() => this.linhas.set(processo.id, processo.estado));
     return Promise.resolve();
+  }
+
+  idsNoFiltro(
+    _tx: TransacaoEmMemoria,
+    f: FiltroDeProcessosNaBusca,
+    limite: number,
+  ): Promise<Uuid[]> {
+    const contem = (valor: string | null, parte: string) =>
+      valor?.toLowerCase().includes(parte.toLowerCase()) === true;
+    return Promise.resolve(
+      [...this.linhas.values()]
+        .filter(
+          (p) =>
+            (f.numeroCnj === undefined || p.numeroCnj.includes(f.numeroCnj)) &&
+            (f.clienteId === undefined || p.clienteId === f.clienteId) &&
+            (f.tribunal === undefined || p.tribunal === f.tribunal) &&
+            (f.orgao === undefined || contem(p.orgao, f.orgao)) &&
+            (f.comarca === undefined || p.comarca?.toLowerCase() === f.comarca.toLowerCase()),
+        )
+        .slice(0, limite)
+        .map((p) => p.id),
+    );
   }
 
   contar(_tx: TransacaoEmMemoria, filtro: Pick<FiltroDeProcessos, 'tribunal'>): Promise<number> {

@@ -11,7 +11,8 @@
     "lint": "eslint --max-warnings=0 .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --coverage",
-    "test:int": "vitest run --config vitest.int.config.ts"
+    "test:int": "vitest run --config vitest.int.config.ts",
+    "test:int:desempenho": "PZ_DESEMPENHO=1 vitest run --config vitest.int.config.ts infra/desempenho.int.test.ts"
   },
   "dependencies": {
     "@pz/auditoria": "workspace:*",

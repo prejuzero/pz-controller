@@ -1,8 +1,11 @@
 // API pública do módulo publicacoes (CLAUDE.md, seção 6): outros módulos e as apps só usam o que está aqui.
 export { IngerirCaptura } from './application/ingestao.js';
 export {
+  BuscarPublicacoes,
   ConsultarPublicacao,
   ContarPublicacoesNovas,
+  MAXIMO_DE_CONTEUDOS_POR_TEXTO,
+  TETO_DA_CONTAGEM_DE_PUBLICACOES,
   ListarPublicacoes,
   MarcarComoLida,
 } from './application/leitura.js';
@@ -13,6 +16,7 @@ export type {
   NovoDestinatario,
   ObterOuCriarProcessoNoTenant,
   PublicacaoParaRegistrar,
+  FiltroDaBuscaDePublicacoes,
   FiltroDePublicacoes,
   PublicacaoDoTenant,
   RepositorioDeLeitura,

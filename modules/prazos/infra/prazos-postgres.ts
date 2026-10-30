@@ -5,6 +5,7 @@ import { Prazo } from '../domain/prazo.js';
 import type {
   AlcanceDaAlteracao,
   ContagemDoPainel,
+  FiltroDaBuscaDePrazos,
   FiltroDePrazos,
   RecorteDoPainel,
   RepositorioDePrazos,
@@ -100,6 +101,29 @@ function filtroDoAlcance(alcance: AlcanceDaAlteracao) {
     tribunal: alcance.tribunal ?? null,
     comarca: alcance.comarca ?? null,
     abrangencia: alcance.abrangencia,
+  };
+}
+
+/** Filtro da busca avançada no query builder do Prisma (parâmetros tipados, sem SQL montado). */
+function ondeNaBusca(f: FiltroDaBuscaDePrazos) {
+  const lista = <T>(valores: readonly T[]) => ({ in: [...valores] });
+  const periodo =
+    f.de === undefined && f.ate === undefined
+      ? undefined
+      : {
+          ...(f.de === undefined ? {} : { gte: paraData(f.de) }),
+          ...(f.ate === undefined ? {} : { lte: paraData(f.ate) }),
+        };
+  return {
+    ...(f.processoIds === undefined ? {} : { processoId: lista(f.processoIds) }),
+    ...(f.conteudoIds === undefined ? {} : { publicacaoConteudoId: lista(f.conteudoIds) }),
+    ...(f.responsavelIds === undefined ? {} : { responsavelId: lista(f.responsavelIds) }),
+    ...(f.tiposAto === undefined ? {} : { tipoAto: lista(f.tiposAto) }),
+    ...(f.status === undefined ? {} : { status: lista(f.status.map(paraBanco)) }),
+    ...(f.statusCiencia === undefined ? {} : { statusCiencia: lista(f.statusCiencia) }),
+    ...(f.ramo === undefined ? {} : { ramo: paraBanco(f.ramo) }),
+    ...(f.origem === undefined ? {} : { origem: lista(f.origem) }),
+    ...(periodo === undefined ? {} : { [f.campoData]: periodo }),
   };
 }
 
@@ -312,6 +336,20 @@ export class PrazosPostgres implements RepositorioDePrazos<Transacao> {
          AND (${t}::text IS NULL OR jurisdicao->>'tribunal' = ${t}::text)
        GROUP BY vencimento ORDER BY vencimento`;
     return linhas.map((l) => ({ data: daData(l.vencimento), quantidade: Number(l.quantidade) }));
+  }
+
+  async buscarComFiltros(transacao: Transacao, f: FiltroDaBuscaDePrazos): Promise<Prazo[]> {
+    const linhas = await transacao.prazo.findMany({
+      where: ondeNaBusca(f),
+      orderBy: [{ [f.campoData]: { sort: f.ordem, nulls: 'last' } }, { id: f.ordem }],
+      ...(f.depoisDe === undefined ? {} : { cursor: { id: f.depoisDe }, skip: 1 }),
+      take: f.limite,
+    });
+    return linhas.map(restaurar);
+  }
+
+  contarNaBusca(transacao: Transacao, f: FiltroDaBuscaDePrazos, teto: number): Promise<number> {
+    return transacao.prazo.count({ where: ondeNaBusca(f), take: teto });
   }
 
   async abertosAPartirDe(

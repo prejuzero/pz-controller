@@ -634,6 +634,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/busca/prazos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Busca avançada de prazos (filtros combinados com E). */
+        post: operations["buscarPrazos"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/busca/publicacoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Busca avançada de publicações; filtros só de prazo são recusados (400). */
+        post: operations["buscarPublicacoes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/busca/rapida": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Busca rápida do topo: reconhece número CNJ; senão, sugere por número parcial ou teor. */
+        post: operations["buscaRapida"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/cadastro": {
         parameters: {
             query?: never;
@@ -1837,6 +1888,54 @@ export interface components {
         FeriadosLocais: {
             itens: components["schemas"]["FeriadoLocal"][];
         };
+        FiltrosBusca: {
+            /** @description Com ou sem pontuação; 20 dígitos é exato, menos é parcial. */
+            numeroCnj?: string;
+            /** @description Busca no teor (o cadastro ainda não guarda as partes). */
+            partes?: string;
+            /** Format: uuid */
+            clienteId?: string;
+            tribunal?: string;
+            /** @description Vara ou órgão julgador, parcial. */
+            orgao?: string;
+            comarca?: string;
+            tiposAto?: string[];
+            statusPrazo?: ("a-confirmar" | "pendente" | "cumprido" | "vencido" | "cancelado")[];
+            statusCiencia?: ("pendente" | "confirmada")[];
+            /**
+             * Format: uuid
+             * @description Advogado responsável.
+             */
+            responsavelId?: string;
+            /** @description UF + número, exato (ex.: GO12345). */
+            oab?: string;
+            /** @enum {string} */
+            ramo?: "civel" | "juizados" | "trabalhista" | "penal" | "juizado-criminal";
+            /** @description Texto livre no teor, sem diferença de acentos. */
+            palavraChave?: string;
+            origem?: ("djen" | "manual" | "painel")[];
+            periodo?: {
+                /** @enum {string} */
+                atalho?: "hoje" | "amanha" | "esta-semana" | "proxima-semana" | "este-mes" | "proximos-30-dias" | "vencidos";
+                /** Format: date */
+                de?: string;
+                /** Format: date */
+                ate?: string;
+                /**
+                 * @description Data alvo (RF47). Padrão: vencimento nos prazos; em publicações só vale "publicacao" (disponibilização).
+                 * @enum {string}
+                 */
+                campoData?: "vencimento" | "publicacao" | "inicio";
+            };
+            /**
+             * @description Pela data alvo; padrão por recurso.
+             * @enum {string}
+             */
+            ordem?: "asc" | "desc";
+            cursor?: string;
+            /** @default 20 */
+            limite: number;
+        };
         LinhaDoTempo: {
             /** @description Um item por dia a partir de hoje, inclusive os dias sem prazo. */
             itens: {
@@ -1997,6 +2096,9 @@ export interface components {
              * @enum {string}
              */
             situacaoAssinatura?: "teste" | "ativa" | "inadimplente" | "cancelada";
+        };
+        PedidoDeBuscaRapida: {
+            texto: string;
         };
         PedidoDeCadastro: {
             nome: string;
@@ -2450,6 +2552,20 @@ export interface components {
             token: string;
             novaSenha: string;
         };
+        ResultadoDaBuscaDePrazos: {
+            itens: components["schemas"]["Prazo"][];
+            proximoCursor: string | null;
+            totalAproximado: number;
+            /** @description true: há mais resultados do que o total contado. */
+            totalLimitado: boolean;
+        };
+        ResultadoDaBuscaDePublicacoes: {
+            itens: components["schemas"]["PublicacaoDoTenant"][];
+            proximoCursor: string | null;
+            totalAproximado: number;
+            /** @description true: há mais resultados do que o total contado. */
+            totalLimitado: boolean;
+        };
         ResultadoDaImportacao: {
             linhas: {
                 linha: number;
@@ -2555,6 +2671,18 @@ export interface components {
                 /** @description Próxima tentativa após falha; nulo: na próxima rodada do agendamento. */
                 proximaExecucao: string | null;
                 falhasConsecutivas: number;
+            }[];
+        };
+        SugestoesDaBuscaRapida: {
+            /** @description Número CNJ completo de um processo do escritório. */
+            processoExato: string | null;
+            itens: {
+                /** @enum {string} */
+                tipo: "processo" | "publicacao";
+                /** Format: uuid */
+                id: string;
+                titulo: string;
+                detalhe: string;
             }[];
         };
         TenantAdministrado: {
@@ -5226,6 +5354,186 @@ export interface operations {
             };
             /** @description Limite de requisições excedido. */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    buscarPrazos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FiltrosBusca"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoDaBuscaDePrazos"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    buscarPublicacoes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FiltrosBusca"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoDaBuscaDePublicacoes"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    buscaRapida: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeBuscaRapida"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SugestoesDaBuscaRapida"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

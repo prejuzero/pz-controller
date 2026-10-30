@@ -55,6 +55,9 @@ const leitura: RepositorioDeLeitura<TransacaoEmMemoria> = {
   buscar: (_tx, id) => Promise.resolve(id === ID ? publicacao : undefined),
   marcarLida: (_tx, id) => Promise.resolve(id === ID && lidas.push(id) === 1),
   contarNovas: () => Promise.resolve(1),
+  buscarComFiltros: () => Promise.resolve([]),
+  contarNaBusca: () => Promise.resolve(0),
+  conteudosComTexto: () => Promise.resolve([]),
 };
 
 const tokens = new Map<string, string>();

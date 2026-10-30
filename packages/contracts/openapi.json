@@ -3181,6 +3181,222 @@
         }
       }
     },
+    "/v1/busca/prazos": {
+      "post": {
+        "operationId": "buscarPrazos",
+        "summary": "Busca avançada de prazos (filtros combinados com E).",
+        "tags": [
+          "busca"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FiltrosBusca"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoDaBuscaDePrazos"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/busca/publicacoes": {
+      "post": {
+        "operationId": "buscarPublicacoes",
+        "summary": "Busca avançada de publicações; filtros só de prazo são recusados (400).",
+        "tags": [
+          "busca"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FiltrosBusca"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoDaBuscaDePublicacoes"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/busca/rapida": {
+      "post": {
+        "operationId": "buscaRapida",
+        "summary": "Busca rápida do topo: reconhece número CNJ; senão, sugere por número parcial ou teor.",
+        "tags": [
+          "busca"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeBuscaRapida"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SugestoesDaBuscaRapida"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/cadastro": {
       "post": {
         "operationId": "cadastrarAdvogado",
@@ -9860,6 +10076,172 @@
         ],
         "additionalProperties": false
       },
+      "FiltrosBusca": {
+        "type": "object",
+        "properties": {
+          "numeroCnj": {
+            "type": "string",
+            "maxLength": 30,
+            "description": "Com ou sem pontuação; 20 dígitos é exato, menos é parcial."
+          },
+          "partes": {
+            "description": "Busca no teor (o cadastro ainda não guarda as partes).",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "clienteId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "tribunal": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20
+          },
+          "orgao": {
+            "description": "Vara ou órgão julgador, parcial.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "comarca": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "tiposAto": {
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            }
+          },
+          "statusPrazo": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "a-confirmar",
+                "pendente",
+                "cumprido",
+                "vencido",
+                "cancelado"
+              ]
+            }
+          },
+          "statusCiencia": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "pendente",
+                "confirmada"
+              ]
+            }
+          },
+          "responsavelId": {
+            "description": "Advogado responsável.",
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "oab": {
+            "description": "UF + número, exato (ex.: GO12345).",
+            "type": "string",
+            "pattern": "^[A-Za-z]{2}\\s*\\d{1,7}[A-Za-z]?$"
+          },
+          "ramo": {
+            "type": "string",
+            "enum": [
+              "civel",
+              "juizados",
+              "trabalhista",
+              "penal",
+              "juizado-criminal"
+            ]
+          },
+          "palavraChave": {
+            "description": "Texto livre no teor, sem diferença de acentos.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "origem": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "djen",
+                "manual",
+                "painel"
+              ]
+            }
+          },
+          "periodo": {
+            "type": "object",
+            "properties": {
+              "atalho": {
+                "type": "string",
+                "enum": [
+                  "hoje",
+                  "amanha",
+                  "esta-semana",
+                  "proxima-semana",
+                  "este-mes",
+                  "proximos-30-dias",
+                  "vencidos"
+                ]
+              },
+              "de": {
+                "type": "string",
+                "format": "date",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+              },
+              "ate": {
+                "type": "string",
+                "format": "date",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+              },
+              "campoData": {
+                "description": "Data alvo (RF47). Padrão: vencimento nos prazos; em publicações só vale \"publicacao\" (disponibilização).",
+                "type": "string",
+                "enum": [
+                  "vencimento",
+                  "publicacao",
+                  "inicio"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "ordem": {
+            "description": "Pela data alvo; padrão por recurso.",
+            "type": "string",
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          },
+          "cursor": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "limite": {
+            "default": 20,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "limite"
+        ],
+        "additionalProperties": false
+      },
       "LinhaDoTempo": {
         "type": "object",
         "properties": {
@@ -10574,6 +10956,20 @@
             "description": "Situação da assinatura, manual no MVP (gateway de cobrança futuro)."
           }
         },
+        "additionalProperties": false
+      },
+      "PedidoDeBuscaRapida": {
+        "type": "object",
+        "properties": {
+          "texto": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "texto"
+        ],
         "additionalProperties": false
       },
       "PedidoDeCadastro": {
@@ -12344,6 +12740,72 @@
         ],
         "additionalProperties": false
       },
+      "ResultadoDaBuscaDePrazos": {
+        "type": "object",
+        "properties": {
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Prazo"
+            }
+          },
+          "proximoCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "totalAproximado": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "totalLimitado": {
+            "type": "boolean",
+            "description": "true: há mais resultados do que o total contado."
+          }
+        },
+        "required": [
+          "itens",
+          "proximoCursor",
+          "totalAproximado",
+          "totalLimitado"
+        ],
+        "additionalProperties": false
+      },
+      "ResultadoDaBuscaDePublicacoes": {
+        "type": "object",
+        "properties": {
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicacaoDoTenant"
+            }
+          },
+          "proximoCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "totalAproximado": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "totalLimitado": {
+            "type": "boolean",
+            "description": "true: há mais resultados do que o total contado."
+          }
+        },
+        "required": [
+          "itens",
+          "proximoCursor",
+          "totalAproximado",
+          "totalLimitado"
+        ],
+        "additionalProperties": false
+      },
       "ResultadoDaImportacao": {
         "type": "object",
         "properties": {
@@ -12805,6 +13267,63 @@
         "required": [
           "fonte",
           "oabs"
+        ],
+        "additionalProperties": false
+      },
+      "SugestoesDaBuscaRapida": {
+        "type": "object",
+        "properties": {
+          "processoExato": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Número CNJ completo de um processo do escritório."
+          },
+          "itens": {
+            "maxItems": 8,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tipo": {
+                  "type": "string",
+                  "enum": [
+                    "processo",
+                    "publicacao"
+                  ]
+                },
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "titulo": {
+                  "type": "string"
+                },
+                "detalhe": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "tipo",
+                "id",
+                "titulo",
+                "detalhe"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "processoExato",
+          "itens"
         ],
         "additionalProperties": false
       },

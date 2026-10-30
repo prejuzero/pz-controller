@@ -1,6 +1,7 @@
 import { FixedClock, Instant, LocalDate, OutboxEmMemoria } from '@pz/kernel';
 import { describe, expect, it } from 'vitest';
 
+import { BuscarPrazos } from '../application/busca.js';
 import { ListarPrazos } from '../application/ciclo-de-vida.js';
 import { PainelDosPrazos } from '../application/painel.js';
 import { Prazo } from '../domain/prazo.js';
@@ -203,5 +204,38 @@ describe('painel dos prazos (HU26)', () => {
     expect(await total('sem-ciencia')).toBe(resumo.valor.semCienciaConfirmada);
     expect([resumo.valor.vencemHoje, resumo.valor.proximos7Dias]).toEqual([1, 2]);
     expect((await listar.executar({ recorte: 'outro' })).ok).toBe(false);
+  });
+});
+
+describe('busca avançada em memória (HU28)', () => {
+  it('filtra, ordena (sem data por último), pagina e conta com teto', async () => {
+    const OUTRO = '01a10e00-0000-7000-8000-0000000b0009' as Uuid;
+    const massa = [
+      prazo('2026-11-03', 'pendente', { ramo: 'penal', origem: 'djen', responsavelId: ANA }),
+      prazo('2026-11-01', 'a-confirmar', { tipoAto: 'recurso', processoId: OUTRO }),
+      prazo(null, 'pendente', { statusCiencia: 'confirmada', publicacaoConteudoId: ANA }),
+    ];
+    const { unidade, repo } = await repositorio(massa);
+    const buscar = new BuscarPrazos(unidade, repo);
+    const ids = async (f: Partial<Parameters<typeof buscar.executar>[0]>) => {
+      const r = await buscar.executar({ campoData: 'vencimento', ordem: 'asc', limite: 10, ...f });
+      if (!r.ok) throw r.erro;
+      return r.valor.itens.map((p) => massa.findIndex((m) => m.id === p.id));
+    };
+    expect(await ids({})).toEqual([1, 0, 2]);
+    expect(await ids({ ordem: 'desc' })).toEqual([0, 1, 2]);
+    expect(await ids({ ramo: 'penal', origem: ['djen'], responsavelIds: [ANA] })).toEqual([0]);
+    expect(
+      await ids({ tiposAto: ['recurso'], processoIds: [OUTRO], status: ['a-confirmar'] }),
+    ).toEqual([1]);
+    expect(await ids({ statusCiencia: ['confirmada'], conteudoIds: [ANA] })).toEqual([2]);
+    expect(await ids({ de: d('2026-11-02'), ate: d('2026-11-30') })).toEqual([0]);
+    expect(await ids({ campoData: 'inicio', de: d('2026-01-01') })).toEqual([]);
+    const segundo = massa[1];
+    if (segundo === undefined) throw new Error('massa');
+    expect(await ids({ depoisDe: segundo.id })).toEqual([0, 2]);
+    const pagina = await buscar.executar({ campoData: 'inicio', ordem: 'asc', limite: 1 });
+    expect(pagina.ok && pagina.valor).toMatchObject({ totalAproximado: 3, totalLimitado: false });
+    expect(pagina.ok && pagina.valor.ultimo?.data).toBeNull();
   });
 });

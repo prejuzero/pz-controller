@@ -1,7 +1,11 @@
 import { err, NaoEncontrado, ok, Validacao } from '@pz/kernel';
 import { z } from 'zod';
 
-import type { PublicacaoDoTenant, RepositorioDeLeitura } from './portas.js';
+import type {
+  FiltroDaBuscaDePublicacoes,
+  PublicacaoDoTenant,
+  RepositorioDeLeitura,
+} from './portas.js';
 import type { OrigemDaAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
 import type { Clock, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 
@@ -67,6 +71,43 @@ export class ListarPublicacoes<Transacao> {
           ? Buffer.from(ultimo.id, 'utf8').toString('base64url')
           : null,
     });
+  }
+}
+
+/** Teto da contagem da busca: acima dele a tela mostra "mais de N". */
+export const TETO_DA_CONTAGEM_DE_PUBLICACOES = 1000;
+/** Teto de conteúdos que um texto leva ao filtro de prazos; acima disso o advogado refina. */
+export const MAXIMO_DE_CONTEUDOS_POR_TEXTO = 10_000;
+
+/** Busca avançada de publicações (HU28), já com os filtros de outros módulos resolvidos. */
+export class BuscarPublicacoes<Transacao> {
+  constructor(
+    private readonly unidade: UnidadeDeTrabalho<Transacao>,
+    private readonly leitura: RepositorioDeLeitura<Transacao>,
+  ) {}
+
+  async executar(filtro: FiltroDaBuscaDePublicacoes) {
+    const teto = TETO_DA_CONTAGEM_DE_PUBLICACOES;
+    const { linhas, total } = await this.unidade.executar(async (tx) => ({
+      linhas: await this.leitura.buscarComFiltros(tx, { ...filtro, limite: filtro.limite + 1 }),
+      total: await this.leitura.contarNaBusca(tx, filtro, teto + 1),
+    }));
+    const itens = linhas.slice(0, filtro.limite);
+    const ultimo = linhas.length > filtro.limite ? itens.at(-1) : undefined;
+    return {
+      itens,
+      ultimo: ultimo === undefined ? null : { data: ultimo.dataDisponibilizacao, id: ultimo.id },
+      totalAproximado: Math.min(total, teto),
+      totalLimitado: total > teto,
+    };
+  }
+
+  /** Conteúdos com o texto no teor; `undefined` se passar do teto (o advogado refina). */
+  async conteudosComTexto(texto: string): Promise<Uuid[] | undefined> {
+    const ids = await this.unidade.executar((tx) =>
+      this.leitura.conteudosComTexto(tx, texto, MAXIMO_DE_CONTEUDOS_POR_TEXTO + 1),
+    );
+    return ids.length > MAXIMO_DE_CONTEUDOS_POR_TEXTO ? undefined : ids;
   }
 }
 

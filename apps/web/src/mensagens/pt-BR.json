@@ -87,7 +87,12 @@
     "minhaConta": "Minha conta",
     "configuracoes": "Configurações",
     "seguranca": "Segurança",
-    "sair": "Sair"
+    "sair": "Sair",
+    "sugestoes": "Sugestões",
+    "tiposDeSugestao": {
+      "processo": "Processo",
+      "publicacao": "Publicação"
+    }
   },
   "avisos": {
     "rotulo": "Avisos",
@@ -917,5 +922,77 @@
       "diasUteis": "{dias, plural, =0 {vence hoje} one {# dia útil} other {# dias úteis}}",
       "semContagem": "dias úteis a conferir"
     }
+  },
+  "busca": {
+    "titulo": "Busca",
+    "descricao": "Combine os filtros que quiser: todos valem juntos. Os filtros ficam no endereço da página, para voltar ou compartilhar com a equipe.",
+    "oQueBuscar": "O que buscar",
+    "recursos": {
+      "prazos": "Prazos",
+      "publicacoes": "Publicações"
+    },
+    "periodo": "Período",
+    "atalhos": "Atalhos de período",
+    "atalhosDePeriodo": {
+      "hoje": "Hoje",
+      "amanha": "Amanhã",
+      "esta-semana": "Esta semana",
+      "proxima-semana": "Próxima semana",
+      "este-mes": "Este mês",
+      "proximos-30-dias": "Próximos 30 dias",
+      "vencidos": "Vencidos"
+    },
+    "de": "De",
+    "ate": "Até",
+    "dataAlvo": "Data filtrada",
+    "datasAlvo": {
+      "vencimento": "Vencimento",
+      "inicio": "Início da contagem"
+    },
+    "intervalo": "De {de} até {ate}",
+    "avancada": "Busca avançada",
+    "campos": {
+      "numeroCnj": "Número do processo (CNJ)",
+      "partes": "Partes",
+      "palavraChave": "Palavra-chave no teor",
+      "tribunal": "Tribunal",
+      "orgao": "Vara ou órgão julgador",
+      "comarca": "Comarca",
+      "oab": "Número da OAB (UF + número)",
+      "clienteId": "Cliente",
+      "ramo": "Ramo",
+      "tiposAto": "Tipo de ato",
+      "statusPrazo": "Status do prazo",
+      "statusCiencia": "Status de ciência",
+      "origem": "Origem",
+      "responsavelId": "Advogado responsável"
+    },
+    "ramos": {
+      "civel": "Cível",
+      "juizados": "Juizados",
+      "trabalhista": "Trabalhista",
+      "penal": "Penal",
+      "juizado-criminal": "Juizado criminal"
+    },
+    "todos": "Todos",
+    "filtrosAtivos": "Filtros ativos",
+    "limpar": "Limpar filtros",
+    "resultados": "Resultados",
+    "total": "{total, plural, =0 {Nenhum resultado} one {# resultado} other {# resultados}}",
+    "maisDe": "Mais de {total} resultados",
+    "ordemAsc": "Mais antigos primeiro",
+    "ordemDesc": "Mais recentes primeiro",
+    "colunas": {
+      "vencimento": "Vencimento",
+      "ato": "Ato",
+      "status": "Status",
+      "ciencia": "Ciência",
+      "tribunal": "Tribunal",
+      "publicacao": "Publicação",
+      "teor": "Trecho"
+    },
+    "vazio": "Nada encontrado com esses filtros.",
+    "erro": "Não foi possível buscar. Confira os filtros e tente de novo.",
+    "carregarMais": "Carregar mais"
   }
 }

@@ -8,6 +8,8 @@ import { DropdownMenu } from 'radix-ui';
 import { useSair } from '../../../api/hooks';
 import { ROTA_ENTRAR, ROTA_SEGURANCA } from '../../../rotas';
 
+import { BuscaRapida } from './busca-rapida';
+
 const CLASSE_ITEM =
   'flex min-h-11 cursor-pointer items-center gap-2 rounded-sm px-3 text-sm outline-none data-[highlighted]:bg-primaria-suave';
 
@@ -18,19 +20,7 @@ export function Cabecalho() {
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-borda bg-superficie px-4">
       <span className="text-lg font-semibold md:hidden">{t('marca')}</span>
-      {/* Busca rápida: o formulário só leva à tela de busca; a busca em si chega na HU28. */}
-      <form action="/busca" role="search" className="hidden flex-1 sm:block">
-        <label htmlFor="busca-rapida" className="sr-only">
-          {t('buscaRapida')}
-        </label>
-        <input
-          id="busca-rapida"
-          name="q"
-          type="search"
-          placeholder={t('buscaRapida')}
-          className="h-10 w-full max-w-md rounded-md border border-borda bg-fundo px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-foco"
-        />
-      </form>
+      <BuscaRapida />
       <div className="ml-auto">
         <DropdownMenu.Root>
           <DropdownMenu.Trigger

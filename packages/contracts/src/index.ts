@@ -1,5 +1,6 @@
 import { ROTAS_ADMIN } from './admin/index.js';
 import { ROTAS_AUTH } from './auth/index.js';
+import { ROTAS_BUSCA } from './busca.js';
 import { ROTAS_CADASTRO } from './cadastro/index.js';
 export {
   AlteracaoDoCliente,
@@ -24,6 +25,18 @@ export {
   ROTAS_PROCESSOS,
 } from './cadastro/processos.js';
 import { ROTAS_PROCESSOS } from './cadastro/processos.js';
+export {
+  ATALHOS_DE_PERIODO,
+  buscaRapida,
+  buscarPrazos,
+  buscarPublicacoes,
+  FiltrosBusca,
+  PedidoDeBuscaRapida,
+  ResultadoDaBuscaDePrazos,
+  ResultadoDaBuscaDePublicacoes,
+  ROTAS_BUSCA,
+  SugestoesDaBuscaRapida,
+} from './busca.js';
 import { ROTAS_CALENDARIO } from './calendario/index.js';
 import { ROTAS_CAPTURA } from './captura.js';
 import { ROTAS_NOTIFICACOES } from './notificacoes/index.js';
@@ -311,6 +324,7 @@ export const ROTAS = [
   ...ROTAS_PRAZOS,
   ...ROTAS_COMPROMISSOS,
   ...ROTAS_DASHBOARD,
+  ...ROTAS_BUSCA,
   ...ROTAS_TERMOS,
   ...ROTAS_PRIVACIDADE,
   ...ROTAS_PUBLICACOES,

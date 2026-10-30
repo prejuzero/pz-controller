@@ -2,6 +2,7 @@ import { Processo } from '../domain/processo.js';
 
 import type {
   FiltroDeProcessos,
+  FiltroDeProcessosNaBusca,
   Paginacao,
   RepositorioDeClientes,
   RepositorioDeProcessos,
@@ -83,6 +84,21 @@ export class ProcessosPostgres implements RepositorioDeProcessos<Transacao> {
       take: limite,
     });
     return linhas.map(estadoDe);
+  }
+
+  async idsNoFiltro(tx: Transacao, f: FiltroDeProcessosNaBusca, limite: number): Promise<Uuid[]> {
+    const linhas = await tx.processo.findMany({
+      where: {
+        ...(f.numeroCnj === undefined ? {} : { numeroCnj: { contains: f.numeroCnj } }),
+        ...(f.clienteId === undefined ? {} : { clienteId: f.clienteId }),
+        ...(f.tribunal === undefined ? {} : { tribunal: f.tribunal }),
+        ...(f.orgao === undefined ? {} : { orgao: { contains: f.orgao, mode: 'insensitive' } }),
+        ...(f.comarca === undefined ? {} : { comarca: { equals: f.comarca, mode: 'insensitive' } }),
+      },
+      select: { id: true },
+      take: limite,
+    });
+    return linhas.map((l) => l.id as Uuid);
   }
 
   contar(tx: Transacao, filtro: Pick<FiltroDeProcessos, 'tribunal'>): Promise<number> {

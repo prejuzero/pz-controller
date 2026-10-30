@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { IngerirCaptura } from '../application/ingestao.js';
 import {
+  BuscarPublicacoes,
   ContarPublicacoesNovas,
   ListarPublicacoes,
   MarcarComoLida,
@@ -202,5 +203,48 @@ describe('ingestão no PostgreSQL (HU18)', () => {
 
     const doB = await executarNoTenant(B, () => marcar.executar(leitor, gerarUuidV7()));
     expect(!doB.ok && doB.erro.codigo).toBe('publicacao-inexistente');
+  });
+
+  it('busca avançada (HU28): teor sem acentos, OAB, período e isolamento entre tenants', async () => {
+    const buscar = new BuscarPublicacoes(banco, new LeituraPostgres());
+    const oabDe = (tenant: Uuid) => {
+      const oab = oabs[tenant];
+      if (oab === undefined) throw new Error('sem OAB');
+      return oab;
+    };
+    const total = (tenant: Uuid, filtro: Partial<Parameters<typeof buscar.executar>[0]>) =>
+      executarNoTenant(tenant, async () => {
+        const r = await buscar.executar({ ordem: 'desc', limite: 10, ...filtro });
+        return r.itens.length;
+      });
+    expect(await total(A, { textos: ['intimacao'] })).toBe(1);
+    expect(await total(A, { textos: ['MANIFESTAÇÃO'] })).toBe(1);
+    expect(await total(A, { textos: ['sentença'] })).toBe(0);
+    expect(await total(A, { textos: ['intimação', 'manifestacao'] })).toBe(1);
+    expect(await total(A, { oabIds: [oabDe(A)] })).toBe(1);
+    expect(await total(A, { oabIds: [oabDe(B)] })).toBe(0);
+    expect(await total(A, { processoIds: [] })).toBe(0);
+    expect(await total(A, { de: '2026-10-06', ate: '2026-10-06' })).toBe(1);
+    expect(await total(A, { de: '2026-10-07' })).toBe(0);
+    expect(await total(A, { ordem: 'asc' })).toBe(1);
+    expect(await total(gerarUuidV7(), {})).toBe(0);
+    const pagina = await executarNoTenant(A, () =>
+      buscar.executar({ ordem: 'desc', limite: 10, textos: ['intimação'] }),
+    );
+    expect(pagina).toMatchObject({ totalAproximado: 1, totalLimitado: false, ultimo: null });
+    const [item] = pagina.itens;
+    if (item === undefined) throw new Error('sem publicação');
+    const depois = await executarNoTenant(A, () =>
+      buscar.executar({
+        ordem: 'desc',
+        limite: 10,
+        depoisDe: { data: item.dataDisponibilizacao, id: item.id },
+      }),
+    );
+    expect(depois.itens).toEqual([]);
+    expect(await executarNoTenant(A, () => buscar.conteudosComTexto('intimação'))).toEqual([
+      item.id,
+    ]);
+    expect(await executarNoTenant(B, () => buscar.conteudosComTexto('inexistente'))).toEqual([]);
   });
 });

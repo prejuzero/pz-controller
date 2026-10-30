@@ -13,6 +13,7 @@ import {
   UsoDeIaPostgres,
 } from '@pz/administracao';
 import { TrilhaPostgres } from '@pz/auditoria';
+import { Buscar } from '@pz/busca';
 import {
   AdicionarOab,
   AdvogadosPostgres,
@@ -29,6 +30,8 @@ import {
   ConsultarProcesso,
   ListarClientes,
   ContarProcessos,
+  OabsParaBusca,
+  ProcessosParaBusca,
   ListarProcessos,
   ProcessosPostgres,
   RemoverCliente,
@@ -143,6 +146,7 @@ import {
   CumprirPrazo,
   ImportarTabelaDePrazos,
   LinkDoDocumento,
+  BuscarPrazos,
   ListarPrazos,
   PainelDosPrazos,
   PrazosPostgres,
@@ -163,6 +167,7 @@ import {
 import {
   ConsultarPublicacao,
   LeituraPostgres,
+  BuscarPublicacoes,
   ContarPublicacoesNovas,
   ListarPublicacoes,
   MarcarComoLida,
@@ -182,6 +187,7 @@ import { AdminController } from './admin/admin.controller.js';
 import { CuradoriaDaClassificacaoController } from './admin/curadoria.controller.js';
 import { AuthController } from './auth/auth.controller.js';
 import { ContextoDoUsuario } from './auth/contexto-do-usuario.js';
+import { BuscaController } from './busca/busca.controller.js';
 import { CadastroController } from './cadastro/cadastro.controller.js';
 import { ProcessosController } from './cadastro/processos.controller.js';
 import { CalendarioController } from './calendario/calendario.controller.js';
@@ -431,6 +437,7 @@ function provedoresDasPublicacoes(d: DependenciasDasPublicacoes): Provider[] {
   return [
     { provide: ListarPublicacoes, useValue: new ListarPublicacoes(d.unidade, d.leitura) },
     { provide: ContarPublicacoesNovas, useValue: new ContarPublicacoesNovas(d.unidade, d.leitura) },
+    { provide: BuscarPublicacoes, useValue: new BuscarPublicacoes(d.unidade, d.leitura) },
     { provide: ConsultarPublicacao, useValue: new ConsultarPublicacao(d.unidade, d.leitura) },
     {
       provide: MarcarComoLida,
@@ -626,6 +633,46 @@ function provedoresDosPrazos(
     ),
     { provide: LinkDoDocumento, useValue: new LinkDoDocumento(d.unidade, prazos, arquivos) },
     comRelogio(ListarPrazos, (r) => new ListarPrazos(d.unidade, prazos, r)),
+    { provide: BuscarPrazos, useValue: new BuscarPrazos(d.unidade, prazos) },
+    {
+      // Busca (HU28): o módulo busca compõe cadastro, prazos e publicações pelas APIs públicas.
+      provide: Buscar,
+      inject: [
+        RELOGIO,
+        ProcessosParaBusca,
+        OabsParaBusca,
+        BuscarPrazos,
+        BuscarPublicacoes,
+        ListarProcessos,
+      ],
+      useFactory: (
+        r: Clock,
+        processos: ProcessosParaBusca<unknown>,
+        oabs: OabsParaBusca<unknown>,
+        buscarPrazos: BuscarPrazos<unknown>,
+        publicacoes: BuscarPublicacoes<unknown>,
+        listar: ListarProcessos<unknown>,
+      ) =>
+        new Buscar(
+          {
+            processos: (f) => processos.executar(f),
+            oabs: (texto) => oabs.executar(texto),
+            conteudosComTexto: (texto) => publicacoes.conteudosComTexto(texto),
+            prazos: (f) => buscarPrazos.executar(f),
+            publicacoes: (f) => publicacoes.executar(f),
+            processosPorNumero: async (numero, limite) => {
+              const lista = await listar.executar({ numero, limite });
+              if (!lista.ok) throw lista.erro;
+              return lista.valor.itens.map((p) => ({
+                id: p.id,
+                numeroCnj: p.numeroCnj.replace(/\D/g, ''),
+                tribunal: p.tribunal,
+              }));
+            },
+          },
+          r,
+        ),
+    },
     {
       provide: PainelDosPrazos,
       inject: [RELOGIO, ConsultarProcesso, ConsultarDiasNaoUteis],
@@ -773,6 +820,8 @@ function provedoresDoCadastro(criar: (relogio: Clock) => DependenciasDoCadastro)
     // Processos e clientes (HU12).
     caso(ListarProcessos, (d) => new ListarProcessos(d.unidade, d.processos)),
     caso(ContarProcessos, (d) => new ContarProcessos(d.unidade, d.processos)),
+    caso(ProcessosParaBusca, (d) => new ProcessosParaBusca(d.unidade, d.processos)),
+    caso(OabsParaBusca, (d) => new OabsParaBusca(d.unidade, d.advogados)),
     caso(ConsultarProcesso, (d) => new ConsultarProcesso(d.unidade, d.processos)),
     caso(
       CadastrarProcesso,
@@ -1236,6 +1285,7 @@ export class AppModule {
         AtosDaTaxonomiaController,
         CompromissosController,
         DashboardController,
+        BuscaController,
         AssistenteController,
         CuradoriaDaClassificacaoController,
         TermosController,

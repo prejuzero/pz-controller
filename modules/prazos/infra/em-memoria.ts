@@ -5,6 +5,7 @@ import type { Compromisso, RepositorioDeCompromissos } from '../application/comp
 import type {
   AlcanceDaAlteracao,
   ContagemDoPainel,
+  FiltroDaBuscaDePrazos,
   FiltroDePrazos,
   FiltroDeVersoes,
   RecorteDoPainel,
@@ -249,6 +250,55 @@ export class PrazosEmMemoria implements RepositorioDePrazos<TransacaoEmMemoria> 
         .slice(0, limite)
         .map((e) => Prazo.restaurar(e)),
     );
+  }
+
+  buscarComFiltros(_transacao: TransacaoEmMemoria, f: FiltroDaBuscaDePrazos): Promise<Prazo[]> {
+    const data = (e: EstadoDoPrazo) =>
+      (f.campoData === 'inicio' ? e.calculo.inicio : e.calculo.vencimento)?.paraIso() ?? null;
+    const sinal = f.ordem === 'asc' ? 1 : -1;
+    const ordenados = this.#naBusca(f).sort((a, b) => {
+      const da = data(a);
+      const db = data(b);
+      if (da !== db) {
+        if (da === null) return 1;
+        if (db === null) return -1;
+        return da.localeCompare(db) * sinal;
+      }
+      return a.id.localeCompare(b.id) * sinal;
+    });
+    const inicio =
+      f.depoisDe === undefined ? 0 : ordenados.findIndex((e) => e.id === f.depoisDe) + 1;
+    return Promise.resolve(
+      ordenados.slice(inicio, inicio + f.limite).map((e) => Prazo.restaurar(e)),
+    );
+  }
+
+  contarNaBusca(_transacao: TransacaoEmMemoria, f: FiltroDaBuscaDePrazos, teto: number) {
+    return Promise.resolve(Math.min(this.#naBusca(f).length, teto));
+  }
+
+  #naBusca(f: FiltroDaBuscaDePrazos): EstadoDoPrazo[] {
+    const tem = <T>(lista: readonly T[] | undefined, valor: T) =>
+      lista === undefined || lista.includes(valor);
+    return [...this.#prazos.values()].filter((e) => {
+      const d = f.campoData === 'inicio' ? e.calculo.inicio : e.calculo.vencimento;
+      const noPeriodo =
+        (f.de === undefined || (d !== null && !d.ehAntesDe(f.de))) &&
+        (f.ate === undefined || (d !== null && !d.ehDepoisDe(f.ate)));
+      return (
+        tem(f.processoIds, e.processoId) &&
+        (f.conteudoIds === undefined ||
+          (e.publicacaoConteudoId !== null && f.conteudoIds.includes(e.publicacaoConteudoId))) &&
+        (f.responsavelIds === undefined ||
+          (e.responsavelId !== null && f.responsavelIds.includes(e.responsavelId))) &&
+        tem(f.tiposAto, e.tipoAto) &&
+        tem(f.status, e.status) &&
+        tem(f.statusCiencia, e.statusCiencia) &&
+        (f.ramo === undefined || e.ramo === f.ramo) &&
+        tem(f.origem, e.origem) &&
+        noPeriodo
+      );
+    });
   }
 
   #doRecorte(recorte: RecorteDoPainel): EstadoDoPrazo[] {

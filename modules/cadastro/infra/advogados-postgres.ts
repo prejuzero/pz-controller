@@ -50,6 +50,18 @@ export class AdvogadosPostgres implements RepositorioDeAdvogados<Transacao> {
   }
 
   /** Usuário do advogado dono da OAB, no tenant da transação (lido pelo módulo prazos, HU24). */
+  async oabsDoNumero(
+    tx: Transacao,
+    uf: string,
+    numero: string,
+  ): Promise<{ oabId: Uuid; usuarioId: Uuid }[]> {
+    const linhas = await tx.oab.findMany({
+      where: { uf, numero, ativa: true },
+      select: { id: true, advogado: { select: { usuarioId: true } } },
+    });
+    return linhas.map((l) => ({ oabId: l.id as Uuid, usuarioId: l.advogado.usuarioId as Uuid }));
+  }
+
   async usuarioDaOab(tx: Transacao, oabId: Uuid): Promise<Uuid | undefined> {
     const oab = await tx.oab.findUnique({
       where: { id: oabId },
