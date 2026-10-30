@@ -127,6 +127,32 @@ export function esteOuProximoQueConta(
   return contarDias(data, 1, conta);
 }
 
+/** Dia útil forense para a urgência e os lembretes: sem expediente e suspensão não contam. */
+const diaUtilForense = (calendario: CalendarioForense) =>
+  semContarFimDeSemanaE(calendario, ['sem-expediente', 'suspensao-de-prazos']);
+
+/**
+ * O dia útil `n` dias úteis antes do vencimento (0 = o próprio vencimento), para agendar os
+ * lembretes (HU31). Mesmo critério de `diasUteisRestantes`: é aviso, não prazo.
+ */
+export function diaUtilAntes(
+  vencimento: LocalDate,
+  n: number,
+  calendario: CalendarioForense,
+): Result<LocalDate, CalendarioEsgotado> {
+  if (!Number.isInteger(n) || n < 0) {
+    throw new RangeError(`Antecedência deve ser inteira e não negativa: ${String(n)}`);
+  }
+  if (n === 0) return ok(vencimento);
+  const conta = diaUtilForense(calendario);
+  let contados = 0;
+  for (let passo = 1; passo <= LIMITE_DE_DIAS; passo++) {
+    const dia = vencimento.maisDias(-passo);
+    if (conta(dia).length === 0 && ++contados === n) return ok(dia);
+  }
+  return err({ tipo: 'calendario-esgotado', aPartirDe: vencimento });
+}
+
 /**
  * Dias úteis depois de `hoje` até `vencimento` (inclusive), para a tela mostrar a urgência (HU26).
  * É informação, não prazo: o vencimento já veio do motor. Não conta sábado, domingo (CPC,
@@ -142,7 +168,7 @@ export function diasUteisRestantes(
   const distancia = hoje.diasAte(vencimento);
   if (distancia <= 0) return ok(0);
   if (distancia > LIMITE_DE_DIAS) return err({ tipo: 'calendario-esgotado', aPartirDe: hoje });
-  const conta = semContarFimDeSemanaE(calendario, ['sem-expediente', 'suspensao-de-prazos']);
+  const conta = diaUtilForense(calendario);
   let uteis = 0;
   for (let passo = 1; passo <= distancia; passo++) {
     if (conta(hoje.maisDias(passo)).length === 0) uteis++;

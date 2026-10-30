@@ -115,16 +115,19 @@ import {
 } from '@pz/identidade';
 import { SystemClock } from '@pz/kernel';
 import {
+  AlterarPreferencias,
   ConcederConsentimento,
   ConsentimentosPostgres,
   ConsultarAvisosDeEntrega,
+  ConsultarPreferencias,
   DesativarDestinoPush,
   DestinosPushPostgres,
   ListarConsentimentos,
+  ListarSupressoes,
   NotificacoesPostgres,
+  PreferenciasPostgres,
   RegistrarDestinoPush,
   RevogarConsentimento,
-  ListarSupressoes,
   SupressaoPostgres,
 } from '@pz/notificacoes';
 import { criarLogger, registrarErro } from '@pz/observability';
@@ -877,6 +880,16 @@ function provedoresDeNotificacoes(
     ),
     caso(RegistrarDestinoPush, (d, r) => new RegistrarDestinoPush(d.unidade, d.push, d.trilha, r)),
     caso(DesativarDestinoPush, (d) => new DesativarDestinoPush(d.unidade, d.push, d.trilha)),
+    // Preferências (HU31): o worker reprograma os lembretes pelo evento.
+    caso(
+      ConsultarPreferencias,
+      (d) => new ConsultarPreferencias(d.unidade, new PreferenciasPostgres()),
+    ),
+    caso(
+      AlterarPreferencias,
+      (d, r) =>
+        new AlterarPreferencias(d.unidade, new PreferenciasPostgres(), d.trilha, d.outbox, r),
+    ),
   ];
 }
 

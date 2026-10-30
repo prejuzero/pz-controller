@@ -10,7 +10,7 @@ import { consultasBusca, type FiltrosDaTela } from './busca';
 import { consultasCadastro, mutacoesCadastro } from './cadastro';
 import { consultasCalendario, mutacoesCalendario } from './calendario';
 import { consultasCaptura } from './captura';
-import { consultasNotificacoes } from './notificacoes';
+import { consultasNotificacoes, mutacoesNotificacoes } from './notificacoes';
 import { consultasPrazos, mutacoesPrazos, type FiltroDaLista } from './prazos';
 import { consultasPrivacidade, mutacoesPrivacidade } from './privacidade';
 import { consultasProcessos, mutacoesProcessos, type FiltrosProcessos } from './processos';
@@ -115,6 +115,11 @@ function useMutacoesCadastro() {
 export const usePerfil = () => useQuery(consultasCadastro(useApi()).perfil());
 
 /** Avisos de entrega da faixa do topo (HU30); só com a sessão completa (`conta:gerir`). */
+export const usePreferenciasDeNotificacao = () =>
+  useQuery(consultasNotificacoes(useApi()).preferencias());
+export const useSalvarPreferencias = () =>
+  useMutation(mutacoesNotificacoes(useApi(), useQueryClient()).salvarPreferencias);
+
 export function useAvisosDeEntrega() {
   const habilitado = usePermissao('conta:gerir') === true;
   return useQuery({ ...consultasNotificacoes(useApi()).avisos(), enabled: habilitado });

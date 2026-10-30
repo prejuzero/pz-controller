@@ -11,7 +11,9 @@ import {
   Req,
 } from '@nestjs/common';
 import {
+  AlterarPreferencias,
   ConcederConsentimento,
+  ConsultarPreferencias,
   ConsultarAvisosDeEntrega,
   DesativarDestinoPush,
   ListarConsentimentos,
@@ -25,7 +27,12 @@ import { RequerPermissao } from '../http/acesso.js';
 
 import type { RequisicaoAutenticada } from '../http/acesso.js';
 import type { Uuid } from '@pz/kernel';
-import type { AutorDoConsentimento, AvisosDeEntrega, ConsentimentoListado } from '@pz/notificacoes';
+import type {
+  AutorDoConsentimento,
+  AvisosDeEntrega,
+  ConsentimentoListado,
+  PreferenciasDoUsuario,
+} from '@pz/notificacoes';
 
 function autorDe(requisicao: RequisicaoAutenticada): AutorDoConsentimento {
   const { sessao } = autenticacao(requisicao);
@@ -48,7 +55,27 @@ export class NotificacoesController {
     @Inject(RevogarConsentimento) private readonly revogar: RevogarConsentimento<unknown>,
     @Inject(RegistrarDestinoPush) private readonly registrarPush: RegistrarDestinoPush<unknown>,
     @Inject(DesativarDestinoPush) private readonly desativarPush: DesativarDestinoPush<unknown>,
+    @Inject(ConsultarPreferencias) private readonly preferencias: ConsultarPreferencias<unknown>,
+    @Inject(AlterarPreferencias) private readonly alterar: AlterarPreferencias<unknown>,
   ) {}
+
+  @Get('preferencias')
+  @RequerPermissao('conta:gerir')
+  consultarPreferencias(@Req() requisicao: RequisicaoAutenticada): Promise<PreferenciasDoUsuario> {
+    return this.preferencias.executar(autorDe(requisicao).usuarioId);
+  }
+
+  @Put('preferencias')
+  @RequerPermissao('conta:gerir')
+  async alterarPreferencias(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Body() corpo: unknown,
+  ): Promise<PreferenciasDoUsuario> {
+    const { tenantId, usuarioId, origem } = autorDe(requisicao);
+    const r = await this.alterar.executar({ tenantId, usuarioId, canal: origem }, corpo);
+    if (!r.ok) throw r.erro;
+    return r.valor;
+  }
 
   @Get('avisos')
   @RequerPermissao('conta:gerir')

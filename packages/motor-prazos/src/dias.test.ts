@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { calendarioDeOcorrencias, type OcorrenciaDatada } from './calendario.js';
 import {
   contarDias,
+  diaUtilAntes,
   diasUteisRestantes,
   esteOuProximoQueConta,
   LIMITE_DE_DIAS,
@@ -289,6 +290,65 @@ describe('dias úteis restantes (informação de urgência, HU26)', () => {
           );
           expect(antes).toBeLessThanOrEqual(distancia);
           expect(depois).toBeGreaterThanOrEqual(antes);
+        },
+      ),
+      { numRuns: 200 },
+    );
+  });
+});
+
+describe('dia útil antes do vencimento (lembretes, HU31)', () => {
+  // 2027-03-12 é sexta-feira (calendário FICTÍCIO).
+  it('n = 0 é o próprio vencimento; conta para trás só dias úteis', () => {
+    expect(valor(diaUtilAntes(d('2027-03-12'), 0, vazio)).paraIso()).toBe('2027-03-12');
+    expect(valor(diaUtilAntes(d('2027-03-12'), 1, vazio)).paraIso()).toBe('2027-03-11');
+    // seg 15 → 1 dia útil antes é sex 12 (pula sábado e domingo).
+    expect(valor(diaUtilAntes(d('2027-03-15'), 1, vazio)).paraIso()).toBe('2027-03-12');
+    expect(valor(diaUtilAntes(d('2027-03-15'), 5, vazio)).paraIso()).toBe('2027-03-08');
+  });
+
+  it('pula feriado e suspensão; indisponibilidade conta', () => {
+    const calendario = calendarioDeOcorrencias([
+      feriado('2027-03-11'),
+      suspensao('2027-03-10'),
+      indisponibilidade('2027-03-09'),
+    ]);
+    // sex 12 → (qui 11 feriado) (qua 10 suspensão) → ter 09
+    expect(valor(diaUtilAntes(d('2027-03-12'), 1, calendario)).paraIso()).toBe('2027-03-09');
+  });
+
+  it('n inválido lança; calendário que suspende tudo esgota', () => {
+    expect(() => diaUtilAntes(d('2027-03-12'), -1, vazio)).toThrow(RangeError);
+    const tudo = calendarioDeOcorrencias(
+      Array.from({ length: LIMITE_DE_DIAS + 2 }, (_, i) =>
+        feriado(
+          d('2027-03-12')
+            .maisDias(-i - 1)
+            .paraIso(),
+        ),
+      ),
+    );
+    expect(diaUtilAntes(d('2027-03-12'), 1, tudo).ok).toBe(false);
+  });
+
+  it('propriedade: volta n dias úteis e o resultado conta de novo n até o vencimento', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: 400 }),
+        fc.integer({ min: 0, max: 10 }),
+        fc.array(fc.integer({ min: 0, max: 430 }), { maxLength: 30 }),
+        (deslocamento, n, feriados) => {
+          let vencimento = d('2027-01-04').maisDias(deslocamento);
+          while ([0, 6].includes(vencimento.diaDaSemana())) vencimento = vencimento.maisDias(1);
+          const calendario = calendarioDeOcorrencias(
+            feriados
+              .map((x) => d('2026-01-01').maisDias(x))
+              .filter((x) => !x.igual(vencimento))
+              .map((x) => feriado(x.paraIso())),
+          );
+          const antes = valor(diaUtilAntes(vencimento, n, calendario));
+          expect(antes.ehDepoisDe(vencimento)).toBe(false);
+          expect(valor(diasUteisRestantes(antes, vencimento, calendario))).toBe(n);
         },
       ),
       { numRuns: 200 },

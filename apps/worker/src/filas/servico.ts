@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { VerificarIntegridade } from '@pz/auditoria';
 import { ExecutarCaptura, PlanejarCaptura } from '@pz/captura';
 import { limparOutbox } from '@pz/kernel';
+import { DispararLembretes, EnviarResumosDiarios } from '@pz/notificacoes';
 import {
   criarLogger,
   registrarDivergenciaDeAuditoria,
@@ -35,6 +36,7 @@ import {
   UNIDADE_DOS_WEBHOOKS,
 } from '../fichas.js';
 import { processarWebhook, tratarWebhook } from '../integracoes/webhooks.js';
+import { dispararLembretesJob, enviarResumosJob } from '../notificacoes/jobs.js';
 import {
   chaveDoLote,
   gerarPrazoJob,
@@ -95,6 +97,8 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     private readonly recalcularPrazos: RecalcularPrazosPorCalendario<unknown>,
     @Inject(GerarPrazoDaPublicacao) private readonly gerarPrazo: GerarPrazoDaPublicacao<unknown>,
     @Inject(MarcarPrazosVencidos) private readonly vencidos: MarcarPrazosVencidos<unknown>,
+    @Inject(DispararLembretes) private readonly lembretes: DispararLembretes<unknown>,
+    @Inject(EnviarResumosDiarios) private readonly resumos: EnviarResumosDiarios<unknown>,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -170,6 +174,14 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     });
     this.filas.registrar(marcarVencidosJob, async () => {
       logger.info(await this.vencidos.executar(), 'prazos vencidos marcados');
+    });
+    // Lembretes e resumo diário (HU31): o disparo trava o lote (SKIP LOCKED) e a notificação tem
+    // chave de idempotência; várias réplicas não duplicam.
+    this.filas.registrar(dispararLembretesJob, async () => {
+      logger.info(await this.lembretes.executar(), 'lembretes disparados');
+    });
+    this.filas.registrar(enviarResumosJob, async () => {
+      logger.info(await this.resumos.executar(), 'resumos diários');
     });
     this.filas.registrar(efetivarEncerramentosJob, async () => {
       const encerrados = await this.efetivarEncerramentos.executar();

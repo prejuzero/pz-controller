@@ -161,6 +161,13 @@ export const ConsentimentoCanalAlterado = definirEvento(
   }),
 );
 
+/** O usuário mudou as preferências de notificação (HU31): o worker reprograma os lembretes. */
+export const PreferenciasDeNotificacaoAlteradas = definirEvento(
+  'PreferenciasDeNotificacaoAlteradas',
+  1,
+  z.object({ usuarioId: z.uuid() }),
+);
+
 /**
  * Captura de um alvo concluída (HU17): um evento por tenant assinante, com as publicações da
  * janela no modelo canônico. A publicações (HU18) deduplica o conteúdo por fonte e hash.
@@ -403,6 +410,7 @@ export const EVENTOS = catalogoDeEventos(
   NotificacaoEntregue,
   NotificacaoRejeitada,
   ConsentimentoCanalAlterado,
+  PreferenciasDeNotificacaoAlteradas,
   CapturaConcluida,
   SugestaoIaCorrigida,
   ExportacaoDeDadosSolicitada,

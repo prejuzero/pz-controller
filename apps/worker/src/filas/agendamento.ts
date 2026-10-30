@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { dispararLembretesJob, enviarResumosJob } from '../notificacoes/jobs.js';
 import { marcarVencidosJob } from '../prazos/jobs.js';
 
 import { definirJob } from './job.js';
@@ -75,5 +76,19 @@ export const AGENDAMENTOS: readonly Agendamento<unknown>[] = [
     cron: '0 4 * * *',
     dados: {},
     motivo: 'marcação diária dos prazos vencidos sem cumprimento',
+  }),
+  definirAgendamento({
+    id: 'notificacoes.disparar-lembretes',
+    job: dispararLembretesJob,
+    cron: '* * * * *', // a cada minuto: os lembretes saem às 8h e às 14h de Brasília (HU31)
+    dados: {},
+    motivo: 'disparo dos lembretes de prazo devidos, de todos os escritórios',
+  }),
+  definirAgendamento({
+    id: 'notificacoes.enviar-resumos',
+    job: enviarResumosJob,
+    cron: '*/15 * * * *', // a cada 15 min: o horário do resumo é escolhido pelo usuário (HU31)
+    dados: {},
+    motivo: 'resumos diários de quem tem o horário na janela',
   }),
 ] as readonly Agendamento<unknown>[];

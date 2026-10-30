@@ -50,28 +50,37 @@ import {
 import { Banco, BancoSistema, executarNoTenant, OutboxPostgres } from '@pz/db';
 import { configuracaoPadrao, PlataformaIa, promptsPadrao } from '@pz/ia';
 import {
-  ExportacaoDaIdentidadePostgres,
   CifraAesGcm,
   EmailsDosUsuariosPostgres,
   EnviarAvisosDeSeguranca,
+  ExportacaoDaIdentidadePostgres,
   SessoesRedis,
+  TenantsPostgres,
   UsuariosComPermissaoPostgres,
 } from '@pz/identidade';
 import { RegistroDeAdaptadores } from '@pz/integracoes';
 import { SystemClock } from '@pz/kernel';
 import {
+  AvisarNovaIntimacao,
   AvisarSituacaoDaFonte,
+  CancelarLembretes,
   ConsentimentosPostgres,
-  ExportacaoDasNotificacoesPostgres,
+  DispararLembretes,
   EnviarNotificacao,
-  Notificar,
+  EnviarResumosDiarios,
+  ExportacaoDasNotificacoesPostgres,
+  LembretesPostgres,
   NotificacoesPostgres,
+  Notificar,
   PreferenciasPostgres,
+  ProgramarLembretes,
   RegistrarDesfechosDeEntrega,
   SupressaoPostgres,
 } from '@pz/notificacoes';
 import { criarLogger, registrarErro } from '@pz/observability';
 import {
+  AgendaDosLembretes,
+  BuscarPrazos,
   CalcularPrazoParaProcesso,
   CriarPrazo,
   GerarPrazoDaPublicacao,
@@ -94,6 +103,8 @@ import {
   DestinatariosPostgres,
   ExportacaoDasPublicacoesPostgres,
   IngerirCaptura,
+  LeituraPostgres,
+  ListarPublicacoes,
   PublicacoesPostgres,
   TeoresPostgres,
 } from '@pz/publicacoes';
@@ -139,6 +150,8 @@ import { PublicacaoDaSaudeDasIntegracoes } from './integracoes/saude-das-integra
 import { RelayDeWebhooks } from './integracoes/webhooks.js';
 import { ConsumidorDeNotificacoes } from './notificacoes/consumidor.js';
 import { processadorDeEntregas } from './notificacoes/entregas.js';
+import { ConsumidorDosLembretes, REPOSITORIO_DE_LEMBRETES } from './notificacoes/lembretes.js';
+import { fontesDoResumo } from './notificacoes/resumo.js';
 import { ConsumidorDosPrazos } from './prazos/consumidor.js';
 import { fontesDaGeracao, processoNoCalendario, tenantsDaPublicacao } from './prazos/processo.js';
 import { ConsumidorDaPrivacidade } from './privacidade/consumidor.js';
@@ -472,6 +485,15 @@ export class WorkerModule {
     const sistema = new BancoSistema({ url: ambiente.DATABASE_URL_SISTEMA, maxConexoes: 4 });
     const outboxPostgres = new OutboxPostgres();
     const localizadorDosPrazos = (relogio: Clock) => localizadorDosPrazosNoBanco(banco, relogio);
+    const agendaDosLembretes = (relogio: Clock) =>
+      new AgendaDosLembretes(banco, new PrazosPostgres(), localizadorDosPrazos(relogio));
+    const numeroDoProcesso = (relogio: Clock) => {
+      const processos = new ConsultarProcesso(banco, new ProcessosPostgres(relogio));
+      return async (processoId: Uuid) => {
+        const r = await processos.executar(processoId);
+        return r.ok ? r.valor.numeroCnj : undefined;
+      };
+    };
     const calculoDosPrazos = (relogio: Clock) =>
       new CalcularPrazoParaProcesso(
         localizadorDosPrazos(relogio),
@@ -540,6 +562,7 @@ export class WorkerModule {
       ConsumidorDeSituacao,
       ConsumidorDeAvisosDeIdentidade,
       ConsumidorDeNotificacoes,
+      ConsumidorDosLembretes,
       ConsumidorDeAuditoria,
       ConsumidorDoCalendario,
       ConsumidorDosPrazos,
@@ -714,6 +737,74 @@ export class WorkerModule {
             ),
           );
         },
+      },
+      // Lembretes, nova intimação e resumo diário (HU31): datas pelo motor (prazos), número do
+      // processo pelo cadastro, envio pelo Notificar (HU30).
+      { provide: REPOSITORIO_DE_LEMBRETES, useValue: new LembretesPostgres() },
+      {
+        provide: ProgramarLembretes,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new ProgramarLembretes(
+            new LembretesPostgres(),
+            new PreferenciasPostgres(),
+            agendaDosLembretes(relogio),
+            relogio,
+          ),
+      },
+      {
+        provide: CancelarLembretes,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) => new CancelarLembretes(new LembretesPostgres(), relogio),
+      },
+      {
+        provide: AvisarNovaIntimacao,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new AvisarNovaIntimacao(
+            agendaDosLembretes(relogio),
+            numeroDoProcesso(relogio),
+            notificarDoBanco(relogio),
+            ambiente.PORTAL_URL,
+          ),
+      },
+      {
+        provide: DispararLembretes,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new DispararLembretes(
+            sistema.unidade('notificacoes: tenants com lembretes devidos'),
+            (tenantId, trabalho) => executarNoTenant(tenantId, trabalho),
+            banco,
+            new LembretesPostgres(),
+            agendaDosLembretes(relogio),
+            numeroDoProcesso(relogio),
+            notificarDoBanco(relogio),
+            ambiente.PORTAL_URL,
+            relogio,
+          ),
+      },
+      {
+        provide: EnviarResumosDiarios,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new EnviarResumosDiarios(
+            sistema.unidade('notificacoes: escritórios para o resumo diário'),
+            (tenantId, trabalho) => executarNoTenant(tenantId, trabalho),
+            banco,
+            new PreferenciasPostgres(),
+            fontesDoResumo<Transacao>({
+              tenants: new TenantsPostgres(),
+              usuarios: new UsuariosComPermissaoPostgres(),
+              prazos: new BuscarPrazos(banco, new PrazosPostgres()),
+              publicacoes: new ListarPublicacoes(banco, new LeituraPostgres()),
+              processos: new ConsultarProcesso(banco, new ProcessosPostgres(relogio)),
+              urlDoPortal: ambiente.PORTAL_URL,
+            }),
+            notificarDoBanco(relogio),
+            ambiente.PORTAL_URL,
+            relogio,
+          ),
       },
       {
         provide: MarcarPrazosVencidos,

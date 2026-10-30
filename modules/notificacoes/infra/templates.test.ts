@@ -29,11 +29,13 @@ const EXEMPLOS: Record<TipoDeNotificacao, unknown> = {
   },
   'resumo-diario': {
     data: '07/10/2026',
-    intimacoes: [{ numeroProcesso: PROCESSO, link: PORTAL }],
-    prazos: [
-      { numeroProcesso: '0000002-00.2026.8.26.0001', vencimento: '09/10/2026', link: PORTAL },
-      { numeroProcesso: '0000003-00.2026.8.26.0001', vencimento: '13/10/2026', link: PORTAL },
+    vencemHoje: [
+      { numeroProcesso: '0000002-00.2026.8.26.0001', vencimento: '07/10/2026', link: PORTAL },
+      { numeroProcesso: '0000003-00.2026.8.26.0001', vencimento: '07/10/2026', link: PORTAL },
     ],
+    proximos: [{ numeroProcesso: PROCESSO, vencimento: '13/10/2026', link: PORTAL }],
+    semCiencia: [{ numeroProcesso: PROCESSO, vencimento: '13/10/2026', link: PORTAL }],
+    intimacoes: [{ numeroProcesso: PROCESSO, link: PORTAL }],
     link: 'https://app.exemplo.invalid/painel',
   },
   'prazo-recalculado': {
@@ -113,10 +115,18 @@ describe('templates', () => {
   });
 
   it('resumo diário exige ao menos um item e respeita o plural', async () => {
-    const vazio = { data: '07/10/2026', intimacoes: [], prazos: [], link: PORTAL };
+    const vazio = {
+      data: '07/10/2026',
+      vencemHoje: [],
+      proximos: [],
+      semCiencia: [],
+      intimacoes: [],
+      link: PORTAL,
+    };
     expect(TEMPLATES['resumo-diario'].dados.safeParse(vazio).success).toBe(false);
     const m = await renderizar('resumo-diario', EXEMPLOS['resumo-diario']);
-    expect(m.html).toContain('1 intimação nova e 2 prazos próximos.');
+    expect(m.html).toContain('2 prazos vencem hoje e 1 intimação nova.');
+    expect(m.texto).toContain('Sem ciência confirmada');
   });
 
   it('e-mail rejeitado por spam explica o motivo', async () => {

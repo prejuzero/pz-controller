@@ -2,14 +2,24 @@ import { ConsentimentoCanal } from '../domain/consentimento.js';
 import { Notificacao } from '../domain/notificacao.js';
 
 import type {
+  DesfechoDoLembrete,
+  LembreteAgendado,
+  RepositorioDeLembretes,
+} from '../application/lembretes.js';
+import type {
   DestinoPushNovo,
+  PreferenciasDeNotificacao,
   RepositorioDeConsentimentos,
   RepositorioDeDestinosPush,
   RepositorioDeNotificacoes,
 } from '../application/portas.js';
+import type {
+  PreferenciasDoUsuario,
+  RepositorioDePreferencias,
+} from '../application/preferencias.js';
 import type { ConsultaDeSupressoes, Supressao } from '../application/supressoes.js';
 import type { CanalComConsentimento, EstadoDoConsentimento } from '../domain/consentimento.js';
-import type { EstadoDaNotificacao } from '../domain/notificacao.js';
+import type { EstadoDaNotificacao, TipoDeNotificacao } from '../domain/notificacao.js';
 import type { Instant, TransacaoEmMemoria, Uuid } from '@pz/kernel';
 
 /** Notificações em memória, com a chave de idempotência única do Postgres. Só para testes. */
@@ -154,5 +164,97 @@ export class SupressoesEmMemoria implements ConsultaDeSupressoes<unknown> {
         .filter((s) => apos === undefined || s.email > apos)
         .slice(0, pagina.limite),
     );
+  }
+}
+
+/** Agenda de lembretes em memória, com o "único entre os agendados" do Postgres. Só para testes. */
+export class LembretesEmMemoria implements RepositorioDeLembretes<TransacaoEmMemoria> {
+  readonly linhas = new Map<Uuid, LembreteAgendado & { situacao: string }>();
+
+  substituir(
+    tx: TransacaoEmMemoria,
+    prazoId: Uuid,
+    novos: readonly LembreteAgendado[],
+  ): Promise<void> {
+    void this.cancelarDoPrazo(tx, prazoId);
+    for (const l of novos) this.linhas.set(l.id, { ...l, situacao: 'agendado' });
+    return Promise.resolve();
+  }
+
+  cancelarDoPrazo(_tx: TransacaoEmMemoria, prazoId: Uuid): Promise<number> {
+    let n = 0;
+    for (const l of this.linhas.values()) {
+      if (l.prazoId === prazoId && l.situacao === 'agendado') {
+        l.situacao = 'cancelado';
+        n++;
+      }
+    }
+    return Promise.resolve(n);
+  }
+
+  #devidos(agora: Instant) {
+    return [...this.linhas.values()]
+      .filter((l) => l.situacao === 'agendado' && l.disparoEm.epochMs <= agora.epochMs)
+      .sort((a, b) => a.disparoEm.epochMs - b.disparoEm.epochMs);
+  }
+
+  tenantsComDevidos(_tx: TransacaoEmMemoria, agora: Instant): Promise<Uuid[]> {
+    return Promise.resolve([...new Set(this.#devidos(agora).map((l) => l.tenantId))]);
+  }
+
+  devidos(_tx: TransacaoEmMemoria, agora: Instant, limite: number): Promise<LembreteAgendado[]> {
+    return Promise.resolve(this.#devidos(agora).slice(0, limite));
+  }
+
+  marcar(_tx: TransacaoEmMemoria, id: Uuid, desfecho: DesfechoDoLembrete): Promise<void> {
+    const l = this.linhas.get(id);
+    if (l !== undefined) l.situacao = desfecho;
+    return Promise.resolve();
+  }
+
+  prazosDoUsuario(_tx: TransacaoEmMemoria, usuarioId: Uuid): Promise<Uuid[]> {
+    return Promise.resolve([
+      ...new Set(
+        [...this.linhas.values()]
+          .filter((l) => l.usuarioId === usuarioId && l.situacao === 'agendado')
+          .map((l) => l.prazoId),
+      ),
+    ]);
+  }
+}
+
+/** Preferências em memória (padrão quando ausentes). Só para testes. */
+export class PreferenciasEmMemoria
+  implements
+    PreferenciasDeNotificacao<TransacaoEmMemoria>,
+    RepositorioDePreferencias<TransacaoEmMemoria>
+{
+  readonly #gravadas = new Map<Uuid, PreferenciasDoUsuario>();
+
+  ativo(
+    _tx: TransacaoEmMemoria,
+    usuarioId: Uuid,
+    tipo: TipoDeNotificacao,
+  ): Promise<boolean | undefined> {
+    const ativos = this.#gravadas.get(usuarioId)?.ativos as Record<string, boolean> | undefined;
+    return Promise.resolve(ativos?.[tipo]);
+  }
+
+  antecedencias(_tx: TransacaoEmMemoria, usuarioId: Uuid): Promise<readonly number[] | undefined> {
+    return Promise.resolve(this.#gravadas.get(usuarioId)?.antecedencias);
+  }
+
+  ler(_tx: TransacaoEmMemoria, usuarioId: Uuid): Promise<Partial<PreferenciasDoUsuario>> {
+    return Promise.resolve(this.#gravadas.get(usuarioId) ?? {});
+  }
+
+  gravar(
+    _tx: TransacaoEmMemoria,
+    _tenantId: Uuid,
+    usuarioId: Uuid,
+    p: PreferenciasDoUsuario,
+  ): Promise<void> {
+    this.#gravadas.set(usuarioId, p);
+    return Promise.resolve();
   }
 }

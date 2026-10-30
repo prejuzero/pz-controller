@@ -98,6 +98,8 @@ export type {
   PrazoListado,
   ResultadoDoLote,
 } from './application/prazos.js';
+export { AgendaDosLembretes } from './application/agenda.js';
+export type { DataDoLembrete, SituacaoDoPrazo } from './application/agenda.js';
 export { BuscarPrazos, TETO_DA_CONTAGEM } from './application/busca.js';
 export type { PaginaDaBuscaDePrazos } from './application/busca.js';
 export { PainelDosPrazos } from './application/painel.js';

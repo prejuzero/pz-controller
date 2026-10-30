@@ -23,6 +23,11 @@ export default async function PaginaConfiguracoes() {
         <Item href="/configuracoes/oabs" titulo={t('oabs')} descricao={t('oabsDescricao')} />
         <Item href={ROTA_SEGURANCA} titulo={t('seguranca')} descricao={t('segurancaDescricao')} />
         <Item
+          href="/configuracoes/notificacoes"
+          titulo={t('notificacoes')}
+          descricao={t('notificacoesDescricao')}
+        />
+        <Item
           href="/configuracoes/privacidade"
           titulo={t('privacidade')}
           descricao={t('privacidadeDescricao')}

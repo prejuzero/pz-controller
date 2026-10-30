@@ -25,6 +25,8 @@ export interface PreferenciasDeNotificacao<Transacao> {
     tipo: TipoDeNotificacao,
     canal: Canal,
   ): Promise<boolean | undefined>;
+  /** Antecedências escolhidas para os lembretes; `undefined` = padrão. */
+  antecedencias(transacao: Transacao, usuarioId: Uuid): Promise<readonly number[] | undefined>;
 }
 
 /**
