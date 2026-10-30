@@ -391,6 +391,8 @@ export interface DadosDoNovoPrazo {
   readonly publicacaoConteudoId: Uuid | null;
   /** Classificação de confiança baixa ou de revisão manual (HU24). */
   readonly classificacaoIncerta?: boolean;
+  /** O autor viu a data do motor e a confirmou no mesmo ato (cadastro manual, HU25). */
+  readonly confirmadoPor?: Uuid;
 }
 
 /** Representação serializável (auditoria e respostas). */
@@ -472,14 +474,40 @@ export class CriarPrazo<Transacao> {
       autor.tenantId,
       this.relogio,
     );
+    const sugerido = prazoListado(prazo.estado);
+    if (dados.confirmadoPor !== undefined) {
+      const confirmacao = prazo.confirmar(dados.confirmadoPor, this.relogio);
+      if (!confirmacao.ok) {
+        return err(new Validacao([{ campo: 'vencimento', mensagem: confirmacao.erro.message }]));
+      }
+    }
     return this.unidade.executar(async (transacao) => {
       await this.prazos.inserir(transacao, prazo);
-      const depois = prazoListado(prazo.estado);
+      const origem = semIndefinidos({ canal: autor.canal, usuarioId: autor.usuarioId });
       await this.trilha.registrar(
         transacao,
-        { tipo: 'prazos.prazo-sugerido', entidade: 'prazo', entidadeId: prazo.id, depois },
-        semIndefinidos({ canal: autor.canal, usuarioId: autor.usuarioId }),
+        {
+          tipo: 'prazos.prazo-sugerido',
+          entidade: 'prazo',
+          entidadeId: prazo.id,
+          depois: sugerido,
+        },
+        origem,
       );
+      const depois = prazoListado(prazo.estado);
+      if (dados.confirmadoPor !== undefined) {
+        await this.trilha.registrar(
+          transacao,
+          {
+            tipo: 'prazos.prazo-confirmado',
+            entidade: 'prazo',
+            entidadeId: prazo.id,
+            antes: sugerido,
+            depois,
+          },
+          origem,
+        );
+      }
       await this.outbox.gravar(transacao, prazo.retirarEventos());
       return ok(depois);
     });

@@ -147,8 +147,72 @@ export const cancelarPrazo = acao(
   PedidoDeCancelamento,
 );
 
+export const PedidoDePrazoManual = nomear(
+  'PedidoDePrazoManual',
+  z
+    .object({
+      processoId: Uuid,
+      tipoAto: z.string().min(1).max(80),
+      ramo: Ramo.optional(),
+      dias: z.number().int().positive().optional().describe('Prazo fixado no ato (prevalece).'),
+      unidade: Unidade.optional(),
+      meio: z.enum(['djen', 'portal', 'manual']).describe('Como o ato chegou ao advogado.'),
+      dataDeReferencia: DataCivil.describe('Disponibilização, envio ou ciência, conforme o meio.'),
+      origem: z.enum(['djen', 'manual', 'painel']),
+      observacao: z.string().max(1000).optional(),
+      vencimentoConfirmado: DataCivil.optional().describe(
+        'Vencimento visto na prévia: o prazo nasce pendente; outra data dá 409.',
+      ),
+    })
+    .strict(),
+);
+
+export const AtoDaTaxonomia = nomear(
+  'AtoDaTaxonomia',
+  z.object({ codigo: z.string(), nome: z.string() }),
+);
+export const AtosDaTaxonomia = nomear(
+  'AtosDaTaxonomia',
+  z.object({ itens: z.array(AtoDaTaxonomia.esquema) }),
+);
+export type AtosDaTaxonomia = z.infer<typeof AtosDaTaxonomia.esquema>;
+
+export const cadastrarPrazo = definirRota({
+  id: 'cadastrarPrazo',
+  metodo: 'post',
+  caminho: '/v1/prazos',
+  resumo: 'Cadastra um prazo manual; a data é calculada pelo motor.',
+  tag: 'prazos',
+  corpo: PedidoDePrazoManual,
+  resposta: { status: 201, corpo: Prazo },
+  erros: [404, 409],
+});
+
+export const simularPrazo = definirRota({
+  id: 'simularPrazo',
+  metodo: 'post',
+  caminho: '/v1/prazos/simular',
+  resumo: 'Prévia do prazo manual pelo motor, sem gravar.',
+  tag: 'prazos',
+  corpo: PedidoDePrazoManual,
+  resposta: { status: 200, corpo: Prazo },
+  erros: [404],
+});
+
+export const listarAtosDaTaxonomia = definirRota({
+  id: 'listarAtosDaTaxonomia',
+  metodo: 'get',
+  caminho: '/v1/tipos-de-ato',
+  resumo: 'Tipos de ato da taxonomia aprovada, para o cadastro de prazos.',
+  tag: 'prazos',
+  resposta: { status: 200, corpo: AtosDaTaxonomia },
+});
+
 export const ROTAS_PRAZOS = [
   listarPrazos,
+  cadastrarPrazo,
+  simularPrazo,
+  listarAtosDaTaxonomia,
   consultarPrazo,
   confirmarPrazo,
   ajustarPrazo,

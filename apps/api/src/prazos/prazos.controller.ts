@@ -1,6 +1,8 @@
 import { Body, Controller, Get, HttpCode, Inject, Param, Post, Query, Req } from '@nestjs/common';
 import {
   AjustarPrazo,
+  CadastrarPrazoManual,
+  ConsultarTabelaDePrazos,
   CancelarPrazo,
   ConfirmarPrazo,
   ConsultarPrazo,
@@ -13,9 +15,9 @@ import { autenticacao, validar } from '../auth/auth.controller.js';
 import { RequerPermissao } from '../http/acesso.js';
 
 import type { RequisicaoAutenticada } from '../http/acesso.js';
-import type { DetalheDoPrazo, PaginaDePrazos, Prazo } from '@pz/contracts';
+import type { AtosDaTaxonomia, DetalheDoPrazo, PaginaDePrazos, Prazo } from '@pz/contracts';
 import type { Uuid } from '@pz/kernel';
-import type { AutorNoPrazo } from '@pz/prazos';
+import type { AutorDoCadastro, AutorNoPrazo } from '@pz/prazos';
 
 const Id = z.uuid();
 const idDe = (id: string) => validar(Id, id) as Uuid;
@@ -28,6 +30,26 @@ function autor(requisicao: RequisicaoAutenticada): AutorNoPrazo {
   };
 }
 
+function autorDoCadastro(requisicao: RequisicaoAutenticada): AutorDoCadastro {
+  const { sessao } = autenticacao(requisicao);
+  return { ...autor(requisicao), tenantId: sessao.tenantId };
+}
+
+/** Taxonomia aprovada para o advogado escolher o ato (HU25); a curadoria a mantém (HU15). */
+@Controller('v1/tipos-de-ato')
+export class AtosDaTaxonomiaController {
+  constructor(
+    @Inject(ConsultarTabelaDePrazos) private readonly tabela: ConsultarTabelaDePrazos<unknown>,
+  ) {}
+
+  @Get()
+  @RequerPermissao('prazos:ler')
+  async listarAtos(): Promise<AtosDaTaxonomia> {
+    const tipos = await this.tabela.tiposDeAto();
+    return { itens: tipos.map((t) => ({ codigo: t.codigo, nome: t.nome })) };
+  }
+}
+
 /** Prazos do escritório (HU24); a regra fica no módulo prazos e as datas, no motor. */
 @Controller('v1/prazos')
 export class PrazosController {
@@ -38,7 +60,28 @@ export class PrazosController {
     @Inject(AjustarPrazo) private readonly ajustar: AjustarPrazo<unknown>,
     @Inject(CumprirPrazo) private readonly cumprir: CumprirPrazo<unknown>,
     @Inject(CancelarPrazo) private readonly cancelar: CancelarPrazo<unknown>,
+    @Inject(CadastrarPrazoManual) private readonly cadastrar: CadastrarPrazoManual<unknown>,
   ) {}
+
+  @Post()
+  @RequerPermissao('prazos:confirmar')
+  @HttpCode(201)
+  async cadastrarPrazo(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Body() corpo: unknown,
+  ): Promise<Prazo> {
+    return this.#resultado(this.cadastrar.executar(autorDoCadastro(requisicao), corpo));
+  }
+
+  @Post('simular')
+  @RequerPermissao('prazos:ler')
+  @HttpCode(200)
+  async simularPrazo(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Body() corpo: unknown,
+  ): Promise<Prazo> {
+    return this.#resultado(this.cadastrar.simular(autorDoCadastro(requisicao), corpo));
+  }
 
   @Get()
   @RequerPermissao('prazos:ler')

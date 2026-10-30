@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   AjustarPrazo,
+  CadastrarPrazoManual,
   CancelarPrazo,
   ConfirmarPrazo,
   ConsultarPrazo,
@@ -854,5 +855,81 @@ describe('ciclo de vida: entradas e filtros (HU24)', () => {
     await expect(
       gerar({ ...base, processoId: OUTRO_TENANT }).executar(TENANT, OUTRO_TENANT),
     ).rejects.toThrow();
+  });
+});
+
+describe('cadastro manual de prazo (HU25, PZ-172)', () => {
+  const USUARIO = '01a10e00-0000-7000-8000-00000000d001' as Uuid;
+  const autorManual = { tenantId: TENANT, usuarioId: USUARIO, canal: 'portal' as const };
+  const manual = (parcial: Record<string, unknown> = {}) => ({
+    processoId: PROCESSO,
+    tipoAto: 'ato-ficticio',
+    ramo: 'civel',
+    meio: 'djen',
+    dataDeReferencia: '2027-03-01',
+    origem: 'painel',
+    ...parcial,
+  });
+  const cadastrar = () => new CadastrarPrazoManual(calcular, criar, relogio());
+
+  it('prévia sem gravar; confirmado na prévia nasce pendente, com as duas trilhas', async () => {
+    const previa = await cadastrar().simular(autorManual, manual());
+    expect(previa.ok && previa.valor).toMatchObject({
+      vencimento: '2027-03-23',
+      status: 'a-confirmar',
+    });
+    expect(await outbox.executar((tx) => prazos.listar(tx, { limite: 10 }))).toEqual([]);
+
+    const r = await cadastrar().executar(
+      autorManual,
+      manual({ vencimentoConfirmado: '2027-03-23', observacao: 'visto no painel do TJXA' }),
+    );
+    expect(r.ok && r.valor).toMatchObject({
+      status: 'pendente',
+      origem: 'painel',
+      responsavelId: USUARIO,
+      vencimento: '2027-03-23',
+    });
+    expect(trilha.registros.map((x) => x.tipo)).toEqual([
+      'prazos.prazo-sugerido',
+      'prazos.prazo-confirmado',
+    ]);
+    expect((await eventosNoOutbox()).map((e) => e.tipo)).toEqual([
+      'PrazoSugerido',
+      'PrazoConfirmado',
+    ]);
+    const [gravado] = await outbox.executar((tx) => prazos.listar(tx, { limite: 10 }));
+    expect(gravado?.estado.parametros).toMatchObject({ observacao: 'visto no painel do TJXA' });
+  });
+
+  it('sem confirmação nasce "a confirmar"; data diferente da prévia é recusada (409)', async () => {
+    const r = await cadastrar().executar(autorManual, manual({ dias: 10 }));
+    expect(r.ok && r.valor).toMatchObject({
+      status: 'a-confirmar',
+      dias: 10,
+      vencimento: '2027-03-16',
+    });
+    const divergente = await cadastrar().executar(
+      autorManual,
+      manual({ vencimentoConfirmado: '2027-03-20' }),
+    );
+    expect(!divergente.ok && divergente.erro.codigo).toBe('vencimento-divergente');
+  });
+
+  it('sem data calculada não confirma; entrada e processo inválidos', async () => {
+    const semRamo = await cadastrar().executar(
+      autorManual,
+      manual({ ramo: undefined, vencimentoConfirmado: '2027-03-23' }),
+    );
+    expect(!semRamo.ok && semRamo.erro.codigo).toBe('vencimento-divergente');
+    const invalida = await cadastrar().executar(autorManual, manual({ origem: 'outra' }));
+    expect(!invalida.ok && invalida.erro.codigo).toBe('validacao');
+    const previaInvalida = await cadastrar().simular(autorManual, manual({ meio: 'fax' }));
+    expect(previaInvalida.ok).toBe(false);
+    const semProcesso = await cadastrar().executar(
+      autorManual,
+      manual({ processoId: OUTRO_TENANT }),
+    );
+    expect(!semProcesso.ok && semProcesso.erro.codigo).toBe('processo-inexistente');
   });
 });

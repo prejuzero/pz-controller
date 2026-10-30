@@ -40,6 +40,16 @@ describe('prazos (HU24)', () => {
     await m.cumprir.mutationFn({ id: ID, versao: 3 });
     await m.ajustar.mutationFn({ id: ID, versao: 2, motivo: 'motivo do ajuste', dias: 10 });
     await m.cancelar.mutationFn({ id: ID, versao: 4, motivo: 'intimação duplicada' });
+    const novo = {
+      processoId: ID,
+      tipoAto: 'citacao',
+      meio: 'djen' as const,
+      dataDeReferencia: '2026-10-05',
+      origem: 'manual' as const,
+    };
+    await m.simularNovo.mutationFn(novo);
+    await m.cadastrar.mutationFn({ ...novo, vencimentoConfirmado: '2026-10-26' });
+    await consultas.atos().queryFn?.(sinal as never);
     await m.confirmar.onSuccess();
     expect(cache.getQueryState(chaves.prazos.detalhe(ID))?.isInvalidated).toBe(true);
     expect(rotas).toEqual([
@@ -51,6 +61,9 @@ describe('prazos (HU24)', () => {
       `POST /v1/prazos/${ID}/cumprir {"versao":3}`,
       `POST /v1/prazos/${ID}/ajustar {"versao":2,"motivo":"motivo do ajuste","dias":10}`,
       `POST /v1/prazos/${ID}/cancelar {"versao":4,"motivo":"intimação duplicada"}`,
+      `POST /v1/prazos/simular {"processoId":"${ID}","tipoAto":"citacao","meio":"djen","dataDeReferencia":"2026-10-05","origem":"manual"}`,
+      `POST /v1/prazos {"processoId":"${ID}","tipoAto":"citacao","meio":"djen","dataDeReferencia":"2026-10-05","origem":"manual","vencimentoConfirmado":"2026-10-26"}`,
+      'GET /v1/tipos-de-ato',
     ]);
   });
 });

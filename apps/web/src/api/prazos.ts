@@ -23,6 +23,19 @@ export interface Cancelamento {
   motivo: string;
 }
 
+/** Corpo do cadastro manual (PedidoDePrazoManual, HU25). */
+export interface PrazoManual {
+  processoId: string;
+  tipoAto: string;
+  ramo?: 'civel' | 'juizados' | 'trabalhista' | 'penal' | 'juizado-criminal';
+  dias?: number;
+  meio: 'djen' | 'portal' | 'manual';
+  dataDeReferencia: string;
+  origem: 'djen' | 'manual' | 'painel';
+  observacao?: string;
+  vencimentoConfirmado?: string;
+}
+
 /** Consultas dos prazos do escritório (HU24). As datas vêm prontas da API (motor). */
 export const consultasPrazos = (api: ClienteApi) => ({
   lista: (status: StatusDoPrazo) =>
@@ -38,6 +51,12 @@ export const consultasPrazos = (api: ClienteApi) => ({
         ),
       getNextPageParam: (pagina) => pagina.proximoCursor ?? undefined,
       placeholderData: keepPreviousData,
+    }),
+  atos: () =>
+    queryOptions({
+      queryKey: [...chaves.prazos.todas, 'atos'] as const,
+      queryFn: ({ signal }) => exigir(api.GET('/v1/tipos-de-ato', { signal })),
+      staleTime: 5 * 60_000,
     }),
   detalhe: (id: string) =>
     queryOptions({
@@ -65,6 +84,14 @@ export const mutacoesPrazos = (api: ClienteApi, cache: QueryClient) => {
       mutationFn: ({ id, ...body }: Ajuste & { id: string }) =>
         exigir(api.POST('/v1/prazos/{id}/ajustar', { params: { path: { id } }, body })),
       onSuccess: invalidar,
+    },
+    cadastrar: {
+      mutationFn: (body: PrazoManual) => exigir(api.POST('/v1/prazos', { body })),
+      onSuccess: invalidar,
+    },
+    /** Prévia do cadastro manual pelo motor, sem gravar. */
+    simularNovo: {
+      mutationFn: (body: PrazoManual) => exigir(api.POST('/v1/prazos/simular', { body })),
     },
     /** Prévia do ajuste: o mesmo motor, sem gravar (nada é calculado no navegador). */
     simular: {

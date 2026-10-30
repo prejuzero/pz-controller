@@ -4854,6 +4854,96 @@
             }
           }
         }
+      },
+      "post": {
+        "operationId": "cadastrarPrazo",
+        "summary": "Cadastra um prazo manual; a data é calculada pelo motor.",
+        "tags": [
+          "prazos"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDePrazoManual"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Prazo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/prazos/{id}": {
@@ -5433,6 +5523,88 @@
           },
           "409": {
             "description": "Conflito com o estado atual.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/prazos/simular": {
+      "post": {
+        "operationId": "simularPrazo",
+        "summary": "Prévia do prazo manual pelo motor, sem gravar.",
+        "tags": [
+          "prazos"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDePrazoManual"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Prazo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -6942,6 +7114,58 @@
         }
       }
     },
+    "/v1/tipos-de-ato": {
+      "get": {
+        "operationId": "listarAtosDaTaxonomia",
+        "summary": "Tipos de ato da taxonomia aprovada, para o cadastro de prazos.",
+        "tags": [
+          "prazos"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtosDaTaxonomia"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/webhooks/{adaptador}": {
       "post": {
         "operationId": "receberWebhook",
@@ -7213,6 +7437,34 @@
             ]
           }
         },
+        "additionalProperties": false
+      },
+      "AtosDaTaxonomia": {
+        "type": "object",
+        "properties": {
+          "itens": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "codigo": {
+                  "type": "string"
+                },
+                "nome": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "codigo",
+                "nome"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "itens"
+        ],
         "additionalProperties": false
       },
       "AvisosDeEntrega": {
@@ -9675,6 +9927,87 @@
         "required": [
           "numero",
           "uf"
+        ],
+        "additionalProperties": false
+      },
+      "PedidoDePrazoManual": {
+        "type": "object",
+        "properties": {
+          "processoId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "tipoAto": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "ramo": {
+            "type": "string",
+            "enum": [
+              "civel",
+              "juizados",
+              "trabalhista",
+              "penal",
+              "juizado-criminal"
+            ]
+          },
+          "dias": {
+            "description": "Prazo fixado no ato (prevalece).",
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "unidade": {
+            "type": "string",
+            "enum": [
+              "dias",
+              "horas",
+              "meses",
+              "anos"
+            ]
+          },
+          "meio": {
+            "type": "string",
+            "enum": [
+              "djen",
+              "portal",
+              "manual"
+            ],
+            "description": "Como o ato chegou ao advogado."
+          },
+          "dataDeReferencia": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+            "description": "Disponibilização, envio ou ciência, conforme o meio."
+          },
+          "origem": {
+            "type": "string",
+            "enum": [
+              "djen",
+              "manual",
+              "painel"
+            ]
+          },
+          "observacao": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "vencimentoConfirmado": {
+            "description": "Vencimento visto na prévia: o prazo nasce pendente; outra data dá 409.",
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          }
+        },
+        "required": [
+          "processoId",
+          "tipoAto",
+          "meio",
+          "dataDeReferencia",
+          "origem"
         ],
         "additionalProperties": false
       },

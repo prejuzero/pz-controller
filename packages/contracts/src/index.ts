@@ -177,6 +177,12 @@ export {
   Prazo,
   ROTAS_PRAZOS,
   simularAjustePrazo,
+  AtoDaTaxonomia,
+  AtosDaTaxonomia,
+  cadastrarPrazo,
+  listarAtosDaTaxonomia,
+  PedidoDePrazoManual,
+  simularPrazo,
 } from './prazos/prazos.js';
 export {
   CABECALHO_IDEMPOTENCIA,
