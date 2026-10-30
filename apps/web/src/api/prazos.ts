@@ -9,6 +9,25 @@ import { chaves } from './chaves';
 import { exigir, type ClienteApi } from './cliente';
 
 export type StatusDoPrazo = 'a-confirmar' | 'pendente' | 'cumprido' | 'vencido' | 'cancelado';
+export const STATUS_DO_PRAZO: readonly StatusDoPrazo[] = [
+  'a-confirmar',
+  'pendente',
+  'vencido',
+  'cumprido',
+  'cancelado',
+];
+
+/** Cards do dashboard abertos na lista (HU26): o servidor aplica o critério e o "hoje". */
+export type RecorteDaLista = 'vence-hoje' | 'proximos-7-dias' | 'vencidos' | 'sem-ciencia';
+export const RECORTES_DA_LISTA: readonly RecorteDaLista[] = [
+  'vence-hoje',
+  'proximos-7-dias',
+  'vencidos',
+  'sem-ciencia',
+];
+
+/** Lista por situação (aba) ou pelo recorte de um card do dashboard. */
+export type FiltroDaLista = { status: StatusDoPrazo } | { recorte: RecorteDaLista };
 
 /** Corpo do ajuste (PedidoDeAjuste): só os campos que mudam. */
 export interface Ajuste {
@@ -48,19 +67,42 @@ export interface NovoCompromisso {
 
 /** Consultas dos prazos do escritório (HU24). As datas vêm prontas da API (motor). */
 export const consultasPrazos = (api: ClienteApi) => ({
-  lista: (status: StatusDoPrazo) =>
+  lista: (filtro: FiltroDaLista) =>
     infiniteQueryOptions({
-      queryKey: chaves.prazos.lista({ status }),
+      queryKey: chaves.prazos.lista(filtro),
       initialPageParam: undefined as string | undefined,
       queryFn: ({ pageParam, signal }) =>
         exigir(
           api.GET('/v1/prazos', {
-            params: { query: pageParam === undefined ? { status } : { status, cursor: pageParam } },
+            params: {
+              query: pageParam === undefined ? filtro : { ...filtro, cursor: pageParam },
+            },
             signal,
           }),
         ),
       getNextPageParam: (pagina) => pagina.proximoCursor ?? undefined,
       placeholderData: keepPreviousData,
+    }),
+  resumo: () =>
+    queryOptions({
+      queryKey: chaves.dashboard.resumo(),
+      queryFn: ({ signal }) => exigir(api.GET('/v1/dashboard/resumo', { signal })),
+    }),
+  linhaDoTempo: () =>
+    queryOptions({
+      queryKey: chaves.dashboard.linhaDoTempo(),
+      queryFn: ({ signal }) =>
+        exigir(
+          api.GET('/v1/dashboard/linha-do-tempo', { params: { query: { dias: 30 } }, signal }),
+        ),
+    }),
+  proximos: () =>
+    queryOptions({
+      queryKey: chaves.dashboard.proximos(),
+      queryFn: ({ signal }) =>
+        exigir(
+          api.GET('/v1/dashboard/proximos-prazos', { params: { query: { limite: 10 } }, signal }),
+        ),
     }),
   atos: () =>
     queryOptions({

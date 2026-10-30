@@ -70,6 +70,18 @@ export class ListarPublicacoes<Transacao> {
   }
 }
 
+/** Card "novas publicações" do dashboard (HU26): as ainda não lidas no escritório. */
+export class ContarPublicacoesNovas<Transacao> {
+  constructor(
+    private readonly unidade: UnidadeDeTrabalho<Transacao>,
+    private readonly leitura: RepositorioDeLeitura<Transacao>,
+  ) {}
+
+  executar(): Promise<number> {
+    return this.unidade.executar((tx) => this.leitura.contarNovas(tx));
+  }
+}
+
 const naoEncontrada = () =>
   new NaoEncontrado('publicacao-inexistente', 'Publicação não encontrada.');
 

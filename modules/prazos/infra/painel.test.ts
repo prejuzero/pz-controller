@@ -1,0 +1,207 @@
+import { FixedClock, Instant, LocalDate, OutboxEmMemoria } from '@pz/kernel';
+import { describe, expect, it } from 'vitest';
+
+import { ListarPrazos } from '../application/ciclo-de-vida.js';
+import { PainelDosPrazos } from '../application/painel.js';
+import { Prazo } from '../domain/prazo.js';
+
+import { PrazosEmMemoria } from './em-memoria.js';
+
+import type { LocalizadorDoProcesso, ProcessoNoCalendario } from '../application/portas.js';
+import type { EstadoDoPrazo, StatusDoPrazo } from '../domain/prazo.js';
+import type { TransacaoEmMemoria, Uuid } from '@pz/kernel';
+
+// Dados e calendário FICTÍCIOS (HU26). Hoje: sexta, 2026-10-30, em America/Sao_Paulo.
+const relogio = new FixedClock(Instant.deIso('2026-10-30T15:00:00.000Z'));
+const d = (iso: string) => {
+  const r = LocalDate.analisar(iso);
+  if (!r.ok) throw r.erro;
+  return r.valor;
+};
+const TENANT = '01a10e00-0000-7000-8000-0000000b0001' as Uuid;
+const PROCESSO = '01a10e00-0000-7000-8000-0000000b0002' as Uuid;
+const ANA = '01a10e00-0000-7000-8000-0000000b0003' as Uuid;
+let sequencia = 0;
+
+function prazo(
+  vencimento: string | null,
+  status: StatusDoPrazo,
+  extra: Partial<EstadoDoPrazo> = {},
+): Prazo {
+  sequencia++;
+  return Prazo.restaurar({
+    id: `01a10e00-0000-7000-8000-0000000c${String(sequencia).padStart(4, '0')}` as Uuid,
+    tenantId: TENANT,
+    processoId: PROCESSO,
+    publicacaoConteudoId: null,
+    tipoAto: 'contestacao',
+    ramo: 'civel',
+    calculo: {
+      situacao: vencimento === null ? 'a-confirmar' : 'calculado',
+      dias: 15,
+      unidade: 'dias',
+      inicio: null,
+      vencimento: vencimento === null ? null : d(vencimento),
+      fimDoPrazo: null,
+      fusoDoJuizo: 'America/Sao_Paulo',
+      fundamento: null,
+      versaoMotor: 'teste',
+      versaoTabela: null,
+      memoria: null,
+    },
+    vencimentoManual: false,
+    entrada: null,
+    origem: 'manual',
+    status,
+    statusCiencia: 'pendente',
+    responsavelId: null,
+    jurisdicao: { tribunal: 'TJGO', lacunas: [] },
+    parametros: {},
+    classificacaoIncerta: false,
+    motivoAjuste: null,
+    versaoOtimista: 1,
+    ...extra,
+  });
+}
+
+// Feriado fictício na segunda, 2026-11-02, no calendário do processo.
+const processo: ProcessoNoCalendario = {
+  ramoDoTribunal: 'estadual',
+  jurisdicao: { tribunal: 'TJGO' },
+  lacunas: [],
+  fuso: { fuso: 'America/Sao_Paulo', outrosFusos: false },
+  diasNaoUteis: (inicio, fim) =>
+    Promise.resolve(
+      [d('2026-11-02')]
+        .filter((x) => !x.ehAntesDe(inicio) && !x.ehDepoisDe(fim))
+        .map((data) => ({
+          data,
+          tipo: 'feriado' as const,
+          motivo: 'feriado fictício',
+          atoNormativo: 'Lei fictícia 1/2000',
+          urlAto: 'https://exemplo.invalid/lei',
+        })),
+    ),
+};
+
+async function repositorio(prazos: Prazo[]) {
+  const unidade = new OutboxEmMemoria();
+  const repo = new PrazosEmMemoria();
+  await unidade.executar(async (tx: TransacaoEmMemoria) => {
+    for (const p of prazos) await repo.inserir(tx, p);
+  });
+  return { unidade, repo };
+}
+
+async function montar(
+  prazos: Prazo[],
+  localizar: LocalizadorDoProcesso = () => Promise.resolve(processo),
+) {
+  const { unidade, repo } = await repositorio(prazos);
+  return new PainelDosPrazos(unidade, repo, relogio, localizar);
+}
+
+describe('painel dos prazos (HU26)', () => {
+  it('conta cada card com a massa conhecida e respeita o recorte', async () => {
+    const painel = await montar([
+      prazo('2026-10-30', 'pendente'),
+      prazo('2026-10-30', 'a-confirmar', { responsavelId: ANA }),
+      prazo('2026-10-31', 'pendente', { statusCiencia: 'confirmada' }),
+      prazo('2026-11-06', 'pendente'),
+      prazo('2026-11-07', 'pendente'),
+      prazo('2026-10-20', 'vencido'),
+      prazo('2026-10-29', 'pendente'),
+      prazo(null, 'a-confirmar'),
+      prazo('2026-11-01', 'cumprido'),
+      prazo('2026-11-01', 'cancelado'),
+      prazo('2026-11-03', 'pendente', { jurisdicao: { tribunal: 'TRT18', lacunas: [] } }),
+    ]);
+    const tudo = await painel.resumo({});
+    expect(tudo.ok && tudo.valor).toEqual({
+      vencemHoje: 2,
+      proximos7Dias: 3,
+      vencidosNaoCumpridos: 2,
+      aguardandoConfirmacao: 2,
+      semCienciaConfirmada: 7,
+    });
+    const daAna = await painel.resumo({ responsavelId: ANA });
+    expect(daAna.ok && daAna.valor.vencemHoje).toBe(1);
+    const trt = await painel.resumo({ tribunal: 'TRT18' });
+    expect(trt.ok && trt.valor.proximos7Dias).toBe(1);
+    const invalido = await painel.resumo({ responsavelId: 'x' });
+    expect(!invalido.ok && invalido.erro.codigo).toBe('validacao');
+  });
+
+  it('linha do tempo traz todos os dias da janela, com zero onde nada vence', async () => {
+    const painel = await montar([
+      prazo('2026-10-30', 'pendente'),
+      prazo('2026-11-01', 'pendente'),
+      prazo('2026-11-01', 'a-confirmar'),
+      prazo('2026-11-05', 'pendente'),
+      prazo('2026-11-01', 'cumprido'),
+    ]);
+    const r = await painel.linhaDoTempo({ dias: '3' });
+    if (!r.ok) throw r.erro;
+    expect(r.valor.map((x) => [x.data.paraIso(), x.quantidade])).toEqual([
+      ['2026-10-30', 1],
+      ['2026-10-31', 0],
+      ['2026-11-01', 2],
+    ]);
+    const padrao = await painel.linhaDoTempo({});
+    expect(padrao.ok && padrao.valor).toHaveLength(30);
+    expect((await painel.linhaDoTempo({ dias: 91 })).ok).toBe(false);
+  });
+
+  it('próximos prazos com dias úteis restantes pelo calendário do processo', async () => {
+    const painel = await montar([
+      prazo('2026-11-04', 'pendente'),
+      prazo('2026-10-30', 'a-confirmar'),
+      prazo('2026-10-29', 'pendente'),
+      prazo('2026-11-03', 'cumprido'),
+    ]);
+    const r = await painel.proximos({ limite: 5 });
+    if (!r.ok) throw r.erro;
+    // 30/10 vence hoje: 0. 04/11: sáb, dom e o feriado de 02/11 fora → 03 e 04.
+    expect(r.valor.map((p) => [p.vencimento, p.diasUteisRestantes])).toEqual([
+      ['2026-10-30', 0],
+      ['2026-11-04', 2],
+    ]);
+  });
+
+  it('sem o processo no calendário, não inventa: dias úteis ficam nulos', async () => {
+    const painel = await montar([prazo('2026-11-04', 'pendente')], () =>
+      Promise.resolve(undefined),
+    );
+    const r = await painel.proximos({});
+    expect(r.ok && r.valor[0]?.diasUteisRestantes).toBeNull();
+    expect((await painel.proximos({ limite: 0 })).ok).toBe(false);
+  });
+
+  it('cada card abre a lista com o mesmo critério da contagem', async () => {
+    const massa = [
+      prazo('2026-10-30', 'pendente'),
+      prazo('2026-11-02', 'a-confirmar'),
+      prazo('2026-11-07', 'pendente'),
+      prazo('2026-10-29', 'pendente'),
+      prazo('2026-10-01', 'vencido'),
+      prazo('2026-11-03', 'pendente', { statusCiencia: 'confirmada' }),
+      prazo('2026-10-30', 'cumprido'),
+    ];
+    const { unidade, repo } = await repositorio(massa);
+    const listar = new ListarPrazos(unidade, repo, relogio);
+    const painel = new PainelDosPrazos(unidade, repo, relogio, () => Promise.resolve(undefined));
+    const resumo = await painel.resumo({});
+    if (!resumo.ok) throw resumo.erro;
+    const total = async (recorte: string) => {
+      const r = await listar.executar({ recorte, limite: 100 });
+      if (!r.ok) throw r.erro;
+      return r.valor.itens.length;
+    };
+    expect(await total('vence-hoje')).toBe(resumo.valor.vencemHoje);
+    expect(await total('proximos-7-dias')).toBe(resumo.valor.proximos7Dias);
+    expect(await total('vencidos')).toBe(resumo.valor.vencidosNaoCumpridos);
+    expect(await total('sem-ciencia')).toBe(resumo.valor.semCienciaConfirmada);
+    expect([resumo.valor.vencemHoje, resumo.valor.proximos7Dias]).toEqual([1, 2]);
+    expect((await listar.executar({ recorte: 'outro' })).ok).toBe(false);
+  });
+});

@@ -636,7 +636,7 @@ describe('ciclo de vida do prazo (HU24, PZ-169)', () => {
     await criado();
     await criado({ dataDeReferencia: '2027-03-08' });
     await criado({ ramo: undefined });
-    const listar = new ListarPrazos(outbox, prazos);
+    const listar = new ListarPrazos(outbox, prazos, relogio());
     const a = await listar.executar({ limite: '2' });
     if (!a.ok) throw a.erro;
     expect(a.valor.itens.map((i) => i.vencimento)).toEqual(['2027-03-23', '2027-03-30']);
@@ -814,7 +814,7 @@ describe('ciclo de vida: entradas e filtros (HU24)', () => {
     );
     if (!r.ok) throw r.erro;
     await criado();
-    const listar = new ListarPrazos(outbox, prazos);
+    const listar = new ListarPrazos(outbox, prazos, relogio());
     const doResponsavel = await listar.executar({
       responsavelId: OUTRO_TENANT,
       processoId: PROCESSO,

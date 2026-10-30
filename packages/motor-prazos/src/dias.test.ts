@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { calendarioDeOcorrencias, type OcorrenciaDatada } from './calendario.js';
 import {
   contarDias,
+  diasUteisRestantes,
   esteOuProximoQueConta,
   LIMITE_DE_DIAS,
   proximoDiaQueConta,
@@ -235,6 +236,61 @@ describe('propriedades da contagem', () => {
         const depois = valor(contarDias(ini, n + 1, conta)).data;
         expect(depois.ehDepoisDe(antes)).toBe(true);
       }),
+      { numRuns: 200 },
+    );
+  });
+});
+
+describe('dias úteis restantes (informação de urgência, HU26)', () => {
+  // 2027-03-01 é segunda-feira (calendário FICTÍCIO).
+  it('conta os dias úteis depois de hoje até o vencimento, inclusive', () => {
+    expect(valor(diasUteisRestantes(d('2027-03-01'), d('2027-03-05'), vazio))).toBe(4);
+  });
+
+  it('vence hoje ou já venceu: zero', () => {
+    expect(valor(diasUteisRestantes(d('2027-03-05'), d('2027-03-05'), vazio))).toBe(0);
+    expect(valor(diasUteisRestantes(d('2027-03-08'), d('2027-03-05'), vazio))).toBe(0);
+  });
+
+  it('não conta sábado, domingo, feriado nem suspensão de prazos', () => {
+    const calendario = calendarioDeOcorrencias([feriado('2027-03-09'), suspensao('2027-03-10')]);
+    // sex 05 → seg 08, (ter 09 feriado), (qua 10 suspensão), qui 11
+    expect(valor(diasUteisRestantes(d('2027-03-05'), d('2027-03-11'), calendario))).toBe(2);
+  });
+
+  it('indisponibilidade não tira o dia da contagem (CPC, art. 224, §1º só prorroga)', () => {
+    const calendario = calendarioDeOcorrencias([indisponibilidade('2027-03-02')]);
+    expect(valor(diasUteisRestantes(d('2027-03-01'), d('2027-03-02'), calendario))).toBe(1);
+  });
+
+  it('vencimento além do teto de dias: calendário esgotado', () => {
+    const r = diasUteisRestantes(
+      d('2027-03-01'),
+      d('2027-03-01').maisDias(LIMITE_DE_DIAS + 1),
+      vazio,
+    );
+    expect(r.ok).toBe(false);
+  });
+
+  it('propriedade: nunca passa dos dias corridos e cresce com o vencimento', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: 400 }),
+        fc.integer({ min: 0, max: 30 }),
+        fc.array(fc.integer({ min: 0, max: 430 }), { maxLength: 40 }),
+        (distancia, extra, feriados) => {
+          const hoje = d('2027-01-04');
+          const calendario = calendarioDeOcorrencias(
+            feriados.map((n) => feriado(hoje.maisDias(n).paraIso())),
+          );
+          const antes = valor(diasUteisRestantes(hoje, hoje.maisDias(distancia), calendario));
+          const depois = valor(
+            diasUteisRestantes(hoje, hoje.maisDias(distancia + extra), calendario),
+          );
+          expect(antes).toBeLessThanOrEqual(distancia);
+          expect(depois).toBeGreaterThanOrEqual(antes);
+        },
+      ),
       { numRuns: 200 },
     );
   });

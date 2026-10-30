@@ -792,6 +792,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/dashboard/linha-do-tempo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Prazos abertos por dia de vencimento. */
+        get: operations["linhaDoTempoDoDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboard/proximos-prazos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Prazos abertos a vencer, do mais próximo, com os dias úteis restantes. */
+        get: operations["proximosPrazosDoDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboard/resumo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contadores dos cards do dashboard. */
+        get: operations["resumoDoDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/email/verificar": {
         parameters: {
             query?: never;
@@ -1786,6 +1837,14 @@ export interface components {
         FeriadosLocais: {
             itens: components["schemas"]["FeriadoLocal"][];
         };
+        LinhaDoTempo: {
+            /** @description Um item por dia a partir de hoje, inclusive os dias sem prazo. */
+            itens: {
+                /** Format: date */
+                data: string;
+                quantidade: number;
+            }[];
+        };
         LinkDoDocumento: {
             /** Format: uri */
             url: string;
@@ -2312,6 +2371,53 @@ export interface components {
             motivoCobertura: string | null;
             clienteId: string | null;
         };
+        ProximosPrazos: {
+            itens: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                processoId: string;
+                publicacaoConteudoId: string | null;
+                tipoAto: string;
+                ramo: ("civel" | "juizados" | "trabalhista" | "penal" | "juizado-criminal") | null;
+                /**
+                 * @description "a-confirmar": sem data sugerida.
+                 * @enum {string}
+                 */
+                situacao: "calculado" | "a-confirmar";
+                dias: number | null;
+                unidade: ("dias" | "horas" | "meses" | "anos") | null;
+                inicio: string | null;
+                vencimento: string | null;
+                /** @description 24h do vencimento no fuso do juízo (exclusive). */
+                fimDoPrazo: string | null;
+                fusoDoJuizo: string | null;
+                fundamento: string | null;
+                versaoMotor: string;
+                versaoTabela: number | null;
+                /** @description Data informada pelo advogado ("definida manualmente"). */
+                vencimentoManual: boolean;
+                /** @enum {string} */
+                origem: "djen" | "manual" | "painel";
+                /** @enum {string} */
+                status: "a-confirmar" | "pendente" | "cumprido" | "vencido" | "cancelado";
+                /** @enum {string} */
+                statusCiencia: "pendente" | "confirmada";
+                responsavelId: string | null;
+                jurisdicao: {
+                    tribunal?: string;
+                    uf?: string;
+                    comarca?: string;
+                    readonly lacunas: string[];
+                };
+                /** @description Classificação de confiança baixa ou revisão manual. */
+                classificacaoIncerta: boolean;
+                motivoAjuste: string | null;
+                versao: number;
+                /** @description Do motor, pelo calendário do processo; null se não foi possível contar. */
+                diasUteisRestantes: number | null;
+            }[];
+        };
         PublicacaoDoTenant: {
             /** Format: uuid */
             id: string;
@@ -2378,6 +2484,18 @@ export interface components {
                 /** @description Jobs na DLQ da fila. */
                 mortos: number;
             }[];
+        };
+        ResumoDoDashboard: {
+            vencemHoje: number;
+            /** @description De amanhã até hoje + 7 dias. */
+            proximos7Dias: number;
+            vencidosNaoCumpridos: number;
+            /** @description Ainda não lidas no escritório. */
+            novasPublicacoes: number;
+            aguardandoConfirmacao: number;
+            processosMonitorados: number;
+            /** @description Prazos abertos sem ciência confirmada (RF81). */
+            semCienciaConfirmada: number;
         };
         SegundoFatorAtivado: {
             sessao: components["schemas"]["SessaoAtual"];
@@ -6039,6 +6157,191 @@ export interface operations {
             };
         };
     };
+    linhaDoTempoDoDashboard: {
+        parameters: {
+            query?: {
+                /** @description Advogado responsável pelo prazo. */
+                responsavelId?: string;
+                /** @description Sigla do tribunal. */
+                tribunal?: string;
+                dias?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinhaDoTempo"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    proximosPrazosDoDashboard: {
+        parameters: {
+            query?: {
+                /** @description Advogado responsável pelo prazo. */
+                responsavelId?: string;
+                /** @description Sigla do tribunal. */
+                tribunal?: string;
+                limite?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProximosPrazos"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    resumoDoDashboard: {
+        parameters: {
+            query?: {
+                /** @description Advogado responsável pelo prazo. */
+                responsavelId?: string;
+                /** @description Sigla do tribunal. */
+                tribunal?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResumoDoDashboard"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
     verificarEmail: {
         parameters: {
             query?: never;
@@ -6726,6 +7029,8 @@ export interface operations {
                 status?: "a-confirmar" | "pendente" | "cumprido" | "vencido" | "cancelado";
                 processoId?: string;
                 responsavelId?: string;
+                /** @description Card do dashboard (HU26): mesmo critério da contagem; "hoje" é o do servidor. */
+                recorte?: "vence-hoje" | "proximos-7-dias" | "vencidos" | "sem-ciencia";
             };
             header?: never;
             path?: never;

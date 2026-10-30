@@ -107,6 +107,10 @@ export const listarPrazos = definirRota({
     status: StatusDoPrazo.optional(),
     processoId: Uuid.optional(),
     responsavelId: Uuid.optional(),
+    recorte: z
+      .enum(['vence-hoje', 'proximos-7-dias', 'vencidos', 'sem-ciencia'])
+      .optional()
+      .describe('Card do dashboard (HU26): mesmo critério da contagem; "hoje" é o do servidor.'),
   }),
   resposta: { status: 200, corpo: PaginaDePrazos },
 });

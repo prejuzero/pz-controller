@@ -13,26 +13,29 @@ import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
 import { usePrazos } from '../../../api/hooks';
+import { STATUS_DO_PRAZO } from '../../../api/prazos';
 import { formatarDataCivil } from '../../../i18n/formatar';
 
 import { Compromissos } from './compromissos';
 
-import type { StatusDoPrazo } from '../../../api/prazos';
+import type { RecorteDaLista, StatusDoPrazo } from '../../../api/prazos';
 import type { Prazo } from '@pz/contracts';
 
-const ABAS: readonly StatusDoPrazo[] = [
-  'a-confirmar',
-  'pendente',
-  'vencido',
-  'cumprido',
-  'cancelado',
-];
+const ABAS = STATUS_DO_PRAZO;
+
+interface Props {
+  /** Aba inicial (ex.: o card "aguardando confirmação" do dashboard). */
+  status?: StatusDoPrazo | undefined;
+  /** Card do dashboard aberto na lista (HU26): substitui as abas até o advogado limpar. */
+  recorte?: RecorteDaLista | undefined;
+}
 
 /** Prazos do escritório (HU24): por situação, do vencimento mais próximo ao mais distante. */
-export function ListaDePrazos() {
+export function ListaDePrazos({ status: inicial, recorte: doCard }: Props) {
   const t = useTranslations('prazos');
-  const [aba, setAba] = useState<StatusDoPrazo>('a-confirmar');
-  const prazos = usePrazos(aba);
+  const [aba, setAba] = useState<StatusDoPrazo>(inicial ?? 'a-confirmar');
+  const [recorte, setRecorte] = useState(doCard);
+  const prazos = usePrazos(recorte === undefined ? { status: aba } : { recorte });
 
   const colunas: ColunaTabela<Prazo>[] = [
     {
@@ -91,13 +94,27 @@ export function ListaDePrazos() {
         <h1 className="text-2xl font-semibold">{t('titulo')}</h1>
         <p className="max-w-3xl text-texto-suave">{t('descricao')}</p>
       </div>
+      {recorte === undefined ? null : (
+        <div className="flex flex-wrap items-center gap-2">
+          <SeloStatus tom="info">{t(`recortes.${recorte}`)}</SeloStatus>
+          <Botao
+            variante="secundaria"
+            onClick={() => {
+              setRecorte(undefined);
+            }}
+          >
+            {t('limparRecorte')}
+          </Botao>
+        </div>
+      )}
       <div className="flex flex-wrap gap-2" role="group" aria-label={t('titulo')}>
         {ABAS.map((status) => (
           <Botao
             key={status}
-            variante={status === aba ? 'primaria' : 'secundaria'}
-            aria-pressed={status === aba}
+            variante={recorte === undefined && status === aba ? 'primaria' : 'secundaria'}
+            aria-pressed={recorte === undefined && status === aba}
             onClick={() => {
+              setRecorte(undefined);
               setAba(status);
             }}
           >
@@ -110,7 +127,7 @@ export function ListaDePrazos() {
       ) : (
         <>
           <TabelaDados
-            titulo={t(`abas.${aba}`)}
+            titulo={recorte === undefined ? t(`abas.${aba}`) : t(`recortes.${recorte}`)}
             colunas={colunas}
             dados={prazos.data.pages.flatMap((pagina) => pagina.itens)}
             idLinha={(prazo) => prazo.id}

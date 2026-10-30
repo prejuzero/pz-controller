@@ -79,7 +79,7 @@ export const EntradaDoCalculoDoProcesso = z
  * Correspondência da carga da curadoria V2 (docs/curadoria/carga/README.md): "suspensão de
  * prazos" foi cadastrada como `portaria`; "expediente reduzido", como `indisponibilidade`.
  */
-const EFEITO_DO_DIA: Readonly<Record<TipoDeDia, Efeito>> = {
+export const EFEITO_DO_DIA: Readonly<Record<TipoDeDia, Efeito>> = {
   // Feriado, recesso: dia sem expediente forense (CPC, art. 216).
   feriado: 'sem-expediente',
   recesso: 'sem-expediente',

@@ -126,3 +126,26 @@ export function esteOuProximoQueConta(
 ): Result<Avanco, CalendarioEsgotado> {
   return contarDias(data, 1, conta);
 }
+
+/**
+ * Dias úteis depois de `hoje` até `vencimento` (inclusive), para a tela mostrar a urgência (HU26).
+ * É informação, não prazo: o vencimento já veio do motor. Não conta sábado, domingo (CPC,
+ * art. 216), dia sem expediente nem suspensão de prazos; indisponibilidade só prorroga início ou
+ * vencimento (CPC, art. 224, §1º; Lei 11.419/2006, art. 10, §2º) e por isso conta. Zero quando
+ * vence hoje ou já venceu.
+ */
+export function diasUteisRestantes(
+  hoje: LocalDate,
+  vencimento: LocalDate,
+  calendario: CalendarioForense,
+): Result<number, CalendarioEsgotado> {
+  const distancia = hoje.diasAte(vencimento);
+  if (distancia <= 0) return ok(0);
+  if (distancia > LIMITE_DE_DIAS) return err({ tipo: 'calendario-esgotado', aPartirDe: hoje });
+  const conta = semContarFimDeSemanaE(calendario, ['sem-expediente', 'suspensao-de-prazos']);
+  let uteis = 0;
+  for (let passo = 1; passo <= distancia; passo++) {
+    if (conta(hoje.maisDias(passo)).length === 0) uteis++;
+  }
+  return ok(uteis);
+}

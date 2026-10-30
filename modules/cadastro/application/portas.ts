@@ -83,6 +83,8 @@ export interface RepositorioDeProcessos<Transacao> {
     filtro: FiltroDeProcessos,
     pagina: Paginacao,
   ): Promise<EstadoDoProcesso[]>;
+  /** Processos do tenant no filtro (card "processos monitorados" do dashboard, HU26). */
+  contar(transacao: Transacao, filtro: Pick<FiltroDeProcessos, 'tribunal'>): Promise<number>;
 }
 
 /** Porta: clientes do tenant da transação (tabela `cliente`, RLS). */

@@ -277,6 +277,23 @@ export class ListarProcessos<Transacao> {
   }
 }
 
+/**
+ * Card "processos monitorados" do dashboard (HU26): todos os processos do escritório, cada um com
+ * a sua cobertura (automática, parcial ou manual) visível na lista.
+ */
+export class ContarProcessos<Transacao> {
+  constructor(
+    private readonly unidade: UnidadeDeTrabalho<Transacao>,
+    private readonly processos: RepositorioDeProcessos<Transacao>,
+  ) {}
+
+  executar(filtro: { readonly tribunal?: string }): Promise<number> {
+    return this.unidade.executar((tx) =>
+      this.processos.contar(tx, filtro.tribunal === undefined ? {} : { tribunal: filtro.tribunal }),
+    );
+  }
+}
+
 /** PATCH /v1/processos/{id}: órgão, comarca, cliente e sigilo, com antes e depois na trilha. */
 export class AtualizarProcesso<Transacao> {
   constructor(

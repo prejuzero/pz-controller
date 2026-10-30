@@ -4,8 +4,10 @@ import { VersaoDaTabela } from '../domain/tabela.js';
 import type { Compromisso, RepositorioDeCompromissos } from '../application/compromissos.js';
 import type {
   AlcanceDaAlteracao,
+  ContagemDoPainel,
   FiltroDePrazos,
   FiltroDeVersoes,
+  RecorteDoPainel,
   RepositorioDePrazos,
   RepositorioDaTabela,
   RepositorioDeTiposDeAto,
@@ -14,6 +16,22 @@ import type {
 import type { EstadoDoPrazo } from '../domain/prazo.js';
 import type { EstadoDaVersao, Ramo } from '../domain/tabela.js';
 import type { Instant, LocalDate, TransacaoEmMemoria, Uuid } from '@pz/kernel';
+
+/** Mesmo critério do Postgres para o card do dashboard aberto na lista. */
+function noRecorte(e: EstadoDoPrazo, recorte: NonNullable<FiltroDePrazos['recorte']>): boolean {
+  const aberto = STATUS_RECALCULAVEIS.includes(e.status);
+  const v = e.calculo.vencimento;
+  switch (recorte.tipo) {
+    case 'vence-hoje':
+      return aberto && v?.igual(recorte.hoje) === true;
+    case 'proximos-7-dias':
+      return aberto && v !== null && v.ehDepoisDe(recorte.hoje) && !v.ehDepoisDe(recorte.ate);
+    case 'vencidos':
+      return e.status === 'vencido' || (aberto && v?.ehAntesDe(recorte.hoje) === true);
+    case 'sem-ciencia':
+      return aberto && e.statusCiencia === 'pendente';
+  }
+}
 
 /** Repositórios em memória da tabela de prazos, com a semântica do Postgres. Só para testes. */
 export class TabelaEmMemoria
@@ -146,6 +164,7 @@ export class PrazosEmMemoria implements RepositorioDePrazos<TransacaoEmMemoria> 
             (filtro.status === undefined || e.status === filtro.status) &&
             (filtro.processoId === undefined || e.processoId === filtro.processoId) &&
             (filtro.responsavelId === undefined || e.responsavelId === filtro.responsavelId) &&
+            (filtro.recorte === undefined || noRecorte(e, filtro.recorte)) &&
             (cursor === undefined || chave(e) > cursor),
         )
         .sort((a, b) => chave(a).localeCompare(chave(b)))
@@ -170,6 +189,78 @@ export class PrazosEmMemoria implements RepositorioDePrazos<TransacaoEmMemoria> 
 
   tenantsComVencidos(_transacao: TransacaoEmMemoria, hoje: LocalDate): Promise<Uuid[]> {
     return Promise.resolve([...new Set(this.#vencidos(hoje).map((e) => e.tenantId))].sort());
+  }
+
+  contarParaOPainel(
+    _transacao: TransacaoEmMemoria,
+    hoje: LocalDate,
+    ate: LocalDate,
+    recorte: RecorteDoPainel,
+  ): Promise<ContagemDoPainel> {
+    const todos = this.#doRecorte(recorte);
+    const abertos = todos.filter((e) => STATUS_RECALCULAVEIS.includes(e.status));
+    const vence = (e: EstadoDoPrazo) => e.calculo.vencimento;
+    return Promise.resolve({
+      vencemHoje: abertos.filter((e) => vence(e)?.igual(hoje) === true).length,
+      proximos7Dias: abertos.filter((e) => {
+        const v = vence(e);
+        return v !== null && v.ehDepoisDe(hoje) && !v.ehDepoisDe(ate);
+      }).length,
+      vencidosNaoCumpridos: todos.filter(
+        (e) =>
+          e.status === 'vencido' ||
+          (STATUS_RECALCULAVEIS.includes(e.status) && vence(e)?.ehAntesDe(hoje) === true),
+      ).length,
+      aguardandoConfirmacao: todos.filter((e) => e.status === 'a-confirmar').length,
+      semCienciaConfirmada: abertos.filter((e) => e.statusCiencia === 'pendente').length,
+    });
+  }
+
+  vencimentosPorDia(
+    _transacao: TransacaoEmMemoria,
+    inicio: LocalDate,
+    fim: LocalDate,
+    recorte: RecorteDoPainel,
+  ): Promise<{ data: LocalDate; quantidade: number }[]> {
+    const porDia = new Map<string, { data: LocalDate; quantidade: number }>();
+    for (const e of this.#abertosDoRecorte(recorte)) {
+      const v = e.calculo.vencimento;
+      if (v === null || v.ehAntesDe(inicio) || v.ehDepoisDe(fim)) continue;
+      const atual = porDia.get(v.paraIso()) ?? { data: v, quantidade: 0 };
+      porDia.set(v.paraIso(), { data: v, quantidade: atual.quantidade + 1 });
+    }
+    return Promise.resolve([...porDia.values()].sort((a, b) => a.data.comparar(b.data)));
+  }
+
+  abertosAPartirDe(
+    _transacao: TransacaoEmMemoria,
+    hoje: LocalDate,
+    recorte: RecorteDoPainel,
+    limite: number,
+  ): Promise<Prazo[]> {
+    return Promise.resolve(
+      this.#abertosDoRecorte(recorte)
+        .filter((e) => e.calculo.vencimento !== null && !e.calculo.vencimento.ehAntesDe(hoje))
+        .sort(
+          (a, b) =>
+            (a.calculo.vencimento?.comparar(b.calculo.vencimento ?? hoje) ?? 0) ||
+            a.id.localeCompare(b.id),
+        )
+        .slice(0, limite)
+        .map((e) => Prazo.restaurar(e)),
+    );
+  }
+
+  #doRecorte(recorte: RecorteDoPainel): EstadoDoPrazo[] {
+    return [...this.#prazos.values()].filter(
+      (e) =>
+        (recorte.responsavelId === undefined || e.responsavelId === recorte.responsavelId) &&
+        (recorte.tribunal === undefined || e.jurisdicao.tribunal === recorte.tribunal),
+    );
+  }
+
+  #abertosDoRecorte(recorte: RecorteDoPainel): EstadoDoPrazo[] {
+    return this.#doRecorte(recorte).filter((e) => STATUS_RECALCULAVEIS.includes(e.status));
   }
 
   #vencidos(hoje: LocalDate): EstadoDoPrazo[] {

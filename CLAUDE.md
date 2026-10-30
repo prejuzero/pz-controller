@@ -356,7 +356,7 @@ Dentro de cada história: Dados → Back-end/Integração → Front-end → Test
 - [x] **M0 · Fundação** — HU01–HU10 (todas concluídas, com as telas da HU06 e da HU07 entregues na HU23. Fora do M0: HU15 com a carga da curadoria V2, aguardando a aprovação de outro curador; HU23 concluída; HU13 concluída)
 - [ ] **M1 · Núcleo jurídico** — HU11–HU16 (HU12, HU13, HU14 e HU16 concluídas; HU11 em teste com usuários; HU15 em teste)
 - [ ] **M2 · Captura e classificação** — HU17–HU22 (HU17, HU18, HU19, HU20 e HU21 concluídas; HU58, plataforma de IA, concluída)
-- [ ] **M3 · Portal** — HU23–HU29 (HU23 e HU24 concluídas; HU25 em andamento)
+- [ ] **M3 · Portal** — HU23–HU29 (HU23, HU24, HU25 e HU26 concluídas)
 - [ ] **M4 · Notificação e ciência** — HU30–HU36
 - [ ] **M5 · Produção** — HU37–HU40 (HU39 concluída)
 

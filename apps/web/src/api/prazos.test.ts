@@ -26,7 +26,7 @@ describe('prazos (HU24)', () => {
     });
     const cache = new QueryClient();
     const consultas = consultasPrazos(api);
-    const lista = consultas.lista('pendente');
+    const lista = consultas.lista({ status: 'pendente' });
     const pagina = await lista.queryFn?.({ ...sinal, pageParam: undefined } as never);
     expect(lista.getNextPageParam(pagina as never, [], undefined, [])).toBe('c2');
     await lista.queryFn?.({ ...sinal, pageParam: 'c2' } as never);
@@ -58,6 +58,12 @@ describe('prazos (HU24)', () => {
     await m.analisar.mutationFn('Cite-se');
     await m.analisarPdf.mutationFn(new Blob(['%PDF-1.4'], { type: 'application/pdf' }));
     await m.linkDoDocumento.mutationFn(ID);
+    await consultas
+      .lista({ recorte: 'vence-hoje' })
+      .queryFn?.({ ...sinal, pageParam: undefined } as never);
+    await consultas.resumo().queryFn?.(sinal as never);
+    await consultas.linhaDoTempo().queryFn?.(sinal as never);
+    await consultas.proximos().queryFn?.(sinal as never);
     await m.confirmar.onSuccess();
     expect(cache.getQueryState(chaves.prazos.detalhe(ID))?.isInvalidated).toBe(true);
     expect(rotas).toEqual([
@@ -78,6 +84,10 @@ describe('prazos (HU24)', () => {
       'POST /v1/assistente/analisar {"texto":"Cite-se"}',
       'POST /v1/assistente/pdf %PDF-1.4',
       `GET /v1/prazos/${ID}/documento`,
+      'GET /v1/prazos?recorte=vence-hoje',
+      'GET /v1/dashboard/resumo',
+      'GET /v1/dashboard/linha-do-tempo?dias=30',
+      'GET /v1/dashboard/proximos-prazos?limite=10',
     ]);
   });
 });

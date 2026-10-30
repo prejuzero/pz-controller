@@ -84,6 +84,12 @@ export class ProcessosPostgres implements RepositorioDeProcessos<Transacao> {
     });
     return linhas.map(estadoDe);
   }
+
+  contar(tx: Transacao, filtro: Pick<FiltroDeProcessos, 'tribunal'>): Promise<number> {
+    return tx.processo.count({
+      where: filtro.tribunal === undefined ? {} : { tribunal: filtro.tribunal },
+    });
+  }
 }
 
 const clienteDe = (linha: {

@@ -69,6 +69,12 @@ export class LeituraPostgres implements RepositorioDeLeitura<Transacao> {
     return linha === undefined ? undefined : publicacao(linha);
   }
 
+  async contarNovas(tx: Transacao): Promise<number> {
+    const [linha] = await tx.$queryRaw<{ n: bigint }[]>`
+      SELECT count(*) AS n FROM publicacao_do_tenant WHERE lida_em IS NULL`;
+    return Number(linha?.n ?? 0n);
+  }
+
   async marcarLida(tx: Transacao, id: Uuid, usuarioId: Uuid, em: Instant): Promise<boolean> {
     const { count } = await tx.publicacaoDestinatario.updateMany({
       where: { conteudoId: id, lidaEm: null },
