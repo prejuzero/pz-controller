@@ -122,6 +122,8 @@ import { criarLogger, registrarErro } from '@pz/observability';
 import {
   AjustarPrazo,
   AprovarVersaoDaTabela,
+  CadastrarPrazoManual,
+  CriarPrazo,
   CadastrarTipoDeAto,
   CalcularPrazoParaProcesso,
   CancelarPrazo,
@@ -185,7 +187,7 @@ import { GuardaDeLimite, JanelaRedis } from './http/limite.js';
 import { FiltroDeProblemas } from './http/problemas.js';
 import { NotificacoesController } from './notificacoes/notificacoes.controller.js';
 import { OpenApiController } from './openapi.controller.js';
-import { PrazosController } from './prazos/prazos.controller.js';
+import { AtosDaTaxonomiaController, PrazosController } from './prazos/prazos.controller.js';
 import { processoNoCalendario } from './prazos/processo.js';
 import { TabelaPrazosController } from './prazos/tabela-prazos.controller.js';
 import { PrivacidadeController } from './privacidade/privacidade.controller.js';
@@ -577,6 +579,23 @@ function provedoresDosPrazos(d: DependenciasDaTabelaDePrazos): Provider[] {
     comRelogio(ConfirmarPrazo, (r) => new ConfirmarPrazo(deps(r))),
     comRelogio(CumprirPrazo, (r) => new CumprirPrazo(deps(r))),
     comRelogio(CancelarPrazo, (r) => new CancelarPrazo(deps(r))),
+    {
+      provide: CadastrarPrazoManual,
+      inject: [RELOGIO, ConsultarProcesso, ConsultarDiasNaoUteis],
+      useFactory: (
+        r: Clock,
+        processos: ConsultarProcesso<unknown>,
+        dias: ConsultarDiasNaoUteis<unknown>,
+      ) =>
+        new CadastrarPrazoManual(
+          new CalcularPrazoParaProcesso(
+            processoNoCalendario(processos, dias),
+            new ResolverPrazoAplicavel(d.unidade, d.tabela),
+          ),
+          new CriarPrazo(d.unidade, prazos, d.trilha, d.outbox, r),
+          r,
+        ),
+    },
     {
       provide: AjustarPrazo,
       inject: [RELOGIO, ConsultarProcesso, ConsultarDiasNaoUteis],
@@ -1153,6 +1172,7 @@ export class AppModule {
         CalendarioController,
         TabelaPrazosController,
         PrazosController,
+        AtosDaTaxonomiaController,
         CuradoriaDaClassificacaoController,
         TermosController,
         PrivacidadeController,

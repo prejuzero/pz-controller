@@ -175,3 +175,6 @@ export const useCumprirPrazo = () => useMutation(useMutacoesPrazos().cumprir);
 export const useCancelarPrazo = () => useMutation(useMutacoesPrazos().cancelar);
 export const useAjustarPrazo = () => useMutation(useMutacoesPrazos().ajustar);
 export const useSimularAjuste = () => useMutation(useMutacoesPrazos().simular);
+export const useAtosDaTaxonomia = () => useQuery(consultasPrazos(useApi()).atos());
+export const useCadastrarPrazo = () => useMutation(useMutacoesPrazos().cadastrar);
+export const useSimularNovoPrazo = () => useMutation(useMutacoesPrazos().simularNovo);

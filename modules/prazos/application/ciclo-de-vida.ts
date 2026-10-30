@@ -1,14 +1,14 @@
 import { Conflito, err, hoje, LocalDate, NaoEncontrado, ok, Validacao } from '@pz/kernel';
 import { z } from 'zod';
 
-import { STATUS_DO_PRAZO } from '../domain/prazo.js';
+import { Prazo, STATUS_DO_PRAZO } from '../domain/prazo.js';
 import { RAMOS, UNIDADES } from '../domain/tabela.js';
 
 import { prazoDetalhado, prazoListado, SugestaoDePrazo } from './prazos.js';
 
 import type { FiltroDePrazos, FontesDaGeracao, RepositorioDePrazos } from './portas.js';
 import type { CalcularPrazoParaProcesso, CriarPrazo, PrazoListado } from './prazos.js';
-import type { Json, Prazo } from '../domain/prazo.js';
+import type { Json } from '../domain/prazo.js';
 import type { OrigemDaAuditoria, TipoDeAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
 import type { Clock, Outbox, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 
@@ -461,5 +461,130 @@ export class GerarPrazoDaPublicacao<Transacao> {
     );
     if (!r.ok) throw r.erro;
     return 'criado';
+  }
+}
+
+export const EntradaDoPrazoManual = z
+  .object({
+    processoId: z.uuid(),
+    tipoAto: z
+      .string()
+      .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'Código de ato inválido.')
+      .max(80),
+    ramo: z.enum(RAMOS).optional(),
+    dias: z.number().int().positive().max(10_000).optional(),
+    unidade: z.enum(UNIDADES).default('dias'),
+    /** Como o advogado soube do ato: DJEN, portal ou ciência informada por ele. */
+    meio: z.enum(['djen', 'portal', 'manual']),
+    dataDeReferencia: z.iso.date(),
+    /** Onde o prazo foi visto (RF90): DJEN, cadastro manual ou painel do tribunal. */
+    origem: z.enum(['djen', 'manual', 'painel']),
+    observacao: z.string().trim().max(1000).optional(),
+    /**
+     * Vencimento que o advogado viu na prévia e confirma: o prazo já nasce pendente. Se o motor
+     * der outra data, recusa (409) para ele rever.
+     */
+    vencimentoConfirmado: z.iso.date().optional(),
+  })
+  .strict();
+
+/** Autor do cadastro manual, com o tenant da sessão. */
+export interface AutorDoCadastro extends AutorNoPrazo {
+  readonly tenantId: Uuid;
+}
+
+/**
+ * Prazo cadastrado pelo advogado (HU25, PZ-172): a data é do motor, a partir do ato, dos dias
+ * (prazo do texto) e da referência. Sem `vencimentoConfirmado`, nasce "a confirmar"; com ele igual
+ * ao do motor, nasce pendente, confirmado pelo próprio autor no mesmo ato (CLAUDE.md, seção 2).
+ */
+export class CadastrarPrazoManual<Transacao> {
+  constructor(
+    private readonly calcular: CalcularPrazoParaProcesso<Transacao>,
+    private readonly criar: CriarPrazo<Transacao>,
+    private readonly relogio: Clock,
+  ) {}
+
+  /** Prévia: a mesma sugestão do motor, sem gravar. */
+  async simular(autor: AutorDoCadastro, entrada: unknown) {
+    const s = await this.#sugerir(entrada);
+    if (!s.ok) return s;
+    const prazo = Prazo.sugerir(
+      {
+        processoId: s.valor.sugestao.processoId,
+        publicacaoConteudoId: null,
+        tipoAto: s.valor.sugestao.tipoAto,
+        ramo: s.valor.sugestao.ramo,
+        calculo: s.valor.sugestao.calculo,
+        entrada: s.valor.sugestao.entrada,
+        origem: s.valor.dados.origem,
+        responsavelId: autor.usuarioId,
+        jurisdicao: s.valor.sugestao.jurisdicao,
+        parametros: s.valor.sugestao.parametros,
+        classificacaoIncerta: false,
+      },
+      autor.tenantId,
+      this.relogio,
+    );
+    return ok(prazoListado(prazo.estado));
+  }
+
+  async executar(
+    autor: AutorDoCadastro,
+    entrada: unknown,
+  ): Promise<Result<PrazoListado, Validacao | NaoEncontrado | Conflito>> {
+    const s = await this.#sugerir(entrada);
+    if (!s.ok) return s;
+    const { sugestao, dados } = s.valor;
+    const calculado = sugestao.calculo.vencimento?.paraIso() ?? null;
+    if (dados.vencimentoConfirmado !== undefined && dados.vencimentoConfirmado !== calculado) {
+      return err(
+        new Conflito(
+          'vencimento-divergente',
+          'O vencimento calculado mudou desde a prévia. Confira de novo antes de confirmar.',
+        ),
+      );
+    }
+    return this.criar.executar(
+      sugestao,
+      {
+        origem: dados.origem,
+        responsavelId: autor.usuarioId,
+        publicacaoConteudoId: null,
+        ...(dados.vencimentoConfirmado === undefined ? {} : { confirmadoPor: autor.usuarioId }),
+      },
+      autor,
+    );
+  }
+
+  async #sugerir(entrada: unknown) {
+    const dados = EntradaDoPrazoManual.safeParse(entrada);
+    if (!dados.success) return err(validacao(dados.error));
+    const d = dados.data;
+    const sugestao = await this.calcular.executar({
+      processoId: d.processoId,
+      tipoAto: d.tipoAto,
+      ...(d.ramo === undefined ? {} : { ramo: d.ramo }),
+      ...(d.dias === undefined ? {} : { prazoNoTexto: { dias: d.dias, unidade: d.unidade } }),
+      meio: d.meio,
+      dataDeReferencia: d.dataDeReferencia,
+    });
+    if (!sugestao.ok) return sugestao;
+    const v = sugestao.valor;
+    // A observação do advogado fica junto da entrada do cálculo (aparece no detalhe).
+    const comObservacao =
+      d.observacao === undefined || d.observacao === ''
+        ? v
+        : new SugestaoDePrazo(
+            v.processoId,
+            v.tipoAto,
+            v.ramo,
+            v.resolucao,
+            v.calculo,
+            v.entrada,
+            v.jurisdicao,
+            { ...(v.parametros as Record<string, Json>), observacao: d.observacao },
+          );
+    return ok({ sugestao: comObservacao, dados: d });
   }
 }

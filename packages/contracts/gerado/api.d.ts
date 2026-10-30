@@ -872,7 +872,8 @@ export interface paths {
         /** Prazos do escritório, do vencimento mais próximo ao mais distante (sem data por último). */
         get: operations["listarPrazos"];
         put?: never;
-        post?: never;
+        /** Cadastra um prazo manual; a data é calculada pelo motor. */
+        post: operations["cadastrarPrazo"];
         delete?: never;
         options?: never;
         head?: never;
@@ -975,6 +976,23 @@ export interface paths {
         put?: never;
         /** Prévia do ajuste: o novo cálculo do motor, sem gravar. */
         post: operations["simularAjustePrazo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/prazos/simular": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Prévia do prazo manual pelo motor, sem gravar. */
+        post: operations["simularPrazo"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1256,6 +1274,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tipos-de-ato": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tipos de ato da taxonomia aprovada, para o cadastro de prazos. */
+        get: operations["listarAtosDaTaxonomia"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/webhooks/{adaptador}": {
         parameters: {
             query?: never;
@@ -1318,6 +1353,12 @@ export interface components {
             sigiloso?: boolean;
             /** @description Nulo desvincula o cliente. */
             clienteId?: string | null;
+        };
+        AtosDaTaxonomia: {
+            itens: {
+                codigo: string;
+                nome: string;
+            }[];
         };
         AvisosDeEntrega: {
             /** @description E-mails do usuário que rejeitaram mensagens (bounce) ou marcaram spam: não recebem notificações até serem trocados ou liberados pelo suporte. */
@@ -1899,6 +1940,35 @@ export interface components {
             numero: string;
             /** @description Seccional (UF). */
             uf: string;
+        };
+        PedidoDePrazoManual: {
+            /** Format: uuid */
+            processoId: string;
+            tipoAto: string;
+            /** @enum {string} */
+            ramo?: "civel" | "juizados" | "trabalhista" | "penal" | "juizado-criminal";
+            /** @description Prazo fixado no ato (prevalece). */
+            dias?: number;
+            /** @enum {string} */
+            unidade?: "dias" | "horas" | "meses" | "anos";
+            /**
+             * @description Como o ato chegou ao advogado.
+             * @enum {string}
+             */
+            meio: "djen" | "portal" | "manual";
+            /**
+             * Format: date
+             * @description Disponibilização, envio ou ciência, conforme o meio.
+             */
+            dataDeReferencia: string;
+            /** @enum {string} */
+            origem: "djen" | "manual" | "painel";
+            observacao?: string;
+            /**
+             * Format: date
+             * @description Vencimento visto na prévia: o prazo nasce pendente; outra data dá 409.
+             */
+            vencimentoConfirmado?: string;
         };
         PedidoDeProcesso: {
             /** @description Com ou sem pontuação; dígito verificado. */
@@ -6228,6 +6298,84 @@ export interface operations {
             };
         };
     };
+    cadastrarPrazo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDePrazoManual"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prazo"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
     consultarPrazo: {
         parameters: {
             query?: never;
@@ -6677,6 +6825,75 @@ export interface operations {
             };
             /** @description Conflito com o estado atual. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    simularPrazo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDePrazoManual"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prazo"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7827,6 +8044,53 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentosPendentes"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarAtosDaTaxonomia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AtosDaTaxonomia"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
                 };
             };
             /** @description Erro inesperado. */

@@ -820,6 +820,41 @@
       "previaSemData": "Sem data sugerida com estes dados.",
       "salvar": "Salvar ajuste",
       "voltar": "Voltar"
+    },
+    "novo": {
+      "botao": "Novo prazo",
+      "titulo": "Novo prazo",
+      "descricao": "A data é calculada pelo motor a partir do ato e da data de referência. Confira a prévia antes de salvar.",
+      "ato": "Tipo de ato",
+      "ramo": "Rito",
+      "ramos": {
+        "civel": "Cível",
+        "juizados": "Juizado especial cível",
+        "trabalhista": "Trabalhista",
+        "penal": "Penal",
+        "juizado-criminal": "Juizado especial criminal"
+      },
+      "dias": "Dias fixados no ato (se houver)",
+      "meio": "Como soube do ato",
+      "meios": {
+        "djen": "DJEN (disponibilização)",
+        "portal": "Portal do tribunal (envio)",
+        "manual": "Ciência informada por mim"
+      },
+      "dataDeReferencia": "Data de referência",
+      "origem": "Onde viu o prazo",
+      "origens": {
+        "djen": "DJEN",
+        "manual": "Outro (manual)",
+        "painel": "Painel do tribunal"
+      },
+      "observacao": "Observação",
+      "previa": "Calcular",
+      "previaResultado": "Vencimento calculado: {vencimento}",
+      "previaSemData": "Sem data sugerida: o prazo ficará \"a confirmar\".",
+      "confirmar": "Confirmo esta data",
+      "salvar": "Salvar prazo",
+      "salvo": "Prazo cadastrado."
     }
   }
 }

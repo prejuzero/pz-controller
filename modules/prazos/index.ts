@@ -59,6 +59,8 @@ export type {
 } from './domain/tabela.js';
 export {
   AjustarPrazo,
+  CadastrarPrazoManual,
+  EntradaDoPrazoManual,
   CancelarPrazo,
   ConfirmarPrazo,
   ConsultarPrazo,
@@ -70,7 +72,12 @@ export {
   ListarPrazos,
   MarcarPrazosVencidos,
 } from './application/ciclo-de-vida.js';
-export type { AutorNoPrazo, NoTenant, ResultadoDaGeracao } from './application/ciclo-de-vida.js';
+export type {
+  AutorDoCadastro,
+  AutorNoPrazo,
+  NoTenant,
+  ResultadoDaGeracao,
+} from './application/ciclo-de-vida.js';
 export {
   CalcularPrazoParaProcesso,
   CriarPrazo,

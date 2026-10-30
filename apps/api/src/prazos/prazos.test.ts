@@ -1,11 +1,13 @@
 import { Conflito, err, ok } from '@pz/kernel';
 import { describe, expect, it } from 'vitest';
 
-import { PrazosController } from './prazos.controller.js';
+import { AtosDaTaxonomiaController, PrazosController } from './prazos.controller.js';
 
 import type { RequisicaoAutenticada } from '../http/acesso.js';
 import type {
   AjustarPrazo,
+  CadastrarPrazoManual,
+  ConsultarTabelaDePrazos,
   CancelarPrazo,
   ConfirmarPrazo,
   ConsultarPrazo,
@@ -16,9 +18,12 @@ import type {
 // Dados FICTÍCIOS: só a ligação HTTP → casos de uso (a regra é testada no módulo prazos).
 const ID = '01a10e00-0000-7000-8000-0000000a0001';
 const USUARIO = '01a10e00-0000-7000-8000-0000000a0002';
+const TENANT = '01a10e00-0000-7000-8000-0000000a0003';
 const requisicao = (dispositivoId?: string) =>
   ({
-    autenticacao: { sessao: { usuarioId: USUARIO, ...(dispositivoId ? { dispositivoId } : {}) } },
+    autenticacao: {
+      sessao: { usuarioId: USUARIO, tenantId: TENANT, ...(dispositivoId ? { dispositivoId } : {}) },
+    },
   }) as unknown as RequisicaoAutenticada;
 
 describe('PrazosController (HU24)', () => {
@@ -48,7 +53,19 @@ describe('PrazosController (HU24)', () => {
       acao('ajustar') as unknown as AjustarPrazo<unknown>,
       acao('cumprir') as unknown as CumprirPrazo<unknown>,
       acao('cancelar') as unknown as CancelarPrazo<unknown>,
+      {
+        executar: (autor: unknown, corpo: unknown) => {
+          chamadas.push(['cadastrar', autor, corpo]);
+          return Promise.resolve(ok({ id: ID }));
+        },
+        simular: (autor: unknown, corpo: unknown) => {
+          chamadas.push(['simular', autor, corpo]);
+          return Promise.resolve(ok({ id: ID }));
+        },
+      } as unknown as CadastrarPrazoManual<unknown>,
     );
+    await controller.cadastrarPrazo(requisicao(), { tipoAto: 'x' });
+    await controller.simularPrazo(requisicao(), { tipoAto: 'y' });
     expect(await controller.listarPrazos({})).toEqual({ itens: [], proximoCursor: null });
     expect(await controller.consultarPrazo(ID)).toEqual({ id: ID });
     await expect(controller.consultarPrazo(USUARIO)).rejects.toThrow('não encontrado');
@@ -58,6 +75,8 @@ describe('PrazosController (HU24)', () => {
     await controller.cumprirPrazo(requisicao(), ID, { versao: 3 });
     await expect(controller.cancelarPrazo(requisicao(), ID, {})).rejects.toThrow(Conflito);
     expect(chamadas).toEqual([
+      ['cadastrar', { usuarioId: USUARIO, canal: 'portal', tenantId: TENANT }, { tipoAto: 'x' }],
+      ['simular', { usuarioId: USUARIO, canal: 'portal', tenantId: TENANT }, { tipoAto: 'y' }],
       ['confirmar', { usuarioId: USUARIO, canal: 'portal' }, ID, { versao: 1 }],
       ['ajustar', { usuarioId: USUARIO, canal: 'app' }, ID, { versao: 2 }],
       ['ajustar:simular', { usuarioId: USUARIO, canal: 'portal' }, ID, { versao: 2 }],
@@ -65,5 +84,17 @@ describe('PrazosController (HU24)', () => {
       ['cancelar', { usuarioId: USUARIO, canal: 'portal' }, ID, {}],
     ]);
     await expect(controller.confirmarPrazo(requisicao(), 'nao-uuid', {})).rejects.toThrow();
+  });
+});
+
+describe('AtosDaTaxonomiaController (HU25)', () => {
+  it('lista código e nome dos atos da taxonomia', async () => {
+    const controller = new AtosDaTaxonomiaController({
+      tiposDeAto: () =>
+        Promise.resolve([{ codigo: 'citacao', nome: 'Citação', descricao: 'x', sinonimos: [] }]),
+    } as unknown as ConsultarTabelaDePrazos<unknown>);
+    expect(await controller.listarAtos()).toEqual({
+      itens: [{ codigo: 'citacao', nome: 'Citação' }],
+    });
   });
 });

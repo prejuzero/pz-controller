@@ -17,6 +17,8 @@ import {
   useNomeDoCliente,
 } from '../comum';
 
+import { NovoPrazo } from './novo-prazo';
+
 import type { Cobertura } from '../../../../api/processos';
 import type { ProcessoDoTenant } from '@pz/contracts';
 
@@ -44,6 +46,10 @@ export function DetalheProcesso({ id }: { id: string }) {
           {p.sigiloso ? <SeloSigilo /> : null}
         </div>
       </div>
+
+      <SePermitido permissao="prazos:confirmar">
+        <NovoPrazo processoId={p.id} />
+      </SePermitido>
 
       <Secao
         titulo={t('detalhe.dados')}
