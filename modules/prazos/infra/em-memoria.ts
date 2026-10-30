@@ -15,6 +15,8 @@ export class TabelaEmMemoria
 {
   readonly #tipos = new Map<string, TipoDeAto>();
   readonly #versoes = new Map<string, EstadoDaVersao>();
+  /** Tipos inseridos na transação em curso: visíveis nela, como no Postgres. */
+  readonly #tiposPendentes = new WeakMap<TransacaoEmMemoria, Set<string>>();
 
   existe(_transacao: TransacaoEmMemoria, codigo: string): Promise<boolean> {
     return Promise.resolve(this.#tipos.has(codigo));
@@ -26,11 +28,16 @@ export class TabelaEmMemoria
       const repetida = [...this.#versoes.values()].some(
         (v) => v.tipoAto === e.tipoAto && v.ramo === e.ramo && v.versao === e.versao,
       );
-      if (repetida || !this.#tipos.has(e.tipoAto)) return Promise.resolve(false);
+      const tipoVisivel =
+        this.#tipos.has(e.tipoAto) || this.#tiposPendentes.get(transacao)?.has(e.tipoAto) === true;
+      if (repetida || !tipoVisivel) return Promise.resolve(false);
       transacao.aoConfirmar(() => this.#versoes.set(e.id, e));
       return Promise.resolve(true);
     }
     if (this.#tipos.has(item.codigo)) return Promise.resolve(false);
+    const pendentes = this.#tiposPendentes.get(transacao) ?? new Set<string>();
+    pendentes.add(item.codigo);
+    this.#tiposPendentes.set(transacao, pendentes);
     transacao.aoConfirmar(() => this.#tipos.set(item.codigo, item));
     return Promise.resolve(true);
   }

@@ -979,7 +979,8 @@
                 "civel",
                 "juizados",
                 "trabalhista",
-                "penal"
+                "penal",
+                "juizado-criminal"
               ]
             }
           }
@@ -1190,6 +1191,78 @@
           },
           "409": {
             "description": "Conflito com o estado atual.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/tabela-prazos/importacao": {
+      "post": {
+        "operationId": "importarTabelaDePrazos",
+        "summary": "Valida um CSV (prévia) e, se tudo estiver certo, grava as versões como rascunho.",
+        "tags": [
+          "tabela-prazos"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeImportacaoDaTabela"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoDaImportacaoDaTabela"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -8029,6 +8102,27 @@
         ],
         "additionalProperties": false
       },
+      "PedidoDeImportacaoDaTabela": {
+        "type": "object",
+        "properties": {
+          "csv": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000000,
+            "description": "CSV (separador ; ou ,) com o cabeçalho tipoAto;nomeDoAto;ramo;dias;unidade;contagem;politicaDobro;calculo;marcoInicial;localDoAto;alerta;fundamento;fonteUrl;vigenciaInicio;vigenciaFim."
+          },
+          "somentePrevia": {
+            "default": true,
+            "description": "true: só valida; false: grava se tudo for válido.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "csv",
+          "somentePrevia"
+        ],
+        "additionalProperties": false
+      },
       "PedidoDeImportacaoDoCalendario": {
         "type": "object",
         "properties": {
@@ -8310,7 +8404,8 @@
               "civel",
               "juizados",
               "trabalhista",
-              "penal"
+              "penal",
+              "juizado-criminal"
             ]
           },
           "dias": {
@@ -8350,6 +8445,58 @@
             "type": "string",
             "format": "date",
             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "contagem": {
+            "type": "string",
+            "enum": [
+              "uteis",
+              "corridos"
+            ],
+            "description": "Ausente na proposta: a do ramo (corridos no penal e no juizado criminal)."
+          },
+          "politicaDobro": {
+            "description": "Ausente: \"verificar\".",
+            "type": "string",
+            "enum": [
+              "entes-cpc",
+              "so-defensoria",
+              "fazenda-para-recorrer",
+              "nao-dobra",
+              "verificar"
+            ]
+          },
+          "calculo": {
+            "description": "Ausente: \"automatico\".",
+            "type": "string",
+            "enum": [
+              "automatico",
+              "data-informada",
+              "nao-calcula"
+            ]
+          },
+          "marcoInicial": {
+            "description": "Quando não é a publicação.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "localDoAto": {
+            "type": "string",
+            "enum": [
+              "orgao-do-processo",
+              "juizo-de-origem",
+              "tribunal-de-segundo-grau",
+              "orgao-da-decisao",
+              "tribunal-superior",
+              "nao-se-aplica"
+            ],
+            "description": "Órgão cujo calendário vale para o ato."
+          },
+          "alerta": {
+            "description": "Repassado ao advogado como aviso.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
           }
         },
         "required": [
@@ -8719,6 +8866,71 @@
         },
         "required": [
           "linhas",
+          "propostos"
+        ],
+        "additionalProperties": false
+      },
+      "ResultadoDaImportacaoDaTabela": {
+        "type": "object",
+        "properties": {
+          "linhas": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "linha": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "problemas": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "campo": {
+                        "type": "string"
+                      },
+                      "mensagem": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "campo",
+                      "mensagem"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "linha",
+                "problemas"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "tiposNovos": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 80,
+              "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+              "description": "Código da taxonomia única (kebab-case)."
+            },
+            "description": "Tipos de ato cadastrados (ou a cadastrar, na prévia)."
+          },
+          "propostos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VersaoDaTabela"
+            },
+            "description": "Rascunhos gravados (vazio na prévia); cada um ainda exige aprovação."
+          }
+        },
+        "required": [
+          "linhas",
+          "tiposNovos",
           "propostos"
         ],
         "additionalProperties": false
@@ -9213,7 +9425,8 @@
               "civel",
               "juizados",
               "trabalhista",
-              "penal"
+              "penal",
+              "juizado-criminal"
             ]
           },
           "versao": {
@@ -9257,6 +9470,65 @@
               {
                 "type": "null"
               }
+            ]
+          },
+          "contagem": {
+            "type": "string",
+            "enum": [
+              "uteis",
+              "corridos"
+            ],
+            "description": "Ausente na proposta: a do ramo (corridos no penal e no juizado criminal)."
+          },
+          "politicaDobro": {
+            "type": "string",
+            "enum": [
+              "entes-cpc",
+              "so-defensoria",
+              "fazenda-para-recorrer",
+              "nao-dobra",
+              "verificar"
+            ],
+            "description": "Quem tem prazo em dobro neste ato; \"verificar\" sugere o simples e mostra o dobro."
+          },
+          "calculo": {
+            "type": "string",
+            "enum": [
+              "automatico",
+              "data-informada",
+              "nao-calcula"
+            ],
+            "description": "Automático pela publicação ou ciência, pela data informada pelo advogado, ou não calcula."
+          },
+          "marcoInicial": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "localDoAto": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "orgao-do-processo",
+                  "juizo-de-origem",
+                  "tribunal-de-segundo-grau",
+                  "orgao-da-decisao",
+                  "tribunal-superior",
+                  "nao-se-aplica"
+                ],
+                "description": "Órgão cujo calendário vale para o ato."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "alerta": {
+            "type": [
+              "string",
+              "null"
             ]
           },
           "status": {
@@ -9313,6 +9585,12 @@
           "fonteUrl",
           "vigenciaInicio",
           "vigenciaFim",
+          "contagem",
+          "politicaDobro",
+          "calculo",
+          "marcoInicial",
+          "localDoAto",
+          "alerta",
           "status",
           "propostoPor",
           "propostoEm",

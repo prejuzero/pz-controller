@@ -54,6 +54,12 @@ export const CAMPOS_COMPARADOS = [
   'fonteUrl',
   'vigenciaInicio',
   'vigenciaFim',
+  'contagem',
+  'politicaDobro',
+  'calculo',
+  'marcoInicial',
+  'localDoAto',
+  'alerta',
 ] as const;
 export type CampoComparado = (typeof CAMPOS_COMPARADOS)[number];
 
@@ -113,6 +119,11 @@ export const mutacoesTabelaPrazos = (api: ClienteApi, cache: QueryClient) => {
     aprovar: {
       mutationFn: (id: string) =>
         exigir(api.POST('/v1/admin/tabela-prazos/{id}/aprovar', { params: { path: { id } } })),
+      onSuccess: invalidar,
+    },
+    importar: {
+      mutationFn: (body: { csv: string; somentePrevia: boolean }) =>
+        exigir(api.POST('/v1/admin/tabela-prazos/importacao', { body })),
       onSuccess: invalidar,
     },
   };

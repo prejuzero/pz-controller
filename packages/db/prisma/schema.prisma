@@ -259,8 +259,45 @@ enum RamoProcessual {
   juizados
   trabalhista
   penal
+  juizado_criminal
 
   @@map("ramo_processual")
+}
+
+enum ContagemPrazo {
+  uteis
+  corridos
+
+  @@map("contagem_prazo")
+}
+
+enum PoliticaDobro {
+  entes_cpc
+  so_defensoria
+  fazenda_para_recorrer
+  nao_dobra
+  verificar
+
+  @@map("politica_dobro")
+}
+
+enum CalculoPrazo {
+  automatico
+  data_informada
+  nao_calcula
+
+  @@map("calculo_prazo")
+}
+
+enum LocalDoAto {
+  orgao_do_processo
+  juizo_de_origem
+  tribunal_de_segundo_grau
+  orgao_da_decisao
+  tribunal_superior
+  nao_se_aplica
+
+  @@map("local_do_ato")
 }
 
 enum UnidadePrazo {
@@ -365,6 +402,12 @@ model TabelaPrazo {
   fonteUrl       String            @map("fonte_url")
   vigenciaInicio DateTime          @map("vigencia_inicio") @db.Date
   vigenciaFim    DateTime?         @map("vigencia_fim") @db.Date
+  contagem       ContagemPrazo
+  politicaDobro  PoliticaDobro     @default(verificar) @map("politica_dobro")
+  calculo        CalculoPrazo      @default(automatico)
+  marcoInicial   String?           @map("marco_inicial")
+  localDoAto     LocalDoAto?       @map("local_do_ato")
+  alerta         String?
   status         StatusTabelaPrazo
   propostoPor    String            @map("proposto_por") @db.Uuid
   propostoEm     DateTime          @map("proposto_em") @db.Timestamptz(6)

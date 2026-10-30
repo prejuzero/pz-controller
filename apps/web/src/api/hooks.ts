@@ -88,6 +88,7 @@ export const useTiposDeAto = () => useQuery(consultasTabelaPrazos(useApi()).tipo
 export const useVersoesDaTabela = () => useQuery(consultasTabelaPrazos(useApi()).versoes());
 export const useCadastrarTipoDeAto = () => useMutation(useMutacoesTabelaPrazos().cadastrarTipo);
 export const useProporVersao = () => useMutation(useMutacoesTabelaPrazos().propor);
+export const useImportarTabelaDePrazos = () => useMutation(useMutacoesTabelaPrazos().importar);
 export const useAprovarVersao = () => useMutation(useMutacoesTabelaPrazos().aprovar);
 
 function useMutacoesCalendario() {

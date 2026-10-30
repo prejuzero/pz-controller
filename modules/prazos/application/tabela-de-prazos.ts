@@ -2,7 +2,15 @@ import { Conflito, err, LocalDate, NaoEncontrado, ok, Validacao } from '@pz/kern
 import { z } from 'zod';
 
 import { CODIGO_MANIFESTACAO_GENERICA, resolverPrazo } from '../domain/resolucao.js';
-import { RAMOS, UNIDADES, VersaoDaTabela } from '../domain/tabela.js';
+import {
+  CALCULOS,
+  CONTAGENS,
+  LOCAIS_DO_ATO,
+  POLITICAS_DE_DOBRO,
+  RAMOS,
+  UNIDADES,
+  VersaoDaTabela,
+} from '../domain/tabela.js';
 
 import type {
   FiltroDeVersoes,
@@ -11,7 +19,13 @@ import type {
   TipoDeAto,
 } from './portas.js';
 import type { PrazoResolvido } from '../domain/resolucao.js';
-import type { ConteudoDaVersao, Curador, EstadoDaVersao } from '../domain/tabela.js';
+import type {
+  ConteudoDaVersao,
+  Contagem,
+  Curador,
+  EstadoDaVersao,
+  Ramo,
+} from '../domain/tabela.js';
 import type { OrigemDaAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
 import type { Clock, Outbox, Proibido, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 
@@ -45,8 +59,35 @@ export const EntradaProposta = z
     fonteUrl: z.url({ protocol: /^https$/ }).max(2000),
     vigenciaInicio: Data,
     vigenciaFim: Data.optional(),
+    // Opcionais para não quebrar o contrato /v1; ausentes, valem os padrões abaixo.
+    contagem: z.enum(CONTAGENS).optional(),
+    politicaDobro: z.enum(POLITICAS_DE_DOBRO).default('verificar'),
+    calculo: z.enum(CALCULOS).default('automatico'),
+    marcoInicial: z.string().trim().min(1).max(500).optional(),
+    localDoAto: z.enum(LOCAIS_DO_ATO).optional(),
+    alerta: z.string().trim().min(1).max(1000).optional(),
   })
   .strict();
+
+/**
+ * Contagem padrão do ramo, a mesma do motor (RN01, RN07): corridos no penal e no juizado criminal
+ * (CPP, art. 798), úteis nos demais (CPC, art. 219; CLT, art. 775; Lei 9.099/1995, art. 12-A).
+ */
+const contagemDoRamo = (ramo: Ramo): Contagem =>
+  ramo === 'penal' || ramo === 'juizado-criminal' ? 'corridos' : 'uteis';
+
+/** Conteúdo da versão a partir da entrada validada (padrões dos campos opcionais). */
+export function montarConteudo(dados: z.infer<typeof EntradaProposta>): ConteudoDaVersao {
+  const { vigenciaFim, contagem, marcoInicial, localDoAto, alerta, ...resto } = dados;
+  return {
+    ...resto,
+    contagem: contagem ?? contagemDoRamo(resto.ramo),
+    ...(vigenciaFim === undefined ? {} : { vigenciaFim }),
+    ...(marcoInicial === undefined ? {} : { marcoInicial }),
+    ...(localDoAto === undefined ? {} : { localDoAto }),
+    ...(alerta === undefined ? {} : { alerta }),
+  };
+}
 
 export const EntradaResolucao = z
   .object({
@@ -83,6 +124,12 @@ export interface VersaoListada {
   readonly fonteUrl: string;
   readonly vigenciaInicio: string;
   readonly vigenciaFim: string | null;
+  readonly contagem: string;
+  readonly politicaDobro: string;
+  readonly calculo: string;
+  readonly marcoInicial: string | null;
+  readonly localDoAto: string | null;
+  readonly alerta: string | null;
   readonly status: string;
   readonly propostoPor: Uuid;
   readonly propostoEm: string;
@@ -102,6 +149,12 @@ export function listada(estado: EstadoDaVersao): VersaoListada {
     fonteUrl: estado.fonteUrl,
     vigenciaInicio: estado.vigenciaInicio.paraIso(),
     vigenciaFim: estado.vigenciaFim?.paraIso() ?? null,
+    contagem: estado.contagem,
+    politicaDobro: estado.politicaDobro,
+    calculo: estado.calculo,
+    marcoInicial: estado.marcoInicial ?? null,
+    localDoAto: estado.localDoAto ?? null,
+    alerta: estado.alerta ?? null,
     status: estado.status,
     propostoPor: estado.propostoPor,
     propostoEm: estado.propostoEm.paraIso(),
@@ -165,9 +218,7 @@ export class ProporVersaoDaTabela<Transacao> {
   ): Promise<Result<VersaoListada, Validacao | Conflito>> {
     const dados = EntradaProposta.safeParse(entrada);
     if (!dados.success) return err(validacao(dados.error));
-    const { vigenciaFim, ...resto } = dados.data;
-    const conteudo: ConteudoDaVersao =
-      vigenciaFim === undefined ? resto : { ...resto, vigenciaFim };
+    const conteudo = montarConteudo(dados.data);
     return this.unidade.executar(async (transacao) => {
       if (!(await this.tipos.existe(transacao, conteudo.tipoAto))) {
         return err(new Validacao([{ campo: 'tipoAto', mensagem: 'Tipo de ato não cadastrado.' }]));

@@ -207,6 +207,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/tabela-prazos/importacao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Valida um CSV (prévia) e, se tudo estiver certo, grava as versões como rascunho. */
+        post: operations["importarTabelaDePrazos"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/tabela-prazos/tipos-de-ato": {
         parameters: {
             query?: never;
@@ -1579,6 +1596,15 @@ export interface components {
             /** @description Por que o acesso é necessário (ex.: número do chamado); vai para a auditoria. */
             motivo: string;
         };
+        PedidoDeImportacaoDaTabela: {
+            /** @description CSV (separador ; ou ,) com o cabeçalho tipoAto;nomeDoAto;ramo;dias;unidade;contagem;politicaDobro;calculo;marcoInicial;localDoAto;alerta;fundamento;fonteUrl;vigenciaInicio;vigenciaFim. */
+            csv: string;
+            /**
+             * @description true: só valida; false: grava se tudo for válido.
+             * @default true
+             */
+            somentePrevia: boolean;
+        };
         PedidoDeImportacaoDoCalendario: {
             /** @description CSV (separador ; ou ,) com o cabeçalho abrangencia;uf;municipioIbge;tribunal;comarca;tipo;inicio;fim;descricao;atoNormativo;urlAto. */
             csv: string;
@@ -1647,7 +1673,7 @@ export interface components {
             /** @description Código da taxonomia única (kebab-case). */
             tipoAto: string;
             /** @enum {string} */
-            ramo: "civel" | "juizados" | "trabalhista" | "penal";
+            ramo: "civel" | "juizados" | "trabalhista" | "penal" | "juizado-criminal";
             /** @description Quantidade, na unidade indicada. */
             dias: number;
             /**
@@ -1666,6 +1692,30 @@ export interface components {
             vigenciaInicio: string;
             /** Format: date */
             vigenciaFim?: string;
+            /**
+             * @description Ausente na proposta: a do ramo (corridos no penal e no juizado criminal).
+             * @enum {string}
+             */
+            contagem?: "uteis" | "corridos";
+            /**
+             * @description Ausente: "verificar".
+             * @enum {string}
+             */
+            politicaDobro?: "entes-cpc" | "so-defensoria" | "fazenda-para-recorrer" | "nao-dobra" | "verificar";
+            /**
+             * @description Ausente: "automatico".
+             * @enum {string}
+             */
+            calculo?: "automatico" | "data-informada" | "nao-calcula";
+            /** @description Quando não é a publicação. */
+            marcoInicial?: string;
+            /**
+             * @description Órgão cujo calendário vale para o ato.
+             * @enum {string}
+             */
+            localDoAto?: "orgao-do-processo" | "juizo-de-origem" | "tribunal-de-segundo-grau" | "orgao-da-decisao" | "tribunal-superior" | "nao-se-aplica";
+            /** @description Repassado ao advogado como aviso. */
+            alerta?: string;
         };
         PerfilDoAdvogado: {
             /** Format: uuid */
@@ -1758,6 +1808,19 @@ export interface components {
             }[];
             /** @description Rascunhos gravados (vazio na prévia). */
             propostos: components["schemas"]["EventoDoCalendario"][];
+        };
+        ResultadoDaImportacaoDaTabela: {
+            linhas: {
+                linha: number;
+                problemas: {
+                    campo: string;
+                    mensagem: string;
+                }[];
+            }[];
+            /** @description Tipos de ato cadastrados (ou a cadastrar, na prévia). */
+            tiposNovos: string[];
+            /** @description Rascunhos gravados (vazio na prévia); cada um ainda exige aprovação. */
+            propostos: components["schemas"]["VersaoDaTabela"][];
         };
         ResumoDasFilas: {
             filas: {
@@ -1880,7 +1943,7 @@ export interface components {
             /** @description Código da taxonomia única (kebab-case). */
             tipoAto: string;
             /** @enum {string} */
-            ramo: "civel" | "juizados" | "trabalhista" | "penal";
+            ramo: "civel" | "juizados" | "trabalhista" | "penal" | "juizado-criminal";
             versao: number;
             dias: number;
             /**
@@ -1893,6 +1956,24 @@ export interface components {
             /** Format: date */
             vigenciaInicio: string;
             vigenciaFim: string | null;
+            /**
+             * @description Ausente na proposta: a do ramo (corridos no penal e no juizado criminal).
+             * @enum {string}
+             */
+            contagem: "uteis" | "corridos";
+            /**
+             * @description Quem tem prazo em dobro neste ato; "verificar" sugere o simples e mostra o dobro.
+             * @enum {string}
+             */
+            politicaDobro: "entes-cpc" | "so-defensoria" | "fazenda-para-recorrer" | "nao-dobra" | "verificar";
+            /**
+             * @description Automático pela publicação ou ciência, pela data informada pelo advogado, ou não calcula.
+             * @enum {string}
+             */
+            calculo: "automatico" | "data-informada" | "nao-calcula";
+            marcoInicial: string | null;
+            localDoAto: ("orgao-do-processo" | "juizo-de-origem" | "tribunal-de-segundo-grau" | "orgao-da-decisao" | "tribunal-superior" | "nao-se-aplica") | null;
+            alerta: string | null;
             /**
              * @description Só a aprovada entra no cálculo.
              * @enum {string}
@@ -2678,7 +2759,7 @@ export interface operations {
             query?: {
                 /** @description Código da taxonomia única (kebab-case). */
                 tipoAto?: string;
-                ramo?: "civel" | "juizados" | "trabalhista" | "penal";
+                ramo?: "civel" | "juizados" | "trabalhista" | "penal" | "juizado-criminal";
             };
             header?: never;
             path?: never;
@@ -2860,6 +2941,66 @@ export interface operations {
             };
             /** @description Conflito com o estado atual. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    importarTabelaDePrazos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeImportacaoDaTabela"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoDaImportacaoDaTabela"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

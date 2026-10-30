@@ -11,8 +11,26 @@ import { chaveValidacao } from '../../../formularios';
 
 import type { z } from 'zod';
 
-const RAMOS = ['civel', 'juizados', 'trabalhista', 'penal'] as const;
+const RAMOS = ['civel', 'juizados', 'trabalhista', 'penal', 'juizado-criminal'] as const;
 const UNIDADES = ['dias', 'horas', 'meses', 'anos'] as const;
+const POLITICAS_DE_DOBRO = [
+  'entes-cpc',
+  'so-defensoria',
+  'fazenda-para-recorrer',
+  'nao-dobra',
+  'verificar',
+] as const;
+const CALCULOS = ['automatico', 'data-informada', 'nao-calcula'] as const;
+const LOCAIS_DO_ATO = [
+  'orgao-do-processo',
+  'juizo-de-origem',
+  'tribunal-de-segundo-grau',
+  'orgao-da-decisao',
+  'tribunal-superior',
+  'nao-se-aplica',
+] as const;
+/** Campo de texto opcional: vazio sai do corpo. */
+const textoOpcional = (valor: string) => (valor.trim() === '' ? undefined : valor.trim());
 
 interface PedidoDoTipo {
   codigo: string;
@@ -100,7 +118,14 @@ export function FormularioVersao({
     formState: { errors },
   } = useForm<PedidoDaVersao>({
     resolver: zodResolver(PedidoDeVersaoDaTabela.esquema),
-    defaultValues: { tipoAto: tipos[0]?.codigo ?? '', ramo: 'civel', unidade: 'dias' },
+    defaultValues: {
+      tipoAto: tipos[0]?.codigo ?? '',
+      ramo: 'civel',
+      unidade: 'dias',
+      politicaDobro: 'verificar',
+      calculo: 'automatico',
+      localDoAto: 'orgao-do-processo',
+    },
   });
   return (
     <form
@@ -129,6 +154,7 @@ export function FormularioVersao({
           render={({ field }) => (
             <Selecao
               rotulo={t('campos.ramo')}
+              ajuda={t('ajudaContagem')}
               obrigatorio
               opcoes={RAMOS.map((ramo) => ({ valor: ramo, rotulo: t(`ramos.${ramo}`) }))}
               valor={field.value}
@@ -189,7 +215,65 @@ export function FormularioVersao({
             />
           )}
         />
+        <Controller
+          control={control}
+          name="politicaDobro"
+          render={({ field }) => (
+            <Selecao
+              rotulo={t('campos.politicaDobro')}
+              obrigatorio
+              opcoes={POLITICAS_DE_DOBRO.map((p) => ({
+                valor: p,
+                rotulo: t(`politicasDobro.${p}`),
+              }))}
+              valor={field.value ?? 'verificar'}
+              aoMudar={field.onChange}
+              name={field.name}
+            />
+          )}
+        />
+        <Controller
+          control={control}
+          name="calculo"
+          render={({ field }) => (
+            <Selecao
+              rotulo={t('campos.calculo')}
+              obrigatorio
+              opcoes={CALCULOS.map((c) => ({ valor: c, rotulo: t(`calculos.${c}`) }))}
+              valor={field.value ?? 'automatico'}
+              aoMudar={field.onChange}
+              name={field.name}
+            />
+          )}
+        />
+        <Controller
+          control={control}
+          name="localDoAto"
+          render={({ field }) => (
+            <Selecao
+              rotulo={t('campos.localDoAto')}
+              opcoes={LOCAIS_DO_ATO.map((l) => ({ valor: l, rotulo: t(`locaisDoAto.${l}`) }))}
+              valor={field.value ?? 'orgao-do-processo'}
+              aoMudar={field.onChange}
+              name={field.name}
+            />
+          )}
+        />
       </div>
+      <Campo
+        rotulo={t('campos.marcoInicial')}
+        ajuda={t('ajudaMarcoInicial')}
+        maxLength={500}
+        erro={erro(errors.marcoInicial)}
+        {...register('marcoInicial', { setValueAs: textoOpcional })}
+      />
+      <Campo
+        rotulo={t('campos.alerta')}
+        ajuda={t('ajudaAlerta')}
+        maxLength={1000}
+        erro={erro(errors.alerta)}
+        {...register('alerta', { setValueAs: textoOpcional })}
+      />
       <Campo
         rotulo={t('campos.fundamento')}
         ajuda={t('ajudaFundamento')}
