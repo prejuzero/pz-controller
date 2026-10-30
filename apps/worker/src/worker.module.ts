@@ -45,7 +45,7 @@ import {
   RegrasPostgres,
   TaxonomiaPostgres,
 } from '@pz/classificacao';
-import { Banco, BancoSistema, OutboxPostgres } from '@pz/db';
+import { Banco, BancoSistema, executarNoTenant, OutboxPostgres } from '@pz/db';
 import { configuracaoPadrao, PlataformaIa, promptsPadrao } from '@pz/ia';
 import {
   ExportacaoDaIdentidadePostgres,
@@ -70,8 +70,14 @@ import {
 } from '@pz/notificacoes';
 import { criarLogger, registrarErro } from '@pz/observability';
 import {
+  CalcularPrazoParaProcesso,
+  CriarPrazo,
+  GerarPrazoDaPublicacao,
+  MarcarPrazosVencidos,
   PrazosPostgres,
   RecalcularPrazosPorCalendario,
+  ResolverPrazoAplicavel,
+  TabelaPostgres,
   TenantsAfetadosPeloCalendario,
 } from '@pz/prazos';
 import {
@@ -83,6 +89,7 @@ import {
   OperacoesDeRetencaoPostgres,
 } from '@pz/privacidade';
 import {
+  DestinatariosPostgres,
   ExportacaoDasPublicacoesPostgres,
   IngerirCaptura,
   PublicacoesPostgres,
@@ -116,6 +123,7 @@ import {
   REDIS,
   REGISTRO_DE_PROCESSAMENTO,
   RELOGIO,
+  TENANTS_DA_PUBLICACAO,
   UNIDADE_DA_LIMPEZA,
   UNIDADE_DE_TRABALHO,
   UNIDADE_DO_RELAY,
@@ -130,7 +138,7 @@ import { RelayDeWebhooks } from './integracoes/webhooks.js';
 import { ConsumidorDeNotificacoes } from './notificacoes/consumidor.js';
 import { processadorDeEntregas } from './notificacoes/entregas.js';
 import { ConsumidorDosPrazos } from './prazos/consumidor.js';
-import { processoNoCalendario } from './prazos/processo.js';
+import { fontesDaGeracao, processoNoCalendario, tenantsDaPublicacao } from './prazos/processo.js';
 import { ConsumidorDaPrivacidade } from './privacidade/consumidor.js';
 import { ConsumidorDasPublicacoes } from './publicacoes/consumidor.js';
 import { noTenantDoBanco, processoPeloCadastro } from './publicacoes/processos.js';
@@ -436,6 +444,14 @@ function processadoresDoAmbiente(
 }
 
 /** Composição do worker: filas, relay do outbox e consumidores de eventos (lista explícita). */
+/** O processo visto pelo cálculo de prazos (cadastro + calendario), sem o cache do calendário. */
+function localizadorDosPrazosNoBanco(banco: Banco, relogio: Clock) {
+  return processoNoCalendario(
+    new ConsultarProcesso(banco, new ProcessosPostgres(relogio)),
+    new ConsultarDiasNaoUteis(banco, new EventosGlobaisPostgres(), new FeriadosLocaisPostgres()),
+  );
+}
+
 @Module({})
 export class WorkerModule {
   static registrar(opcoes: OpcoesWorker): DynamicModule {
@@ -453,6 +469,12 @@ export class WorkerModule {
     const banco = new Banco({ url: ambiente.DATABASE_URL });
     const sistema = new BancoSistema({ url: ambiente.DATABASE_URL_SISTEMA, maxConexoes: 4 });
     const outboxPostgres = new OutboxPostgres();
+    const localizadorDosPrazos = (relogio: Clock) => localizadorDosPrazosNoBanco(banco, relogio);
+    const calculoDosPrazos = (relogio: Clock) =>
+      new CalcularPrazoParaProcesso(
+        localizadorDosPrazos(relogio),
+        new ResolverPrazoAplicavel(banco, new TabelaPostgres()),
+      );
     const emMemoria = opcoes.outbox;
     // Registros de adaptadores criados nesta instância: a saúde deles vai para o painel (HU39).
     const registros: RegistroDeAdaptadores[] = [];
@@ -661,18 +683,58 @@ export class WorkerModule {
           new RecalcularPrazosPorCalendario(
             banco,
             new PrazosPostgres(),
-            processoNoCalendario(
-              new ConsultarProcesso(banco, new ProcessosPostgres(relogio)),
-              new ConsultarDiasNaoUteis(
-                banco,
-                new EventosGlobaisPostgres(),
-                new FeriadosLocaisPostgres(),
-              ),
-            ),
+            localizadorDosPrazos(relogio),
             new TrilhaPostgres(),
             outboxPostgres,
             relogio,
           ),
+      },
+      {
+        // Geração de prazos das publicações (HU24): classificação, destinatário e responsável
+        // pelas APIs públicas de classificacao, publicacoes e cadastro.
+        provide: GerarPrazoDaPublicacao,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) => {
+          const classificacoes = new ClassificacoesPostgres();
+          const destinatarios = new DestinatariosPostgres();
+          const advogados = new AdvogadosPostgres(relogio);
+          return new GerarPrazoDaPublicacao(
+            banco,
+            new PrazosPostgres(),
+            fontesDaGeracao(banco, classificacoes, destinatarios, advogados),
+            calculoDosPrazos(relogio),
+            new CriarPrazo(
+              banco,
+              new PrazosPostgres(),
+              new TrilhaPostgres(),
+              outboxPostgres,
+              relogio,
+            ),
+          );
+        },
+      },
+      {
+        provide: MarcarPrazosVencidos,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new MarcarPrazosVencidos(
+            sistema.unidade('prazos: tenants com prazos vencidos'),
+            (tenantId, trabalho) => executarNoTenant(tenantId, trabalho),
+            {
+              unidade: banco,
+              prazos: new PrazosPostgres(),
+              trilha: new TrilhaPostgres(),
+              outbox: outboxPostgres,
+              relogio,
+            },
+          ),
+      },
+      {
+        provide: TENANTS_DA_PUBLICACAO,
+        useValue: tenantsDaPublicacao(
+          sistema.unidade('prazos: tenants que receberam a publicação'),
+          new DestinatariosPostgres(),
+        ),
       },
       {
         provide: TenantsAfetadosPeloCalendario,

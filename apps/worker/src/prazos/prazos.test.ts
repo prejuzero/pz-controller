@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { ConsumidorDosPrazos } from './consumidor.js';
 import { chaveDoLote } from './jobs.js';
-import { processoNoCalendario } from './processo.js';
+import { fontesDaGeracao, processoNoCalendario, tenantsDaPublicacao } from './processo.js';
 
 import type { Filas } from '../filas/runtime.js';
 import type { ConsultarProcesso, ProcessoListado } from '@pz/cadastro';
@@ -39,7 +39,7 @@ describe('ConsumidorDosPrazos (HU16)', () => {
     const tenants = {
       executar: () => Promise.resolve(TENANTS),
     } as unknown as TenantsAfetadosPeloCalendario<unknown>;
-    const consumidor = new ConsumidorDosPrazos(tenants, filas);
+    const consumidor = new ConsumidorDosPrazos(tenants, filas, () => Promise.resolve(TENANTS));
     await consumidor.calendarioAlterado('tx', {
       id: EVENTO,
       tipo: 'CalendarioAlterado',
@@ -62,6 +62,39 @@ describe('ConsumidorDosPrazos (HU16)', () => {
       depoisDe: TENANT_B,
     };
     expect(chaveDoLote(proximo)).toBe(`${EVENTO}-${TENANT_A}-${TENANT_B}`);
+  });
+});
+
+describe('ConsumidorDosPrazos: publicações (HU24)', () => {
+  it('classificada: um job por tenant destinatário; recebida: um job no tenant do evento', async () => {
+    const chaves: string[] = [];
+    const filas = {
+      publicar: (_d: unknown, _dados: unknown, _e: unknown, chave: string) => {
+        chaves.push(chave);
+        return Promise.resolve(chave);
+      },
+    } as unknown as Filas;
+    const consumidor = new ConsumidorDosPrazos(
+      {} as TenantsAfetadosPeloCalendario<unknown>,
+      filas,
+      () => Promise.resolve(TENANTS),
+    );
+    const conteudoId = '01a10e00-0000-7000-8000-0000000c0aaa';
+    const evento = (tipo: string, tenantId: Uuid) =>
+      ({
+        id: EVENTO,
+        tipo,
+        versao: 1,
+        tenantId,
+        payload: { conteudoId },
+      }) as unknown as EventoDominio;
+    await consumidor.publicacaoClassificada('tx', evento('PublicacaoClassificada', PLATAFORMA));
+    await consumidor.publicacaoRecebida('tx', evento('PublicacaoRecebida', TENANT_A));
+    expect(chaves).toEqual([
+      `${conteudoId}-${TENANT_A}`,
+      `${conteudoId}-${TENANT_B}`,
+      `${conteudoId}-${TENANT_A}`,
+    ]);
   });
 });
 
@@ -119,5 +152,26 @@ describe('processoNoCalendario (HU16)', () => {
       },
     ]);
     expect(pedidos).toEqual([{ tribunal: 'TJAC', uf: 'AC', comarca: 'Comarca Fictícia' }]);
+  });
+});
+
+describe('fontes da geração de prazos (HU24)', () => {
+  it('leem classificação, destinatário, responsável e tenants pelas APIs dos módulos', async () => {
+    const unidade = {
+      executar: <T>(trabalho: (tx: never) => Promise<T>) => trabalho('tx' as never),
+    };
+    const fontes = fontesDaGeracao(
+      unidade,
+      { buscar: (_tx, id) => Promise.resolve({ id } as never) },
+      { doConteudo: (_tx, id) => Promise.resolve({ id } as never) },
+      { usuarioDaOab: (_tx, id) => Promise.resolve(id) },
+    );
+    expect(await fontes.classificacao(EVENTO)).toEqual({ id: EVENTO });
+    expect(await fontes.destinatario(EVENTO)).toEqual({ id: EVENTO });
+    expect(await fontes.responsavelDaOab(TENANT_A)).toBe(TENANT_A);
+    const tenants = tenantsDaPublicacao(unidade, {
+      tenantsDoConteudo: () => Promise.resolve(TENANTS),
+    });
+    expect(await tenants(EVENTO)).toEqual(TENANTS);
   });
 });

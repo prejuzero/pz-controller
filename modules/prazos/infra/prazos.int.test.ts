@@ -10,8 +10,16 @@ import {
 } from '@pz/calendario';
 import { Banco, BancoSistema, executarNoTenant, OutboxPostgres } from '@pz/db';
 import { subirBancoDeTeste } from '@pz/db/teste';
+import { FixedClock, Instant } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import {
+  AjustarPrazo,
+  ConfirmarPrazo,
+  CumprirPrazo,
+  ListarPrazos,
+  MarcarPrazosVencidos,
+} from '../application/ciclo-de-vida.js';
 import {
   CalcularPrazoParaProcesso,
   CriarPrazo,
@@ -314,5 +322,98 @@ describe('prazos no PostgreSQL (HU16)', () => {
       tx.prazo.findUniqueOrThrow({ where: { id: antes.id } }),
     );
     expect(linha.versaoOtimista).toBe(1);
+  });
+});
+
+describe('ciclo de vida no PostgreSQL (HU24, PZ-171)', () => {
+  const USUARIO = '01a10e00-0000-7000-8000-0000000f0d01' as Uuid;
+  const quem = { usuarioId: USUARIO, canal: 'portal' as const };
+
+  it('confirmar → ajustar com motivo → cumprir: trilha de cada passo; 409 na versão velha', async () => {
+    const r = relogio();
+    const deps = {
+      unidade: banco,
+      prazos: new PrazosPostgres(),
+      trilha: new TrilhaPostgres(),
+      outbox: new OutboxPostgres(),
+      relogio: r,
+    };
+    const prazo = await prazoNovo(ESCRITORIO, PROCESSO_GO);
+    const noEscritorio = <T>(t: () => Promise<T>) => executarNoTenant(ESCRITORIO, t);
+    const c = await noEscritorio(() =>
+      new ConfirmarPrazo(deps).executar(quem, prazo.id, { versao: 1 }),
+    );
+    expect(c.ok && c.valor.status).toBe('pendente');
+    const velha = await noEscritorio(() =>
+      new ConfirmarPrazo(deps).executar(quem, prazo.id, { versao: 1 }),
+    );
+    expect(!velha.ok && velha.erro.codigo).toBe('versao-desatualizada');
+    const a = await noEscritorio(() =>
+      new AjustarPrazo(deps, calcular).executar(quem, prazo.id, {
+        versao: 2,
+        motivo: 'despacho fixou dez dias',
+        dias: 10,
+      }),
+    );
+    expect(a.ok && a.valor).toMatchObject({ dias: 10, vencimentoManual: false, versao: 3 });
+    const f = await noEscritorio(() =>
+      new CumprirPrazo(deps).executar(quem, prazo.id, { versao: 3 }),
+    );
+    expect(f.ok && f.valor.status).toBe('cumprido');
+    const tipos = await doTenant(ESCRITORIO, (tx) =>
+      tx.eventoAuditoria.findMany({
+        where: { entidadeId: prazo.id },
+        orderBy: { sequencia: 'asc' },
+      }),
+    );
+    expect(tipos.map((t) => t.tipo)).toEqual([
+      'prazos.prazo-sugerido',
+      'prazos.prazo-confirmado',
+      'prazos.prazo-ajustado',
+      'prazos.prazo-cumprido',
+    ]);
+    const lista = await noEscritorio(() =>
+      new ListarPrazos(banco, new PrazosPostgres()).executar({ status: 'cumprido' }),
+    );
+    expect(lista.ok && lista.valor.itens.map((i) => i.id)).toContain(prazo.id);
+  });
+
+  it('um prazo por publicação no tenant (índice único) e job de vencidos', async () => {
+    const prazos = new PrazosPostgres();
+    const conteudoId = '01a10e00-0000-7000-8000-0000000f0aaa' as Uuid;
+    const prazo = await prazoNovo(ESCRITORIO, PROCESSO_GO);
+    await sistema.executarComoSistema('teste: liga o prazo à publicação', (tx) =>
+      tx.prazo.update({ where: { id: prazo.id }, data: { publicacaoConteudoId: conteudoId } }),
+    );
+    expect(await doTenant(ESCRITORIO, (tx) => prazos.existeDaPublicacao(tx, conteudoId))).toBe(
+      true,
+    );
+    expect(await doTenant(OUTRO, (tx) => prazos.existeDaPublicacao(tx, conteudoId))).toBe(false);
+    const outro = await prazoNovo(ESCRITORIO, PROCESSO_GO);
+    await expect(
+      sistema.executarComoSistema('teste: segundo prazo da mesma publicação', (tx) =>
+        tx.prazo.update({ where: { id: outro.id }, data: { publicacaoConteudoId: conteudoId } }),
+      ),
+    ).rejects.toThrow();
+
+    const depois = new FixedClock(Instant.deIso('2031-01-10T07:00:00.000Z'));
+    const marcar = new MarcarPrazosVencidos(
+      sistema.unidade('teste: vencidos'),
+      (tenantId, trabalho) => executarNoTenant(tenantId, trabalho),
+      {
+        unidade: banco,
+        prazos,
+        trilha: new TrilhaPostgres(),
+        outbox: new OutboxPostgres(),
+        relogio: depois,
+      },
+    );
+    const resultado = await marcar.executar();
+    expect(resultado.vencidos).toBeGreaterThanOrEqual(2);
+    const linha = await doTenant(ESCRITORIO, (tx) =>
+      tx.prazo.findUniqueOrThrow({ where: { id: outro.id } }),
+    );
+    expect(linha.status).toBe('vencido');
+    expect((await marcar.executar()).vencidos).toBe(0);
   });
 });

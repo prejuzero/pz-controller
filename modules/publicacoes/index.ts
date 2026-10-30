@@ -13,6 +13,8 @@ export type {
   RepositorioDeLeitura,
   RepositorioDePublicacoes,
 } from './application/portas.js';
+export { DestinatariosPostgres } from './infra/destinatarios-postgres.js';
+export type { DestinatarioLido } from './infra/destinatarios-postgres.js';
 export { ExportacaoDasPublicacoesPostgres } from './infra/exportacao-postgres.js';
 export { LeituraPostgres } from './infra/leitura-postgres.js';
 export { PublicacoesPostgres } from './infra/publicacoes-postgres.js';

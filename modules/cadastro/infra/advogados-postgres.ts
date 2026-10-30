@@ -49,6 +49,15 @@ export class AdvogadosPostgres implements RepositorioDeAdvogados<Transacao> {
     return oabs.count === e.oabs.length ? 'ok' : 'oab-em-uso';
   }
 
+  /** Usuário do advogado dono da OAB, no tenant da transação (lido pelo módulo prazos, HU24). */
+  async usuarioDaOab(tx: Transacao, oabId: Uuid): Promise<Uuid | undefined> {
+    const oab = await tx.oab.findUnique({
+      where: { id: oabId },
+      select: { advogado: { select: { usuarioId: true } } },
+    });
+    return oab === null ? undefined : (oab.advogado.usuarioId as Uuid);
+  }
+
   async buscarPorUsuario(tx: Transacao, usuarioId: Uuid): Promise<Advogado | undefined> {
     const linha = await tx.advogado.findUnique({
       where: { usuarioId },

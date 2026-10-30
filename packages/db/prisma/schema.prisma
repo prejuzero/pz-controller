@@ -1044,6 +1044,11 @@ model Prazo {
   vencimentoManual     Boolean            @default(false) @map("vencimento_manual")
   memoriaCalculo       Json               @map("memoria_calculo")
   entradaCalculo       Json?              @map("entrada_calculo")
+  /// Entrada do cálculo (HU24): o ajuste recalcula pelo motor a partir dela.
+  parametros           Json               @default("{}")
+  /// Classificação com confiança baixa ou de revisão manual (HU24): a tela destaca.
+  classificacaoIncerta Boolean            @default(false) @map("classificacao_incerta")
+  motivoAjuste         String?            @map("motivo_ajuste")
   fundamento           String?
   origem               OrigemPrazo
   status               StatusPrazo        @default(a_confirmar)

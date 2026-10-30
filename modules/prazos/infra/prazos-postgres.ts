@@ -2,7 +2,11 @@ import { Instant, LocalDate } from '@pz/kernel';
 
 import { Prazo } from '../domain/prazo.js';
 
-import type { AlcanceDaAlteracao, RepositorioDePrazos } from '../application/portas.js';
+import type {
+  AlcanceDaAlteracao,
+  FiltroDePrazos,
+  RepositorioDePrazos,
+} from '../application/portas.js';
 import type { CalculoDoPrazo, JurisdicaoDoPrazo, Json } from '../domain/prazo.js';
 import type { Transacao } from '@pz/db';
 import type { Uuid } from '@pz/kernel';
@@ -20,6 +24,9 @@ const doBanco = <T extends string>(valor: T) => valor.replaceAll('_', '-') as Ke
 
 /** Objeto do domínio para o tipo JSON do Prisma (que exige assinatura de índice). */
 const paraJson = (valor: unknown) => JSON.parse(JSON.stringify(valor)) as object;
+
+/** Prazo sem vencimento vai para o fim da lista. */
+const FIM = '9999-12-31';
 
 type Linha = Awaited<ReturnType<Transacao['prazo']['findFirstOrThrow']>>;
 
@@ -57,6 +64,9 @@ function restaurar(linha: Linha): Prazo {
     statusCiencia: linha.statusCiencia,
     responsavelId: linha.responsavelId as Uuid | null,
     jurisdicao: linha.jurisdicao as unknown as JurisdicaoDoPrazo,
+    parametros: linha.parametros as Json,
+    classificacaoIncerta: linha.classificacaoIncerta,
+    motivoAjuste: linha.motivoAjuste,
     versaoOtimista: linha.versaoOtimista,
   });
 }
@@ -111,6 +121,9 @@ export class PrazosPostgres implements RepositorioDePrazos<Transacao> {
         statusCiencia: e.statusCiencia,
         responsavelId: e.responsavelId,
         jurisdicao: paraJson(e.jurisdicao),
+        parametros: paraJson(e.parametros),
+        classificacaoIncerta: e.classificacaoIncerta,
+        motivoAjuste: e.motivoAjuste,
         versaoOtimista: e.versaoOtimista,
       },
     });
@@ -127,6 +140,12 @@ export class PrazosPostgres implements RepositorioDePrazos<Transacao> {
       where: { id: e.id, versaoOtimista: versaoLida },
       data: {
         ...colunasDoCalculo(e.calculo),
+        tipoAto: e.tipoAto,
+        ramo: e.ramo === null ? null : paraBanco(e.ramo),
+        vencimentoManual: e.vencimentoManual,
+        ...(e.entrada === null ? {} : { entradaCalculo: paraJson(e.entrada) }),
+        parametros: paraJson(e.parametros),
+        motivoAjuste: e.motivoAjuste,
         status: paraBanco(e.status),
         versaoOtimista: e.versaoOtimista,
       },
@@ -180,5 +199,57 @@ export class PrazosPostgres implements RepositorioDePrazos<Transacao> {
                   AND jurisdicao->>'comarca' = ${f.comarca}))
        ORDER BY tenant_id`;
     return linhas.map((l) => l.tenant_id as Uuid);
+  }
+
+  async listar(transacao: Transacao, filtro: FiltroDePrazos): Promise<Prazo[]> {
+    const status = filtro.status === undefined ? null : paraBanco(filtro.status);
+    const cursorData = filtro.depoisDe?.vencimento?.paraIso() ?? (filtro.depoisDe ? FIM : null);
+    const cursorId = filtro.depoisDe?.id ?? null;
+    const ids = await transacao.$queryRaw<{ id: string }[]>`
+      SELECT id FROM prazo
+       WHERE (${status}::text IS NULL OR status::text = ${status})
+         AND (${filtro.processoId ?? null}::uuid IS NULL OR processo_id = ${filtro.processoId ?? null}::uuid)
+         AND (${filtro.responsavelId ?? null}::uuid IS NULL OR responsavel_id = ${filtro.responsavelId ?? null}::uuid)
+         AND (${cursorId}::uuid IS NULL
+              OR (COALESCE(vencimento, ${FIM}::date), id) > (${cursorData}::date, ${cursorId}::uuid))
+       ORDER BY COALESCE(vencimento, ${FIM}::date), id
+       LIMIT ${filtro.limite}`;
+    return this.#porIds(
+      transacao,
+      ids.map((l) => l.id),
+    );
+  }
+
+  async existeDaPublicacao(transacao: Transacao, conteudoId: Uuid): Promise<boolean> {
+    return (await transacao.prazo.count({ where: { publicacaoConteudoId: conteudoId } })) > 0;
+  }
+
+  async vencidos(transacao: Transacao, hoje: LocalDate, limite: number): Promise<Prazo[]> {
+    const linhas = await transacao.prazo.findMany({
+      where: { status: { in: ['a_confirmar', 'pendente'] }, vencimento: { lt: paraData(hoje) } },
+      orderBy: { id: 'asc' },
+      take: limite,
+    });
+    return linhas.map(restaurar);
+  }
+
+  async tenantsComVencidos(transacao: Transacao, hoje: LocalDate): Promise<Uuid[]> {
+    const linhas = await transacao.prazo.findMany({
+      where: { status: { in: ['a_confirmar', 'pendente'] }, vencimento: { lt: paraData(hoje) } },
+      distinct: ['tenantId'],
+      select: { tenantId: true },
+      orderBy: { tenantId: 'asc' },
+    });
+    return linhas.map((l) => l.tenantId as Uuid);
+  }
+
+  async #porIds(transacao: Transacao, ids: readonly string[]): Promise<Prazo[]> {
+    if (ids.length === 0) return [];
+    const linhas = await transacao.prazo.findMany({ where: { id: { in: [...ids] } } });
+    const porId = new Map(linhas.map((l) => [l.id, l]));
+    return ids.flatMap((id) => {
+      const linha = porId.get(id);
+      return linha === undefined ? [] : [restaurar(linha)];
+    });
   }
 }

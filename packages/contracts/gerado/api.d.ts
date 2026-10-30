@@ -811,6 +811,108 @@ export interface paths {
         patch: operations["atualizarPerfil"];
         trace?: never;
     };
+    "/v1/prazos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Prazos do escritório, do vencimento mais próximo ao mais distante (sem data por último). */
+        get: operations["listarPrazos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/prazos/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detalhe do prazo com a memória de cálculo. */
+        get: operations["consultarPrazo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/prazos/{id}/ajustar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ajusta ato, ramo ou dias (recalcula pelo motor) ou informa o vencimento; sempre com motivo. */
+        post: operations["ajustarPrazo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/prazos/{id}/cancelar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancela o prazo, com motivo. */
+        post: operations["cancelarPrazo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/prazos/{id}/confirmar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** O advogado confirma a data. */
+        post: operations["confirmarPrazo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/prazos/{id}/cumprir": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Marca o prazo pendente como cumprido. */
+        post: operations["cumprirPrazo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/privacidade/encerramento": {
         parameters: {
             query?: never;
@@ -1202,6 +1304,53 @@ export interface components {
             /** Format: uuid */
             dispositivoId: string;
         };
+        DetalheDoPrazo: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            processoId: string;
+            publicacaoConteudoId: string | null;
+            tipoAto: string;
+            ramo: ("civel" | "juizados" | "trabalhista" | "penal" | "juizado-criminal") | null;
+            /**
+             * @description "a-confirmar": sem data sugerida.
+             * @enum {string}
+             */
+            situacao: "calculado" | "a-confirmar";
+            dias: number | null;
+            unidade: ("dias" | "horas" | "meses" | "anos") | null;
+            inicio: string | null;
+            vencimento: string | null;
+            /** @description 24h do vencimento no fuso do juízo (exclusive). */
+            fimDoPrazo: string | null;
+            fusoDoJuizo: string | null;
+            fundamento: string | null;
+            versaoMotor: string;
+            versaoTabela: number | null;
+            /** @description Data informada pelo advogado ("definida manualmente"). */
+            vencimentoManual: boolean;
+            /** @enum {string} */
+            origem: "djen" | "manual" | "painel";
+            /** @enum {string} */
+            status: "a-confirmar" | "pendente" | "cumprido" | "vencido" | "cancelado";
+            /** @enum {string} */
+            statusCiencia: "pendente" | "confirmada";
+            responsavelId: string | null;
+            jurisdicao: {
+                tribunal?: string;
+                uf?: string;
+                comarca?: string;
+                readonly lacunas: string[];
+            };
+            /** @description Classificação de confiança baixa ou revisão manual. */
+            classificacaoIncerta: boolean;
+            motivoAjuste: string | null;
+            versao: number;
+            /** @description Memória de cálculo do motor (CLAUDE.md, seção 4.4). */
+            memoria: unknown;
+            /** @description Entrada do cálculo (ato, meio, referência, condições). */
+            parametros: unknown;
+        };
         DiasNaoUteis: {
             itens: {
                 /** Format: date */
@@ -1413,6 +1562,11 @@ export interface components {
             /** @description Nulo quando não há mais páginas. */
             proximoCursor: string | null;
         };
+        PaginaDePrazos: {
+            itens: components["schemas"]["Prazo"][];
+            /** @description Nulo quando não há mais páginas. */
+            proximoCursor: string | null;
+        };
         PaginaDeProcessos: {
             itens: components["schemas"]["ProcessoDoTenant"][];
             /** @description Nulo quando não há mais páginas. */
@@ -1486,6 +1640,26 @@ export interface components {
                 custoUsd: number;
             }[];
         };
+        PedidoComVersao: {
+            /** @description Versão lida: outra gravação no meio dá 409. */
+            versao: number;
+        };
+        PedidoDeAjuste: {
+            /** @description Versão lida: outra gravação no meio dá 409. */
+            versao: number;
+            motivo: string;
+            tipoAto?: string;
+            /** @enum {string} */
+            ramo?: "civel" | "juizados" | "trabalhista" | "penal" | "juizado-criminal";
+            dias?: number;
+            /** @enum {string} */
+            unidade?: "dias" | "horas" | "meses" | "anos";
+            /**
+             * Format: date
+             * @description Data informada: fica "definida manualmente".
+             */
+            vencimento?: string;
+        };
         PedidoDeAssinatura: {
             plano?: string | null;
             /**
@@ -1507,6 +1681,11 @@ export interface components {
             oabsSuplementares?: components["schemas"]["PedidoDeOab"][];
             /** @description Recebem cópia das notificações. */
             emailsAdicionais?: string[];
+        };
+        PedidoDeCancelamento: {
+            /** @description Versão lida: outra gravação no meio dá 409. */
+            versao: number;
+            motivo: string;
         };
         PedidoDeCliente: {
             nome: string;
@@ -1728,6 +1907,49 @@ export interface components {
             emailsAdicionais: string[];
             /** @description Só as ativas. */
             oabs: components["schemas"]["OabDoAdvogado"][];
+        };
+        Prazo: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            processoId: string;
+            publicacaoConteudoId: string | null;
+            tipoAto: string;
+            ramo: ("civel" | "juizados" | "trabalhista" | "penal" | "juizado-criminal") | null;
+            /**
+             * @description "a-confirmar": sem data sugerida.
+             * @enum {string}
+             */
+            situacao: "calculado" | "a-confirmar";
+            dias: number | null;
+            unidade: ("dias" | "horas" | "meses" | "anos") | null;
+            inicio: string | null;
+            vencimento: string | null;
+            /** @description 24h do vencimento no fuso do juízo (exclusive). */
+            fimDoPrazo: string | null;
+            fusoDoJuizo: string | null;
+            fundamento: string | null;
+            versaoMotor: string;
+            versaoTabela: number | null;
+            /** @description Data informada pelo advogado ("definida manualmente"). */
+            vencimentoManual: boolean;
+            /** @enum {string} */
+            origem: "djen" | "manual" | "painel";
+            /** @enum {string} */
+            status: "a-confirmar" | "pendente" | "cumprido" | "vencido" | "cancelado";
+            /** @enum {string} */
+            statusCiencia: "pendente" | "confirmada";
+            responsavelId: string | null;
+            jurisdicao: {
+                tribunal?: string;
+                uf?: string;
+                comarca?: string;
+                readonly lacunas: string[];
+            };
+            /** @description Classificação de confiança baixa ou revisão manual. */
+            classificacaoIncerta: boolean;
+            motivoAjuste: string | null;
+            versao: number;
         };
         Problema: {
             /** @description URI que identifica o tipo do problema. */
@@ -5635,6 +5857,457 @@ export interface operations {
             };
             /** @description Não encontrado. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarPrazos: {
+        parameters: {
+            query?: {
+                /** @description Cursor devolvido na página anterior. */
+                cursor?: string;
+                /** @description Quantidade de itens por página. */
+                limite?: number;
+                status?: "a-confirmar" | "pendente" | "cumprido" | "vencido" | "cancelado";
+                processoId?: string;
+                responsavelId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginaDePrazos"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    consultarPrazo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DetalheDoPrazo"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    ajustarPrazo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeAjuste"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prazo"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    cancelarPrazo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeCancelamento"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prazo"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    confirmarPrazo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoComVersao"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prazo"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    cumprirPrazo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoComVersao"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prazo"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

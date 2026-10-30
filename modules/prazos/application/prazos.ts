@@ -262,6 +262,7 @@ export class SugestaoDePrazo {
     readonly calculo: CalculoDoPrazo,
     readonly entrada: Json,
     readonly jurisdicao: JurisdicaoDoPrazo,
+    readonly parametros: Json,
   ) {}
 
   static ehValida(valor: unknown): valor is SugestaoDePrazo {
@@ -299,6 +300,10 @@ export class CalcularPrazoParaProcesso<Transacao> {
           calculo,
           gravada,
           jurisdicao,
+          // A entrada pedida (sem o processo): o ajuste recalcula a partir dela.
+          JSON.parse(
+            JSON.stringify({ ...semIndefinidos(dados.data), processoId: undefined }),
+          ) as Json,
         ),
       );
 
@@ -384,6 +389,8 @@ export interface DadosDoNovoPrazo {
   readonly origem: OrigemDoPrazo;
   readonly responsavelId: Uuid | null;
   readonly publicacaoConteudoId: Uuid | null;
+  /** Classificação de confiança baixa ou de revisão manual (HU24). */
+  readonly classificacaoIncerta?: boolean;
 }
 
 /** Representação serializável (auditoria e respostas). */
@@ -411,6 +418,18 @@ export function prazoListado(estado: EstadoDoPrazo) {
     statusCiencia: estado.statusCiencia,
     responsavelId: estado.responsavelId,
     jurisdicao: estado.jurisdicao,
+    classificacaoIncerta: estado.classificacaoIncerta,
+    motivoAjuste: estado.motivoAjuste,
+    versao: estado.versaoOtimista,
+  };
+}
+
+/** Detalhe (HU24): o listado mais a memória de cálculo e a entrada pedida. */
+export function prazoDetalhado(estado: EstadoDoPrazo) {
+  return {
+    ...prazoListado(estado),
+    memoria: estado.calculo.memoria,
+    parametros: estado.parametros,
   };
 }
 export type PrazoListado = ReturnType<typeof prazoListado>;
@@ -447,6 +466,8 @@ export class CriarPrazo<Transacao> {
         origem: dados.origem,
         responsavelId: dados.responsavelId,
         jurisdicao: sugestao.jurisdicao,
+        parametros: sugestao.parametros,
+        classificacaoIncerta: dados.classificacaoIncerta ?? false,
       },
       autor.tenantId,
       this.relogio,

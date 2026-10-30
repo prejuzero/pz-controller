@@ -35,3 +35,11 @@ Módulo prazos, gerado por `pnpm gen:module` no desenho hexagonal (ADR-001).
   - Fuso do juízo pelo tribunal (`fusoDoJuizo`, módulo calendario, curadoria V2, aba 5); tribunal com unidades em mais de um fuso usa o de fim mais cedo e avisa.
 - **`CriarPrazo`** grava só sugestão vinda do cálculo (`SugestaoDePrazo`), sempre "a confirmar", com trilha `prazos.prazo-sugerido` e `PrazoSugerido` na mesma transação.
 - **`RecalcularPrazosPorCalendario`** (consumidor de `CalendarioAlterado` no worker, fila `prazos`): um job por tenant alcançado (no global, listados como sistema por `TenantsAfetadosPeloCalendario`), lotes de 500 por id. Recalcula os abertos (`a_confirmar`, `pendente`) calculados pelo motor cuja jurisdição o evento alcança e cujo intervalo (referência até vencimento) cruza o período. Se o vencimento muda: grava, volta a "a confirmar", trilha `prazos.prazo-recalculado` com antes e depois e `PrazoRecalculado`. Idempotente (mesmo calendário, mesmo resultado); concorrência otimista; o calendário é lido sem cache.
+
+## Ciclo de vida do prazo (HU24)
+
+- **Estados** (agregado `Prazo`): `a-confirmar` → `pendente` (confirmar) → `cumprido`; `a-confirmar`/`pendente` → `cancelado` (com motivo) ou `vencido` (job diário, 4h de Brasília). Transição inválida: `Conflito` (409). Versão otimista em todo POST (`versao` lida; outra gravação no meio dá 409).
+- **Ajuste** (`AjustarPrazo`, sempre com motivo): ato, ramo ou dias recalculam pelo motor a partir de `parametros`; vencimento informado fica "definido manualmente" (sem fim do prazo calculado e fora do recálculo do calendário). O status não muda: confirmar é outro passo.
+- **Geração automática** (`GerarPrazoDaPublicacao`, worker, fila `prazos`): `PublicacaoClassificada` gera um job por tenant destinatário; `PublicacaoRecebida` gera no tenant do evento. Um prazo por publicação no tenant (índice único). Ato desconhecido ou classificação incerta (revisão manual ou confiança < 0,85) geram com `classificacaoIncerta`; não gera só quando o ato é seguro e não há prazo no texto nem na tabela (ex.: mero expediente). Responsável: o advogado da OAB destinatária.
+- Trilha e evento em cada transição: `PrazoConfirmado`, `PrazoAjustado`, `PrazoCumprido`, `PrazoCancelado`, `PrazoVencido`.
+- API `/v1/prazos`: listar (por vencimento, cursor), detalhe (com memória), `confirmar`, `ajustar`, `cumprir`, `cancelar`.

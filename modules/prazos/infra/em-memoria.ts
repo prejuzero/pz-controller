@@ -3,6 +3,7 @@ import { VersaoDaTabela } from '../domain/tabela.js';
 
 import type {
   AlcanceDaAlteracao,
+  FiltroDePrazos,
   FiltroDeVersoes,
   RepositorioDePrazos,
   RepositorioDaTabela,
@@ -11,7 +12,7 @@ import type {
 } from '../application/portas.js';
 import type { EstadoDoPrazo } from '../domain/prazo.js';
 import type { EstadoDaVersao, Ramo } from '../domain/tabela.js';
-import type { TransacaoEmMemoria, Uuid } from '@pz/kernel';
+import type { LocalDate, TransacaoEmMemoria, Uuid } from '@pz/kernel';
 
 /** Repositórios em memória da tabela de prazos, com a semântica do Postgres. Só para testes. */
 export class TabelaEmMemoria
@@ -128,6 +129,55 @@ export class PrazosEmMemoria implements RepositorioDePrazos<TransacaoEmMemoria> 
 
   tenantsAfetados(_transacao: TransacaoEmMemoria, alcance: AlcanceDaAlteracao): Promise<Uuid[]> {
     return Promise.resolve([...new Set(this.#alcancados(alcance).map((e) => e.tenantId))].sort());
+  }
+
+  listar(_transacao: TransacaoEmMemoria, filtro: FiltroDePrazos): Promise<Prazo[]> {
+    const chave = (e: { calculo: { vencimento: LocalDate | null }; id: string }) =>
+      `${e.calculo.vencimento?.paraIso() ?? '9999-12-31'}|${e.id}`;
+    const cursor =
+      filtro.depoisDe === undefined
+        ? undefined
+        : chave({ calculo: { vencimento: filtro.depoisDe.vencimento }, id: filtro.depoisDe.id });
+    return Promise.resolve(
+      [...this.#prazos.values()]
+        .filter(
+          (e) =>
+            (filtro.status === undefined || e.status === filtro.status) &&
+            (filtro.processoId === undefined || e.processoId === filtro.processoId) &&
+            (filtro.responsavelId === undefined || e.responsavelId === filtro.responsavelId) &&
+            (cursor === undefined || chave(e) > cursor),
+        )
+        .sort((a, b) => chave(a).localeCompare(chave(b)))
+        .slice(0, filtro.limite)
+        .map((e) => Prazo.restaurar(e)),
+    );
+  }
+
+  existeDaPublicacao(_transacao: TransacaoEmMemoria, conteudoId: Uuid): Promise<boolean> {
+    return Promise.resolve(
+      [...this.#prazos.values()].some((e) => e.publicacaoConteudoId === conteudoId),
+    );
+  }
+
+  vencidos(_transacao: TransacaoEmMemoria, hoje: LocalDate, limite: number): Promise<Prazo[]> {
+    return Promise.resolve(
+      this.#vencidos(hoje)
+        .slice(0, limite)
+        .map((e) => Prazo.restaurar(e)),
+    );
+  }
+
+  tenantsComVencidos(_transacao: TransacaoEmMemoria, hoje: LocalDate): Promise<Uuid[]> {
+    return Promise.resolve([...new Set(this.#vencidos(hoje).map((e) => e.tenantId))].sort());
+  }
+
+  #vencidos(hoje: LocalDate): EstadoDoPrazo[] {
+    return [...this.#prazos.values()]
+      .filter(
+        (e) =>
+          STATUS_RECALCULAVEIS.includes(e.status) && e.calculo.vencimento?.ehAntesDe(hoje) === true,
+      )
+      .sort((a, b) => a.id.localeCompare(b.id));
   }
 
   #alcancados(alcance: AlcanceDaAlteracao): EstadoDoPrazo[] {

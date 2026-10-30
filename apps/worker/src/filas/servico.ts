@@ -8,7 +8,12 @@ import {
   registrarErro,
   registrarSituacaoDasFilas,
 } from '@pz/observability';
-import { RecalcularPrazosPorCalendario, lerAlteracaoDoCalendario } from '@pz/prazos';
+import {
+  GerarPrazoDaPublicacao,
+  lerAlteracaoDoCalendario,
+  MarcarPrazosVencidos,
+  RecalcularPrazosPorCalendario,
+} from '@pz/prazos';
 import { AplicarRetencao, EfetivarEncerramentos } from '@pz/privacidade';
 
 import {
@@ -30,7 +35,12 @@ import {
   UNIDADE_DOS_WEBHOOKS,
 } from '../fichas.js';
 import { processarWebhook, tratarWebhook } from '../integracoes/webhooks.js';
-import { chaveDoLote, recalcularPrazosJob } from '../prazos/jobs.js';
+import {
+  chaveDoLote,
+  gerarPrazoJob,
+  marcarVencidosJob,
+  recalcularPrazosJob,
+} from '../prazos/jobs.js';
 import {
   AGENDAMENTO_DA_RETENCAO,
   AGENDAMENTO_DOS_ENCERRAMENTOS,
@@ -83,6 +93,8 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     @Inject(AplicarRetencao) private readonly retencao: AplicarRetencao<unknown>,
     @Inject(RecalcularPrazosPorCalendario)
     private readonly recalcularPrazos: RecalcularPrazosPorCalendario<unknown>,
+    @Inject(GerarPrazoDaPublicacao) private readonly gerarPrazo: GerarPrazoDaPublicacao<unknown>,
+    @Inject(MarcarPrazosVencidos) private readonly vencidos: MarcarPrazosVencidos<unknown>,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -150,6 +162,14 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
         { tenantId: dados.tenantId },
         chaveDoLote(proximo),
       );
+    });
+    // Geração de prazos das publicações (HU24) e marcação diária de vencidos.
+    this.filas.registrar(gerarPrazoJob, async ({ conteudoId, tenantId }) => {
+      const resultado = await this.gerarPrazo.executar(tenantId as Uuid, conteudoId as Uuid);
+      logger.info({ conteudoId, tenantId, resultado }, 'geração de prazo da publicação');
+    });
+    this.filas.registrar(marcarVencidosJob, async () => {
+      logger.info(await this.vencidos.executar(), 'prazos vencidos marcados');
     });
     this.filas.registrar(efetivarEncerramentosJob, async () => {
       const encerrados = await this.efetivarEncerramentos.executar();

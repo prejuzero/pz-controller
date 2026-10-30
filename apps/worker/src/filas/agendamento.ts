@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { marcarVencidosJob } from '../prazos/jobs.js';
+
 import { definirJob } from './job.js';
 
 import type { DefinicaoJob } from './job.js';
@@ -65,5 +67,13 @@ export const AGENDAMENTOS: readonly Agendamento<unknown>[] = [
     cron: '0 2 * * *', // diário às 2h: verifica a cadeia e exporta para o WORM (HU08)
     dados: {},
     motivo: 'verificação diária da trilha de auditoria e cópia WORM',
+  }),
+  definirAgendamento({
+    id: 'prazos.marcar-vencidos',
+    job: marcarVencidosJob,
+    // 4h de Brasília: o prazo do fuso mais a oeste (UTC-5) já terminou às 2h (HU24).
+    cron: '0 4 * * *',
+    dados: {},
+    motivo: 'marcação diária dos prazos vencidos sem cumprimento',
   }),
 ] as readonly Agendamento<unknown>[];

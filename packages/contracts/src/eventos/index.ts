@@ -323,6 +323,48 @@ export const PrazoRecalculado = definirEvento(
   }),
 );
 
+const DoPrazo = z.object({ prazoId: z.uuid(), processoId: z.uuid(), usuarioId: z.uuid() });
+
+/** O advogado confirmou a data (HU24): o prazo passa a pendente e entra nos lembretes. */
+export const PrazoConfirmado = definirEvento(
+  'PrazoConfirmado',
+  1,
+  DoPrazo.extend({ vencimento: DataIso }),
+);
+
+/** Ajuste com motivo (HU24): a curadoria aprende com as correções (HU22). */
+export const PrazoAjustado = definirEvento(
+  'PrazoAjustado',
+  1,
+  DoPrazo.extend({
+    tipoAto: z.string().min(1),
+    vencimentoAnterior: DataIso.nullable(),
+    vencimentoNovo: DataIso.nullable(),
+    vencimentoManual: z.boolean(),
+    motivo: z.string().min(1),
+  }),
+);
+
+export const PrazoCumprido = definirEvento('PrazoCumprido', 1, DoPrazo);
+
+export const PrazoCancelado = definirEvento(
+  'PrazoCancelado',
+  1,
+  DoPrazo.extend({ motivo: z.string().min(1) }),
+);
+
+/** Passou o vencimento sem cumprimento (job diário, HU24). */
+export const PrazoVencido = definirEvento(
+  'PrazoVencido',
+  1,
+  z.object({
+    prazoId: z.uuid(),
+    processoId: z.uuid(),
+    vencimento: DataIso,
+    statusAnterior: z.enum(['a-confirmar', 'pendente']),
+  }),
+);
+
 export const EVENTOS = catalogoDeEventos(
   SituacaoVerificada,
   RedefinicaoDeSenhaSolicitada,
@@ -348,4 +390,9 @@ export const EVENTOS = catalogoDeEventos(
   FonteRestabelecida,
   PrazoSugerido,
   PrazoRecalculado,
+  PrazoConfirmado,
+  PrazoAjustado,
+  PrazoCumprido,
+  PrazoCancelado,
+  PrazoVencido,
 );
