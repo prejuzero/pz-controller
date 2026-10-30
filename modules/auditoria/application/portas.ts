@@ -22,6 +22,8 @@ export const TIPOS_DE_AUDITORIA = [
   'prazos.prazo-cumprido',
   'prazos.prazo-cancelado',
   'prazos.prazo-vencido',
+  'prazos.compromisso-agendado',
+  'prazos.compromisso-cancelado',
   'calendario.evento-proposto',
   'calendario.evento-aprovado',
   'calendario.evento-revogado',

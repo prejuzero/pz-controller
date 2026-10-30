@@ -43,3 +43,9 @@ Módulo prazos, gerado por `pnpm gen:module` no desenho hexagonal (ADR-001).
 - **Geração automática** (`GerarPrazoDaPublicacao`, worker, fila `prazos`): `PublicacaoClassificada` gera um job por tenant destinatário; `PublicacaoRecebida` gera no tenant do evento. Um prazo por publicação no tenant (índice único). Ato desconhecido ou classificação incerta (revisão manual ou confiança < 0,85) geram com `classificacaoIncerta`; não gera só quando o ato é seguro e não há prazo no texto nem na tabela (ex.: mero expediente). Responsável: o advogado da OAB destinatária.
 - Trilha e evento em cada transição: `PrazoConfirmado`, `PrazoAjustado`, `PrazoCumprido`, `PrazoCancelado`, `PrazoVencido`.
 - API `/v1/prazos`: listar (por vencimento, cursor), detalhe (com memória), `confirmar`, `ajustar`, `cumprir`, `cancelar`.
+
+## Cadastro manual e compromissos (HU25)
+
+- `CadastrarPrazoManual` (`POST /v1/prazos`, prévia em `/v1/prazos/simular`): a data é do motor. Com `vencimentoConfirmado` igual ao da prévia, o prazo nasce pendente (o autor confirmou no mesmo ato, com trilha das duas etapas); data diferente dá 409; sem ela, "a confirmar".
+- Compromissos (`compromisso`, RLS, sem DELETE): audiência e reunião com data e hora (com fuso) e lembretes em minutos antes; agendar e cancelar (com motivo) com trilha e eventos `CompromissoAgendado`/`CompromissoCancelado` (os lembretes são da HU31).
+- Cadastro assistido por texto (`POST /v1/assistente/analisar`, módulo classificacao): sugere ato e prazo citado pelo mesmo pipeline, sem gravar; a data vem do motor quando o advogado calcula.

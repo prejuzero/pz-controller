@@ -1,6 +1,7 @@
 import { Prazo, STATUS_RECALCULAVEIS } from '../domain/prazo.js';
 import { VersaoDaTabela } from '../domain/tabela.js';
 
+import type { Compromisso, RepositorioDeCompromissos } from '../application/compromissos.js';
 import type {
   AlcanceDaAlteracao,
   FiltroDePrazos,
@@ -12,7 +13,7 @@ import type {
 } from '../application/portas.js';
 import type { EstadoDoPrazo } from '../domain/prazo.js';
 import type { EstadoDaVersao, Ramo } from '../domain/tabela.js';
-import type { LocalDate, TransacaoEmMemoria, Uuid } from '@pz/kernel';
+import type { Instant, LocalDate, TransacaoEmMemoria, Uuid } from '@pz/kernel';
 
 /** Repositórios em memória da tabela de prazos, com a semântica do Postgres. Só para testes. */
 export class TabelaEmMemoria
@@ -201,5 +202,36 @@ export class PrazosEmMemoria implements RepositorioDePrazos<TransacaoEmMemoria> 
         );
       })
       .sort((a, b) => a.id.localeCompare(b.id));
+  }
+}
+
+/** Compromissos em memória, com a semântica do Postgres. Só para testes. */
+export class CompromissosEmMemoria implements RepositorioDeCompromissos<TransacaoEmMemoria> {
+  readonly #itens = new Map<string, Compromisso>();
+
+  inserir(_tx: TransacaoEmMemoria, c: Compromisso): Promise<void> {
+    this.#itens.set(c.id, c);
+    return Promise.resolve();
+  }
+
+  buscar(_tx: TransacaoEmMemoria, id: Uuid): Promise<Compromisso | undefined> {
+    return Promise.resolve(this.#itens.get(id));
+  }
+
+  cancelar(_tx: TransacaoEmMemoria, c: Compromisso): Promise<boolean> {
+    if (this.#itens.get(c.id)?.canceladoEm !== null) return Promise.resolve(false);
+    this.#itens.set(c.id, c);
+    return Promise.resolve(true);
+  }
+
+  doPeriodo(_tx: TransacaoEmMemoria, de: Instant, ate: Instant, limite: number) {
+    return Promise.resolve(
+      [...this.#itens.values()]
+        .filter(
+          (c) => c.canceladoEm === null && !c.dataHora.ehAntesDe(de) && !c.dataHora.ehDepoisDe(ate),
+        )
+        .sort((a, b) => a.dataHora.comparar(b.dataHora) || a.id.localeCompare(b.id))
+        .slice(0, limite),
+    );
   }
 }

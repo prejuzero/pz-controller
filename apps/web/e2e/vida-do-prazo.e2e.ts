@@ -39,6 +39,12 @@ test('cadastra, confirma, ajusta e cumpre um prazo', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Novo prazo' }).click();
   const novo = page.getByRole('dialog');
+  // Cadastro assistido: sugere (ou avisa que não conseguiu) sem gravar nada.
+  await novo
+    .getByLabel('Colar o texto da intimação (opcional)')
+    .fill('Intime-se a parte para se manifestar no prazo de 15 (quinze) dias. (FICTÍCIO)');
+  await novo.getByRole('button', { name: 'Analisar texto' }).click();
+  await expect(novo.getByText(/Sugestão:|Não foi possível sugerir/)).toBeVisible();
   await novo.getByRole('combobox', { name: 'Tipo de ato' }).click();
   await page.getByRole('option').first().click();
   await novo.getByLabel('Data de referência').fill('2026-10-05');
@@ -68,4 +74,26 @@ test('cadastra, confirma, ajusta e cumpre um prazo', async ({ page }) => {
   await page.getByRole('button', { name: 'Marcar como cumprido' }).click();
   await expect(page.getByText('Prazo marcado como cumprido.')).toBeVisible();
   await expect(page.getByText('Cumpridos', { exact: true })).toBeVisible();
+});
+
+test('agenda e cancela um compromisso', async ({ page }) => {
+  const titulo = `Audiência FICTÍCIA ${String(Date.now())}`;
+  await page.goto('/prazos');
+  await page.getByRole('button', { name: 'Novo compromisso' }).click();
+  const dialogo = page.getByRole('dialog');
+  await dialogo.getByLabel('Título').fill(titulo);
+  // Daqui a alguns dias, dentro da janela de 30 dias da lista.
+  const data = new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+  await dialogo.getByLabel('Data').fill(data);
+  await dialogo.getByLabel('Hora (Brasília)').fill('14:00');
+  await semViolacoes(page);
+  await dialogo.getByRole('button', { name: 'Agendar' }).click();
+  await expect(page.getByText('Compromisso agendado.')).toBeVisible();
+  const item = page.getByRole('listitem').filter({ hasText: titulo });
+  await expect(item).toBeVisible();
+  await item.getByRole('button', { name: 'Cancelar' }).click();
+  await page.getByRole('dialog').getByLabel('Motivo do cancelamento').fill('audiência redesignada');
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancelar' }).click();
+  await expect(page.getByText('Compromisso cancelado.')).toBeVisible();
+  await expect(page.getByRole('listitem').filter({ hasText: titulo })).toHaveCount(0);
 });

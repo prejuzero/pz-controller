@@ -36,6 +36,15 @@ export interface PrazoManual {
   vencimentoConfirmado?: string;
 }
 
+/** Corpo do agendamento de compromisso (HU25). */
+export interface NovoCompromisso {
+  titulo: string;
+  dataHora: string;
+  local?: string;
+  processoId?: string;
+  lembretesMinutos?: number[];
+}
+
 /** Consultas dos prazos do escritório (HU24). As datas vêm prontas da API (motor). */
 export const consultasPrazos = (api: ClienteApi) => ({
   lista: (status: StatusDoPrazo) =>
@@ -57,6 +66,12 @@ export const consultasPrazos = (api: ClienteApi) => ({
       queryKey: [...chaves.prazos.todas, 'atos'] as const,
       queryFn: ({ signal }) => exigir(api.GET('/v1/tipos-de-ato', { signal })),
       staleTime: 5 * 60_000,
+    }),
+  compromissos: (de: string, ate: string) =>
+    queryOptions({
+      queryKey: [...chaves.prazos.todas, 'compromissos', de, ate] as const,
+      queryFn: ({ signal }) =>
+        exigir(api.GET('/v1/compromissos', { params: { query: { de, ate } }, signal })),
     }),
   detalhe: (id: string) =>
     queryOptions({
@@ -88,6 +103,25 @@ export const mutacoesPrazos = (api: ClienteApi, cache: QueryClient) => {
     cadastrar: {
       mutationFn: (body: PrazoManual) => exigir(api.POST('/v1/prazos', { body })),
       onSuccess: invalidar,
+    },
+    agendar: {
+      mutationFn: (body: NovoCompromisso) => exigir(api.POST('/v1/compromissos', { body })),
+      onSuccess: invalidar,
+    },
+    cancelarCompromisso: {
+      mutationFn: ({ id, motivo }: { id: string; motivo: string }) =>
+        exigir(
+          api.POST('/v1/compromissos/{id}/cancelar', {
+            params: { path: { id } },
+            body: { motivo },
+          }),
+        ),
+      onSuccess: invalidar,
+    },
+    /** Cadastro assistido: ato e prazo citado do texto colado (nunca data). */
+    analisar: {
+      mutationFn: (texto: string) =>
+        exigir(api.POST('/v1/assistente/analisar', { body: { texto } })),
     },
     /** Prévia do cadastro manual pelo motor, sem gravar. */
     simularNovo: {
