@@ -20,6 +20,7 @@ export type {
 export { ATO_DESCONHECIDO, CONFIANCA_MINIMA, decidir } from './domain/decisao.js';
 export type { Classificacao, RespostaDaIa } from './domain/decisao.js';
 export { ClassificacoesPostgres } from './infra/classificacoes-postgres.js';
+export type { ClassificacaoLida } from './infra/classificacoes-postgres.js';
 export {
   ClassificadorIaPlataforma,
   SaidaDaClassificacao,

@@ -113,11 +113,20 @@ import {
 } from '@pz/notificacoes';
 import { criarLogger, registrarErro } from '@pz/observability';
 import {
+  AjustarPrazo,
   AprovarVersaoDaTabela,
   CadastrarTipoDeAto,
+  CalcularPrazoParaProcesso,
+  CancelarPrazo,
+  ConfirmarPrazo,
+  ConsultarPrazo,
   ConsultarTabelaDePrazos,
+  CumprirPrazo,
   ImportarTabelaDePrazos,
+  ListarPrazos,
+  PrazosPostgres,
   ProporVersaoDaTabela,
+  ResolverPrazoAplicavel,
   TabelaPostgres,
   TiposDeAtoPostgres,
 } from '@pz/prazos';
@@ -168,6 +177,8 @@ import { GuardaDeLimite, JanelaRedis } from './http/limite.js';
 import { FiltroDeProblemas } from './http/problemas.js';
 import { NotificacoesController } from './notificacoes/notificacoes.controller.js';
 import { OpenApiController } from './openapi.controller.js';
+import { PrazosController } from './prazos/prazos.controller.js';
+import { processoNoCalendario } from './prazos/processo.js';
 import { TabelaPrazosController } from './prazos/tabela-prazos.controller.js';
 import { PrivacidadeController } from './privacidade/privacidade.controller.js';
 import { PublicacoesController } from './publicacoes/publicacoes.controller.js';
@@ -537,6 +548,46 @@ function provedoresDaTabelaDePrazos(d: DependenciasDaTabelaDePrazos): Provider[]
   ];
 }
 
+/** Ciclo de vida do prazo (HU24): o ajuste recalcula pelo motor com processo e calendário. */
+function provedoresDosPrazos(d: DependenciasDaTabelaDePrazos): Provider[] {
+  const prazos = new PrazosPostgres();
+  const deps = (relogio: Clock) => ({
+    unidade: d.unidade,
+    prazos,
+    trilha: d.trilha,
+    outbox: d.outbox,
+    relogio,
+  });
+  const comRelogio = <T>(classe: Type<T>, criar: (relogio: Clock) => T): Provider => ({
+    provide: classe,
+    inject: [RELOGIO],
+    useFactory: criar,
+  });
+  return [
+    { provide: ListarPrazos, useValue: new ListarPrazos(d.unidade, prazos) },
+    { provide: ConsultarPrazo, useValue: new ConsultarPrazo(d.unidade, prazos) },
+    comRelogio(ConfirmarPrazo, (r) => new ConfirmarPrazo(deps(r))),
+    comRelogio(CumprirPrazo, (r) => new CumprirPrazo(deps(r))),
+    comRelogio(CancelarPrazo, (r) => new CancelarPrazo(deps(r))),
+    {
+      provide: AjustarPrazo,
+      inject: [RELOGIO, ConsultarProcesso, ConsultarDiasNaoUteis],
+      useFactory: (
+        r: Clock,
+        processos: ConsultarProcesso<unknown>,
+        dias: ConsultarDiasNaoUteis<unknown>,
+      ) =>
+        new AjustarPrazo(
+          deps(r),
+          new CalcularPrazoParaProcesso(
+            processoNoCalendario(processos, dias),
+            new ResolverPrazoAplicavel(d.unidade, d.tabela),
+          ),
+        ),
+    },
+  ];
+}
+
 /** Casos de uso do calendário (HU13), ligados aos mesmos repositórios. */
 function provedoresDoCalendario(d: DependenciasDoCalendario): Provider[] {
   const comRelogio = <T>(classe: Type<T>, criar: (relogio: Clock) => T): Provider => ({
@@ -799,6 +850,13 @@ export class AppModule {
           outbox: new OutboxPostgres(),
         };
       });
+    const tabelaDePrazos: DependenciasDaTabelaDePrazos = opcoes.tabelaDePrazos ?? {
+      unidade: recursos.banco,
+      tipos: new TiposDeAtoPostgres(),
+      tabela: new TabelaPostgres(),
+      trilha: new TrilhaPostgres(),
+      outbox: new OutboxPostgres(),
+    };
     const provedores: Provider[] = [
       { provide: RecursosDaApi, useValue: recursos },
       ...provedoresDeNotificacoes(notificacoes),
@@ -1033,15 +1091,8 @@ export class AppModule {
           trilha: new TrilhaPostgres(),
         },
       ),
-      ...provedoresDaTabelaDePrazos(
-        opcoes.tabelaDePrazos ?? {
-          unidade: recursos.banco,
-          tipos: new TiposDeAtoPostgres(),
-          tabela: new TabelaPostgres(),
-          trilha: new TrilhaPostgres(),
-          outbox: new OutboxPostgres(),
-        },
-      ),
+      ...provedoresDaTabelaDePrazos(tabelaDePrazos),
+      ...provedoresDosPrazos(tabelaDePrazos),
       ...provedoresDoCadastro(cadastro),
       {
         provide: VerificarEmail,
@@ -1073,6 +1124,7 @@ export class AppModule {
         AdminController,
         CalendarioController,
         TabelaPrazosController,
+        PrazosController,
         TermosController,
         PrivacidadeController,
         PublicacoesController,

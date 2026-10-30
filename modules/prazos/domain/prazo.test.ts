@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { Prazo } from './prazo.js';
 
-import type { CalculoDoPrazo, NovoPrazo } from './prazo.js';
+import type { CalculoDoPrazo, NovoPrazo, StatusDoPrazo } from './prazo.js';
 import type { Uuid } from '@pz/kernel';
 
 // Dados FICTÍCIOS: o cálculo chega pronto (do motor); aqui só se testa o ciclo do agregado.
@@ -35,6 +35,8 @@ const novo = (parcial: Partial<NovoPrazo> = {}): NovoPrazo => ({
   origem: 'djen',
   responsavelId: null,
   jurisdicao: { lacunas: [] },
+  parametros: {},
+  classificacaoIncerta: false,
   ...parcial,
 });
 
@@ -119,5 +121,109 @@ describe('Prazo (HU16)', () => {
       expect(prazo.recalculavel).toBe(false);
       expect(prazo.recalcular(calculo('24', 'dois'), EVENTO, relogio)).toBe('sem-mudanca');
     }
+  });
+});
+
+describe('máquina de estados do prazo (HU24)', () => {
+  const USUARIO = '01a10e00-0000-7000-8000-00000000d001' as Uuid;
+  const com = (status: StatusDoPrazo, parcial: Partial<CalculoDoPrazo> = {}) =>
+    Prazo.restaurar({
+      ...Prazo.sugerir(novo({ calculo: { ...calculo('23', 'um'), ...parcial } }), TENANT, relogio)
+        .estado,
+      status,
+    });
+  const tipos = (p: Prazo) => p.retirarEventos().map((e) => e.tipo);
+
+  it('transições válidas: confirmar, cumprir, cancelar e vencer', () => {
+    const a = com('a-confirmar');
+    expect(a.confirmar(USUARIO, relogio).ok).toBe(true);
+    expect(a.estado).toMatchObject({ status: 'pendente', versaoOtimista: 2 });
+    expect(a.cumprir(USUARIO, relogio).ok).toBe(true);
+    expect(a.estado.status).toBe('cumprido');
+    expect(tipos(a)).toEqual(['PrazoConfirmado', 'PrazoCumprido']);
+
+    const c = com('pendente');
+    expect(c.cancelar('motivo do cancelamento', USUARIO, relogio).ok).toBe(true);
+    expect(c.estado).toMatchObject({ status: 'cancelado', motivoAjuste: 'motivo do cancelamento' });
+
+    for (const status of ['a-confirmar', 'pendente'] as const) {
+      const v = com(status);
+      expect(v.vencer(LocalDate.de(2027, 3, 23), relogio)).toBe(false);
+      expect(v.vencer(LocalDate.de(2027, 3, 24), relogio)).toBe(true);
+      expect(v.estado.status).toBe('vencido');
+      expect(v.retirarEventos()[0]?.payload).toMatchObject({ statusAnterior: status });
+    }
+  });
+
+  it('transições inválidas são recusadas sem mudar nada', () => {
+    const casos: [StatusDoPrazo, (p: Prazo) => { ok: boolean }][] = [
+      ['pendente', (p) => p.confirmar(USUARIO, relogio)],
+      ['a-confirmar', (p) => p.cumprir(USUARIO, relogio)],
+      ['cumprido', (p) => p.cancelar('motivo qualquer', USUARIO, relogio)],
+      ['vencido', (p) => p.cumprir(USUARIO, relogio)],
+      ['cancelado', (p) => p.confirmar(USUARIO, relogio)],
+    ];
+    for (const [status, acao] of casos) {
+      const p = com(status);
+      expect(acao(p).ok).toBe(false);
+      expect(p.estado).toMatchObject({ status, versaoOtimista: 1 });
+      expect(p.retirarEventos()).toEqual([]);
+    }
+    for (const status of ['cumprido', 'cancelado', 'vencido'] as const) {
+      expect(com(status).vencer(LocalDate.de(2030, 1, 1), relogio)).toBe(false);
+    }
+    expect(com('a-confirmar', { vencimento: null }).vencer(LocalDate.de(2030, 1, 1), relogio)).toBe(
+      false,
+    );
+  });
+
+  it('sem vencimento não confirma', () => {
+    const r = com('a-confirmar', { vencimento: null }).confirmar(USUARIO, relogio);
+    expect(!r.ok && r.erro.codigo).toBe('prazo-sem-vencimento');
+  });
+
+  it('ajuste mantém o status, guarda o motivo e emite PrazoAjustado', () => {
+    const p = com('pendente');
+    const r = p.ajustar(
+      {
+        calculo: calculo('25', 'manual'),
+        tipoAto: 'outro-ato',
+        ramo: 'civel',
+        vencimentoManual: true,
+        entrada: null,
+        parametros: {},
+      },
+      'data informada pelo cartório',
+      USUARIO,
+      relogio,
+    );
+    expect(r.ok).toBe(true);
+    expect(p.estado).toMatchObject({
+      status: 'pendente',
+      tipoAto: 'outro-ato',
+      vencimentoManual: true,
+      motivoAjuste: 'data informada pelo cartório',
+      versaoOtimista: 2,
+    });
+    expect(p.retirarEventos()[0]?.payload).toMatchObject({
+      vencimentoAnterior: '2027-03-23',
+      vencimentoNovo: '2027-03-25',
+      vencimentoManual: true,
+    });
+    expect(
+      com('cumprido').ajustar(
+        {
+          calculo: calculo('25', 'x'),
+          tipoAto: 'a',
+          ramo: null,
+          vencimentoManual: true,
+          entrada: null,
+          parametros: {},
+        },
+        'motivo qualquer',
+        USUARIO,
+        relogio,
+      ).ok,
+    ).toBe(false);
   });
 });

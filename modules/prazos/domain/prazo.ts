@@ -1,7 +1,7 @@
-import { AggregateRoot, gerarUuidV7 } from '@pz/kernel';
+import { AggregateRoot, Conflito, err, gerarUuidV7, ok } from '@pz/kernel';
 
 import type { Ramo, Unidade } from './tabela.js';
-import type { Clock, EventoDominio, Instant, LocalDate, Uuid } from '@pz/kernel';
+import type { Clock, EventoDominio, Instant, LocalDate, Result, Uuid } from '@pz/kernel';
 
 export const ORIGENS_DO_PRAZO = ['djen', 'manual', 'painel'] as const;
 export type OrigemDoPrazo = (typeof ORIGENS_DO_PRAZO)[number];
@@ -68,6 +68,12 @@ export interface EstadoDoPrazo {
   readonly statusCiencia: StatusDaCiencia;
   readonly responsavelId: Uuid | null;
   readonly jurisdicao: JurisdicaoDoPrazo;
+  /** Entrada do cálculo (ato, meio, referência, condições): o ajuste recalcula a partir dela. */
+  readonly parametros: Json;
+  /** Classificação de confiança baixa ou de revisão manual: a tela destaca. */
+  readonly classificacaoIncerta: boolean;
+  /** Último motivo de ajuste ou cancelamento; o histórico está na trilha. */
+  readonly motivoAjuste: string | null;
   readonly versaoOtimista: number;
 }
 
@@ -81,6 +87,8 @@ export interface NovoPrazo {
   readonly origem: OrigemDoPrazo;
   readonly responsavelId: Uuid | null;
   readonly jurisdicao: JurisdicaoDoPrazo;
+  readonly parametros: Json;
+  readonly classificacaoIncerta: boolean;
 }
 
 /** O que um recálculo mudou: nada, só a memória (mesmo vencimento) ou o vencimento. */
@@ -119,6 +127,7 @@ export class Prazo extends AggregateRoot {
       vencimentoManual: false,
       status: 'a-confirmar',
       statusCiencia: 'pendente',
+      motivoAjuste: null,
       versaoOtimista: 1,
     });
     prazo.registrarEvento({
@@ -189,5 +198,119 @@ export class Prazo extends AggregateRoot {
       },
     } satisfies EventoDominio);
     return 'vencimento';
+  }
+
+  /** Quem agiu: vai no evento (a trilha guarda o resto). */
+  #evento(tipo: string, relogio: Clock, payload: Record<string, Json>): void {
+    this.registrarEvento({
+      id: gerarUuidV7(relogio),
+      tipo,
+      versao: 1,
+      tenantId: this.#estado.tenantId,
+      agregadoId: this.id,
+      ocorridoEm: relogio.agora(),
+      payload: { prazoId: this.id, processoId: this.#estado.processoId, ...payload },
+    });
+  }
+
+  #transicao(
+    de: readonly StatusDoPrazo[],
+    para: StatusDoPrazo,
+    extra: Partial<EstadoDoPrazo> = {},
+  ): Result<void, Conflito> {
+    const atual = this.#estado.status;
+    if (!de.includes(atual)) {
+      return err(
+        new Conflito('transicao-invalida', `Prazo "${atual}" não pode passar a "${para}".`),
+      );
+    }
+    this.#estado = {
+      ...this.#estado,
+      ...extra,
+      status: para,
+      versaoOtimista: this.#estado.versaoOtimista + 1,
+    };
+    return ok(undefined);
+  }
+
+  /** O advogado confirma a data: "a confirmar" → pendente (CLAUDE.md, seção 2). */
+  confirmar(usuarioId: Uuid, relogio: Clock): Result<void, Conflito> {
+    if (this.#estado.calculo.vencimento === null) {
+      return err(
+        new Conflito('prazo-sem-vencimento', 'Informe o vencimento (ajuste) antes de confirmar.'),
+      );
+    }
+    const r = this.#transicao(['a-confirmar'], 'pendente');
+    if (r.ok) {
+      this.#evento('PrazoConfirmado', relogio, {
+        vencimento: iso(this.#estado.calculo.vencimento),
+        usuarioId,
+      });
+    }
+    return r;
+  }
+
+  /**
+   * Ajuste pelo advogado, com motivo: novo cálculo do motor (ato ou dias) ou data informada por
+   * ele ("definida manualmente", CLAUDE.md, seção 4.4). O status não muda: confirmar é outro passo.
+   */
+  ajustar(
+    ajuste: {
+      readonly calculo: CalculoDoPrazo;
+      readonly tipoAto: string;
+      readonly ramo: Ramo | null;
+      readonly vencimentoManual: boolean;
+      readonly entrada: Json;
+      readonly parametros: Json;
+    },
+    motivo: string,
+    usuarioId: Uuid,
+    relogio: Clock,
+  ): Result<void, Conflito> {
+    const antes = this.#estado.calculo.vencimento;
+    const atual = this.#estado.status;
+    const r = this.#transicao(['a-confirmar', 'pendente'], atual, {
+      ...ajuste,
+      motivoAjuste: motivo,
+    });
+    if (r.ok) {
+      this.#evento('PrazoAjustado', relogio, {
+        tipoAto: ajuste.tipoAto,
+        vencimentoAnterior: iso(antes),
+        vencimentoNovo: iso(ajuste.calculo.vencimento),
+        vencimentoManual: ajuste.vencimentoManual,
+        motivo,
+        usuarioId,
+      });
+    }
+    return r;
+  }
+
+  cumprir(usuarioId: Uuid, relogio: Clock): Result<void, Conflito> {
+    const r = this.#transicao(['pendente'], 'cumprido');
+    if (r.ok) this.#evento('PrazoCumprido', relogio, { usuarioId });
+    return r;
+  }
+
+  cancelar(motivo: string, usuarioId: Uuid, relogio: Clock): Result<void, Conflito> {
+    const r = this.#transicao(['a-confirmar', 'pendente'], 'cancelado', { motivoAjuste: motivo });
+    if (r.ok) this.#evento('PrazoCancelado', relogio, { motivo, usuarioId });
+    return r;
+  }
+
+  /**
+   * Passou o vencimento sem cumprimento (job diário). Vale também para o que nunca foi
+   * confirmado: um prazo vencido não pode ficar escondido como "a confirmar".
+   */
+  vencer(hoje: LocalDate, relogio: Clock): boolean {
+    const vencimento = this.#estado.calculo.vencimento;
+    if (!vencimento?.ehAntesDe(hoje)) return false;
+    const anterior = this.#estado.status;
+    if (!this.#transicao(['a-confirmar', 'pendente'], 'vencido').ok) return false;
+    this.#evento('PrazoVencido', relogio, {
+      vencimento: iso(vencimento),
+      statusAnterior: anterior,
+    });
+    return true;
   }
 }

@@ -1,4 +1,4 @@
-import type { JurisdicaoDoPrazo, Prazo } from '../domain/prazo.js';
+import type { JurisdicaoDoPrazo, Prazo, StatusDoPrazo } from '../domain/prazo.js';
 import type { Ramo, VersaoDaTabela } from '../domain/tabela.js';
 import type { LocalDate, Uuid } from '@pz/kernel';
 
@@ -91,4 +91,47 @@ export interface RepositorioDePrazos<Transacao> {
   ): Promise<Prazo[]>;
   /** Como sistema (sem RLS): tenants com algum prazo afetado. */
   tenantsAfetados(transacao: Transacao, alcance: AlcanceDaAlteracao): Promise<Uuid[]>;
+  /** Por vencimento (sem data por último) e id, depois do cursor. */
+  listar(transacao: Transacao, filtro: FiltroDePrazos): Promise<Prazo[]>;
+  /** Já há prazo da publicação no tenant (geração idempotente). */
+  existeDaPublicacao(transacao: Transacao, conteudoId: Uuid): Promise<boolean>;
+  /** Abertos com vencimento antes de `hoje`, por id. */
+  vencidos(transacao: Transacao, hoje: LocalDate, limite: number): Promise<Prazo[]>;
+  /** Como sistema (sem RLS): tenants com prazo aberto vencido antes de `hoje`. */
+  tenantsComVencidos(transacao: Transacao, hoje: LocalDate): Promise<Uuid[]>;
+}
+
+export interface FiltroDePrazos {
+  readonly status?: StatusDoPrazo;
+  readonly processoId?: Uuid;
+  readonly responsavelId?: Uuid;
+  readonly depoisDe?: { readonly vencimento: LocalDate | null; readonly id: Uuid };
+  readonly limite: number;
+}
+
+/** O que a classificação (HU21) disse do conteúdo, nunca uma data (ADR-008). */
+export interface ClassificacaoDoConteudo {
+  readonly tipoAto: string | null;
+  readonly situacao: 'ok' | 'a_confirmar' | 'revisao_manual';
+  readonly confianca: number | null;
+  readonly prazoCitado: {
+    readonly quantidade: number;
+    readonly unidade: 'dias' | 'dias-uteis' | 'horas' | 'meses' | 'anos';
+    readonly divergente: boolean;
+  } | null;
+}
+
+/** A publicação como chegou ao tenant corrente (publicacoes, ADR-014). */
+export interface DestinatarioDaPublicacao {
+  readonly processoId: Uuid | null;
+  readonly oabId: Uuid | null;
+  readonly dataDisponibilizacao: LocalDate;
+}
+
+/** Portas da geração automática (HU24), compostas nas apps pelas APIs dos outros módulos. */
+export interface FontesDaGeracao {
+  classificacao(conteudoId: Uuid): Promise<ClassificacaoDoConteudo | undefined>;
+  destinatario(conteudoId: Uuid): Promise<DestinatarioDaPublicacao | undefined>;
+  /** Usuário do advogado dono da OAB no tenant corrente. */
+  responsavelDaOab(oabId: Uuid): Promise<Uuid | undefined>;
 }

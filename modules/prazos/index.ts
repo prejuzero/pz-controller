@@ -58,11 +58,26 @@ export type {
   Unidade,
 } from './domain/tabela.js';
 export {
+  AjustarPrazo,
+  CancelarPrazo,
+  ConfirmarPrazo,
+  ConsultarPrazo,
+  CumprirPrazo,
+  EntradaDeAjuste,
+  EntradaDeCancelamento,
+  EntradaDeVersao,
+  GerarPrazoDaPublicacao,
+  ListarPrazos,
+  MarcarPrazosVencidos,
+} from './application/ciclo-de-vida.js';
+export type { AutorNoPrazo, NoTenant, ResultadoDaGeracao } from './application/ciclo-de-vida.js';
+export {
   CalcularPrazoParaProcesso,
   CriarPrazo,
   EntradaDoCalculoDoProcesso,
   lerAlteracaoDoCalendario,
   LOTE_DO_RECALCULO,
+  prazoDetalhado,
   prazoListado,
   RecalcularPrazosPorCalendario,
   SugestaoDePrazo,
@@ -78,7 +93,10 @@ export type {
 export { TIPOS_DE_DIA } from './application/portas.js';
 export type {
   AlcanceDaAlteracao,
+  ClassificacaoDoConteudo,
+  DestinatarioDaPublicacao,
   DiaDoCalendario,
+  FontesDaGeracao,
   LocalizadorDoProcesso,
   ProcessoNoCalendario,
   RepositorioDePrazos,

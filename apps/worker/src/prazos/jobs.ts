@@ -29,3 +29,18 @@ export type DadosDoRecalculo = z.infer<typeof recalcularPrazosJob.dados>;
 
 export const chaveDoLote = (dados: DadosDoRecalculo) =>
   `${dados.evento.id}-${dados.tenantId}-${dados.depoisDe ?? 'inicio'}`;
+
+/** Gera o prazo de uma publicação recebida pelo tenant (HU24); idempotente por publicação. */
+export const gerarPrazoJob = definirJob({
+  fila: 'prazos',
+  tipo: 'prazos.gerar',
+  dados: z.object({ conteudoId: z.uuid(), tenantId: z.uuid() }).strict(),
+});
+
+/** Marca os vencidos de todos os tenants (HU24): lista como sistema, grava em cada tenant. */
+export const marcarVencidosJob = definirJob({
+  fila: 'prazos',
+  tipo: 'prazos.marcar-vencidos',
+  dados: z.object({}).strict(),
+  global: true,
+});

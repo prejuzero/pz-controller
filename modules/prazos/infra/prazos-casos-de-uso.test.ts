@@ -1,6 +1,16 @@
-import { LocalDate, OutboxEmMemoria } from '@pz/kernel';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { FixedClock, Instant, LocalDate, OutboxEmMemoria } from '@pz/kernel';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import {
+  AjustarPrazo,
+  CancelarPrazo,
+  ConfirmarPrazo,
+  ConsultarPrazo,
+  CumprirPrazo,
+  GerarPrazoDaPublicacao,
+  ListarPrazos,
+  MarcarPrazosVencidos,
+} from '../application/ciclo-de-vida.js';
 import {
   CalcularPrazoParaProcesso,
   CriarPrazo,
@@ -15,7 +25,12 @@ import { aprovada, relogio } from '../teste/ficticios.js';
 
 import { PrazosEmMemoria, TabelaEmMemoria } from './em-memoria.js';
 
-import type { DiaDoCalendario, ProcessoNoCalendario } from '../application/portas.js';
+import type {
+  ClassificacaoDoConteudo,
+  DestinatarioDaPublicacao,
+  DiaDoCalendario,
+  ProcessoNoCalendario,
+} from '../application/portas.js';
 import type { AutorDoPrazo } from '../application/prazos.js';
 import type { StatusDoPrazo } from '../domain/prazo.js';
 import type { ConteudoDaVersao } from '../domain/tabela.js';
@@ -495,5 +510,340 @@ describe('recálculo por mudança de calendário (HU16, PZ-142)', () => {
 
   it('recusa evento fora do contrato', () => {
     expect(() => lerAlteracaoDoCalendario({ tenantId: TENANT, payload: {} })).toThrow();
+  });
+});
+
+describe('ciclo de vida do prazo (HU24, PZ-169)', () => {
+  const USUARIO = '01a10e00-0000-7000-8000-00000000d001' as Uuid;
+  const quem = { usuarioId: USUARIO, canal: 'portal' as const };
+  const deps = () => ({ unidade: outbox, prazos, trilha, outbox, relogio: relogio() });
+
+  it('confirma, ajusta com motivo, cumpre: trilha e eventos em cada passo', async () => {
+    const p = await criado();
+    const confirmar = new ConfirmarPrazo(deps());
+    const ajustar = new AjustarPrazo(deps(), calcular);
+    const cumprir = new CumprirPrazo(deps());
+    const c = await confirmar.executar(quem, p.id, { versao: 1 });
+    expect(c.ok && c.valor).toMatchObject({ status: 'pendente', versao: 2 });
+
+    const semMotivo = await ajustar.executar(quem, p.id, { versao: 2, motivo: 'curto', dias: 10 });
+    expect(!semMotivo.ok && semMotivo.erro.codigo).toBe('validacao');
+    const nada = await ajustar.executar(quem, p.id, { versao: 2, motivo: 'sem nada para ajustar' });
+    expect(!nada.ok && nada.erro.codigo).toBe('validacao');
+
+    // Dias diferentes: recalcula pelo motor (prazo do texto prevalece).
+    const a = await ajustar.executar(quem, p.id, {
+      versao: 2,
+      motivo: 'o despacho fixou dez dias',
+      dias: 10,
+    });
+    expect(a.ok && a.valor).toMatchObject({
+      status: 'pendente',
+      dias: 10,
+      vencimento: '2027-03-16',
+      vencimentoManual: false,
+      motivoAjuste: 'o despacho fixou dez dias',
+      versao: 3,
+    });
+    // Vencimento informado: fica definido manualmente.
+    const m = await ajustar.executar(quem, p.id, {
+      versao: 3,
+      motivo: 'certidão do cartório com outra data',
+      vencimento: '2027-03-19',
+    });
+    expect(m.ok && m.valor).toMatchObject({
+      vencimento: '2027-03-19',
+      vencimentoManual: true,
+      fimDoPrazo: null,
+    });
+    const f = await cumprir.executar(quem, p.id, { versao: 4 });
+    expect(f.ok && f.valor.status).toBe('cumprido');
+
+    expect(trilha.registros.map((r) => r.tipo)).toEqual([
+      'prazos.prazo-sugerido',
+      'prazos.prazo-confirmado',
+      'prazos.prazo-ajustado',
+      'prazos.prazo-ajustado',
+      'prazos.prazo-cumprido',
+    ]);
+    const tipos = (await eventosNoOutbox()).map((e) => e.tipo);
+    expect(tipos).toEqual([
+      'PrazoSugerido',
+      'PrazoConfirmado',
+      'PrazoAjustado',
+      'PrazoAjustado',
+      'PrazoCumprido',
+    ]);
+  });
+
+  it('versão desatualizada ou transição inválida: conflito (409) sem gravar', async () => {
+    const p = await criado();
+    const confirmar = new ConfirmarPrazo(deps());
+    const cumprir = new CumprirPrazo(deps());
+    const velha = await confirmar.executar(quem, p.id, { versao: 7 });
+    expect(!velha.ok && velha.erro.codigo).toBe('versao-desatualizada');
+    const invalida = await cumprir.executar(quem, p.id, { versao: 1 });
+    expect(!invalida.ok && invalida.erro.codigo).toBe('transicao-invalida');
+    const inexistente = await confirmar.executar(quem, OUTRO_TENANT, { versao: 1 });
+    expect(!inexistente.ok && inexistente.erro.codigo).toBe('prazo-inexistente');
+    // Outra gravação entre a leitura e a escrita.
+    const atualizar = vi.spyOn(prazos, 'atualizar').mockResolvedValueOnce(false);
+    const r = await confirmar.executar(quem, p.id, { versao: 1 });
+    atualizar.mockRestore();
+    expect(!r.ok && r.erro.codigo).toBe('versao-desatualizada');
+    expect(trilha.registros.map((x) => x.tipo)).toEqual(['prazos.prazo-sugerido']);
+  });
+
+  it('cancela com motivo; prazo sem parâmetros só aceita vencimento informado', async () => {
+    const p = await criado();
+    const cancelar = new CancelarPrazo(deps());
+    const sem = await cancelar.executar(quem, p.id, { versao: 1 });
+    expect(!sem.ok && sem.erro.codigo).toBe('validacao');
+    const r = await cancelar.executar(quem, p.id, {
+      versao: 1,
+      motivo: 'intimação em duplicidade',
+    });
+    expect(r.ok && r.valor.status).toBe('cancelado');
+
+    const outro = await criado();
+    await outbox.executar(async (tx) => {
+      const atual = await prazos.buscar(tx, outro.id);
+      if (atual === undefined) throw new Error('sem prazo');
+      await prazos.atualizar(tx, Prazo.restaurar({ ...atual.estado, parametros: {} }), 1);
+    });
+    const ajustar = new AjustarPrazo(deps(), calcular);
+    const a = await ajustar.executar(quem, outro.id, { versao: 1, motivo: 'mudou o ato', dias: 3 });
+    expect(!a.ok && a.erro.codigo).toBe('prazo-sem-parametros');
+    const consultar = new ConsultarPrazo(outbox, prazos);
+    const detalhe = await consultar.executar(outro.id);
+    expect(detalhe.ok && detalhe.valor).toMatchObject({ id: outro.id, parametros: {} });
+    const nenhum = await consultar.executar(OUTRO_TENANT);
+    expect(nenhum.ok).toBe(false);
+  });
+
+  it('lista por vencimento com cursor e filtro de status', async () => {
+    await criado();
+    await criado({ dataDeReferencia: '2027-03-08' });
+    await criado({ ramo: undefined });
+    const listar = new ListarPrazos(outbox, prazos);
+    const a = await listar.executar({ limite: '2' });
+    if (!a.ok) throw a.erro;
+    expect(a.valor.itens.map((i) => i.vencimento)).toEqual(['2027-03-23', '2027-03-30']);
+    const b = await listar.executar({ limite: '2', cursor: a.valor.proximoCursor });
+    expect(b.ok && b.valor.itens.map((i) => i.vencimento)).toEqual([null]);
+    expect(b.ok && b.valor.proximoCursor).toBeNull();
+    const filtro = await listar.executar({ status: 'pendente' });
+    expect(filtro.ok && filtro.valor.itens).toEqual([]);
+    for (const cursor of ['nao-e-json', Buffer.from('{"v":1}').toString('base64url')]) {
+      const r = await listar.executar({ cursor });
+      expect(!r.ok && r.erro.codigo).toBe('validacao');
+    }
+  });
+
+  it('job diário marca vencidos os abertos depois do vencimento, por tenant', async () => {
+    const p = await criado();
+    const confirmado = await comEstado(p.id, 'pendente');
+    const tarde = new FixedClock(Instant.deIso('2027-03-24T07:00:00.000Z'));
+    const marcar = new MarcarPrazosVencidos(outbox, (_t, trabalho) => trabalho(), {
+      ...deps(),
+      relogio: tarde,
+    });
+    expect(await marcar.executar()).toEqual({ tenants: 1, vencidos: 2 });
+    const depois = await outbox.executar((tx) => prazos.buscar(tx, confirmado));
+    expect(depois?.estado.status).toBe('vencido');
+    expect(trilha.registros.filter((r) => r.tipo === 'prazos.prazo-vencido')).toHaveLength(2);
+    expect(await marcar.executar()).toEqual({ tenants: 0, vencidos: 0 });
+  });
+});
+
+describe('geração automática a partir da publicação (HU24, PZ-168)', () => {
+  const CONTEUDO = '01a10e00-0000-7000-8000-0000000c0aaa' as Uuid;
+  const OAB = '01a10e00-0000-7000-8000-00000000ab01' as Uuid;
+  const ADVOGADO = '01a10e00-0000-7000-8000-00000000ad01' as Uuid;
+  let classificacao: ClassificacaoDoConteudo | undefined;
+  let destinatario: DestinatarioDaPublicacao | undefined;
+  const gerar = () =>
+    new GerarPrazoDaPublicacao(
+      outbox,
+      prazos,
+      {
+        classificacao: () => Promise.resolve(classificacao),
+        destinatario: () => Promise.resolve(destinatario),
+        responsavelDaOab: (id) => Promise.resolve(id === OAB ? ADVOGADO : undefined),
+      },
+      calcular,
+      criar,
+    );
+  beforeEach(() => {
+    classificacao = { tipoAto: 'ato-ficticio', situacao: 'ok', confianca: 0.97, prazoCitado: null };
+    destinatario = { processoId: PROCESSO, oabId: OAB, dataDisponibilizacao: d('2027-03-01') };
+  });
+
+  it('gera "a confirmar" pelo DJEN, com o responsável da OAB, uma vez só', async () => {
+    expect(await gerar().executar(TENANT, CONTEUDO)).toBe('criado');
+    expect(await gerar().executar(TENANT, CONTEUDO)).toBe('ja-existe');
+    const [prazo] = await outbox.executar((tx) => prazos.listar(tx, { limite: 10 }));
+    expect(prazo?.estado).toMatchObject({
+      origem: 'djen',
+      status: 'a-confirmar',
+      responsavelId: ADVOGADO,
+      publicacaoConteudoId: CONTEUDO,
+      classificacaoIncerta: false,
+    });
+  });
+
+  it('ato desconhecido ou confiança baixa também geram, com destaque', async () => {
+    classificacao = {
+      tipoAto: null,
+      situacao: 'revisao_manual',
+      confianca: null,
+      prazoCitado: null,
+    };
+    expect(await gerar().executar(TENANT, CONTEUDO)).toBe('criado');
+    const [prazo] = await outbox.executar((tx) => prazos.listar(tx, { limite: 10 }));
+    expect(prazo?.estado).toMatchObject({ tipoAto: 'desconhecido', classificacaoIncerta: true });
+  });
+
+  it('prazo citado no texto vira o prazo do ato; divergente fica de fora', async () => {
+    classificacao = {
+      tipoAto: 'ato-sem-tabela',
+      situacao: 'ok',
+      confianca: 0.6,
+      prazoCitado: { quantidade: 5, unidade: 'dias-uteis', divergente: false },
+    };
+    expect(await gerar().executar(TENANT, CONTEUDO)).toBe('criado');
+    const [prazo] = await outbox.executar((tx) => prazos.listar(tx, { limite: 10 }));
+    expect(prazo?.estado).toMatchObject({
+      classificacaoIncerta: true,
+      parametros: { prazoNoTexto: { dias: 5, unidade: 'dias' } },
+    });
+  });
+
+  it('não gera: sem classificação, sem processo, ou ato seguro sem prazo (mero expediente)', async () => {
+    classificacao = undefined;
+    expect(await gerar().executar(TENANT, CONTEUDO)).toBe('sem-classificacao');
+    classificacao = {
+      tipoAto: 'ato-sem-tabela',
+      situacao: 'ok',
+      confianca: 0.99,
+      prazoCitado: null,
+    };
+    // Rito conhecido (trabalhista), ato seguro, sem linha na tabela nem prazo no texto.
+    destinatario = { processoId: PROCESSO_TRT, oabId: null, dataDisponibilizacao: d('2027-03-01') };
+    expect(await gerar().executar(TENANT, CONTEUDO)).toBe('sem-prazo-aplicavel');
+    destinatario = { processoId: null, oabId: null, dataDisponibilizacao: d('2027-03-01') };
+    expect(await gerar().executar(TENANT, CONTEUDO)).toBe('sem-processo');
+    destinatario = undefined;
+    await expect(gerar().executar(TENANT, CONTEUDO)).rejects.toThrow('sem destinatário');
+  });
+});
+
+describe('ciclo de vida: entradas e filtros (HU24)', () => {
+  const quem = { usuarioId: '01a10e00-0000-7000-8000-00000000d001' as Uuid, canal: 'app' as const };
+  const deps = () => ({ unidade: outbox, prazos, trilha, outbox, relogio: relogio() });
+
+  it('recusa corpo inválido em cada ação e data inválida no ajuste', async () => {
+    const p = await criado();
+    for (const acao of [
+      new ConfirmarPrazo(deps()),
+      new CumprirPrazo(deps()),
+      new CancelarPrazo(deps()),
+    ]) {
+      const r = await acao.executar(quem, p.id, { versao: 'um' });
+      expect(!r.ok && r.erro.codigo).toBe('validacao');
+    }
+    const r = await new AjustarPrazo(deps(), calcular).executar(quem, p.id, {
+      versao: 1,
+      motivo: 'data errada no ajuste',
+      vencimento: '31/03/2027',
+    });
+    expect(!r.ok && r.erro.codigo).toBe('validacao');
+  });
+
+  it('ajusta ramo e unidade pelo motor; processo inválido no recálculo vira erro', async () => {
+    const p = await criado({ ramo: undefined });
+    const ajustar = new AjustarPrazo(deps(), calcular);
+    const r = await ajustar.executar(quem, p.id, {
+      versao: 1,
+      motivo: 'o processo é cível comum',
+      ramo: 'civel',
+      dias: 5,
+      unidade: 'dias',
+    });
+    expect(r.ok && r.valor).toMatchObject({ ramo: 'civel', dias: 5, situacao: 'calculado' });
+    const manual = await ajustar.executar(quem, p.id, {
+      versao: 2,
+      motivo: 'data do cartório com ato e ramo',
+      vencimento: '2027-03-12',
+      tipoAto: 'outro-ato',
+      ramo: 'civel',
+      dias: 4,
+      unidade: 'dias',
+    });
+    expect(manual.ok && manual.valor).toMatchObject({ tipoAto: 'outro-ato', dias: 4 });
+    const outro = await criado();
+    await outbox.executar(async (tx) => {
+      const atual = await prazos.buscar(tx, outro.id);
+      if (atual === undefined) throw new Error('sem prazo');
+      await prazos.atualizar(tx, Prazo.restaurar({ ...atual.estado, processoId: OUTRO_TENANT }), 1);
+    });
+    const semProcesso = await ajustar.executar(quem, outro.id, {
+      versao: 1,
+      motivo: 'mudou o ato',
+      dias: 3,
+    });
+    expect(!semProcesso.ok && semProcesso.erro.codigo).toBe('processo-inexistente');
+  });
+
+  it('lista por processo e responsável; cursor do último sem vencimento', async () => {
+    const r = await criar.executar(
+      await sugerir({ ramo: undefined }),
+      { origem: 'manual', responsavelId: OUTRO_TENANT, publicacaoConteudoId: null },
+      autor,
+    );
+    if (!r.ok) throw r.erro;
+    await criado();
+    const listar = new ListarPrazos(outbox, prazos);
+    const doResponsavel = await listar.executar({
+      responsavelId: OUTRO_TENANT,
+      processoId: PROCESSO,
+    });
+    expect(doResponsavel.ok && doResponsavel.valor.itens.map((i) => i.id)).toEqual([r.valor.id]);
+    const cursor = Buffer.from(JSON.stringify({ v: null, id: r.valor.id })).toString('base64url');
+    const depois = await listar.executar({ cursor });
+    expect(depois.ok && depois.valor.itens).toEqual([]);
+    const invalida = await listar.executar({ limite: 'mil' });
+    expect(!invalida.ok && invalida.erro.codigo).toBe('validacao');
+  });
+
+  it('geração: OAB sem advogado fica sem responsável; erro do cálculo lança', async () => {
+    const gerar = (destinatario: DestinatarioDaPublicacao) =>
+      new GerarPrazoDaPublicacao(
+        outbox,
+        prazos,
+        {
+          classificacao: () =>
+            Promise.resolve({
+              tipoAto: 'ato-ficticio',
+              situacao: 'a_confirmar',
+              confianca: 0.9,
+              prazoCitado: null,
+            }),
+          destinatario: () => Promise.resolve(destinatario),
+          responsavelDaOab: () => Promise.resolve(undefined),
+        },
+        calcular,
+        criar,
+      );
+    const conteudo = '01a10e00-0000-7000-8000-0000000c0bbb' as Uuid;
+    const base = { oabId: OUTRO_TENANT, dataDisponibilizacao: d('2027-03-01') };
+    expect(await gerar({ ...base, processoId: PROCESSO }).executar(TENANT, conteudo)).toBe(
+      'criado',
+    );
+    const [prazo] = await outbox.executar((tx) => prazos.listar(tx, { limite: 10 }));
+    expect(prazo?.estado).toMatchObject({ responsavelId: null, classificacaoIncerta: true });
+    await expect(
+      gerar({ ...base, processoId: OUTRO_TENANT }).executar(TENANT, OUTRO_TENANT),
+    ).rejects.toThrow();
   });
 });
