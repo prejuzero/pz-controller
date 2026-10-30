@@ -115,3 +115,19 @@ describe('eventos', () => {
     expect(() => catalogoDeEventos(v1, v1)).toThrow('PrazoConfirmado@1');
   });
 });
+
+describe('FiltrosBusca (HU28)', () => {
+  it('período: atalho ou intervalo, nunca os dois; OAB com UF', async () => {
+    const { FiltrosBusca } = await import('./busca.js');
+    const ok = (corpo: unknown) => FiltrosBusca.esquema.safeParse(corpo).success;
+    expect(ok({ periodo: { atalho: 'hoje' } })).toBe(true);
+    expect(ok({ periodo: { de: '2026-01-01', ate: '2026-01-31', campoData: 'inicio' } })).toBe(
+      true,
+    );
+    expect(ok({ periodo: { atalho: 'hoje', de: '2026-01-01' } })).toBe(false);
+    expect(ok({ periodo: { atalho: 'hoje', ate: '2026-01-01' } })).toBe(false);
+    expect(ok({ oab: 'GO12345' })).toBe(true);
+    expect(ok({ oab: '12345' })).toBe(false);
+    expect(ok({ desconhecido: 1 })).toBe(false);
+  });
+});

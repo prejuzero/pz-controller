@@ -1,0 +1,32 @@
+{
+  "name": "@pz/busca",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Busca avançada e busca rápida (HU28): orquestra cadastro, prazos e publicações.",
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "scripts": {
+    "lint": "eslint --max-warnings=0 .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@pz/cadastro": "workspace:*",
+    "@pz/contracts": "workspace:*",
+    "@pz/kernel": "workspace:*",
+    "@pz/prazos": "workspace:*",
+    "@pz/publicacoes": "workspace:*",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@pz/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "@vitest/coverage-v8": "5.0.4",
+    "eslint": "10.12.0",
+    "typescript": "6.0.3",
+    "vitest": "5.0.4",
+    "fast-check": "4.10.2"
+  }
+}

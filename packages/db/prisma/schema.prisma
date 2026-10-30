@@ -653,6 +653,8 @@ model Processo {
   @@unique([tenantId, numeroCnj])
   @@unique([tenantId, id])
   @@index([tenantId, clienteId])
+  @@index([tenantId, tribunal])
+  /// GIN trigrama em orgao (busca parcial, HU28): só na migração, o Prisma não o modela.
   @@map("processo")
 }
 
@@ -963,6 +965,7 @@ model PublicacaoConteudo {
   destinatarios PublicacaoDestinatario[]
 
   @@id([id, capturadoEm])
+  @@index([dataDisponibilizacao, id])
   @@map("publicacao_conteudo")
 }
 
@@ -1000,6 +1003,7 @@ model PublicacaoDestinatario {
   @@id([tenantId, conteudoId])
   @@index([tenantId, recebidaEm])
   @@index([tenantId, processoId])
+  @@index([tenantId, oabId])
   @@map("publicacao_destinatario")
 }
 
@@ -1070,6 +1074,8 @@ model Prazo {
   @@index([tenantId, status])
   @@index([tenantId, responsavelId, vencimento])
   @@index([tenantId, processoId])
+  @@index([tenantId, inicio])
+  @@index([tenantId, statusCiencia, vencimento])
   @@map("prazo")
 }
 

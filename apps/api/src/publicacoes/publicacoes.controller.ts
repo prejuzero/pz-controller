@@ -13,7 +13,8 @@ import type { PublicacaoDoTenant } from '@pz/publicacoes';
 const Id = z.uuid();
 const idDe = (id: string) => validar(Id, id) as Uuid;
 
-const listada = (p: PublicacaoDoTenant): Contrato => ({
+/** Publicação do módulo para o contrato (instantes em ISO; sem ids internos de OAB e leitor). */
+export const listada = (p: PublicacaoDoTenant): Contrato => ({
   id: p.id,
   fonte: p.fonte,
   idExterno: p.idExterno,

@@ -62,6 +62,12 @@ export const chaves = {
     linhaDoTempo: () => [...chaves.prazos.todas, 'dashboard', 'linha-do-tempo'] as const,
     proximos: () => [...chaves.prazos.todas, 'dashboard', 'proximos'] as const,
   },
+  busca: {
+    todas: ['busca'] as const,
+    resultado: (recurso: string, filtros: object) =>
+      [...chaves.busca.todas, recurso, filtros] as const,
+    rapida: (texto: string) => [...chaves.busca.todas, 'rapida', texto] as const,
+  },
   publicacoes: {
     todas: ['publicacoes'] as const,
     lista: (filtros: object) => [...chaves.publicacoes.todas, 'lista', filtros] as const,

@@ -13,6 +13,20 @@ export class AdvogadosEmMemoria implements RepositorioDeAdvogados<TransacaoEmMem
 
   constructor(private readonly relogio: Clock) {}
 
+  oabsDoNumero(
+    _tx: TransacaoEmMemoria,
+    uf: string,
+    numero: string,
+  ): Promise<{ oabId: Uuid; usuarioId: Uuid }[]> {
+    return Promise.resolve(
+      [...this.#advogados.values()].flatMap((a) =>
+        a.oabs
+          .filter((o) => o.ativa && o.uf === uf && o.numero === numero)
+          .map((o) => ({ oabId: o.id, usuarioId: a.usuarioId })),
+      ),
+    );
+  }
+
   #oabAtivaEmUso(oab: Oab): boolean {
     return [...this.#advogados.values()].some((a) =>
       a.oabs.some((o) => o.ativa && o.numero === oab.numero && o.uf === oab.uf),

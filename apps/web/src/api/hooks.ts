@@ -6,6 +6,7 @@ import { createContext, useContext } from 'react';
 import { permite, type Exigencia } from '../permissoes';
 
 import { consultasAdmin, mutacoesAdmin } from './admin';
+import { consultasBusca, type FiltrosDaTela } from './busca';
 import { consultasCadastro, mutacoesCadastro } from './cadastro';
 import { consultasCalendario, mutacoesCalendario } from './calendario';
 import { consultasCaptura } from './captura';
@@ -169,6 +170,11 @@ function useMutacoesPrazos() {
 }
 export const usePrazos = (filtro: FiltroDaLista) =>
   useInfiniteQuery(consultasPrazos(useApi()).lista(filtro));
+export const useBuscaDePrazos = (filtros: FiltrosDaTela, ativa: boolean) =>
+  useInfiniteQuery({ ...consultasBusca(useApi()).prazos(filtros), enabled: ativa });
+export const useBuscaDePublicacoes = (filtros: FiltrosDaTela, ativa: boolean) =>
+  useInfiniteQuery({ ...consultasBusca(useApi()).publicacoes(filtros), enabled: ativa });
+export const useBuscaRapida = (texto: string) => useQuery(consultasBusca(useApi()).rapida(texto));
 export const useResumoDoDashboard = () => useQuery(consultasPrazos(useApi()).resumo());
 export const useLinhaDoTempo = () => useQuery(consultasPrazos(useApi()).linhaDoTempo());
 export const useProximosPrazos = () => useQuery(consultasPrazos(useApi()).proximos());

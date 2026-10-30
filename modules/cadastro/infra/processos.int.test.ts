@@ -4,6 +4,7 @@ import { subirBancoDeTeste } from '@pz/db/teste';
 import { FixedClock, gerarUuidV7, Instant } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { ProcessosParaBusca } from '../application/busca.js';
 import { CadastrarCliente, ListarClientes, RemoverCliente } from '../application/clientes.js';
 import {
   AlterarCobertura,
@@ -104,6 +105,14 @@ describe('processos e clientes no PostgreSQL (HU12)', () => {
     const contar = new ContarProcessos(banco, new ProcessosPostgres(relogio));
     expect(await noTenant(beto, () => contar.executar({}))).toBeGreaterThanOrEqual(1);
     expect(await noTenant(beto, () => contar.executar({ tribunal: 'NENHUM' }))).toBe(0);
+    // Busca (HU28): número parcial, tribunal e órgão; isolado por tenant.
+    const paraBusca = new ProcessosParaBusca(banco, new ProcessosPostgres(relogio));
+    const ids = await noTenant(beto, () => paraBusca.executar({ numeroCnj: '000000168' }));
+    expect(ids.ok && ids.valor).toHaveLength(1);
+    const porOrgao = await noTenant(beto, () => paraBusca.executar({ orgao: 'ÓRGÃO INEXISTENTE' }));
+    expect(porOrgao.ok && porOrgao.valor).toEqual([]);
+    const doOutro = await noTenant(ana, () => paraBusca.executar({ numeroCnj: '000000168' }));
+    expect(doOutro.ok && doOutro.valor).toHaveLength(1);
   });
 
   it('cliente de outro tenant não pode ser vinculado, nem pela FK', async () => {

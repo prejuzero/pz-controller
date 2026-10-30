@@ -23,3 +23,4 @@ Formato MADR simplificado. ADR aceito não é editado: para mudar uma decisão, 
 | [ADR-017](0017-armazenamento-local-rustfs.md)               | Armazenamento S3-compatível local: RustFS no lugar do MinIO                      | Aceito   |
 | [ADR-018](0018-dados-pessoais-fora-do-hash-da-auditoria.md) | Dados pessoais da auditoria fora do hash da cadeia                               | Aceito   |
 | [ADR-019](0019-extrator-de-texto.md)                        | Extração de texto de documentos atrás da porta ExtratorDeTexto                   | Proposto |
+| [ADR-020](0020-busca-como-orquestrador.md)                  | Módulo busca como orquestrador, sem modelo de leitura próprio no MVP             | Proposto |

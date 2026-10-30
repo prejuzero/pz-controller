@@ -78,4 +78,34 @@ export interface RepositorioDeLeitura<Transacao> {
   marcarLida(transacao: Transacao, id: Uuid, usuarioId: Uuid, em: Instant): Promise<boolean>;
   /** Ainda não lidas no tenant (card "novas publicações" do dashboard, HU26). */
   contarNovas(transacao: Transacao): Promise<number>;
+  /** Busca avançada (HU28): pela disponibilização e id, na ordem pedida. */
+  buscarComFiltros(
+    transacao: Transacao,
+    filtro: FiltroDaBuscaDePublicacoes,
+  ): Promise<PublicacaoDoTenant[]>;
+  /** Total da busca até `teto`. */
+  contarNaBusca(
+    transacao: Transacao,
+    filtro: FiltroDaBuscaDePublicacoes,
+    teto: number,
+  ): Promise<number>;
+  /** Conteúdos do tenant cujo teor atende ao texto (filtro de prazos por teor), até `limite`. */
+  conteudosComTexto(transacao: Transacao, texto: string, limite: number): Promise<Uuid[]>;
+}
+
+/**
+ * Busca avançada de publicações (HU28). `undefined` não filtra; lista vazia não encontra nada.
+ * Os ids de processo e de OAB chegam resolvidos pelo módulo busca (cadastro).
+ */
+export interface FiltroDaBuscaDePublicacoes {
+  readonly processoIds?: readonly Uuid[];
+  readonly oabIds?: readonly Uuid[];
+  /** Texto livre no teor (busca textual em português, sem acentos). */
+  readonly textos?: readonly string[];
+  /** Data de disponibilização (AAAA-MM-DD), inclusive. */
+  readonly de?: string;
+  readonly ate?: string;
+  readonly ordem: 'asc' | 'desc';
+  readonly depoisDe?: { readonly data: string; readonly id: Uuid };
+  readonly limite: number;
 }

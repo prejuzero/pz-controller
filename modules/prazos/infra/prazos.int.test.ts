@@ -10,9 +10,10 @@ import {
 } from '@pz/calendario';
 import { Banco, BancoSistema, executarNoTenant, OutboxPostgres } from '@pz/db';
 import { subirBancoDeTeste } from '@pz/db/teste';
-import { FixedClock, gerarUuidV7, Instant } from '@pz/kernel';
+import { FixedClock, gerarUuidV7, Instant, LocalDate } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { BuscarPrazos } from '../application/busca.js';
 import {
   AjustarPrazo,
   ConfirmarPrazo,
@@ -518,5 +519,107 @@ describe('dashboard no PostgreSQL (HU26, PZ-176)', () => {
     }
     tempos.sort((a, b) => a - b);
     expect(tempos[Math.ceil(tempos.length * 0.95) - 1]).toBeLessThan(300);
+  });
+});
+
+describe('busca avançada no PostgreSQL (HU28, PZ-183)', () => {
+  const BUSCA = '01a10e00-0000-7000-8000-0000000f0e04' as Uuid;
+  const PROC_A = '01a10e00-0000-7000-8000-0000000f0c04' as Uuid;
+  const PROC_B = '01a10e00-0000-7000-8000-0000000f0c05' as Uuid;
+  const CONTEUDO = '01a10e00-0000-7000-8000-0000000f0aa4' as Uuid;
+  const r = new FixedClock(Instant.deIso('2030-09-02T15:00:00.000Z'));
+  const d = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
+  const data = (iso: string) => {
+    const l = LocalDate.analisar(iso);
+    if (!l.ok) throw l.erro;
+    return l.valor;
+  };
+  const ids: Uuid[] = [];
+
+  beforeAll(async () => {
+    const linha = (i: number, extra: Record<string, unknown>) => {
+      const id = gerarUuidV7(r);
+      ids.push(id);
+      return {
+        id,
+        tenantId: BUSCA,
+        processoId: PROC_A,
+        tipoAto: 'contestacao',
+        memoriaCalculo: {},
+        origem: 'djen' as const,
+        status: 'pendente' as const,
+        jurisdicao: { tribunal: 'TJGO', lacunas: [] },
+        vencimento: d(`2030-09-${String(10 + i).padStart(2, '0')}`),
+        inicio: d(`2030-09-0${String(1 + i)}`),
+        ...extra,
+      };
+    };
+    await sistema.executarComoSistema('preparar o escritório da busca', async (tx) => {
+      await tx.tenant.create({ data: { id: BUSCA, nome: 'Busca (fictício)', tipo: 'escritorio' } });
+      await tx.processo.createMany({
+        data: [
+          { id: PROC_A, tenantId: BUSCA, numeroCnj: '00000040120308090001', tribunal: 'TJGO' },
+          { id: PROC_B, tenantId: BUSCA, numeroCnj: '00000050120308090001', tribunal: 'TJGO' },
+        ],
+      });
+      await tx.prazo.createMany({
+        data: [
+          linha(0, { ramo: 'civel', publicacaoConteudoId: CONTEUDO }),
+          linha(1, { tipoAto: 'recurso', status: 'a_confirmar', statusCiencia: 'confirmada' }),
+          linha(2, { processoId: PROC_B, origem: 'manual', responsavelId: ANA.usuarioId }),
+          linha(3, { status: 'a_confirmar', vencimento: null }),
+        ],
+      });
+    });
+  });
+
+  const buscar = (filtro: Partial<Parameters<BuscarPrazos<Transacao>['executar']>[0]>) =>
+    executarNoTenant(BUSCA, async () => {
+      const resultado = await new BuscarPrazos(banco, new PrazosPostgres()).executar({
+        campoData: 'vencimento',
+        ordem: 'asc',
+        limite: 10,
+        ...filtro,
+      });
+      if (!resultado.ok) throw resultado.erro;
+      return resultado.valor;
+    });
+  const quais = async (filtro: Parameters<typeof buscar>[0]) =>
+    (await buscar(filtro)).itens.map((p) => ids.indexOf(p.id));
+
+  it('cada campo isolado e combinados com E', async () => {
+    expect(await quais({})).toEqual([0, 1, 2, 3]);
+    expect(await quais({ processoIds: [PROC_B] })).toEqual([2]);
+    expect(await quais({ conteudoIds: [CONTEUDO] })).toEqual([0]);
+    expect(await quais({ responsavelIds: [ANA.usuarioId] })).toEqual([2]);
+    expect(await quais({ tiposAto: ['recurso'] })).toEqual([1]);
+    expect(await quais({ status: ['pendente'] })).toEqual([0, 2]);
+    expect(await quais({ statusCiencia: ['confirmada'] })).toEqual([1]);
+    expect(await quais({ ramo: 'civel' })).toEqual([0]);
+    expect(await quais({ origem: ['manual'] })).toEqual([2]);
+    expect(await quais({ de: data('2030-09-11'), ate: data('2030-09-12') })).toEqual([1, 2]);
+    expect(await quais({ campoData: 'inicio', de: data('2030-09-03') })).toEqual([2, 3]);
+    expect(await quais({ status: ['pendente'], origem: ['djen'] })).toEqual([0]);
+    expect(await quais({ processoIds: [] })).toEqual([]);
+    // Sem data vai por último nas duas ordens.
+    expect(await quais({ ordem: 'desc' })).toEqual([2, 1, 0, 3]);
+  });
+
+  it('pagina por cursor e conta o total; outro tenant não vê nada', async () => {
+    const primeira = await buscar({ limite: 2 });
+    expect(primeira).toMatchObject({ totalAproximado: 4, totalLimitado: false });
+    expect(primeira.ultimo?.id).toBe(ids[1]);
+    const segundo = ids[1];
+    if (segundo === undefined) throw new Error('massa');
+    expect(await quais({ limite: 2, depoisDe: segundo })).toEqual([2, 3]);
+    const doOutro = await executarNoTenant(OUTRO, () =>
+      new BuscarPrazos(banco, new PrazosPostgres()).executar({
+        processoIds: [PROC_A],
+        campoData: 'vencimento',
+        ordem: 'asc',
+        limite: 10,
+      }),
+    );
+    expect(doOutro.ok && doOutro.valor.itens).toEqual([]);
   });
 });

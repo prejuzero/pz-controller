@@ -43,6 +43,12 @@ export type {
   OabAdicionada,
   OabRemovida,
 } from './domain/advogado.js';
+export {
+  MAXIMO_DE_PROCESSOS_NA_BUSCA,
+  OabsParaBusca,
+  ProcessosParaBusca,
+} from './application/busca.js';
+export type { FiltroDeProcessosNaBusca } from './application/portas.js';
 export { COBERTURAS } from './domain/processo.js';
 export type { Cobertura, CoberturaAlterada, ProcessoMonitorado } from './domain/processo.js';
 export { UFS } from './domain/valores.js';

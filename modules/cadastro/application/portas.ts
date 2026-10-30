@@ -15,6 +15,12 @@ export interface RepositorioDeAdvogados<Transacao> {
   /** `false` se a OAB já está ativa para outro advogado (em qualquer tenant). */
   inserirOab(transacao: Transacao, advogado: Advogado, oab: Oab): Promise<boolean>;
   desativarOab(transacao: Transacao, oab: Oab): Promise<void>;
+  /** Inscrições ativas do tenant com a UF e o número (busca por OAB, HU28). */
+  oabsDoNumero(
+    transacao: Transacao,
+    uf: string,
+    numero: string,
+  ): Promise<{ oabId: Uuid; usuarioId: Uuid }[]>;
 }
 
 /** Conta de acesso do novo advogado, já validada e com a senha em hash (fora da transação). */
@@ -71,6 +77,17 @@ export interface FiltroDeProcessos {
   readonly sigiloso?: boolean | undefined;
 }
 
+/** Filtros da busca (HU28) que dizem respeito ao processo. */
+export interface FiltroDeProcessosNaBusca {
+  /** Só dígitos; 20 é exato, menos é parcial. */
+  readonly numeroCnj?: string;
+  readonly clienteId?: Uuid;
+  readonly tribunal?: string;
+  /** Parcial, sem diferença de maiúsculas. */
+  readonly orgao?: string;
+  readonly comarca?: string;
+}
+
 /** Porta: processos do tenant da transação (tabela `processo`, RLS). */
 export interface RepositorioDeProcessos<Transacao> {
   /** `false` se o número já existe no tenant (UNIQUE): não aborta a transação. */
@@ -85,6 +102,12 @@ export interface RepositorioDeProcessos<Transacao> {
   ): Promise<EstadoDoProcesso[]>;
   /** Processos do tenant no filtro (card "processos monitorados" do dashboard, HU26). */
   contar(transacao: Transacao, filtro: Pick<FiltroDeProcessos, 'tribunal'>): Promise<number>;
+  /** Ids dos processos do tenant no filtro da busca (HU28), até `limite`. */
+  idsNoFiltro(
+    transacao: Transacao,
+    filtro: FiltroDeProcessosNaBusca,
+    limite: number,
+  ): Promise<Uuid[]>;
 }
 
 /** Porta: clientes do tenant da transação (tabela `cliente`, RLS). */
