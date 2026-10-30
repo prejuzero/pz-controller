@@ -23,6 +23,7 @@ export {
   AtualizarProcesso,
   CadastrarProcesso,
   ConsultarProcesso,
+  ContarProcessos,
   ListarProcessos,
   ObterOuCriarProcesso,
 } from './application/processos.js';

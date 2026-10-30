@@ -4,7 +4,9 @@ import { Prazo } from '../domain/prazo.js';
 
 import type {
   AlcanceDaAlteracao,
+  ContagemDoPainel,
   FiltroDePrazos,
+  RecorteDoPainel,
   RepositorioDePrazos,
 } from '../application/portas.js';
 import type { CalculoDoPrazo, JurisdicaoDoPrazo, Json } from '../domain/prazo.js';
@@ -100,6 +102,12 @@ function filtroDoAlcance(alcance: AlcanceDaAlteracao) {
     abrangencia: alcance.abrangencia,
   };
 }
+
+/** Filtro global do dashboard: `null` não filtra. */
+const recorteDe = (recorte: RecorteDoPainel) => ({
+  r: recorte.responsavelId ?? null,
+  t: recorte.tribunal ?? null,
+});
 
 /** Prazos do tenant da transação (RLS). Sem DELETE: cancelamento é estado. */
 export class PrazosPostgres implements RepositorioDePrazos<Transacao> {
@@ -205,9 +213,22 @@ export class PrazosPostgres implements RepositorioDePrazos<Transacao> {
     const status = filtro.status === undefined ? null : paraBanco(filtro.status);
     const cursorData = filtro.depoisDe?.vencimento?.paraIso() ?? (filtro.depoisDe ? FIM : null);
     const cursorId = filtro.depoisDe?.id ?? null;
+    // Mesmo critério de contarParaOPainel: o card e a lista mostram os mesmos prazos.
+    const recorte = filtro.recorte?.tipo ?? null;
+    const dia = filtro.recorte?.hoje.paraIso() ?? null;
+    const ate = filtro.recorte?.ate.paraIso() ?? null;
     const ids = await transacao.$queryRaw<{ id: string }[]>`
       SELECT id FROM prazo
        WHERE (${status}::text IS NULL OR status::text = ${status})
+         AND (${recorte}::text IS NULL
+              OR (${recorte}::text = 'vence-hoje' AND status IN ('a_confirmar', 'pendente')
+                  AND vencimento = ${dia}::date)
+              OR (${recorte}::text = 'proximos-7-dias' AND status IN ('a_confirmar', 'pendente')
+                  AND vencimento > ${dia}::date AND vencimento <= ${ate}::date)
+              OR (${recorte}::text = 'vencidos' AND (status = 'vencido'
+                  OR (status IN ('a_confirmar', 'pendente') AND vencimento < ${dia}::date)))
+              OR (${recorte}::text = 'sem-ciencia' AND status IN ('a_confirmar', 'pendente')
+                  AND status_ciencia = 'pendente'))
          AND (${filtro.processoId ?? null}::uuid IS NULL OR processo_id = ${filtro.processoId ?? null}::uuid)
          AND (${filtro.responsavelId ?? null}::uuid IS NULL OR responsavel_id = ${filtro.responsavelId ?? null}::uuid)
          AND (${cursorId}::uuid IS NULL
@@ -241,6 +262,77 @@ export class PrazosPostgres implements RepositorioDePrazos<Transacao> {
       orderBy: { tenantId: 'asc' },
     });
     return linhas.map((l) => l.tenantId as Uuid);
+  }
+
+  async contarParaOPainel(
+    transacao: Transacao,
+    hoje: LocalDate,
+    ate: LocalDate,
+    recorte: RecorteDoPainel,
+  ): Promise<ContagemDoPainel> {
+    const { r, t } = recorteDe(recorte);
+    const dia = hoje.paraIso();
+    const [linha] = await transacao.$queryRaw<Record<keyof ContagemDoPainel, bigint>[]>`
+      SELECT
+        count(*) FILTER (WHERE aberto AND vencimento = ${dia}::date) AS "vencemHoje",
+        count(*) FILTER (WHERE aberto AND vencimento > ${dia}::date
+                           AND vencimento <= ${ate.paraIso()}::date) AS "proximos7Dias",
+        count(*) FILTER (WHERE status = 'vencido'
+                            OR (aberto AND vencimento < ${dia}::date)) AS "vencidosNaoCumpridos",
+        count(*) FILTER (WHERE status = 'a_confirmar') AS "aguardandoConfirmacao",
+        count(*) FILTER (WHERE aberto AND status_ciencia = 'pendente') AS "semCienciaConfirmada"
+        FROM (SELECT vencimento, status, status_ciencia,
+                     status IN ('a_confirmar', 'pendente') AS aberto
+                FROM prazo
+               WHERE status IN ('a_confirmar', 'pendente', 'vencido')
+                 AND (${r}::uuid IS NULL OR responsavel_id = ${r}::uuid)
+         AND (${t}::text IS NULL OR jurisdicao->>'tribunal' = ${t}::text)) p`;
+    const n = (v: bigint | undefined) => Number(v ?? 0n);
+    return {
+      vencemHoje: n(linha?.vencemHoje),
+      proximos7Dias: n(linha?.proximos7Dias),
+      vencidosNaoCumpridos: n(linha?.vencidosNaoCumpridos),
+      aguardandoConfirmacao: n(linha?.aguardandoConfirmacao),
+      semCienciaConfirmada: n(linha?.semCienciaConfirmada),
+    };
+  }
+
+  async vencimentosPorDia(
+    transacao: Transacao,
+    inicio: LocalDate,
+    fim: LocalDate,
+    recorte: RecorteDoPainel,
+  ): Promise<{ data: LocalDate; quantidade: number }[]> {
+    const { r, t } = recorteDe(recorte);
+    const linhas = await transacao.$queryRaw<{ vencimento: Date; quantidade: bigint }[]>`
+      SELECT vencimento, count(*) AS quantidade FROM prazo
+       WHERE status IN ('a_confirmar', 'pendente')
+         AND vencimento BETWEEN ${inicio.paraIso()}::date AND ${fim.paraIso()}::date
+         AND (${r}::uuid IS NULL OR responsavel_id = ${r}::uuid)
+         AND (${t}::text IS NULL OR jurisdicao->>'tribunal' = ${t}::text)
+       GROUP BY vencimento ORDER BY vencimento`;
+    return linhas.map((l) => ({ data: daData(l.vencimento), quantidade: Number(l.quantidade) }));
+  }
+
+  async abertosAPartirDe(
+    transacao: Transacao,
+    hoje: LocalDate,
+    recorte: RecorteDoPainel,
+    limite: number,
+  ): Promise<Prazo[]> {
+    const { r, t } = recorteDe(recorte);
+    const ids = await transacao.$queryRaw<{ id: string }[]>`
+      SELECT id FROM prazo
+       WHERE status IN ('a_confirmar', 'pendente')
+         AND vencimento >= ${hoje.paraIso()}::date
+         AND (${r}::uuid IS NULL OR responsavel_id = ${r}::uuid)
+         AND (${t}::text IS NULL OR jurisdicao->>'tribunal' = ${t}::text)
+       ORDER BY vencimento, id
+       LIMIT ${limite}`;
+    return this.#porIds(
+      transacao,
+      ids.map((l) => l.id),
+    );
   }
 
   async #porIds(transacao: Transacao, ids: readonly string[]): Promise<Prazo[]> {

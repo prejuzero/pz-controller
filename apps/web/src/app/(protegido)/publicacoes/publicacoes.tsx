@@ -25,9 +25,9 @@ const trecho = (teor: string) =>
   teor.length > TAMANHO_TRECHO ? `${teor.slice(0, TAMANHO_TRECHO)}…` : teor;
 
 /** Publicações (HU18): lista da mais nova para a mais antiga, com as não lidas em destaque. */
-export function Publicacoes() {
+export function Publicacoes({ somenteNovas = false }: { somenteNovas?: boolean }) {
   const t = useTranslations('publicacoes');
-  const [novas, setNovas] = useState(false);
+  const [novas, setNovas] = useState(somenteNovas);
   const [de, setDe] = useState('');
   const [ate, setAte] = useState('');
   const filtros: FiltrosPublicacoes = {

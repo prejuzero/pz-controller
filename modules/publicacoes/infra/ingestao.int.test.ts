@@ -6,7 +6,11 @@ import { FixedClock, gerarUuidV7, Instant } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { IngerirCaptura } from '../application/ingestao.js';
-import { ListarPublicacoes, MarcarComoLida } from '../application/leitura.js';
+import {
+  ContarPublicacoesNovas,
+  ListarPublicacoes,
+  MarcarComoLida,
+} from '../application/leitura.js';
 
 import { ExportacaoDasPublicacoesPostgres } from './exportacao-postgres.js';
 import { LeituraPostgres } from './leitura-postgres.js';
@@ -181,12 +185,16 @@ describe('ingestão no PostgreSQL (HU18)', () => {
       lidaEm: null,
     });
 
+    const contar = new ContarPublicacoesNovas(banco, new LeituraPostgres());
+    const antes = await noA(() => contar.executar());
+    expect(antes).toBeGreaterThanOrEqual(1);
     const marcar = new MarcarComoLida(banco, new LeituraPostgres(), new TrilhaPostgres(), relogio);
     const leitor = { usuarioId: gerarUuidV7(), canal: 'portal' as const };
     expect((await noA(() => marcar.executar(leitor, item.id))).ok).toBe(true);
     expect((await noA(() => marcar.executar(leitor, item.id))).ok).toBe(true);
     const depois = await noA(() => listar.executar({ novas: 'true' }));
     expect(depois.ok && depois.valor.itens).toEqual([]);
+    expect(await noA(() => contar.executar())).toBe(0);
     const trilha = await sistema.executarComoSistema('conferir', (tx) =>
       tx.eventoAuditoria.count({ where: { tipo: 'publicacoes.publicacao-lida' } }),
     );

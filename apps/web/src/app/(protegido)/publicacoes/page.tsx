@@ -11,10 +11,16 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations('publicacoes'))('titulo') };
 }
 
-export default function PaginaPublicacoes() {
+export default async function PaginaPublicacoes({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  // O card "novas publicações" do dashboard (HU26) abre a lista já filtrada.
+  const { novas } = await searchParams;
   return (
     <SePermitido permissao="publicacoes:ler" alternativa={<AcessoNegado />}>
-      <Publicacoes />
+      <Publicacoes somenteNovas={novas === 'true'} />
     </SePermitido>
   );
 }

@@ -76,4 +76,6 @@ export interface RepositorioDeLeitura<Transacao> {
   buscar(transacao: Transacao, id: Uuid): Promise<PublicacaoDoTenant | undefined>;
   /** `false` se já estava lida (a primeira leitura vale como indício, não como ciência). */
   marcarLida(transacao: Transacao, id: Uuid, usuarioId: Uuid, em: Instant): Promise<boolean>;
+  /** Ainda não lidas no tenant (card "novas publicações" do dashboard, HU26). */
+  contarNovas(transacao: Transacao): Promise<number>;
 }

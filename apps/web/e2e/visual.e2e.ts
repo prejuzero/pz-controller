@@ -19,8 +19,12 @@ for (const tela of TELAS) {
       test('dashboard', async ({ page }) => {
         await page.goto('/');
         await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+        // Contadores, barras e próximos prazos mudam com os dados e com o dia: mascarados.
+        await expect(page.locator('[data-dinamico]').first()).toBeVisible();
+        await expect(page.locator('.animate-pulse')).toHaveCount(0);
         await expect(page).toHaveScreenshot(`dashboard-${tela.nome}-${tema.nome}.png`, {
           fullPage: true,
+          mask: [page.locator('[data-dinamico]')],
         });
       });
 

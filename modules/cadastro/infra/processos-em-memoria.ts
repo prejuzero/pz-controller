@@ -59,6 +59,14 @@ export class ProcessosEmMemoria implements RepositorioDeProcessos<TransacaoEmMem
     return Promise.resolve();
   }
 
+  contar(_tx: TransacaoEmMemoria, filtro: Pick<FiltroDeProcessos, 'tribunal'>): Promise<number> {
+    return Promise.resolve(
+      [...this.linhas.values()].filter(
+        (p) => filtro.tribunal === undefined || p.tribunal === filtro.tribunal,
+      ).length,
+    );
+  }
+
   listar(
     _tx: TransacaoEmMemoria,
     filtro: FiltroDeProcessos,

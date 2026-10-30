@@ -99,6 +99,46 @@ export interface RepositorioDePrazos<Transacao> {
   vencidos(transacao: Transacao, hoje: LocalDate, limite: number): Promise<Prazo[]>;
   /** Como sistema (sem RLS): tenants com prazo aberto vencido antes de `hoje`. */
   tenantsComVencidos(transacao: Transacao, hoje: LocalDate): Promise<Uuid[]>;
+  /** Contadores do dashboard (HU26); "próximos" vai de amanhã até `ate`, inclusive. */
+  contarParaOPainel(
+    transacao: Transacao,
+    hoje: LocalDate,
+    ate: LocalDate,
+    recorte: RecorteDoPainel,
+  ): Promise<ContagemDoPainel>;
+  /** Prazos abertos por dia de vencimento no período (inclusivo); dias sem prazo ficam de fora. */
+  vencimentosPorDia(
+    transacao: Transacao,
+    inicio: LocalDate,
+    fim: LocalDate,
+    recorte: RecorteDoPainel,
+  ): Promise<{ data: LocalDate; quantidade: number }[]>;
+  /** Abertos com vencimento a partir de `hoje`, do mais próximo ao mais distante. */
+  abertosAPartirDe(
+    transacao: Transacao,
+    hoje: LocalDate,
+    recorte: RecorteDoPainel,
+    limite: number,
+  ): Promise<Prazo[]>;
+}
+
+/** Recorte do dashboard (filtro global). */
+export interface RecorteDoPainel {
+  readonly responsavelId?: Uuid;
+  /** Sigla do tribunal gravada na jurisdição do prazo. */
+  readonly tribunal?: string;
+}
+
+/** Prazo aberto: "a confirmar" ou pendente. */
+export interface ContagemDoPainel {
+  /** Abertos que vencem hoje. */
+  readonly vencemHoje: number;
+  readonly proximos7Dias: number;
+  /** Marcados como vencidos, ou abertos com vencimento passado que o job ainda não marcou. */
+  readonly vencidosNaoCumpridos: number;
+  readonly aguardandoConfirmacao: number;
+  /** Abertos com a ciência ainda não confirmada (RF81). */
+  readonly semCienciaConfirmada: number;
 }
 
 export interface FiltroDePrazos {
@@ -106,8 +146,23 @@ export interface FiltroDePrazos {
   readonly processoId?: Uuid;
   readonly responsavelId?: Uuid;
   readonly depoisDe?: { readonly vencimento: LocalDate | null; readonly id: Uuid };
+  /** Card do dashboard aberto na lista (HU26), com o mesmo critério da contagem. */
+  readonly recorte?: {
+    readonly tipo: RecorteDaLista;
+    readonly hoje: LocalDate;
+    /** Fim de "próximos 7 dias", inclusive. */
+    readonly ate: LocalDate;
+  };
   readonly limite: number;
 }
+
+export const RECORTES_DA_LISTA = [
+  'vence-hoje',
+  'proximos-7-dias',
+  'vencidos',
+  'sem-ciencia',
+] as const;
+export type RecorteDaLista = (typeof RECORTES_DA_LISTA)[number];
 
 /** O que a classificação (HU21) disse do conteúdo, nunca uma data (ADR-008). */
 export interface ClassificacaoDoConteudo {

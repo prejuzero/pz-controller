@@ -13,6 +13,7 @@ import {
   AtualizarProcesso,
   CadastrarProcesso,
   ConsultarProcesso,
+  ContarProcessos,
   ListarProcessos,
   ObterOuCriarProcesso,
 } from '../application/processos.js';
@@ -159,6 +160,9 @@ describe('processos e clientes (HU12)', () => {
     relogio.avancarMs(1000);
     await cadastrar.executar(autor, { numeroCnj: OUTRO, sigiloso: true });
     const listar = new ListarProcessos(outbox, processos);
+    const contar = new ContarProcessos(outbox, processos);
+    expect(await contar.executar({})).toBe(2);
+    expect(await contar.executar({ tribunal: 'TRIBUNAL-INEXISTENTE' })).toBe(0);
 
     const primeira = await listar.executar({ limite: '1' });
     if (!primeira.ok) throw primeira.erro;

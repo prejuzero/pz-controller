@@ -1,7 +1,12 @@
 import { FixedClock, gerarUuidV7, Instant, OutboxEmMemoria } from '@pz/kernel';
 import { describe, expect, it } from 'vitest';
 
-import { ConsultarPublicacao, ListarPublicacoes, MarcarComoLida } from '../application/leitura.js';
+import {
+  ConsultarPublicacao,
+  ContarPublicacoesNovas,
+  ListarPublicacoes,
+  MarcarComoLida,
+} from '../application/leitura.js';
 
 import type {
   FiltroDePublicacoes,
@@ -45,6 +50,9 @@ class Leitura implements RepositorioDeLeitura<TransacaoEmMemoria> {
   }
   buscar(_tx: TransacaoEmMemoria, id: Uuid) {
     return Promise.resolve(ids.includes(id) ? pub(id) : undefined);
+  }
+  contarNovas() {
+    return Promise.resolve(ids.filter((id) => !this.lidas.has(id)).length);
   }
   marcarLida(_tx: TransacaoEmMemoria, id: Uuid) {
     const nova = !this.lidas.has(id);
@@ -96,5 +104,13 @@ describe('leitura de publicações (HU18)', () => {
     await marcar.executar(leitor, PRIMEIRO);
     expect(trilha).toEqual(['publicacoes.publicacao-lida']);
     expect((await marcar.executar(leitor, gerarUuidV7())).ok).toBe(false);
+  });
+
+  it('conta as novas (não lidas) para o dashboard (HU26)', async () => {
+    const repo = new Leitura();
+    const contar = new ContarPublicacoesNovas(new OutboxEmMemoria(), repo);
+    expect(await contar.executar()).toBe(3);
+    repo.lidas.add(ids[0]);
+    expect(await contar.executar()).toBe(2);
   });
 });

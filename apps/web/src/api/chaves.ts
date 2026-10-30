@@ -56,6 +56,12 @@ export const chaves = {
     lista: (filtros: object) => [...chaves.prazos.todas, 'lista', filtros] as const,
     detalhe: (id: string) => [...chaves.prazos.todas, 'detalhe', id] as const,
   },
+  /** Indicadores dos prazos: invalidados junto com `prazos.todas` (mesmo prefixo). */
+  dashboard: {
+    resumo: () => [...chaves.prazos.todas, 'dashboard', 'resumo'] as const,
+    linhaDoTempo: () => [...chaves.prazos.todas, 'dashboard', 'linha-do-tempo'] as const,
+    proximos: () => [...chaves.prazos.todas, 'dashboard', 'proximos'] as const,
+  },
   publicacoes: {
     todas: ['publicacoes'] as const,
     lista: (filtros: object) => [...chaves.publicacoes.todas, 'lista', filtros] as const,

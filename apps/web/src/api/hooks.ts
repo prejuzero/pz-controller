@@ -10,7 +10,7 @@ import { consultasCadastro, mutacoesCadastro } from './cadastro';
 import { consultasCalendario, mutacoesCalendario } from './calendario';
 import { consultasCaptura } from './captura';
 import { consultasNotificacoes } from './notificacoes';
-import { consultasPrazos, mutacoesPrazos, type StatusDoPrazo } from './prazos';
+import { consultasPrazos, mutacoesPrazos, type FiltroDaLista } from './prazos';
 import { consultasPrivacidade, mutacoesPrivacidade } from './privacidade';
 import { consultasProcessos, mutacoesProcessos, type FiltrosProcessos } from './processos';
 import { consultasPublicacoes, mutacoesPublicacoes, type FiltrosPublicacoes } from './publicacoes';
@@ -167,8 +167,11 @@ export const useImpersonar = () => useMutation(useMutacoesAdmin().impersonar);
 function useMutacoesPrazos() {
   return mutacoesPrazos(useApi(), useQueryClient());
 }
-export const usePrazos = (status: StatusDoPrazo) =>
-  useInfiniteQuery(consultasPrazos(useApi()).lista(status));
+export const usePrazos = (filtro: FiltroDaLista) =>
+  useInfiniteQuery(consultasPrazos(useApi()).lista(filtro));
+export const useResumoDoDashboard = () => useQuery(consultasPrazos(useApi()).resumo());
+export const useLinhaDoTempo = () => useQuery(consultasPrazos(useApi()).linhaDoTempo());
+export const useProximosPrazos = () => useQuery(consultasPrazos(useApi()).proximos());
 export const usePrazo = (id: string) => useQuery(consultasPrazos(useApi()).detalhe(id));
 export const useConfirmarPrazo = () => useMutation(useMutacoesPrazos().confirmar);
 export const useCumprirPrazo = () => useMutation(useMutacoesPrazos().cumprir);

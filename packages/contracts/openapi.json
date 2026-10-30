@@ -4382,6 +4382,289 @@
         }
       }
     },
+    "/v1/dashboard/linha-do-tempo": {
+      "get": {
+        "operationId": "linhaDoTempoDoDashboard",
+        "summary": "Prazos abertos por dia de vencimento.",
+        "tags": [
+          "dashboard"
+        ],
+        "parameters": [
+          {
+            "name": "responsavelId",
+            "in": "query",
+            "required": false,
+            "description": "Advogado responsável pelo prazo.",
+            "schema": {
+              "description": "Advogado responsável pelo prazo.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "tribunal",
+            "in": "query",
+            "required": false,
+            "description": "Sigla do tribunal.",
+            "schema": {
+              "description": "Sigla do tribunal.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20
+            }
+          },
+          {
+            "name": "dias",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 90
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinhaDoTempo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dashboard/proximos-prazos": {
+      "get": {
+        "operationId": "proximosPrazosDoDashboard",
+        "summary": "Prazos abertos a vencer, do mais próximo, com os dias úteis restantes.",
+        "tags": [
+          "dashboard"
+        ],
+        "parameters": [
+          {
+            "name": "responsavelId",
+            "in": "query",
+            "required": false,
+            "description": "Advogado responsável pelo prazo.",
+            "schema": {
+              "description": "Advogado responsável pelo prazo.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "tribunal",
+            "in": "query",
+            "required": false,
+            "description": "Sigla do tribunal.",
+            "schema": {
+              "description": "Sigla do tribunal.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProximosPrazos"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dashboard/resumo": {
+      "get": {
+        "operationId": "resumoDoDashboard",
+        "summary": "Contadores dos cards do dashboard.",
+        "tags": [
+          "dashboard"
+        ],
+        "parameters": [
+          {
+            "name": "responsavelId",
+            "in": "query",
+            "required": false,
+            "description": "Advogado responsável pelo prazo.",
+            "schema": {
+              "description": "Advogado responsável pelo prazo.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "tribunal",
+            "in": "query",
+            "required": false,
+            "description": "Sigla do tribunal.",
+            "schema": {
+              "description": "Sigla do tribunal.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumoDoDashboard"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/email/verificar": {
       "post": {
         "operationId": "verificarEmail",
@@ -5218,6 +5501,22 @@
               "type": "string",
               "format": "uuid",
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "recorte",
+            "in": "query",
+            "required": false,
+            "description": "Card do dashboard (HU26): mesmo critério da contagem; \"hoje\" é o do servidor.",
+            "schema": {
+              "description": "Card do dashboard (HU26): mesmo critério da contagem; \"hoje\" é o do servidor.",
+              "type": "string",
+              "enum": [
+                "vence-hoje",
+                "proximos-7-dias",
+                "vencidos",
+                "sem-ciencia"
+              ]
             }
           }
         ],
@@ -9561,6 +9860,39 @@
         ],
         "additionalProperties": false
       },
+      "LinhaDoTempo": {
+        "type": "object",
+        "properties": {
+          "itens": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                },
+                "quantidade": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "data",
+                "quantidade"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Um item por dia a partir de hoje, inclusive os dias sem prazo."
+          }
+        },
+        "required": [
+          "itens"
+        ],
+        "additionalProperties": false
+      },
       "LinkDoDocumento": {
         "type": "object",
         "properties": {
@@ -11609,6 +11941,287 @@
         ],
         "additionalProperties": false
       },
+      "ProximosPrazos": {
+        "type": "object",
+        "properties": {
+          "itens": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "processoId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "publicacaoConteudoId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tipoAto": {
+                  "type": "string"
+                },
+                "ramo": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "civel",
+                        "juizados",
+                        "trabalhista",
+                        "penal",
+                        "juizado-criminal"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "situacao": {
+                  "type": "string",
+                  "enum": [
+                    "calculado",
+                    "a-confirmar"
+                  ],
+                  "description": "\"a-confirmar\": sem data sugerida."
+                },
+                "dias": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "unidade": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "dias",
+                        "horas",
+                        "meses",
+                        "anos"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "inicio": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "vencimento": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "fimDoPrazo": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "24h do vencimento no fuso do juízo (exclusive)."
+                },
+                "fusoDoJuizo": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "fundamento": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "versaoMotor": {
+                  "type": "string"
+                },
+                "versaoTabela": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "vencimentoManual": {
+                  "type": "boolean",
+                  "description": "Data informada pelo advogado (\"definida manualmente\")."
+                },
+                "origem": {
+                  "type": "string",
+                  "enum": [
+                    "djen",
+                    "manual",
+                    "painel"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "a-confirmar",
+                    "pendente",
+                    "cumprido",
+                    "vencido",
+                    "cancelado"
+                  ]
+                },
+                "statusCiencia": {
+                  "type": "string",
+                  "enum": [
+                    "pendente",
+                    "confirmada"
+                  ]
+                },
+                "responsavelId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "jurisdicao": {
+                  "type": "object",
+                  "properties": {
+                    "tribunal": {
+                      "type": "string"
+                    },
+                    "uf": {
+                      "type": "string"
+                    },
+                    "comarca": {
+                      "type": "string"
+                    },
+                    "lacunas": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "lacunas"
+                  ],
+                  "additionalProperties": false
+                },
+                "classificacaoIncerta": {
+                  "type": "boolean",
+                  "description": "Classificação de confiança baixa ou revisão manual."
+                },
+                "motivoAjuste": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "versao": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "diasUteisRestantes": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Do motor, pelo calendário do processo; null se não foi possível contar."
+                }
+              },
+              "required": [
+                "id",
+                "processoId",
+                "publicacaoConteudoId",
+                "tipoAto",
+                "ramo",
+                "situacao",
+                "dias",
+                "unidade",
+                "inicio",
+                "vencimento",
+                "fimDoPrazo",
+                "fusoDoJuizo",
+                "fundamento",
+                "versaoMotor",
+                "versaoTabela",
+                "vencimentoManual",
+                "origem",
+                "status",
+                "statusCiencia",
+                "responsavelId",
+                "jurisdicao",
+                "classificacaoIncerta",
+                "motivoAjuste",
+                "versao",
+                "diasUteisRestantes"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "itens"
+        ],
+        "additionalProperties": false
+      },
       "PublicacaoDoTenant": {
         "type": "object",
         "properties": {
@@ -11902,6 +12515,59 @@
         },
         "required": [
           "filas"
+        ],
+        "additionalProperties": false
+      },
+      "ResumoDoDashboard": {
+        "type": "object",
+        "properties": {
+          "vencemHoje": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "proximos7Dias": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "De amanhã até hoje + 7 dias."
+          },
+          "vencidosNaoCumpridos": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "novasPublicacoes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Ainda não lidas no escritório."
+          },
+          "aguardandoConfirmacao": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "processosMonitorados": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "semCienciaConfirmada": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Prazos abertos sem ciência confirmada (RF81)."
+          }
+        },
+        "required": [
+          "vencemHoje",
+          "proximos7Dias",
+          "vencidosNaoCumpridos",
+          "novasPublicacoes",
+          "aguardandoConfirmacao",
+          "processosMonitorados",
+          "semCienciaConfirmada"
         ],
         "additionalProperties": false
       },

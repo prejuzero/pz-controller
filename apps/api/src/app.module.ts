@@ -28,6 +28,7 @@ import {
   ConsultarPerfil,
   ConsultarProcesso,
   ListarClientes,
+  ContarProcessos,
   ListarProcessos,
   ProcessosPostgres,
   RemoverCliente,
@@ -143,6 +144,7 @@ import {
   ImportarTabelaDePrazos,
   LinkDoDocumento,
   ListarPrazos,
+  PainelDosPrazos,
   PrazosPostgres,
   ProporVersaoDaTabela,
   ResolverPrazoAplicavel,
@@ -161,6 +163,7 @@ import {
 import {
   ConsultarPublicacao,
   LeituraPostgres,
+  ContarPublicacoesNovas,
   ListarPublicacoes,
   MarcarComoLida,
 } from '@pz/publicacoes';
@@ -198,6 +201,7 @@ import { FiltroDeProblemas } from './http/problemas.js';
 import { NotificacoesController } from './notificacoes/notificacoes.controller.js';
 import { OpenApiController } from './openapi.controller.js';
 import { AssistenteController, CompromissosController } from './prazos/compromissos.controller.js';
+import { DashboardController } from './prazos/dashboard.controller.js';
 import { AtosDaTaxonomiaController, PrazosController } from './prazos/prazos.controller.js';
 import { processoNoCalendario } from './prazos/processo.js';
 import { TabelaPrazosController } from './prazos/tabela-prazos.controller.js';
@@ -426,6 +430,7 @@ interface DependenciasDasPublicacoes {
 function provedoresDasPublicacoes(d: DependenciasDasPublicacoes): Provider[] {
   return [
     { provide: ListarPublicacoes, useValue: new ListarPublicacoes(d.unidade, d.leitura) },
+    { provide: ContarPublicacoesNovas, useValue: new ContarPublicacoesNovas(d.unidade, d.leitura) },
     { provide: ConsultarPublicacao, useValue: new ConsultarPublicacao(d.unidade, d.leitura) },
     {
       provide: MarcarComoLida,
@@ -620,7 +625,16 @@ function provedoresDosPrazos(
       (r) => new AnalisarDocumento(analisarTexto, new ExtratorPdf(), arquivos, r),
     ),
     { provide: LinkDoDocumento, useValue: new LinkDoDocumento(d.unidade, prazos, arquivos) },
-    { provide: ListarPrazos, useValue: new ListarPrazos(d.unidade, prazos) },
+    comRelogio(ListarPrazos, (r) => new ListarPrazos(d.unidade, prazos, r)),
+    {
+      provide: PainelDosPrazos,
+      inject: [RELOGIO, ConsultarProcesso, ConsultarDiasNaoUteis],
+      useFactory: (
+        r: Clock,
+        processos: ConsultarProcesso<unknown>,
+        dias: ConsultarDiasNaoUteis<unknown>,
+      ) => new PainelDosPrazos(d.unidade, prazos, r, processoNoCalendario(processos, dias)),
+    },
     { provide: ConsultarPrazo, useValue: new ConsultarPrazo(d.unidade, prazos) },
     comRelogio(ConfirmarPrazo, (r) => new ConfirmarPrazo(deps(r))),
     comRelogio(CumprirPrazo, (r) => new CumprirPrazo(deps(r))),
@@ -758,6 +772,7 @@ function provedoresDoCadastro(criar: (relogio: Clock) => DependenciasDoCadastro)
     caso(RemoverOab, (d) => new RemoverOab(d.unidade, d.advogados, d.trilha, d.outbox)),
     // Processos e clientes (HU12).
     caso(ListarProcessos, (d) => new ListarProcessos(d.unidade, d.processos)),
+    caso(ContarProcessos, (d) => new ContarProcessos(d.unidade, d.processos)),
     caso(ConsultarProcesso, (d) => new ConsultarProcesso(d.unidade, d.processos)),
     caso(
       CadastrarProcesso,
@@ -1220,6 +1235,7 @@ export class AppModule {
         PrazosController,
         AtosDaTaxonomiaController,
         CompromissosController,
+        DashboardController,
         AssistenteController,
         CuradoriaDaClassificacaoController,
         TermosController,

@@ -883,6 +883,39 @@
       "cancelar": "Cancelar",
       "motivo": "Motivo do cancelamento",
       "cancelado": "Compromisso cancelado."
+    },
+    "recortes": {
+      "vence-hoje": "Vencem hoje",
+      "proximos-7-dias": "Próximos 7 dias",
+      "vencidos": "Vencidos não cumpridos",
+      "sem-ciencia": "Sem ciência confirmada"
+    },
+    "limparRecorte": "Limpar filtro"
+  },
+  "dashboard": {
+    "titulo": "Dashboard",
+    "cards": {
+      "vencemHoje": "Vencem hoje",
+      "proximos7Dias": "Próximos 7 dias",
+      "vencidosNaoCumpridos": "Vencidos não cumpridos",
+      "novasPublicacoes": "Novas publicações",
+      "aguardandoConfirmacao": "Aguardando confirmação",
+      "processosMonitorados": "Processos monitorados",
+      "semCienciaConfirmada": "Prazos sem ciência confirmada"
+    },
+    "descricoes": {
+      "semCienciaConfirmada": "Prazos em aberto cuja ciência ainda não foi confirmada."
+    },
+    "linhaDoTempo": {
+      "titulo": "Prazos nos próximos 30 dias",
+      "data": "Data",
+      "quantidade": "Prazos que vencem"
+    },
+    "proximos": {
+      "titulo": "Próximos prazos",
+      "vazio": "Nenhum prazo a vencer.",
+      "diasUteis": "{dias, plural, =0 {vence hoje} one {# dia útil} other {# dias úteis}}",
+      "semContagem": "dias úteis a conferir"
     }
   }
 }

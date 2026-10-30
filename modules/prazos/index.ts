@@ -98,10 +98,15 @@ export type {
   PrazoListado,
   ResultadoDoLote,
 } from './application/prazos.js';
-export { TIPOS_DE_DIA } from './application/portas.js';
+export { PainelDosPrazos } from './application/painel.js';
+export type { ProximoPrazo, ResumoDosPrazos } from './application/painel.js';
+export { RECORTES_DA_LISTA, TIPOS_DE_DIA } from './application/portas.js';
 export type {
   AlcanceDaAlteracao,
   ClassificacaoDoConteudo,
+  ContagemDoPainel,
+  RecorteDaLista,
+  RecorteDoPainel,
   DestinatarioDaPublicacao,
   DiaDoCalendario,
   FontesDaGeracao,

@@ -10,7 +10,7 @@ import {
 } from '@pz/calendario';
 import { Banco, BancoSistema, executarNoTenant, OutboxPostgres } from '@pz/db';
 import { subirBancoDeTeste } from '@pz/db/teste';
-import { FixedClock, Instant } from '@pz/kernel';
+import { FixedClock, gerarUuidV7, Instant } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -20,6 +20,7 @@ import {
   ListarPrazos,
   MarcarPrazosVencidos,
 } from '../application/ciclo-de-vida.js';
+import { PainelDosPrazos } from '../application/painel.js';
 import {
   CalcularPrazoParaProcesso,
   CriarPrazo,
@@ -373,7 +374,7 @@ describe('ciclo de vida no PostgreSQL (HU24, PZ-171)', () => {
       'prazos.prazo-cumprido',
     ]);
     const lista = await noEscritorio(() =>
-      new ListarPrazos(banco, new PrazosPostgres()).executar({ status: 'cumprido' }),
+      new ListarPrazos(banco, new PrazosPostgres(), relogio()).executar({ status: 'cumprido' }),
     );
     expect(lista.ok && lista.valor.itens.map((i) => i.id)).toContain(prazo.id);
   });
@@ -415,5 +416,107 @@ describe('ciclo de vida no PostgreSQL (HU24, PZ-171)', () => {
     );
     expect(linha.status).toBe('vencido');
     expect((await marcar.executar()).vencidos).toBe(0);
+  });
+});
+
+describe('dashboard no PostgreSQL (HU26, PZ-176)', () => {
+  const PAINEL = '01a10e00-0000-7000-8000-0000000f0e03' as Uuid;
+  const PROCESSO_PAINEL = '01a10e00-0000-7000-8000-0000000f0c03' as Uuid;
+  // Hoje: 2030-09-02 (segunda) em America/Sao_Paulo.
+  const hoje = new FixedClock(Instant.deIso('2030-09-02T15:00:00.000Z'));
+  const semCalendario: LocalizadorDoProcesso = () => Promise.resolve(undefined);
+  const linha = (
+    vencimento: string | null,
+    status: string,
+    extra: Record<string, unknown> = {},
+  ) => ({
+    id: gerarUuidV7(hoje),
+    tenantId: PAINEL,
+    processoId: PROCESSO_PAINEL,
+    tipoAto: 'ato-ficticio',
+    vencimento: vencimento === null ? null : new Date(`${vencimento}T00:00:00.000Z`),
+    memoriaCalculo: {},
+    origem: 'manual' as const,
+    status: status as 'pendente',
+    jurisdicao: { tribunal: 'TJGO', lacunas: [] },
+    ...extra,
+  });
+
+  beforeAll(async () => {
+    await sistema.executarComoSistema('preparar o escritório do dashboard', async (tx) => {
+      await tx.tenant.create({
+        data: { id: PAINEL, nome: 'Escritório do painel (fictício)', tipo: 'escritorio' },
+      });
+      await tx.processo.create({
+        data: {
+          id: PROCESSO_PAINEL,
+          tenantId: PAINEL,
+          numeroCnj: '00000030120308090001',
+          tribunal: 'TJGO',
+          ramo: 'estadual',
+        },
+      });
+      await tx.prazo.createMany({
+        data: [
+          linha('2030-09-02', 'pendente'),
+          linha('2030-09-02', 'a_confirmar'),
+          linha('2030-09-05', 'pendente', { statusCiencia: 'confirmada' }),
+          linha('2030-09-09', 'pendente'),
+          linha('2030-09-10', 'pendente'),
+          linha('2030-08-20', 'vencido'),
+          linha('2030-08-30', 'pendente'),
+          linha(null, 'a_confirmar'),
+          linha('2030-09-03', 'cumprido'),
+          linha('2030-09-03', 'pendente', { jurisdicao: { tribunal: 'TRT18', lacunas: [] } }),
+        ],
+      });
+    });
+  });
+
+  it('conta os cards na massa conhecida, isolado por RLS, e filtra por tribunal', async () => {
+    const painel = new PainelDosPrazos(banco, new PrazosPostgres(), hoje, semCalendario);
+    const r = await executarNoTenant(PAINEL, () => painel.resumo({}));
+    expect(r.ok && r.valor).toEqual({
+      vencemHoje: 2,
+      proximos7Dias: 3,
+      vencidosNaoCumpridos: 2,
+      aguardandoConfirmacao: 2,
+      semCienciaConfirmada: 7,
+    });
+    const trt = await executarNoTenant(PAINEL, () => painel.resumo({ tribunal: 'TRT18' }));
+    expect(trt.ok && trt.valor.proximos7Dias).toBe(1);
+    const linhaDoTempo = await executarNoTenant(PAINEL, () => painel.linhaDoTempo({ dias: 2 }));
+    expect(linhaDoTempo.ok && linhaDoTempo.valor.map((d) => d.quantidade)).toEqual([2, 1]);
+    const proximos = await executarNoTenant(PAINEL, () => painel.proximos({ limite: 3 }));
+    expect(proximos.ok && proximos.valor.map((p) => p.vencimento)).toEqual([
+      '2030-09-02',
+      '2030-09-02',
+      '2030-09-03',
+    ]);
+    const doOutro = await executarNoTenant(OUTRO, () => painel.proximos({ limite: 50 }));
+    expect(doOutro.ok && doOutro.valor.every((p) => p.processoId !== PROCESSO_PAINEL)).toBe(true);
+  });
+
+  it('resumo com 5.000 prazos responde em p95 abaixo de 300 ms', async () => {
+    await sistema.executarComoSistema('massa de 5.000 prazos', (tx) =>
+      tx.prazo.createMany({
+        data: Array.from({ length: 5000 }, (_, i) =>
+          linha(
+            `2030-${String(9 + (i % 4)).padStart(2, '0')}-${String(1 + (i % 28)).padStart(2, '0')}`,
+            i % 3 === 0 ? 'a_confirmar' : 'pendente',
+          ),
+        ),
+      }),
+    );
+    const painel = new PainelDosPrazos(banco, new PrazosPostgres(), hoje, semCalendario);
+    const tempos: number[] = [];
+    for (let i = 0; i < 20; i++) {
+      const inicio = performance.now();
+      const r = await executarNoTenant(PAINEL, () => painel.resumo({}));
+      tempos.push(performance.now() - inicio);
+      expect(r.ok).toBe(true);
+    }
+    tempos.sort((a, b) => a - b);
+    expect(tempos[Math.ceil(tempos.length * 0.95) - 1]).toBeLessThan(300);
   });
 });

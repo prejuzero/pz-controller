@@ -4,9 +4,16 @@ import { z } from 'zod';
 import { Prazo, STATUS_DO_PRAZO } from '../domain/prazo.js';
 import { RAMOS, UNIDADES } from '../domain/tabela.js';
 
+import { PROXIMOS_DIAS } from './painel.js';
+import { RECORTES_DA_LISTA } from './portas.js';
 import { prazoDetalhado, prazoListado, SugestaoDePrazo } from './prazos.js';
 
-import type { FiltroDePrazos, FontesDaGeracao, RepositorioDePrazos } from './portas.js';
+import type {
+  FiltroDePrazos,
+  FontesDaGeracao,
+  RecorteDaLista,
+  RepositorioDePrazos,
+} from './portas.js';
 import type { CalcularPrazoParaProcesso, CriarPrazo, PrazoListado } from './prazos.js';
 import type { Json } from '../domain/prazo.js';
 import type { OrigemDaAuditoria, TipoDeAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
@@ -255,6 +262,7 @@ const Consulta = z.object({
   status: z.enum(STATUS_DO_PRAZO).optional(),
   processoId: z.uuid().optional(),
   responsavelId: z.uuid().optional(),
+  recorte: z.enum(RECORTES_DA_LISTA).optional(),
   cursor: z.string().max(200).optional(),
   limite: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -265,6 +273,7 @@ export class ListarPrazos<Transacao> {
   constructor(
     private readonly unidade: UnidadeDeTrabalho<Transacao>,
     private readonly prazos: RepositorioDePrazos<Transacao>,
+    private readonly relogio: Clock,
   ) {}
 
   async executar(
@@ -272,7 +281,7 @@ export class ListarPrazos<Transacao> {
   ): Promise<Result<{ itens: PrazoListado[]; proximoCursor: string | null }, Validacao>> {
     const dados = Consulta.safeParse(consulta);
     if (!dados.success) return err(validacao(dados.error));
-    const { cursor, limite, status, processoId, responsavelId } = dados.data;
+    const { cursor, limite, status, processoId, responsavelId, recorte } = dados.data;
     let depoisDe: FiltroDePrazos['depoisDe'];
     if (cursor !== undefined) {
       let lido: unknown;
@@ -295,6 +304,7 @@ export class ListarPrazos<Transacao> {
         ...(processoId === undefined ? {} : { processoId: processoId as Uuid }),
         ...(responsavelId === undefined ? {} : { responsavelId: responsavelId as Uuid }),
         ...(depoisDe === undefined ? {} : { depoisDe }),
+        ...(recorte === undefined ? {} : { recorte: this.#recorte(recorte) }),
       }),
     );
     const itens = linhas.slice(0, limite);
@@ -311,6 +321,11 @@ export class ListarPrazos<Transacao> {
             ).toString('base64url')
           : null,
     });
+  }
+
+  #recorte(tipo: RecorteDaLista) {
+    const dia = hoje(this.relogio);
+    return { tipo, hoje: dia, ate: dia.maisDias(PROXIMOS_DIAS) };
   }
 }
 

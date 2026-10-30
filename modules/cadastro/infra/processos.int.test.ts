@@ -9,6 +9,7 @@ import {
   AlterarCobertura,
   AtualizarProcesso,
   CadastrarProcesso,
+  ContarProcessos,
   ListarProcessos,
   ObterOuCriarProcesso,
 } from '../application/processos.js';
@@ -100,6 +101,9 @@ describe('processos e clientes no PostgreSQL (HU12)', () => {
     const listar = new ListarProcessos(banco, new ProcessosPostgres(relogio));
     const lista = await noTenant(beto, () => listar.executar({ numero: '0000001' }));
     expect(lista.ok && lista.valor.itens).toHaveLength(1);
+    const contar = new ContarProcessos(banco, new ProcessosPostgres(relogio));
+    expect(await noTenant(beto, () => contar.executar({}))).toBeGreaterThanOrEqual(1);
+    expect(await noTenant(beto, () => contar.executar({ tribunal: 'NENHUM' }))).toBe(0);
   });
 
   it('cliente de outro tenant não pode ser vinculado, nem pela FK', async () => {
