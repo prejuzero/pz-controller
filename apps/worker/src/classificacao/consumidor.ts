@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { ClassificarPublicacao } from '@pz/classificacao';
+import { ClassificarPublicacao, RegistrarCandidatoDeCuradoria } from '@pz/classificacao';
 import { criarLogger } from '@pz/observability';
 
 import { Consome } from '../eventos/consome.js';
@@ -13,7 +13,16 @@ const logger = criarLogger('worker.classificacao');
 export class ConsumidorDaClassificacao {
   constructor(
     @Inject(ClassificarPublicacao) private readonly classificar: ClassificarPublicacao<unknown>,
+    @Inject(RegistrarCandidatoDeCuradoria)
+    private readonly candidatos: RegistrarCandidatoDeCuradoria<unknown>,
   ) {}
+
+  /** Correção do advogado vira caso candidato da curadoria (HU22), na transação do consumo. */
+  @Consome('PrazoAjustado', { versao: 1 })
+  async prazoAjustado(transacao: unknown, evento: EventoDominio): Promise<void> {
+    const resultado = await this.candidatos.executar(transacao, evento);
+    logger.info({ prazoId: evento.agregadoId, resultado }, 'correção avaliada para a curadoria');
+  }
 
   @Consome('PublicacaoNova', { versao: 1 })
   async publicacaoNova(

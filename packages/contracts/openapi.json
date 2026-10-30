@@ -432,6 +432,260 @@
         }
       }
     },
+    "/v1/admin/classificacoes/candidatos": {
+      "get": {
+        "operationId": "listarCasosCandidatos",
+        "summary": "Casos candidatos à avaliação vindos das correções dos advogados (curador).",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "description": "Quantidade de itens por página.",
+            "schema": {
+              "default": 20,
+              "description": "Quantidade de itens por página.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pendente",
+                "aceito",
+                "descartado"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaDeCasosCandidatos"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/classificacoes/candidatos/{id}/decisao": {
+      "post": {
+        "operationId": "decidirCasoCandidato",
+        "summary": "Aceita (entra no conjunto de avaliação) ou descarta o caso, com motivo.",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeDecisaoDoCaso"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CasoCandidato"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/classificacoes/candidatos/exportacao": {
+      "get": {
+        "operationId": "exportarCasosAceitos",
+        "summary": "Casos aceitos no formato de eval/casos, para revisão e versionamento.",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CasosExportados"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/admin/classificacoes/revisao-manual": {
       "get": {
         "operationId": "listarRevisaoManual",
@@ -7009,6 +7263,118 @@
         ],
         "additionalProperties": false
       },
+      "CasoCandidato": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "conteudoId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "teorAnonimizado": {
+            "type": "string",
+            "description": "Teor com CPF, CNPJ, e-mail, CEP e telefone minimizados."
+          },
+          "tipoAtoClassificado": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tipoAtoCorrigido": {
+            "type": "string"
+          },
+          "diasCitados": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "diasCorrigidos": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pendente",
+              "aceito",
+              "descartado"
+            ]
+          },
+          "motivoDecisao": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decididoPor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decididoEm": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "conteudoId",
+          "teorAnonimizado",
+          "tipoAtoClassificado",
+          "tipoAtoCorrigido",
+          "diasCitados",
+          "diasCorrigidos",
+          "status",
+          "motivoDecisao",
+          "decididoPor",
+          "decididoEm"
+        ],
+        "additionalProperties": false
+      },
+      "CasosExportados": {
+        "type": "object",
+        "properties": {
+          "casos": {
+            "type": "array",
+            "items": {},
+            "description": "Casos aceitos no formato de eval/casos (HU22)."
+          }
+        },
+        "required": [
+          "casos"
+        ],
+        "additionalProperties": false
+      },
       "ClienteDoTenant": {
         "type": "object",
         "properties": {
@@ -8369,6 +8735,29 @@
         ],
         "additionalProperties": false
       },
+      "PaginaDeCasosCandidatos": {
+        "type": "object",
+        "properties": {
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CasoCandidato"
+            }
+          },
+          "proximoCursor": {
+            "description": "Nulo quando não há mais páginas.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "itens",
+          "proximoCursor"
+        ],
+        "additionalProperties": false
+      },
       "PaginaDeClientes": {
         "type": "object",
         "properties": {
@@ -9048,6 +9437,33 @@
           }
         ],
         "description": "O e-mail não entra: segue a base legal do serviço contratado."
+      },
+      "PedidoDeDecisaoDoCaso": {
+        "type": "object",
+        "properties": {
+          "decisao": {
+            "type": "string",
+            "enum": [
+              "aceitar",
+              "descartar"
+            ]
+          },
+          "motivo": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 1000
+          },
+          "teorAnonimizado": {
+            "description": "Teor revisado pelo curador.",
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "decisao",
+          "motivo"
+        ],
+        "additionalProperties": false
       },
       "PedidoDeDestinoPush": {
         "type": "object",

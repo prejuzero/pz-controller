@@ -47,7 +47,14 @@ import {
   RevogarFeriadoLocal,
 } from '@pz/calendario';
 import { ConsultarStatusDaCaptura, LeituraDoStatusPostgres } from '@pz/captura';
-import { ListarRevisaoManual, RevisaoManualPostgres } from '@pz/classificacao';
+import {
+  CandidatosPostgres,
+  DecidirCandidato,
+  ExportarCasosAceitos,
+  ListarCandidatos,
+  ListarRevisaoManual,
+  RevisaoManualPostgres,
+} from '@pz/classificacao';
 import { Banco, OutboxPostgres, WebhooksPostgres } from '@pz/db';
 import {
   AtivarSegundoFator,
@@ -157,6 +164,7 @@ import {
 import { Redis } from 'ioredis';
 
 import { AdminController } from './admin/admin.controller.js';
+import { CuradoriaDaClassificacaoController } from './admin/curadoria.controller.js';
 import { AuthController } from './auth/auth.controller.js';
 import { ContextoDoUsuario } from './auth/contexto-do-usuario.js';
 import { CadastroController } from './cadastro/cadastro.controller.js';
@@ -1030,6 +1038,26 @@ export class AppModule {
             ? new ListarRevisaoManual(recursos.banco, new RevisaoManualPostgres())
             : new ListarRevisaoManual(opcoes.revisaoManual.unidade, opcoes.revisaoManual.consulta),
       },
+      // Curadoria a partir das correções (HU22): tabela global, decisão no tenant plataforma.
+      {
+        provide: ListarCandidatos,
+        useValue: new ListarCandidatos(recursos.banco, new CandidatosPostgres()),
+      },
+      {
+        provide: DecidirCandidato,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new DecidirCandidato(
+            recursos.banco,
+            new CandidatosPostgres(),
+            new TrilhaPostgres(),
+            relogio,
+          ),
+      },
+      {
+        provide: ExportarCasosAceitos,
+        useValue: new ExportarCasosAceitos(recursos.banco, new CandidatosPostgres()),
+      },
       {
         provide: ConsultarUsoDeIa,
         inject: [RELOGIO],
@@ -1125,6 +1153,7 @@ export class AppModule {
         CalendarioController,
         TabelaPrazosController,
         PrazosController,
+        CuradoriaDaClassificacaoController,
         TermosController,
         PrivacidadeController,
         PublicacoesController,

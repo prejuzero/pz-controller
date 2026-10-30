@@ -39,9 +39,11 @@ import {
   PlanejarCaptura,
 } from '@pz/captura';
 import {
+  CandidatosPostgres,
   ClassificacoesPostgres,
   ClassificadorIaPlataforma,
   ClassificarPublicacao,
+  RegistrarCandidatoDeCuradoria,
   RegrasPostgres,
   TaxonomiaPostgres,
 } from '@pz/classificacao';
@@ -742,6 +744,16 @@ export class WorkerModule {
           sistema.unidade('prazos: tenants alcançados por mudança do calendário global'),
           new PrazosPostgres(),
         ),
+      },
+      {
+        provide: RegistrarCandidatoDeCuradoria,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new RegistrarCandidatoDeCuradoria(
+            new CandidatosPostgres(),
+            new TeoresPostgres(),
+            relogio,
+          ),
       },
       { provide: AuditarEvento, useValue: new AuditarEvento(new TrilhaPostgres()) },
       {

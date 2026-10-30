@@ -35,3 +35,20 @@ export type {
 } from './application/fila-de-revisao.js';
 export { RevisaoManualEmMemoria } from './infra/fila-de-revisao-em-memoria.js';
 export { RevisaoManualPostgres } from './infra/fila-de-revisao-postgres.js';
+export {
+  DecidirCandidato,
+  EntradaDaDecisao,
+  ExportarCasosAceitos,
+  ListarCandidatos,
+  RegistrarCandidatoDeCuradoria,
+  STATUS_DO_CANDIDATO,
+} from './application/curadoria.js';
+export type {
+  CasoCandidato,
+  CuradorDaClassificacao,
+  RepositorioDeCandidatos,
+  ResultadoDoRegistro,
+  StatusDoCandidato,
+} from './application/curadoria.js';
+export { CandidatosEmMemoria } from './infra/em-memoria.js';
+export { CandidatosPostgres } from './infra/candidatos-postgres.js';

@@ -34,3 +34,9 @@ Falsos positivos descartados: prazo já vencido ("prazo de 15 dias já decorrido
 3. "a_confirmar" quando a confiança é baixa, o ato é desconhecido ou fora da taxonomia, o trecho não está no teor, a IA está desligada (sem `ANTHROPIC_API_KEY`) ou sem orçamento. Saída inválida tem uma nova tentativa; repetida, vai para "revisao_manual".
 4. Falha passageira do provedor sobe: o job de evento tenta de novo e, esgotado, vai para a DLQ com alerta.
 5. Fila de revisão manual do curador: `GET /v1/admin/classificacoes/revisao-manual` (permissão `curadoria:classificacao`), só leitura; a tela e a decisão do curador ficam para depois.
+
+## Curadoria a partir das correções (HU22, PZ-162)
+
+- `RegistrarCandidatoDeCuradoria` (consumidor de `PrazoAjustado` no worker): quando o advogado muda o ato ou os dias de um prazo vindo de uma publicação, e a correção diverge da classificação, grava um caso em `caso_candidato_curadoria` (global, sem tenant, teor com dados pessoais minimizados). A mesma correção vira um caso só.
+- O curador (`curadoria:classificacao`) lista, aceita ou descarta, sempre com motivo e trilha (`GET /v1/admin/classificacoes/candidatos`, `POST .../{id}/decisao`). Ao aceitar, pode corrigir o teor anonimizado.
+- `GET .../exportacao` devolve os aceitos no formato de `eval/casos` (`revisor` vazio, `trecho` a preencher). O curador confere a anonimização, preenche o trecho e versiona; outro advogado revisa. Eles entram no próximo `pnpm eval`.

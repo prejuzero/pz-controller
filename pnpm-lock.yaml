@@ -813,6 +813,9 @@ importers:
 
   modules/classificacao:
     dependencies:
+      '@pz/auditoria':
+        specifier: workspace:*
+        version: link:../auditoria
       '@pz/db':
         specifier: workspace:*
         version: link:../../packages/db

@@ -35,9 +35,11 @@ export function detectarInstrucaoEmbutida(texto: string): string[] {
 const DADOS_PESSOAIS: readonly (readonly [string, RegExp])[] = [
   ['[E-MAIL]', /[\w.+-]+@[\w-]+(\.[\w-]+)+/g],
   // CNPJ antes do CPF: o formato do CNPJ contém um trecho parecido com CPF.
-  ['[CNPJ]', /(?<![\d./-])\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}(?![\d./-])/g],
-  ['[CPF]', /(?<![\d./-])\d{3}\.?\d{3}\.?\d{3}-?\d{2}(?![\d./-])/g],
-  ['[CEP]', /(?<![\d.-])\d{5}-\d{3}(?![\d.-])/g],
+  // Ponto, barra ou hífen depois do número só o continuam se vier outro dígito (ex.: o número
+  // CNJ); no fim da frase ("…-25.") o dado é minimizado.
+  ['[CNPJ]', /(?<![\d./-])\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}(?![\d]|[./-]\d)/g],
+  ['[CPF]', /(?<![\d./-])\d{3}\.?\d{3}\.?\d{3}-?\d{2}(?![\d]|[./-]\d)/g],
+  ['[CEP]', /(?<![\d.-])\d{5}-\d{3}(?![\d]|[.-]\d)/g],
   ['[TELEFONE]', /\(\d{2}\)\s?9?\d{4}-?\d{4}(?!\d)/g],
 ];
 
