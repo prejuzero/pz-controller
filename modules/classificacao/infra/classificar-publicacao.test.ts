@@ -1,7 +1,9 @@
 import { FixedClock, gerarUuidV7, Instant, OutboxEmMemoria } from '@pz/kernel';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { ClassificarPublicacao } from '../application/classificar-publicacao.js';
+import { AnalisarTexto, ClassificarPublicacao } from '../application/classificar-publicacao.js';
+
+import { RegrasEmMemoria } from './em-memoria.js';
 
 import type {
   ClassificadorIa,
@@ -164,5 +166,46 @@ describe('classificação de publicação nova (HU21, PZ-157)', () => {
     const quebrada = { ...REGRA, padroes: ['('] };
     await expect(montar(undefined, [quebrada])(CONTEUDO)).rejects.toThrow();
     await expect(montar()(gerarUuidV7(relogio))).rejects.toThrow('não encontrado');
+  });
+});
+
+const TENANT_ANALISE = '01a10e00-0000-7000-8000-0000000b0001' as Uuid;
+
+describe('cadastro assistido: analisar texto colado (HU25, PZ-173)', () => {
+  it('usa regras e depois a IA, sem gravar; sem IA, "a confirmar"', async () => {
+    const regras = new RegrasEmMemoria([]);
+    const taxonomia = {
+      listar: () => Promise.resolve([{ codigo: 'citacao', nome: 'Citação', descricao: '' }]),
+    };
+    const unidade = { executar: <T>(t: (tx: unknown) => Promise<T>) => t(undefined) };
+    const semIa = new AnalisarTexto({ unidade, regras, taxonomia });
+    const r = await semIa.executar('  Texto FICTÍCIO sem ato reconhecível.  ', TENANT_ANALISE);
+    expect(r).toMatchObject({ situacao: 'a_confirmar', motivo: 'ia-desligada' });
+    let chamadas = 0;
+    const comIa = new AnalisarTexto({
+      unidade,
+      regras,
+      taxonomia,
+      ia: {
+        classificar: () => {
+          chamadas++;
+          return Promise.resolve(
+            chamadas === 1
+              ? { tipo: 'invalida' as const }
+              : {
+                  tipo: 'ok' as const,
+                  tipoAto: 'citacao',
+                  confianca: 0.95,
+                  trecho: 'Cite-se',
+                  versaoPrompt: 'v1',
+                  modelo: 'ficticio',
+                },
+          );
+        },
+      },
+    });
+    const ia = await comIa.executar('Cite-se a parte ré (FICTÍCIO).', TENANT_ANALISE);
+    expect(ia).toMatchObject({ origem: 'ia', tipoAto: 'citacao' });
+    expect(chamadas).toBe(2);
   });
 });

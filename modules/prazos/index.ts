@@ -120,3 +120,17 @@ export type {
 export { PrazosEmMemoria, TabelaEmMemoria } from './infra/em-memoria.js';
 export { PrazosPostgres } from './infra/prazos-postgres.js';
 export { TabelaPostgres, TiposDeAtoPostgres } from './infra/tabela-postgres.js';
+export {
+  AgendarCompromisso,
+  CancelarCompromisso,
+  EntradaDoCompromisso,
+  ListarCompromissos,
+} from './application/compromissos.js';
+export type {
+  Compromisso,
+  CompromissoListado,
+  ProcessoExiste,
+  RepositorioDeCompromissos,
+} from './application/compromissos.js';
+export { CompromissosEmMemoria } from './infra/em-memoria.js';
+export { CompromissosPostgres } from './infra/compromissos-postgres.js';

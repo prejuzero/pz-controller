@@ -15,6 +15,8 @@ import { useState } from 'react';
 import { usePrazos } from '../../../api/hooks';
 import { formatarDataCivil } from '../../../i18n/formatar';
 
+import { Compromissos } from './compromissos';
+
 import type { StatusDoPrazo } from '../../../api/prazos';
 import type { Prazo } from '@pz/contracts';
 
@@ -127,6 +129,7 @@ export function ListaDePrazos() {
           ) : null}
         </>
       )}
+      <Compromissos />
     </div>
   );
 }

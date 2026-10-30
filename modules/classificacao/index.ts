@@ -8,7 +8,11 @@ export type { RegraRapida, ResultadoDasRegras } from './domain/regras.js';
 export type { Evidencia } from './domain/texto.js';
 export { RegrasEmMemoria } from './infra/em-memoria.js';
 export { RegrasPostgres } from './infra/regras-postgres.js';
-export { ClassificarPublicacao } from './application/classificar-publicacao.js';
+export {
+  AnalisarTexto,
+  ClassificarPublicacao,
+  MAXIMO_DO_TEXTO,
+} from './application/classificar-publicacao.js';
 export type {
   ClassificadorIa,
   DependenciasDaClassificacao,

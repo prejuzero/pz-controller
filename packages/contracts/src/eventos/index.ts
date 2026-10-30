@@ -370,6 +370,24 @@ export const PrazoVencido = definirEvento(
   }),
 );
 
+/** Compromisso agendado (HU25): os lembretes da HU31 partem daqui. */
+export const CompromissoAgendado = definirEvento(
+  'CompromissoAgendado',
+  1,
+  z.object({
+    compromissoId: z.uuid(),
+    dataHora: z.iso.datetime(),
+    processoId: z.uuid().nullable(),
+    lembretesMinutos: z.array(z.number().int().positive()),
+  }),
+);
+
+export const CompromissoCancelado = definirEvento(
+  'CompromissoCancelado',
+  1,
+  z.object({ compromissoId: z.uuid(), motivo: z.string().min(1) }),
+);
+
 export const EVENTOS = catalogoDeEventos(
   SituacaoVerificada,
   RedefinicaoDeSenhaSolicitada,
@@ -400,4 +418,6 @@ export const EVENTOS = catalogoDeEventos(
   PrazoCumprido,
   PrazoCancelado,
   PrazoVencido,
+  CompromissoAgendado,
+  CompromissoCancelado,
 );

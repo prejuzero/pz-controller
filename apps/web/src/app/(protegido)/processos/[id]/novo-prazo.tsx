@@ -5,7 +5,12 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
-import { useAtosDaTaxonomia, useCadastrarPrazo, useSimularNovoPrazo } from '../../../../api/hooks';
+import {
+  useAnalisarTexto,
+  useAtosDaTaxonomia,
+  useCadastrarPrazo,
+  useSimularNovoPrazo,
+} from '../../../../api/hooks';
 import { formatarDataCivil } from '../../../../i18n/formatar';
 
 import type { PrazoManual } from '../../../../api/prazos';
@@ -55,6 +60,10 @@ function Formulario({ processoId, aoSalvar }: { processoId: string; aoSalvar: ()
   const [origem, setOrigem] = useState<string>('painel');
   const [observacao, setObservacao] = useState('');
   const [confirmo, setConfirmo] = useState(false);
+  const [texto, setTexto] = useState('');
+  const analisar = useAnalisarTexto();
+  const analise = analisar.data;
+  const atoSugerido = (atos.data?.itens ?? []).find((a) => a.codigo === analise?.tipoAto);
 
   const pedido = (): PrazoManual => ({
     processoId,
@@ -92,6 +101,59 @@ function Formulario({ processoId, aoSalvar }: { processoId: string; aoSalvar: ()
         );
       }}
     >
+      <div className="grid gap-2">
+        <label className="grid gap-1.5 text-sm font-medium">
+          {t('colar')}
+          <textarea
+            className="min-h-24 rounded-md border border-borda-forte bg-superficie-elevada p-2 text-sm font-normal"
+            value={texto}
+            onChange={(evento) => {
+              setTexto(evento.target.value);
+            }}
+          />
+        </label>
+        <p className="text-sm text-texto-suave">{t('colarAjuda')}</p>
+        <Botao
+          type="button"
+          variante="secundaria"
+          disabled={texto.trim() === ''}
+          carregando={analisar.isPending}
+          onClick={() => {
+            analisar.mutate(texto, {
+              onSuccess: (a) => {
+                const conhecido = (atos.data?.itens ?? []).some((x) => x.codigo === a.tipoAto);
+                if (conhecido && a.tipoAto !== null) setTipoAto(a.tipoAto);
+                if (a.prazoCitado !== null && !a.prazoCitado.divergente) {
+                  setDias(String(a.prazoCitado.quantidade));
+                }
+                simular.reset();
+              },
+            });
+          }}
+        >
+          {t('analisar')}
+        </Botao>
+        {analise === undefined ? null : (
+          <div role="status" className="space-y-1 rounded-md border border-borda p-3 text-sm">
+            <p>
+              {atoSugerido === undefined
+                ? t('semSugestao')
+                : t('sugestao', {
+                    ato: atoSugerido.nome,
+                    dias:
+                      analise.prazoCitado === null
+                        ? ''
+                        : t('sugestaoDias', { dias: analise.prazoCitado.quantidade }),
+                  })}
+            </p>
+            {analise.evidencias.map((e) => (
+              <p key={`${String(e.inicio)}-${String(e.fim)}`} className="text-texto-suave">
+                {t('evidencia', { trecho: e.trecho })}
+              </p>
+            ))}
+          </div>
+        )}
+      </div>
       <Selecao
         rotulo={t('ato')}
         obrigatorio

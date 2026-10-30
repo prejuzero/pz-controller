@@ -178,3 +178,8 @@ export const useSimularAjuste = () => useMutation(useMutacoesPrazos().simular);
 export const useAtosDaTaxonomia = () => useQuery(consultasPrazos(useApi()).atos());
 export const useCadastrarPrazo = () => useMutation(useMutacoesPrazos().cadastrar);
 export const useSimularNovoPrazo = () => useMutation(useMutacoesPrazos().simularNovo);
+export const useCompromissos = (de: string, ate: string) =>
+  useQuery(consultasPrazos(useApi()).compromissos(de, ate));
+export const useAgendarCompromisso = () => useMutation(useMutacoesPrazos().agendar);
+export const useCancelarCompromisso = () => useMutation(useMutacoesPrazos().cancelarCompromisso);
+export const useAnalisarTexto = () => useMutation(useMutacoesPrazos().analisar);

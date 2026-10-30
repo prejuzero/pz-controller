@@ -72,6 +72,7 @@ model Tenant {
   encerramento           EncerramentoConta?
   publicacoes            PublicacaoDestinatario[]
   prazos                 Prazo[]
+  compromissos           Compromisso[]
 
   @@map("tenant")
 }
@@ -643,10 +644,11 @@ model Processo {
   criadoEm        DateTime          @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm    DateTime          @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  tenant      Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  cliente     Cliente?                 @relation(fields: [tenantId, clienteId], references: [tenantId, id], onDelete: Restrict)
-  publicacoes PublicacaoDestinatario[]
-  prazos      Prazo[]
+  tenant       Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  cliente      Cliente?                 @relation(fields: [tenantId, clienteId], references: [tenantId, id], onDelete: Restrict)
+  publicacoes  PublicacaoDestinatario[]
+  prazos       Prazo[]
+  compromissos Compromisso[]
 
   @@unique([tenantId, numeroCnj])
   @@unique([tenantId, id])
@@ -1097,4 +1099,26 @@ model CasoCandidatoCuradoria {
 
   @@index([status, id])
   @@map("caso_candidato_curadoria")
+}
+
+/// Compromisso do escritório (HU25): audiência, reunião, com lembretes em minutos antes.
+model Compromisso {
+  id                 String    @id @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  titulo             String
+  dataHora           DateTime  @map("data_hora") @db.Timestamptz(6)
+  local              String?
+  processoId         String?   @map("processo_id") @db.Uuid
+  lembretesMinutos   Int[]     @default([]) @map("lembretes_minutos")
+  criadoPor          String    @map("criado_por") @db.Uuid
+  canceladoEm        DateTime? @map("cancelado_em") @db.Timestamptz(6)
+  motivoCancelamento String?   @map("motivo_cancelamento")
+  criadoEm           DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm       DateTime  @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  processo Processo? @relation(fields: [tenantId, processoId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([tenantId, dataHora])
+  @@map("compromisso")
 }

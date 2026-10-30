@@ -48,12 +48,15 @@ import {
 } from '@pz/calendario';
 import { ConsultarStatusDaCaptura, LeituraDoStatusPostgres } from '@pz/captura';
 import {
+  AnalisarTexto,
   CandidatosPostgres,
   DecidirCandidato,
   ExportarCasosAceitos,
   ListarCandidatos,
   ListarRevisaoManual,
+  RegrasPostgres,
   RevisaoManualPostgres,
+  TaxonomiaPostgres,
 } from '@pz/classificacao';
 import { Banco, OutboxPostgres, WebhooksPostgres } from '@pz/db';
 import {
@@ -120,8 +123,12 @@ import {
 } from '@pz/notificacoes';
 import { criarLogger, registrarErro } from '@pz/observability';
 import {
+  AgendarCompromisso,
   AjustarPrazo,
   AprovarVersaoDaTabela,
+  CancelarCompromisso,
+  CompromissosPostgres,
+  ListarCompromissos,
   CadastrarPrazoManual,
   CriarPrazo,
   CadastrarTipoDeAto,
@@ -187,6 +194,7 @@ import { GuardaDeLimite, JanelaRedis } from './http/limite.js';
 import { FiltroDeProblemas } from './http/problemas.js';
 import { NotificacoesController } from './notificacoes/notificacoes.controller.js';
 import { OpenApiController } from './openapi.controller.js';
+import { AssistenteController, CompromissosController } from './prazos/compromissos.controller.js';
 import { AtosDaTaxonomiaController, PrazosController } from './prazos/prazos.controller.js';
 import { processoNoCalendario } from './prazos/processo.js';
 import { TabelaPrazosController } from './prazos/tabela-prazos.controller.js';
@@ -574,6 +582,32 @@ function provedoresDosPrazos(d: DependenciasDaTabelaDePrazos): Provider[] {
     useFactory: criar,
   });
   return [
+    // Compromissos (HU25) e cadastro assistido por texto (regras rápidas; a IA na API é pendência).
+    {
+      provide: ListarCompromissos,
+      useValue: new ListarCompromissos(d.unidade, new CompromissosPostgres()),
+    },
+    {
+      provide: AgendarCompromisso,
+      inject: [RELOGIO, ConsultarProcesso],
+      useFactory: (r: Clock, processos: ConsultarProcesso<unknown>) =>
+        new AgendarCompromisso(
+          { ...deps(r), compromissos: new CompromissosPostgres() },
+          async (id) => (await processos.executar(id)).ok,
+        ),
+    },
+    comRelogio(
+      CancelarCompromisso,
+      (r) => new CancelarCompromisso({ ...deps(r), compromissos: new CompromissosPostgres() }),
+    ),
+    {
+      provide: AnalisarTexto,
+      useValue: new AnalisarTexto({
+        unidade: d.unidade,
+        regras: new RegrasPostgres(),
+        taxonomia: new TaxonomiaPostgres(),
+      }),
+    },
     { provide: ListarPrazos, useValue: new ListarPrazos(d.unidade, prazos) },
     { provide: ConsultarPrazo, useValue: new ConsultarPrazo(d.unidade, prazos) },
     comRelogio(ConfirmarPrazo, (r) => new ConfirmarPrazo(deps(r))),
@@ -1173,6 +1207,8 @@ export class AppModule {
         TabelaPrazosController,
         PrazosController,
         AtosDaTaxonomiaController,
+        CompromissosController,
+        AssistenteController,
         CuradoriaDaClassificacaoController,
         TermosController,
         PrivacidadeController,

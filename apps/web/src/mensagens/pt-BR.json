@@ -854,7 +854,29 @@
       "previaSemData": "Sem data sugerida: o prazo ficará \"a confirmar\".",
       "confirmar": "Confirmo esta data",
       "salvar": "Salvar prazo",
-      "salvo": "Prazo cadastrado."
+      "salvo": "Prazo cadastrado.",
+      "colar": "Colar o texto da intimação (opcional)",
+      "colarAjuda": "O sistema sugere o ato e o prazo citado; a data continua sendo calculada pelo motor.",
+      "analisar": "Analisar texto",
+      "sugestao": "Sugestão: {ato}{dias}. Confira antes de calcular.",
+      "sugestaoDias": ", {dias} dias citados",
+      "semSugestao": "Não foi possível sugerir o ato com segurança. Preencha à mão.",
+      "evidencia": "Trecho: “{trecho}”"
+    },
+    "compromissos": {
+      "titulo": "Próximos compromissos",
+      "vazio": "Nenhum compromisso nos próximos 30 dias.",
+      "novo": "Novo compromisso",
+      "nome": "Título",
+      "data": "Data",
+      "hora": "Hora (Brasília)",
+      "local": "Local",
+      "lembretes": "Lembretes: 1 dia e 1 hora antes.",
+      "salvar": "Agendar",
+      "agendado": "Compromisso agendado.",
+      "cancelar": "Cancelar",
+      "motivo": "Motivo do cancelamento",
+      "cancelado": "Compromisso cancelado."
     }
   }
 }

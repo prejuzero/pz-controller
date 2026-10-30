@@ -7,7 +7,7 @@ import { regrasValidas } from './classificar.js';
 
 import type { RepositorioDeRegras } from './classificar.js';
 import type { Classificacao, RespostaDaIa } from '../domain/decisao.js';
-import type { Clock, EventoDominio, Outbox, Uuid } from '@pz/kernel';
+import type { Clock, EventoDominio, Outbox, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 
 /** Porta: teor do conteúdo visível na transação (módulo publicacoes). */
 export interface LeitorDeTeor<Transacao> {
@@ -78,24 +78,13 @@ export class ClassificarPublicacao<Transacao> {
     const entrada = { teor, taxonomia: tipos.map((t) => t.codigo), regras };
     const classificacao =
       decidir(entrada) ??
-      decidir({ ...entrada, ia: await this.#consultarIa(teor, tipos, evento.tenantId) });
+      decidir({ ...entrada, ia: await consultarIa(deps.ia, teor, tipos, evento.tenantId) });
     if (await deps.classificacoes.gravar(transacao, conteudoId, classificacao)) {
       await deps.outbox.gravar(transacao, [
         this.#evento(evento.tenantId, conteudoId, classificacao),
       ]);
     }
     return classificacao;
-  }
-
-  async #consultarIa(
-    teor: string,
-    taxonomia: readonly TipoDaTaxonomia[],
-    tenantId: Uuid,
-  ): Promise<RespostaDaIa> {
-    const { ia } = this.deps;
-    if (ia === undefined) return { tipo: 'desligada' };
-    const primeira = await ia.classificar({ teor, taxonomia }, tenantId);
-    return primeira.tipo === 'invalida' ? ia.classificar({ teor, taxonomia }, tenantId) : primeira;
   }
 
   #evento(tenantId: Uuid, conteudoId: Uuid, c: Classificacao): EventoDominio {
@@ -123,5 +112,55 @@ export class ClassificarPublicacao<Transacao> {
               },
       },
     };
+  }
+}
+
+/** IA com uma nova tentativa se a saída vier fora do schema (HU21). Sem IA: "desligada". */
+async function consultarIa(
+  ia: ClassificadorIa | undefined,
+  teor: string,
+  taxonomia: readonly TipoDaTaxonomia[],
+  tenantId: Uuid,
+): Promise<RespostaDaIa> {
+  if (ia === undefined) return { tipo: 'desligada' };
+  const primeira = await ia.classificar({ teor, taxonomia }, tenantId);
+  return primeira.tipo === 'invalida' ? ia.classificar({ teor, taxonomia }, tenantId) : primeira;
+}
+
+/** Maior texto colado aceito: uma intimação, não um processo inteiro. */
+export const MAXIMO_DO_TEXTO = 50_000;
+
+/**
+ * Cadastro assistido (HU25, PZ-173): o texto colado pelo advogado passa pelo mesmo pipeline da
+ * publicação (regras rápidas, depois a IA), sem gravar nada. Devolve ato, prazo citado e
+ * evidência; nunca uma data (ADR-008). A data vem do motor quando o advogado calcula.
+ */
+export class AnalisarTexto<Transacao> {
+  constructor(
+    private readonly deps: Pick<
+      DependenciasDaClassificacao<Transacao>,
+      'regras' | 'taxonomia' | 'ia'
+    > & {
+      readonly unidade: UnidadeDeTrabalho<Transacao>;
+    },
+  ) {}
+
+  async executar(texto: string, tenantId: Uuid): Promise<Classificacao> {
+    const teor = texto.trim().slice(0, MAXIMO_DO_TEXTO);
+    const { deps } = this;
+    const [vigentes, tipos] = await deps.unidade.executar(async (tx) => [
+      await deps.regras.vigentes(tx),
+      await deps.taxonomia.listar(tx),
+    ]);
+    const entrada = {
+      teor,
+      taxonomia: tipos.map((t) => t.codigo),
+      regras: classificarPorRegras(teor, regrasValidas(vigentes)),
+    };
+    // Com a resposta da IA (ou o motivo de não haver), `decidir` sempre conclui.
+    return (
+      decidir(entrada) ??
+      decidir({ ...entrada, ia: await consultarIa(deps.ia, teor, tipos, tenantId) })
+    );
   }
 }

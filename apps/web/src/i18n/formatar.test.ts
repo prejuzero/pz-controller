@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { anoNoFuso, formatarDataCivil, formatarInstante } from './formatar';
+import { anoNoFuso, formatarDataCivil, formatarInstante, instanteDaDataHora } from './formatar';
 
 describe('formatação', () => {
   it('ano no fuso America/Sao_Paulo, não em UTC', () => {
@@ -21,5 +21,15 @@ describe('formatação', () => {
       '31/12/2025, 21:00',
     );
     expect(() => formatarInstante('ontem')).toThrow(RangeError);
+  });
+});
+
+describe('instanteDaDataHora', () => {
+  it('lê a hora no fuso de Brasília ou no informado', () => {
+    expect(instanteDaDataHora('2026-11-10', '14:00')).toBe('2026-11-10T17:00:00.000Z');
+    expect(instanteDaDataHora('2026-11-10', '14:00', 'America/Rio_Branco')).toBe(
+      '2026-11-10T19:00:00.000Z',
+    );
+    expect(() => instanteDaDataHora('10/11/2026', '14:00')).toThrow(RangeError);
   });
 });

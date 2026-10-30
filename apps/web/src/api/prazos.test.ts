@@ -50,6 +50,12 @@ describe('prazos (HU24)', () => {
     await m.simularNovo.mutationFn(novo);
     await m.cadastrar.mutationFn({ ...novo, vencimentoConfirmado: '2026-10-26' });
     await consultas.atos().queryFn?.(sinal as never);
+    await consultas
+      .compromissos('2026-11-01T00:00:00Z', '2026-11-30T00:00:00Z')
+      .queryFn?.(sinal as never);
+    await m.agendar.mutationFn({ titulo: 'Audiência', dataHora: '2026-11-10T17:00:00.000Z' });
+    await m.cancelarCompromisso.mutationFn({ id: ID, motivo: 'audiência redesignada' });
+    await m.analisar.mutationFn('Cite-se');
     await m.confirmar.onSuccess();
     expect(cache.getQueryState(chaves.prazos.detalhe(ID))?.isInvalidated).toBe(true);
     expect(rotas).toEqual([
@@ -64,6 +70,10 @@ describe('prazos (HU24)', () => {
       `POST /v1/prazos/simular {"processoId":"${ID}","tipoAto":"citacao","meio":"djen","dataDeReferencia":"2026-10-05","origem":"manual"}`,
       `POST /v1/prazos {"processoId":"${ID}","tipoAto":"citacao","meio":"djen","dataDeReferencia":"2026-10-05","origem":"manual","vencimentoConfirmado":"2026-10-26"}`,
       'GET /v1/tipos-de-ato',
+      'GET /v1/compromissos?de=2026-11-01T00%3A00%3A00Z&ate=2026-11-30T00%3A00%3A00Z',
+      'POST /v1/compromissos {"titulo":"Audiência","dataHora":"2026-11-10T17:00:00.000Z"}',
+      `POST /v1/compromissos/${ID}/cancelar {"motivo":"audiência redesignada"}`,
+      'POST /v1/assistente/analisar {"texto":"Cite-se"}',
     ]);
   });
 });

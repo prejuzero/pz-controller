@@ -28,8 +28,20 @@ import { ROTAS_CALENDARIO } from './calendario/index.js';
 import { ROTAS_CAPTURA } from './captura.js';
 import { ROTAS_NOTIFICACOES } from './notificacoes/index.js';
 import { gerarOpenApi } from './openapi.js';
+import { ROTAS_COMPROMISSOS } from './prazos/compromissos.js';
 import { ROTAS_TABELA_PRAZOS } from './prazos/index.js';
 import { ROTAS_PRAZOS } from './prazos/prazos.js';
+export {
+  agendarCompromisso,
+  AnaliseDoTexto,
+  analisarTexto,
+  cancelarCompromisso,
+  Compromisso,
+  Compromissos,
+  listarCompromissos,
+  PedidoDeCompromisso,
+  ROTAS_COMPROMISSOS,
+} from './prazos/compromissos.js';
 import { ROTAS_PRIVACIDADE } from './privacidade.js';
 import { ROTAS_PUBLICACOES } from './publicacoes.js';
 import { ROTAS_SAUDE } from './saude/index.js';
@@ -282,6 +294,7 @@ export const ROTAS = [
   ...ROTAS_CALENDARIO,
   ...ROTAS_TABELA_PRAZOS,
   ...ROTAS_PRAZOS,
+  ...ROTAS_COMPROMISSOS,
   ...ROTAS_TERMOS,
   ...ROTAS_PRIVACIDADE,
   ...ROTAS_PUBLICACOES,

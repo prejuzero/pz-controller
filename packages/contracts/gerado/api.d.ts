@@ -379,6 +379,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/assistente/analisar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cadastro assistido: sugere ato e prazo citado a partir do texto colado, sem gravar. */
+        post: operations["analisarTexto"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/2fa/ativar": {
         parameters: {
             query?: never;
@@ -721,6 +738,41 @@ export interface paths {
         head?: never;
         /** Altera nome ou documento do cliente. */
         patch: operations["atualizarCliente"];
+        trace?: never;
+    };
+    "/v1/compromissos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Compromissos não cancelados do período, por data e hora. */
+        get: operations["listarCompromissos"];
+        put?: never;
+        /** Agenda um compromisso (audiência, reunião) com lembretes. */
+        post: operations["agendarCompromisso"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/compromissos/{id}/cancelar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancela o compromisso, com motivo. */
+        post: operations["cancelarCompromisso"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/email/verificar": {
@@ -1354,6 +1406,26 @@ export interface components {
             /** @description Nulo desvincula o cliente. */
             clienteId?: string | null;
         };
+        AnaliseDoTexto: {
+            /** @enum {string} */
+            origem: "regra" | "ia" | "nenhuma";
+            /** @enum {string} */
+            situacao: "ok" | "a_confirmar" | "revisao_manual";
+            tipoAto: string | null;
+            confianca: number | null;
+            prazoCitado: {
+                quantidade: number;
+                unidade: string;
+                divergente: boolean;
+            } | null;
+            evidencias: {
+                inicio: number;
+                fim: number;
+                trecho: string;
+            }[];
+            /** @description Por que ficou sem ato seguro (ex.: ia-desligada). */
+            motivo: string | null;
+        };
         AtosDaTaxonomia: {
             itens: {
                 codigo: string;
@@ -1402,6 +1474,23 @@ export interface components {
         CodigoSegundoFator: {
             /** @description 6 dígitos do aplicativo ou um código de recuperação (XXXXX-XXXXX). */
             codigo: string;
+        };
+        Compromisso: {
+            /** Format: uuid */
+            id: string;
+            titulo: string;
+            /** Format: date-time */
+            dataHora: string;
+            local: string | null;
+            processoId: string | null;
+            lembretesMinutos: number[];
+            /** Format: uuid */
+            criadoPor: string;
+            canceladoEm: string | null;
+            motivoCancelamento: string | null;
+        };
+        Compromissos: {
+            itens: components["schemas"]["Compromisso"][];
         };
         ConfiguracaoSegundoFator: {
             /** @description URI otpauth:// para o QR code do aplicativo autenticador. */
@@ -1795,6 +1884,9 @@ export interface components {
              */
             vencimento?: string;
         };
+        PedidoDeAnalise: {
+            texto: string;
+        };
         PedidoDeAssinatura: {
             plano?: string | null;
             /**
@@ -1822,6 +1914,9 @@ export interface components {
             versao: number;
             motivo: string;
         };
+        PedidoDeCancelamentoDeCompromisso: {
+            motivo: string;
+        };
         PedidoDeCliente: {
             nome: string;
             /** @description CPF ou CNPJ, com ou sem máscara. */
@@ -1835,6 +1930,18 @@ export interface components {
             cobertura: "automatica" | "parcial" | "manual";
             /** @description Obrigatório quando a cobertura não é automática. */
             motivo?: string | null;
+        };
+        PedidoDeCompromisso: {
+            titulo: string;
+            /**
+             * Format: date-time
+             * @description Data e hora com fuso (ex.: 2026-11-10T14:00:00-03:00).
+             */
+            dataHora: string;
+            local?: string;
+            /** Format: uuid */
+            processoId?: string;
+            lembretesMinutos?: number[];
         };
         /** @description O e-mail não entra: segue a base legal do serviço contratado. */
         PedidoDeConsentimento: {
@@ -4130,6 +4237,66 @@ export interface operations {
             };
         };
     };
+    analisarTexto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeAnalise"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnaliseDoTexto"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
     ativarSegundoFator: {
         parameters: {
             query?: never;
@@ -5539,6 +5706,215 @@ export interface operations {
             };
             /** @description Não encontrado. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarCompromissos: {
+        parameters: {
+            query: {
+                de: string;
+                ate: string;
+                limite?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Compromissos"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    agendarCompromisso: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeCompromisso"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Compromisso"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    cancelarCompromisso: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeCancelamentoDeCompromisso"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Compromisso"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
