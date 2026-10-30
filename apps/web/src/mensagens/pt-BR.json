@@ -260,7 +260,9 @@
     "privacidade": "Privacidade",
     "privacidadeDescricao": "Documentos aceitos, exportação dos seus dados e encerramento da conta.",
     "cobertura": "Cobertura",
-    "coberturaDescricao": "Última captura de cada OAB e o que exige conferência manual."
+    "coberturaDescricao": "Última captura de cada OAB e o que exige conferência manual.",
+    "notificacoes": "Notificações",
+    "notificacoesDescricao": "Lembretes de prazo, resumo diário e avisos de nova intimação."
   },
   "cadastro": {
     "titulo": "Criar conta",
@@ -994,5 +996,24 @@
     "vazio": "Nada encontrado com esses filtros.",
     "erro": "Não foi possível buscar. Confira os filtros e tente de novo.",
     "carregarMais": "Carregar mais"
+  },
+  "preferenciasDeNotificacao": {
+    "titulo": "Notificações",
+    "canalEmail": "No e-mail",
+    "tipos": {
+      "nova-intimacao": "Nova intimação com o prazo sugerido",
+      "lembrete-prazo": "Lembretes de prazo",
+      "resumo-diario": "Resumo diário"
+    },
+    "antecedencias": "Quando lembrar",
+    "ajudaAntecedencias": "Dias úteis antes do vencimento, às 8h. Nos dois últimos dias, enquanto a ciência não for confirmada, também às 14h.",
+    "dias": "{dias, plural, =0 {No dia} one {# dia útil antes} other {# dias úteis antes}}",
+    "horarioResumo": "Horário do resumo diário",
+    "ajudaHorario": "Horário de Brasília. Sem novidades, o resumo não é enviado.",
+    "copias": "Os e-mails em cópia ficam no seu perfil.",
+    "irAoPerfil": "Ir ao perfil",
+    "salvar": "Salvar",
+    "salvas": "Preferências salvas. Os próximos lembretes já seguem a nova escolha.",
+    "suprimidos": "Estes e-mails rejeitaram mensagens e não recebem nada até serem trocados: {emails}."
   }
 }

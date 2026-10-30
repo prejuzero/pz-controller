@@ -71,3 +71,37 @@ export type {
   Supressao,
 } from './application/supressoes.js';
 export { SupressoesEmMemoria } from './infra/em-memoria.js';
+export {
+  AvisarNovaIntimacao,
+  CancelarLembretes,
+  DispararLembretes,
+  ProgramarLembretes,
+} from './application/lembretes.js';
+export type {
+  AgendaDoPrazo,
+  DesfechoDoLembrete,
+  LembreteAgendado,
+  NoTenant as NoTenantDosLembretes,
+  NumeroDoProcesso,
+  PrazoParaLembrete,
+  RepositorioDeLembretes,
+} from './application/lembretes.js';
+export {
+  AlterarPreferencias,
+  ConsultarPreferencias,
+  PedidoDePreferencias,
+  PREFERENCIAS_PADRAO,
+  TIPOS_CONFIGURAVEIS,
+} from './application/preferencias.js';
+export type {
+  AutorDasPreferencias,
+  PreferenciasAlteradas,
+  PreferenciasDoUsuario,
+  RepositorioDePreferencias,
+} from './application/preferencias.js';
+export { EnviarResumosDiarios } from './application/resumo.js';
+export type { ConteudoDoResumo, FontesDoResumo, ItemDoResumo } from './application/resumo.js';
+export { ANTECEDENCIAS_PADRAO, planejarLembretes } from './domain/lembrete.js';
+export { HORARIO_PADRAO_DO_RESUMO, resumoDevido } from './domain/resumo.js';
+export { LembretesEmMemoria, PreferenciasEmMemoria } from './infra/em-memoria.js';
+export { LembretesPostgres } from './infra/lembretes-postgres.js';

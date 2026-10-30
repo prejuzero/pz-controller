@@ -981,6 +981,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/notificacoes/preferencias": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preferências de notificação do usuário da sessão (padrão quando não escolhidas). */
+        get: operations["consultarPreferenciasDeNotificacao"];
+        /** Grava as preferências; os lembretes futuros são reprogramados. */
+        put: operations["alterarPreferenciasDeNotificacao"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/oabs": {
         parameters: {
             query?: never;
@@ -2435,6 +2453,18 @@ export interface components {
             classificacaoIncerta: boolean;
             motivoAjuste: string | null;
             versao: number;
+        };
+        PreferenciasDeNotificacao: {
+            /** @description Dias úteis antes do vencimento para os lembretes (0 = no dia). */
+            antecedencias: number[];
+            /** @description Horário do resumo diário (HH:MM, Brasília). */
+            horarioResumo: string;
+            /** @description Tipos ligados no e-mail. */
+            ativos: {
+                "nova-intimacao": boolean;
+                "lembrete-prazo": boolean;
+                "resumo-diario": boolean;
+            };
         };
         Problema: {
             /** @description URI que identifica o tipo do problema. */
@@ -7011,6 +7041,113 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    consultarPreferenciasDeNotificacao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreferenciasDeNotificacao"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    alterarPreferenciasDeNotificacao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreferenciasDeNotificacao"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreferenciasDeNotificacao"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
             };
             /** @description Não autenticado. */
             401: {

@@ -28,7 +28,7 @@ describe('aviso de fonte degradada ou restabelecida (PZ-311)', () => {
     responsaveis = [GESTORA, GESTOR];
     const notificar = new Notificar(
       repositorio,
-      { ativo: () => Promise.resolve(undefined) },
+      { ativo: () => Promise.resolve(undefined), antecedencias: () => Promise.resolve(undefined) },
       { emails: (_tx, id) => Promise.resolve({ principal: `${id}@exemplo.invalid`, copias: [] }) },
       { suprimidos: () => Promise.resolve(new Set()), suprimir: () => Promise.resolve() },
       new ConsentimentosEmMemoria(),

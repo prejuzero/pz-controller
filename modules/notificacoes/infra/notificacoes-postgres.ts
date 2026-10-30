@@ -1,5 +1,6 @@
 import { Instant } from '@pz/kernel';
 
+import { TIPOS_CONFIGURAVEIS } from '../application/preferencias.js';
 import { Notificacao } from '../domain/notificacao.js';
 
 import type {
@@ -7,6 +8,11 @@ import type {
   PreferenciasDeNotificacao,
   RepositorioDeNotificacoes,
 } from '../application/portas.js';
+import type {
+  PreferenciasDoUsuario,
+  RepositorioDePreferencias,
+  TipoConfiguravel,
+} from '../application/preferencias.js';
 import type { ConsultaDeSupressoes, Supressao } from '../application/supressoes.js';
 import type { Canal, TipoDeNotificacao } from '../domain/notificacao.js';
 import type { Transacao } from '@pz/db';
@@ -114,7 +120,9 @@ function restaurar(l: LinhaNotificacao): Notificacao {
   });
 }
 
-export class PreferenciasPostgres implements PreferenciasDeNotificacao<Transacao> {
+export class PreferenciasPostgres
+  implements PreferenciasDeNotificacao<Transacao>, RepositorioDePreferencias<Transacao>
+{
   async ativo(
     tx: Transacao,
     usuarioId: Uuid,
@@ -126,6 +134,51 @@ export class PreferenciasPostgres implements PreferenciasDeNotificacao<Transacao
       select: { ativo: true },
     });
     return linha?.ativo;
+  }
+
+  async antecedencias(tx: Transacao, usuarioId: Uuid): Promise<readonly number[] | undefined> {
+    return (await this.ler(tx, usuarioId)).antecedencias;
+  }
+
+  /** Uma linha por tipo no e-mail: o lembrete guarda as antecedências; o resumo, o horário. */
+  async ler(tx: Transacao, usuarioId: Uuid): Promise<Partial<PreferenciasDoUsuario>> {
+    const linhas = await tx.preferenciaNotificacao.findMany({
+      where: { usuarioId, canal: 'email', tipo: { in: [...TIPOS_CONFIGURAVEIS] } },
+    });
+    if (linhas.length === 0) return {};
+    const de = (tipo: TipoConfiguravel) => linhas.find((l) => l.tipo === tipo);
+    const lembrete = de('lembrete-prazo');
+    const horario = de('resumo-diario')?.horarioResumo ?? null;
+    const ativos: Partial<Record<TipoConfiguravel, boolean>> = {};
+    for (const l of linhas) ativos[l.tipo as TipoConfiguravel] = l.ativo;
+    return {
+      ...(lembrete === undefined || lembrete.antecedencias.length === 0
+        ? {}
+        : { antecedencias: lembrete.antecedencias }),
+      ...(horario === null ? {} : { horarioResumo: horario.toISOString().slice(11, 16) }),
+      ativos: ativos as Record<TipoConfiguravel, boolean>,
+    };
+  }
+
+  async gravar(
+    tx: Transacao,
+    tenantId: Uuid,
+    usuarioId: Uuid,
+    p: PreferenciasDoUsuario,
+  ): Promise<void> {
+    for (const tipo of TIPOS_CONFIGURAVEIS) {
+      const extra = {
+        antecedencias: tipo === 'lembrete-prazo' ? [...p.antecedencias] : [],
+        // TIME sem fuso: o horário de parede do escritório (São Paulo).
+        horarioResumo:
+          tipo === 'resumo-diario' ? new Date(`1970-01-01T${p.horarioResumo}:00.000Z`) : null,
+      };
+      await tx.preferenciaNotificacao.upsert({
+        where: { usuarioId_tipo_canal: { usuarioId, tipo, canal: 'email' } },
+        create: { tenantId, usuarioId, tipo, canal: 'email', ativo: p.ativos[tipo], ...extra },
+        update: { ativo: p.ativos[tipo], ...extra },
+      });
+    }
   }
 }
 

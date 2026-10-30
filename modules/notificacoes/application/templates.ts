@@ -24,6 +24,9 @@ const DataHora = z.string().regex(/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/);
 const NomeDaFonte = z.string().trim().min(1).max(40);
 /** Leva à tela de confirmação; o GET nunca confirma nada (CLAUDE.md, seção 14). */
 const LinkDeCiencia = LinkDoPortal.optional();
+const ItemDePrazo = z
+  .object({ numeroProcesso: NumeroDoProcesso, vencimento: Data, link: LinkDoPortal })
+  .strict();
 
 interface Conteudo {
   readonly assunto: string;
@@ -114,52 +117,62 @@ export const TEMPLATES = {
     }),
   }),
   'resumo-diario': definir({
-    versao: 1,
+    // v2 (HU31): vencem hoje, próximos 7 dias, sem ciência e intimações novas.
+    versao: 2,
     dados: z
       .object({
         data: Data,
+        vencemHoje: z.array(ItemDePrazo).max(50),
+        proximos: z.array(ItemDePrazo).max(50),
+        semCiencia: z.array(ItemDePrazo).max(50),
         intimacoes: z
           .array(z.object({ numeroProcesso: NumeroDoProcesso, link: LinkDoPortal }).strict())
-          .max(50),
-        prazos: z
-          .array(
-            z
-              .object({ numeroProcesso: NumeroDoProcesso, vencimento: Data, link: LinkDoPortal })
-              .strict(),
-          )
           .max(50),
         link: LinkDoPortal,
       })
       .strict()
-      .refine((d) => d.intimacoes.length + d.prazos.length > 0, 'Resumo sem itens'),
-    email: (d) => ({
-      assunto: `Resumo do dia ${d.data}`,
-      titulo: `Resumo de ${d.data}`,
-      previa: `${plural(d.intimacoes.length, 'intimação nova', 'intimações novas')} e ${plural(d.prazos.length, 'prazo próximo', 'prazos próximos')}.`,
-      corpo: [
-        ...(d.intimacoes.length === 0
+      .refine(
+        (d) =>
+          d.vencemHoje.length + d.proximos.length + d.semCiencia.length + d.intimacoes.length > 0,
+        'Resumo sem itens',
+      ),
+    email: (d) => {
+      const secao = (
+        titulo: string,
+        itens: readonly { numeroProcesso: string; vencimento: string; link: string }[],
+      ) =>
+        itens.length === 0
           ? []
           : [
-              paragrafo(destaque('Intimações novas')),
-              lista(d.intimacoes.map((i) => link(i.link, `Processo ${i.numeroProcesso}`))),
-            ]),
-        ...(d.prazos.length === 0
-          ? []
-          : [
-              paragrafo(destaque('Prazos próximos')),
+              paragrafo(destaque(titulo)),
               lista(
-                d.prazos.map((p) =>
+                itens.map((p) =>
                   link(p.link, `Processo ${p.numeroProcesso}: vence em ${p.vencimento}`),
                 ),
               ),
-            ]),
-      ],
-      acoes: acoes(d.link),
-      link: d.link,
-    }),
+            ];
+      return {
+        assunto: `Resumo do dia ${d.data}`,
+        titulo: `Resumo de ${d.data}`,
+        previa: `${plural(d.vencemHoje.length, 'prazo vence', 'prazos vencem')} hoje e ${plural(d.intimacoes.length, 'intimação nova', 'intimações novas')}.`,
+        corpo: [
+          ...secao('Vencem hoje', d.vencemHoje),
+          ...secao('Próximos 7 dias', d.proximos),
+          ...secao('Sem ciência confirmada', d.semCiencia),
+          ...(d.intimacoes.length === 0
+            ? []
+            : [
+                paragrafo(destaque('Intimações novas')),
+                lista(d.intimacoes.map((i) => link(i.link, `Processo ${i.numeroProcesso}`))),
+              ]),
+        ],
+        acoes: acoes(d.link),
+        link: d.link,
+      };
+    },
     minimo: (d) => ({
       assunto: 'Resumo do dia',
-      texto: `${plural(d.intimacoes.length, 'intimação nova', 'intimações novas')} e ${plural(d.prazos.length, 'prazo próximo', 'prazos próximos')}. Confira no PrejuZero.`,
+      texto: `${plural(d.vencemHoje.length, 'prazo vence', 'prazos vencem')} hoje e ${plural(d.intimacoes.length, 'intimação nova', 'intimações novas')}. Confira no PrejuZero.`,
     }),
   }),
   'prazo-recalculado': definir({

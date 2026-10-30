@@ -5,14 +5,22 @@ PrejuZero
 
 RESUMO DE 07/10/2026
 
+Vencem hoje
+
+ * Processo 0000002-00.2026.8.26.0001: vence em 07/10/2026 https://app.exemplo.invalid/prazos/1
+ * Processo 0000003-00.2026.8.26.0001: vence em 07/10/2026 https://app.exemplo.invalid/prazos/1
+
+Próximos 7 dias
+
+ * Processo 0000001-00.2026.8.26.0001: vence em 13/10/2026 https://app.exemplo.invalid/prazos/1
+
+Sem ciência confirmada
+
+ * Processo 0000001-00.2026.8.26.0001: vence em 13/10/2026 https://app.exemplo.invalid/prazos/1
+
 Intimações novas
 
  * Processo 0000001-00.2026.8.26.0001 https://app.exemplo.invalid/prazos/1
-
-Prazos próximos
-
- * Processo 0000002-00.2026.8.26.0001: vence em 09/10/2026 https://app.exemplo.invalid/prazos/1
- * Processo 0000003-00.2026.8.26.0001: vence em 13/10/2026 https://app.exemplo.invalid/prazos/1
 
 Ver no portal https://app.exemplo.invalid/painel
 

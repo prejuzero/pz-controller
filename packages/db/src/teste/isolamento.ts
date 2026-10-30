@@ -241,4 +241,5 @@ export const TABELAS_SEM_DELETE: readonly string[] = [
   'publicacao_destinatario',
   'prazo',
   'compromisso',
+  'lembrete_agendado',
 ];

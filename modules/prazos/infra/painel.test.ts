@@ -239,3 +239,30 @@ describe('busca avançada em memória (HU28)', () => {
     expect(pagina.ok && pagina.valor.ultimo?.data).toBeNull();
   });
 });
+
+describe('agenda dos lembretes (HU31)', () => {
+  it('dias úteis antes do vencimento pelo calendário do processo, com feriado no meio', async () => {
+    const { AgendaDosLembretes } = await import('../application/agenda.js');
+    const { unidade, repo } = await repositorio([
+      prazo('2026-11-04', 'pendente', { responsavelId: ANA }),
+    ]);
+    const agenda = new AgendaDosLembretes(unidade, repo, () => Promise.resolve(processo));
+    const [p] = [
+      ...(await unidade.executar((tx) => repo.abertosAPartirDe(tx, d('2026-10-01'), {}, 1))),
+    ];
+    if (p === undefined) throw new Error('massa');
+    expect(await agenda.situacao(p.id)).toMatchObject({ lembrar: true, responsavelId: ANA });
+    expect(await agenda.situacao(ANA)).toBeUndefined();
+    // Qua 04/11: 1 dia útil antes é ter 03; 2 antes pula o feriado de seg 02 e o fim de semana.
+    const datas = await agenda.datas(PROCESSO, d('2026-11-04'), [0, 1, 2]);
+    expect(datas.map((x) => [x.antecedencia, x.data.paraIso()])).toEqual([
+      [2, '2026-10-30'],
+      [1, '2026-11-03'],
+      [0, '2026-11-04'],
+    ]);
+    const semProcesso = new AgendaDosLembretes(unidade, repo, () => Promise.resolve(undefined));
+    expect(
+      (await semProcesso.datas(PROCESSO, d('2026-11-04'), [5])).map((x) => x.antecedencia),
+    ).toEqual([0]);
+  });
+});

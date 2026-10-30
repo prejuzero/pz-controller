@@ -62,7 +62,7 @@ describe('notificações (HU30)', () => {
     };
     notificar = new Notificar(
       repositorio,
-      { ativo: () => Promise.resolve(ativo) },
+      { ativo: () => Promise.resolve(ativo), antecedencias: () => Promise.resolve(undefined) },
       {
         emails: () =>
           Promise.resolve({

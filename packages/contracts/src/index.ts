@@ -292,16 +292,19 @@ export {
 } from './eventos/index.js';
 export type { ContratoEvento } from './eventos/index.js';
 export {
+  alterarPreferenciasDeNotificacao,
   AvisosDeEntrega,
   concederConsentimento,
   ConsentimentoDoCanal,
   ConsentimentosDoUsuario,
   consultarAvisosDeEntrega,
+  consultarPreferenciasDeNotificacao,
   desativarDestinoPush,
   DestinoPushRegistrado,
   listarConsentimentos,
   PedidoDeConsentimento,
   PedidoDeDestinoPush,
+  PreferenciasDeNotificacao,
   registrarDestinoPush,
   revogarConsentimento,
   ROTAS_NOTIFICACOES,

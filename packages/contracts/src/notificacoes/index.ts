@@ -134,7 +134,55 @@ export const desativarDestinoPush = definirRota({
   resposta: { status: 204, corpo: null },
 });
 
+/** Preferências de notificação do usuário (HU31); só e-mail no MVP. */
+export const PreferenciasDeNotificacao = nomear(
+  'PreferenciasDeNotificacao',
+  z
+    .object({
+      antecedencias: z
+        .array(z.number().int().min(0).max(30))
+        .min(1)
+        .max(6)
+        .describe('Dias úteis antes do vencimento para os lembretes (0 = no dia).'),
+      horarioResumo: z
+        .string()
+        .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+        .describe('Horário do resumo diário (HH:MM, Brasília).'),
+      ativos: z
+        .object({
+          'nova-intimacao': z.boolean(),
+          'lembrete-prazo': z.boolean(),
+          'resumo-diario': z.boolean(),
+        })
+        .strict()
+        .describe('Tipos ligados no e-mail.'),
+    })
+    .strict(),
+);
+export type PreferenciasDeNotificacao = z.infer<typeof PreferenciasDeNotificacao.esquema>;
+
+export const consultarPreferenciasDeNotificacao = definirRota({
+  id: 'consultarPreferenciasDeNotificacao',
+  metodo: 'get',
+  caminho: '/v1/notificacoes/preferencias',
+  resumo: 'Preferências de notificação do usuário da sessão (padrão quando não escolhidas).',
+  tag: 'notificacoes',
+  resposta: { status: 200, corpo: PreferenciasDeNotificacao },
+});
+
+export const alterarPreferenciasDeNotificacao = definirRota({
+  id: 'alterarPreferenciasDeNotificacao',
+  metodo: 'put',
+  caminho: '/v1/notificacoes/preferencias',
+  resumo: 'Grava as preferências; os lembretes futuros são reprogramados.',
+  tag: 'notificacoes',
+  corpo: PreferenciasDeNotificacao,
+  resposta: { status: 200, corpo: PreferenciasDeNotificacao },
+});
+
 export const ROTAS_NOTIFICACOES = [
+  consultarPreferenciasDeNotificacao,
+  alterarPreferenciasDeNotificacao,
   consultarAvisosDeEntrega,
   listarConsentimentos,
   concederConsentimento,

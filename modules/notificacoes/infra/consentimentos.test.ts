@@ -138,7 +138,7 @@ describe('consentimento por canal e destinos de push (HU30)', () => {
     const notificacoes = new NotificacoesEmMemoria();
     const notificar = new Notificar(
       notificacoes,
-      { ativo: () => Promise.resolve(undefined) },
+      { ativo: () => Promise.resolve(undefined), antecedencias: () => Promise.resolve(undefined) },
       { emails: () => Promise.resolve({ copias: [] }) },
       { suprimidos: () => Promise.resolve(new Set()), suprimir: () => Promise.resolve() },
       repositorio,
