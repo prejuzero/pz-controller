@@ -69,6 +69,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/classificacoes/candidatos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Casos candidatos à avaliação vindos das correções dos advogados (curador). */
+        get: operations["listarCasosCandidatos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/classificacoes/candidatos/{id}/decisao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Aceita (entra no conjunto de avaliação) ou descarta o caso, com motivo. */
+        post: operations["decidirCasoCandidato"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/classificacoes/candidatos/exportacao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Casos aceitos no formato de eval/casos, para revisão e versionamento. */
+        get: operations["exportarCasosAceitos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/classificacoes/revisao-manual": {
         parameters: {
             query?: never;
@@ -1279,6 +1330,27 @@ export interface components {
             usuarioId: string;
             perfil: components["schemas"]["PerfilDoAdvogado"];
         };
+        CasoCandidato: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            conteudoId: string;
+            /** @description Teor com CPF, CNPJ, e-mail, CEP e telefone minimizados. */
+            teorAnonimizado: string;
+            tipoAtoClassificado: string | null;
+            tipoAtoCorrigido: string;
+            diasCitados: number | null;
+            diasCorrigidos: number | null;
+            /** @enum {string} */
+            status: "pendente" | "aceito" | "descartado";
+            motivoDecisao: string | null;
+            decididoPor: string | null;
+            decididoEm: string | null;
+        };
+        CasosExportados: {
+            /** @description Casos aceitos no formato de eval/casos (HU22). */
+            casos: unknown[];
+        };
         ClienteDoTenant: {
             /** Format: uuid */
             id: string;
@@ -1574,6 +1646,11 @@ export interface components {
             /** @description Nulo quando não há mais páginas. */
             proximoCursor: string | null;
         };
+        PaginaDeCasosCandidatos: {
+            itens: components["schemas"]["CasoCandidato"][];
+            /** @description Nulo quando não há mais páginas. */
+            proximoCursor: string | null;
+        };
         PaginaDeClientes: {
             itens: components["schemas"]["ClienteDoTenant"][];
             /** @description Nulo quando não há mais páginas. */
@@ -1737,6 +1814,13 @@ export interface components {
             canal: "sms";
             /** @description Telefone E.164 (+5511...). */
             destino: string;
+        };
+        PedidoDeDecisaoDoCaso: {
+            /** @enum {string} */
+            decisao: "aceitar" | "descartar";
+            motivo: string;
+            /** @description Teor revisado pelo curador. */
+            teorAnonimizado?: string;
         };
         PedidoDeDestinoPush: {
             /** @enum {string} */
@@ -2545,6 +2629,194 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarCasosCandidatos: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                /** @description Quantidade de itens por página. */
+                limite?: number;
+                status?: "pendente" | "aceito" | "descartado";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginaDeCasosCandidatos"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    decidirCasoCandidato: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeDecisaoDoCaso"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CasoCandidato"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    exportarCasosAceitos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CasosExportados"];
                 };
             };
             /** @description Não autenticado. */

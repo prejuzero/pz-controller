@@ -369,6 +369,83 @@ export const listarRevisaoManual = definirRota({
   resposta: { status: 200, corpo: PaginaDaRevisaoManual },
 });
 
+/** Caso candidato ao conjunto de avaliação, vindo de uma correção do advogado (HU22). */
+export const CasoCandidato = nomear(
+  'CasoCandidato',
+  z.object({
+    id: Uuid,
+    conteudoId: Uuid,
+    teorAnonimizado: z.string().describe('Teor com CPF, CNPJ, e-mail, CEP e telefone minimizados.'),
+    tipoAtoClassificado: z.string().nullable(),
+    tipoAtoCorrigido: z.string(),
+    diasCitados: z.number().int().nullable(),
+    diasCorrigidos: z.number().int().nullable(),
+    status: z.enum(['pendente', 'aceito', 'descartado']),
+    motivoDecisao: z.string().nullable(),
+    decididoPor: Uuid.nullable(),
+    decididoEm: z.string().nullable(),
+  }),
+);
+export const PaginaDeCasosCandidatos = nomear(
+  'PaginaDeCasosCandidatos',
+  pagina(CasoCandidato.esquema),
+);
+export type PaginaDeCasosCandidatos = z.infer<typeof PaginaDeCasosCandidatos.esquema>;
+export type CasoCandidato = z.infer<typeof CasoCandidato.esquema>;
+
+export const PedidoDeDecisaoDoCaso = nomear(
+  'PedidoDeDecisaoDoCaso',
+  z
+    .object({
+      decisao: z.enum(['aceitar', 'descartar']),
+      motivo: z.string().min(10).max(1000),
+      teorAnonimizado: z.string().min(1).optional().describe('Teor revisado pelo curador.'),
+    })
+    .strict(),
+);
+
+export const CasosExportados = nomear(
+  'CasosExportados',
+  z.object({
+    casos: z.array(z.unknown()).describe('Casos aceitos no formato de eval/casos (HU22).'),
+  }),
+);
+export type CasosExportados = z.infer<typeof CasosExportados.esquema>;
+
+export const listarCasosCandidatos = definirRota({
+  id: 'listarCasosCandidatos',
+  metodo: 'get',
+  caminho: '/v1/admin/classificacoes/candidatos',
+  resumo: 'Casos candidatos à avaliação vindos das correções dos advogados (curador).',
+  tag: 'admin',
+  consulta: ConsultaPaginada.extend({
+    status: z.enum(['pendente', 'aceito', 'descartado']).optional(),
+    cursor: Uuid.optional(),
+  }),
+  resposta: { status: 200, corpo: PaginaDeCasosCandidatos },
+});
+
+export const decidirCasoCandidato = definirRota({
+  id: 'decidirCasoCandidato',
+  metodo: 'post',
+  caminho: '/v1/admin/classificacoes/candidatos/{id}/decisao',
+  resumo: 'Aceita (entra no conjunto de avaliação) ou descarta o caso, com motivo.',
+  tag: 'admin',
+  parametrosDeCaminho: z.object({ id: Uuid }),
+  corpo: PedidoDeDecisaoDoCaso,
+  resposta: { status: 200, corpo: CasoCandidato },
+  erros: [404, 409],
+});
+
+export const exportarCasosAceitos = definirRota({
+  id: 'exportarCasosAceitos',
+  metodo: 'get',
+  caminho: '/v1/admin/classificacoes/candidatos/exportacao',
+  resumo: 'Casos aceitos no formato de eval/casos, para revisão e versionamento.',
+  tag: 'admin',
+  resposta: { status: 200, corpo: CasosExportados },
+});
+
 export const ROTAS_ADMIN = [
   iniciarImpersonacao,
   encerrarImpersonacao,
@@ -383,4 +460,7 @@ export const ROTAS_ADMIN = [
   listarRejeicoesDeEmail,
   consultarUsoDeIa,
   listarRevisaoManual,
+  listarCasosCandidatos,
+  decidirCasoCandidato,
+  exportarCasosAceitos,
 ] as const;

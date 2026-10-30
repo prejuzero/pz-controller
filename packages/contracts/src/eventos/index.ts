@@ -342,6 +342,11 @@ export const PrazoAjustado = definirEvento(
     vencimentoNovo: DataIso.nullable(),
     vencimentoManual: z.boolean(),
     motivo: z.string().min(1),
+    /** Para a curadoria (HU22): o que a correção mudou e de qual publicação veio. */
+    tipoAtoAnterior: z.string().min(1).optional(),
+    diasAnterior: z.number().int().nullable().optional(),
+    diasNovo: z.number().int().nullable().optional(),
+    publicacaoConteudoId: z.uuid().nullable().optional(),
   }),
 );
 

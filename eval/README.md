@@ -24,6 +24,10 @@ Os casos `ficticio-*` foram escritos pela IA programadora, com códigos de ato p
 5. `pnpm --filter @pz/eval test` roda a verificação automática (formato, trecho literal, revisor diferente, nenhum CPF/CNPJ/e-mail/CEP/telefone/número CNJ/OAB/endereço). O CI bloqueia o PR se falhar.
 6. A cada lote, `pnpm --filter @pz/eval amostrar --tamanho 20` sorteia casos para conferência manual; registre a semente no PR.
 
+## Casos vindos das correções (HU22, PZ-162)
+
+As correções de ato e dias feitas pelos advogados viram casos candidatos para o curador. Os aceitos saem por `GET /v1/admin/classificacoes/candidatos/exportacao` já neste formato (`origem: real-anonimizado`, `revisor: null`). Antes de versionar, siga os passos 3 a 5 acima: conferir a anonimização, preencher o `trecho` e passar pelo revisor.
+
 ## Avaliação e gate (`pnpm eval`)
 
 Roda cada caso pelo mesmo caso de uso da produção (regras rápidas, depois a plataforma de IA com o prompt e a configuração versionados) e gera `relatorio/relatorio.md` e `.json`: acurácia, acertos por tipo, matriz de confusão, prazo citado, origem e situação, custo estimado e latência. No CI (workflow `avaliacao-ia.yml`, só quando mudam eval, IA, classificação ou o adaptador) o relatório vira o artefato `avaliacao-ia` e o resumo do job. QA do gate: [docs/qa/hu22-gate-ia.md](../docs/qa/hu22-gate-ia.md).

@@ -1070,3 +1070,31 @@ model Prazo {
   @@index([tenantId, processoId])
   @@map("prazo")
 }
+
+enum StatusCasoCandidato {
+  pendente
+  aceito
+  descartado
+
+  @@map("status_caso_candidato")
+}
+
+/// Caso candidato à avaliação da IA, vindo de uma correção do advogado (HU22). Global, sem tenant.
+model CasoCandidatoCuradoria {
+  id                  String              @id @db.Uuid
+  conteudoId          String              @map("conteudo_id") @db.Uuid
+  teorAnonimizado     String              @map("teor_anonimizado")
+  tipoAtoClassificado String?             @map("tipo_ato_classificado")
+  tipoAtoCorrigido    String              @map("tipo_ato_corrigido")
+  diasCitados         Int?                @map("dias_citados")
+  diasCorrigidos      Int?                @map("dias_corrigidos")
+  status              StatusCasoCandidato @default(pendente)
+  motivoDecisao       String?             @map("motivo_decisao")
+  decididoPor         String?             @map("decidido_por") @db.Uuid
+  decididoEm          DateTime?           @map("decidido_em") @db.Timestamptz(6)
+  criadoEm            DateTime            @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm        DateTime            @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  @@index([status, id])
+  @@map("caso_candidato_curadoria")
+}

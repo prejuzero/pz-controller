@@ -6,6 +6,7 @@ export default criarConfigVitest({
   foraDaCoberturaUnitaria: [
     'infra/regras-postgres.ts',
     'infra/classificacoes-postgres.ts',
+    'infra/candidatos-postgres.ts',
     'infra/taxonomia-postgres.ts',
     'infra/fila-de-revisao-postgres.ts',
   ],

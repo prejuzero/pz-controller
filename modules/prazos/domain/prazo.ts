@@ -267,8 +267,9 @@ export class Prazo extends AggregateRoot {
     usuarioId: Uuid,
     relogio: Clock,
   ): Result<void, Conflito> {
-    const antes = this.#estado.calculo.vencimento;
-    const atual = this.#estado.status;
+    const anterior = this.#estado;
+    const antes = anterior.calculo.vencimento;
+    const atual = anterior.status;
     const r = this.#transicao(['a-confirmar', 'pendente'], atual, {
       ...ajuste,
       motivoAjuste: motivo,
@@ -281,6 +282,10 @@ export class Prazo extends AggregateRoot {
         vencimentoManual: ajuste.vencimentoManual,
         motivo,
         usuarioId,
+        tipoAtoAnterior: anterior.tipoAto,
+        diasAnterior: anterior.calculo.dias,
+        diasNovo: ajuste.calculo.dias,
+        publicacaoConteudoId: anterior.publicacaoConteudoId,
       });
     }
     return r;

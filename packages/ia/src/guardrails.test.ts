@@ -51,6 +51,12 @@ describe('guardrails (HU58)', () => {
     );
   });
 
+  it('minimiza o dado no fim da frase, seguido de ponto (bug do lookahead)', () => {
+    expect(
+      minimizarDadosPessoais('CPF 529.982.247-25. CNPJ 11.222.333/0001-81. CEP 01001-000.'),
+    ).toBe('CPF [CPF]. CNPJ [CNPJ]. CEP [CEP].');
+  });
+
   it('saída sem datas: percorre objetos e listas, exceto os campos liberados', () => {
     expect(() => {
       verificarSaidaSemDatas({ tipoAto: 'contestacao', trecho: 'em 06/10/2026' }, ['trecho']);
