@@ -1,7 +1,13 @@
+import { ErroPermanente } from '@pz/integracoes';
 import { FixedClock, gerarUuidV7, Instant, OutboxEmMemoria } from '@pz/kernel';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { AnalisarTexto, ClassificarPublicacao } from '../application/classificar-publicacao.js';
+import {
+  AnalisarDocumento,
+  AnalisarTexto,
+  ClassificarPublicacao,
+  MAXIMO_DO_PDF_BYTES,
+} from '../application/classificar-publicacao.js';
 
 import { RegrasEmMemoria } from './em-memoria.js';
 
@@ -207,5 +213,56 @@ describe('cadastro assistido: analisar texto colado (HU25, PZ-173)', () => {
     const ia = await comIa.executar('Cite-se a parte ré (FICTÍCIO).', TENANT_ANALISE);
     expect(ia).toMatchObject({ origem: 'ia', tipoAto: 'citacao' });
     expect(chamadas).toBe(2);
+  });
+});
+
+describe('cadastro assistido por PDF (HU25, PZ-173)', () => {
+  const regras = new RegrasEmMemoria([]);
+  const taxonomia = { listar: () => Promise.resolve([]) };
+  const unidade = { executar: <T>(t: (tx: unknown) => Promise<T>) => t(undefined) };
+  const analisar = new AnalisarTexto({ unidade, regras, taxonomia });
+  const gravados: string[] = [];
+  const armazenamento = {
+    gravar: (a: { caminho: string; tipoMime: string }) => {
+      gravados.push(`${a.caminho} ${a.tipoMime}`);
+      return Promise.resolve();
+    },
+  };
+  const relogioPdf = new FixedClock(Instant.deIso('2026-10-31T12:00:00.000Z'));
+  const com = (extrator: { extrairDePdf: () => Promise<{ texto: string; paginas: number }> }) =>
+    new AnalisarDocumento(analisar, extrator, armazenamento, relogioPdf);
+  const bytes = new TextEncoder().encode('%PDF-1.4 FICTÍCIO');
+
+  it('extrai, guarda o PDF no tenant e analisa o texto', async () => {
+    const r = await com({
+      extrairDePdf: () => Promise.resolve({ texto: 'Texto FICTÍCIO', paginas: 2 }),
+    }).executar(TENANT_ANALISE, bytes);
+    if (!r.ok) throw r.erro;
+    expect(r.valor.arquivoId).toMatch(/^assistente\/[0-9a-f-]{36}\.pdf$/);
+    expect(r.valor).toMatchObject({ paginas: 2, analise: { motivo: 'ia-desligada' } });
+    expect(gravados).toEqual([`${r.valor.arquivoId} application/pdf`]);
+  });
+
+  it('recusa escaneado, inválido e grande; falha passageira lança', async () => {
+    gravados.length = 0;
+    const vazio = await com({
+      extrairDePdf: () => Promise.resolve({ texto: '', paginas: 1 }),
+    }).executar(TENANT_ANALISE, bytes);
+    expect(!vazio.ok && vazio.erro.codigo).toBe('pdf-sem-texto');
+    const invalido = await com({
+      extrairDePdf: () => Promise.reject(new ErroPermanente('não é PDF', 'pdf')),
+    }).executar(TENANT_ANALISE, bytes);
+    expect(!invalido.ok && invalido.erro.codigo).toBe('pdf-invalido');
+    const grande = await com({
+      extrairDePdf: () => Promise.resolve({ texto: 'x', paginas: 1 }),
+    }).executar(TENANT_ANALISE, new Uint8Array(MAXIMO_DO_PDF_BYTES + 1));
+    expect(!grande.ok && grande.erro.codigo).toBe('pdf-grande');
+    await expect(
+      com({ extrairDePdf: () => Promise.reject(new Error('falha inesperada')) }).executar(
+        TENANT_ANALISE,
+        bytes,
+      ),
+    ).rejects.toThrow('falha inesperada');
+    expect(gravados).toEqual([]);
   });
 });

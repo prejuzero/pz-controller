@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { AssistenteController, CompromissosController } from './compromissos.controller.js';
 
 import type { RequisicaoAutenticada } from '../http/acesso.js';
-import type { AnalisarTexto } from '@pz/classificacao';
+import type { AnalisarDocumento, AnalisarTexto } from '@pz/classificacao';
 import type { AgendarCompromisso, CancelarCompromisso, ListarCompromissos } from '@pz/prazos';
 
 // Dados FICTÍCIOS: só a ligação HTTP → casos de uso (HU25).
@@ -46,28 +46,60 @@ describe('CompromissosController (HU25)', () => {
   });
 });
 
+const analiseVazia = {
+  origem: 'nenhuma',
+  situacao: 'a_confirmar',
+  tipoAto: null,
+  confianca: null,
+  prazoCitado: null,
+  evidencias: [],
+  motivo: 'ia-desligada',
+};
+const documento = {
+  executar: (_tenant: string, bytes: Uint8Array) =>
+    Promise.resolve(
+      bytes.byteLength === 0
+        ? err(new Validacao([], 'pdf-sem-texto'))
+        : ok({ arquivoId: 'assistente/x.pdf', paginas: 1, analise: analiseVazia }),
+    ),
+} as unknown as AnalisarDocumento<unknown>;
+
 describe('AssistenteController (HU25)', () => {
+  it('PDF: devolve o arquivo guardado e a análise; corpo não binário ou sem texto recusa', async () => {
+    const controller = new AssistenteController({} as AnalisarTexto<unknown>, documento);
+    expect(await controller.analisarPdf(requisicao, Buffer.from('%PDF'))).toEqual({
+      arquivoId: 'assistente/x.pdf',
+      paginas: 1,
+      analise: analiseVazia,
+    });
+    await expect(controller.analisarPdf(requisicao, { texto: 'x' })).rejects.toThrow();
+    await expect(controller.analisarPdf(requisicao, Buffer.alloc(0))).rejects.toThrow(Validacao);
+  });
+
   it('devolve ato, prazo citado e evidência; nunca data', async () => {
-    const controller = new AssistenteController({
-      executar: (texto: string) =>
-        Promise.resolve({
-          origem: 'regra',
-          situacao: 'ok',
-          tipoAto: 'citacao',
-          confianca: 0.99,
-          prazoCitado:
-            texto === 'sem prazo'
-              ? null
-              : {
-                  quantidade: 15,
-                  unidade: 'dias',
-                  unidadeImplicita: false,
-                  divergente: false,
-                  evidencia: { inicio: 0, fim: 1, trecho: 'x' },
-                },
-          evidencias: [{ inicio: 0, fim: 7, trecho: 'Cite-se' }],
-        }),
-    } as unknown as AnalisarTexto<unknown>);
+    const controller = new AssistenteController(
+      {
+        executar: (texto: string) =>
+          Promise.resolve({
+            origem: 'regra',
+            situacao: 'ok',
+            tipoAto: 'citacao',
+            confianca: 0.99,
+            prazoCitado:
+              texto === 'sem prazo'
+                ? null
+                : {
+                    quantidade: 15,
+                    unidade: 'dias',
+                    unidadeImplicita: false,
+                    divergente: false,
+                    evidencia: { inicio: 0, fim: 1, trecho: 'x' },
+                  },
+            evidencias: [{ inicio: 0, fim: 7, trecho: 'Cite-se' }],
+          }),
+      } as unknown as AnalisarTexto<unknown>,
+      documento,
+    );
     expect(await controller.analisarTexto(requisicao, { texto: 'Cite-se em 15 dias' })).toEqual({
       origem: 'regra',
       situacao: 'ok',

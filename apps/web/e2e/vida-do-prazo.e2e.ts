@@ -22,6 +22,29 @@ function numeroFicticio(): string {
   return formatarNumeroCnj({ ...partes, digito });
 }
 
+/** PDF mínimo FICTÍCIO de uma página, com camada de texto. */
+function pdfFicticio(texto: string): Buffer {
+  const conteudo = `BT /F1 12 Tf 72 720 Td (${texto}) Tj ET`;
+  const objetos = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
+    `<< /Length ${String(conteudo.length)} >>\nstream\n${conteudo}\nendstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+  ];
+  let corpo = '%PDF-1.4\n';
+  const posicoes: number[] = [];
+  objetos.forEach((objeto, i) => {
+    posicoes.push(corpo.length);
+    corpo += `${String(i + 1)} 0 obj\n${objeto}\nendobj\n`;
+  });
+  const xref = corpo.length;
+  corpo += `xref\n0 ${String(objetos.length + 1)}\n0000000000 65535 f \n`;
+  corpo += posicoes.map((p) => `${String(p).padStart(10, '0')} 00000 n \n`).join('');
+  corpo += `trailer\n<< /Size ${String(objetos.length + 1)} /Root 1 0 R >>\nstartxref\n${String(xref)}\n%%EOF\n`;
+  return Buffer.from(corpo, 'latin1');
+}
+
 async function semViolacoes(page: Page) {
   const { violations } = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -45,6 +68,13 @@ test('cadastra, confirma, ajusta e cumpre um prazo', async ({ page }) => {
     .fill('Intime-se a parte para se manifestar no prazo de 15 (quinze) dias. (FICTÍCIO)');
   await novo.getByRole('button', { name: 'Analisar texto' }).click();
   await expect(novo.getByText(/Sugestão:|Não foi possível sugerir/)).toBeVisible();
+  // PDF FICTÍCIO com camada de texto: guardado no armazenamento e vinculado ao prazo.
+  await novo.getByLabel('Ou enviar o PDF da intimação (até 10 MB)').setInputFiles({
+    name: 'intimacao-ficticia.pdf',
+    mimeType: 'application/pdf',
+    buffer: pdfFicticio('Intime-se a parte para se manifestar no prazo de 15 dias'),
+  });
+  await expect(novo.getByText(/PDF analisado \(1 páginas\)/)).toBeVisible();
   await novo.getByRole('combobox', { name: 'Tipo de ato' }).click();
   await page.getByRole('option').first().click();
   await novo.getByLabel('Data de referência').fill('2026-10-05');
@@ -55,6 +85,7 @@ test('cadastra, confirma, ajusta e cumpre um prazo', async ({ page }) => {
   await novo.getByRole('button', { name: 'Salvar prazo' }).click();
   await expect(page.getByText('Prazo cadastrado.')).toBeVisible();
 
+  await expect(page.getByRole('button', { name: 'Abrir o PDF de origem' })).toBeVisible();
   // Sem marcar "Confirmo esta data", nasce "a confirmar"; a confirmação é um passo do advogado.
   await expect(page.getByText('A confirmar', { exact: true })).toBeVisible();
   await semViolacoes(page);

@@ -37,6 +37,8 @@ export interface Rota {
   readonly parametrosDeCaminho?: z.ZodObject;
   readonly consulta?: z.ZodObject;
   readonly corpo?: EsquemaNomeado;
+  /** Corpo binário em vez de JSON (ex.: o PDF do cadastro assistido). Exclui `corpo`. */
+  readonly corpoBinario?: 'application/pdf';
   /** Resposta de sucesso. `null` para 204 sem corpo. */
   readonly resposta: {
     readonly status: 200 | 201 | 202 | 204;

@@ -12,6 +12,7 @@ import type {
   ConfirmarPrazo,
   ConsultarPrazo,
   CumprirPrazo,
+  LinkDoDocumento,
   ListarPrazos,
 } from '@pz/prazos';
 
@@ -63,6 +64,18 @@ describe('PrazosController (HU24)', () => {
           return Promise.resolve(ok({ id: ID }));
         },
       } as unknown as CadastrarPrazoManual<unknown>,
+      {
+        executar: (_tenant: string, id: string) =>
+          Promise.resolve(
+            id === ID ? ok({ url: 'https://x.invalid/a' }) : err(new Error('sem documento')),
+          ),
+      } as unknown as LinkDoDocumento<unknown>,
+    );
+    expect(await controller.linkDoDocumento(requisicao(), ID)).toEqual({
+      url: 'https://x.invalid/a',
+    });
+    await expect(controller.linkDoDocumento(requisicao(), USUARIO)).rejects.toThrow(
+      'sem documento',
     );
     await controller.cadastrarPrazo(requisicao(), { tipoAto: 'x' });
     await controller.simularPrazo(requisicao(), { tipoAto: 'y' });

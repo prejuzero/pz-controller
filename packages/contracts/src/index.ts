@@ -34,6 +34,10 @@ import { ROTAS_PRAZOS } from './prazos/prazos.js';
 export {
   agendarCompromisso,
   AnaliseDoTexto,
+  analisarPdf,
+  DocumentoAnalisado,
+  LinkDoDocumento,
+  linkDoDocumentoDoPrazo,
   analisarTexto,
   cancelarCompromisso,
   Compromisso,

@@ -9,10 +9,13 @@ export type { Evidencia } from './domain/texto.js';
 export { RegrasEmMemoria } from './infra/em-memoria.js';
 export { RegrasPostgres } from './infra/regras-postgres.js';
 export {
+  AnalisarDocumento,
   AnalisarTexto,
+  MAXIMO_DO_PDF_BYTES,
   ClassificarPublicacao,
   MAXIMO_DO_TEXTO,
 } from './application/classificar-publicacao.js';
+export type { DocumentoAnalisado } from './application/classificar-publicacao.js';
 export type {
   ClassificadorIa,
   DependenciasDaClassificacao,

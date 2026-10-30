@@ -799,7 +799,8 @@
       "alternativas": "Outras datas possíveis",
       "aConfirmar": "Sem data sugerida: {detalhe}. Informe o vencimento pelo ajuste.",
       "motivoAjuste": "Último motivo de ajuste",
-      "versoes": "Motor {motor} · tabela {tabela}"
+      "versoes": "Motor {motor} · tabela {tabela}",
+      "documento": "Abrir o PDF de origem"
     },
     "acoes": {
       "confirmar": "Confirmar prazo",
@@ -861,7 +862,12 @@
       "sugestao": "Sugestão: {ato}{dias}. Confira antes de calcular.",
       "sugestaoDias": ", {dias} dias citados",
       "semSugestao": "Não foi possível sugerir o ato com segurança. Preencha à mão.",
-      "evidencia": "Trecho: “{trecho}”"
+      "evidencia": "Trecho: “{trecho}”",
+      "pdf": "Ou enviar o PDF da intimação (até 10 MB)",
+      "pdfTipo": "Envie um arquivo PDF.",
+      "pdfGrande": "O PDF passa de 10 MB.",
+      "pdfEnviado": "PDF analisado ({paginas} páginas). Ele fica vinculado ao prazo.",
+      "enviando": "Enviando e analisando…"
     },
     "compromissos": {
       "titulo": "Próximos compromissos",

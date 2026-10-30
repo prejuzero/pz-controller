@@ -396,6 +396,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/assistente/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cadastro assistido por PDF (até 10 MB): guarda o arquivo e sugere ato e prazo citado. */
+        post: operations["analisarPdf"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/2fa/ativar": {
         parameters: {
             query?: never;
@@ -1017,6 +1034,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/prazos/{id}/documento": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Link assinado (5 minutos) para o PDF que originou o prazo. */
+        get: operations["linkDoDocumentoDoPrazo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/prazos/{id}/simular-ajuste": {
         parameters: {
             query?: never;
@@ -1631,6 +1665,12 @@ export interface components {
                 revogadaEm: string | null;
             }[];
         };
+        DocumentoAnalisado: {
+            /** @description Informe em `documento` ao cadastrar o prazo, para vinculá-lo. */
+            arquivoId: string;
+            paginas: number;
+            analise: components["schemas"]["AnaliseDoTexto"];
+        };
         DocumentosPendentes: {
             itens: {
                 /** Format: uuid */
@@ -1745,6 +1785,10 @@ export interface components {
         };
         FeriadosLocais: {
             itens: components["schemas"]["FeriadoLocal"][];
+        };
+        LinkDoDocumento: {
+            /** Format: uri */
+            url: string;
         };
         OabDoAdvogado: {
             /** Format: uuid */
@@ -2071,6 +2115,8 @@ export interface components {
             /** @enum {string} */
             origem: "djen" | "manual" | "painel";
             observacao?: string;
+            /** @description `arquivoId` do PDF analisado (cadastro assistido). */
+            documento?: string;
             /**
              * Format: date
              * @description Vencimento visto na prévia: o prazo nasce pendente; outra data dá 409.
@@ -4279,6 +4325,66 @@ export interface operations {
             };
             /** @description Sem permissão. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    analisarPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/pdf": string;
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentoAnalisado"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Regra de negócio violada. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7121,6 +7227,73 @@ export interface operations {
             };
             /** @description Conflito com o estado atual. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    linkDoDocumentoDoPrazo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkDoDocumento"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

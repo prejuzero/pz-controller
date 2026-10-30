@@ -16,6 +16,7 @@
   "dependencies": {
     "@pz/auditoria": "workspace:*",
     "@pz/db": "workspace:*",
+    "@pz/integracoes": "workspace:*",
     "@pz/kernel": "workspace:*",
     "@pz/motor-prazos": "workspace:*",
     "zod": "4.6.7"

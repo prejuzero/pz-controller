@@ -104,9 +104,46 @@ export const analisarTexto = definirRota({
   resposta: { status: 200, corpo: AnaliseDoTexto },
 });
 
+export const DocumentoAnalisado = nomear(
+  'DocumentoAnalisado',
+  z.object({
+    arquivoId: z.string().describe('Informe em `documento` ao cadastrar o prazo, para vinculá-lo.'),
+    paginas: z.number().int(),
+    analise: AnaliseDoTexto.esquema,
+  }),
+);
+export type DocumentoAnalisado = z.infer<typeof DocumentoAnalisado.esquema>;
+
+export const analisarPdf = definirRota({
+  id: 'analisarPdf',
+  metodo: 'post',
+  caminho: '/v1/assistente/pdf',
+  resumo: 'Cadastro assistido por PDF (até 10 MB): guarda o arquivo e sugere ato e prazo citado.',
+  tag: 'prazos',
+  corpoBinario: 'application/pdf',
+  resposta: { status: 200, corpo: DocumentoAnalisado },
+  erros: [422],
+});
+
+export const LinkDoDocumento = nomear('LinkDoDocumento', z.object({ url: z.url() }));
+export type LinkDoDocumento = z.infer<typeof LinkDoDocumento.esquema>;
+
+export const linkDoDocumentoDoPrazo = definirRota({
+  id: 'linkDoDocumentoDoPrazo',
+  metodo: 'get',
+  caminho: '/v1/prazos/{id}/documento',
+  resumo: 'Link assinado (5 minutos) para o PDF que originou o prazo.',
+  tag: 'prazos',
+  parametrosDeCaminho: z.object({ id: Uuid }),
+  resposta: { status: 200, corpo: LinkDoDocumento },
+  erros: [404],
+});
+
 export const ROTAS_COMPROMISSOS = [
   listarCompromissos,
   agendarCompromisso,
   cancelarCompromisso,
   analisarTexto,
+  analisarPdf,
+  linkDoDocumentoDoPrazo,
 ] as const;

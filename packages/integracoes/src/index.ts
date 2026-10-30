@@ -58,3 +58,4 @@ export type {
   UsoIA,
 } from './portas/provedor-ia.js';
 export type { ReceptorWebhook, RequisicaoWebhook } from './webhook.js';
+export type { ExtratorDeTexto, TextoExtraido } from './portas/extrator-texto.js';

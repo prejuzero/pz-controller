@@ -1,4 +1,5 @@
-import { gerarUuidV7 } from '@pz/kernel';
+import { ErroIntegracao } from '@pz/integracoes';
+import { err, gerarUuidV7, ok, Validacao } from '@pz/kernel';
 
 import { decidir } from '../domain/decisao.js';
 import { classificarPorRegras } from '../domain/regras.js';
@@ -7,7 +8,8 @@ import { regrasValidas } from './classificar.js';
 
 import type { RepositorioDeRegras } from './classificar.js';
 import type { Classificacao, RespostaDaIa } from '../domain/decisao.js';
-import type { Clock, EventoDominio, Outbox, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
+import type { ArmazenamentoArquivos, ExtratorDeTexto, TextoExtraido } from '@pz/integracoes';
+import type { Clock, EventoDominio, Outbox, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 
 /** Porta: teor do conteúdo visível na transação (módulo publicacoes). */
 export interface LeitorDeTeor<Transacao> {
@@ -162,5 +164,87 @@ export class AnalisarTexto<Transacao> {
       decidir(entrada) ??
       decidir({ ...entrada, ia: await consultarIa(deps.ia, teor, tipos, tenantId) })
     );
+  }
+}
+
+/** Maior PDF aceito no cadastro assistido (card PZ-173). */
+export const MAXIMO_DO_PDF_BYTES = 10 * 1024 * 1024;
+
+/** O PDF enviado, já guardado no armazenamento do tenant, e a análise do texto dele. */
+export interface DocumentoAnalisado {
+  readonly arquivoId: string;
+  readonly paginas: number;
+  readonly analise: Classificacao;
+}
+
+/**
+ * Cadastro assistido por PDF (HU25, PZ-173): extrai o texto (porta ExtratorDeTexto, ADR-019),
+ * guarda o PDF no armazenamento do tenant (vinculado ao prazo quando ele for criado) e analisa
+ * o texto pelo mesmo pipeline. PDF escaneado, sem texto, é recusado com a orientação de
+ * cadastrar à mão. Nada é gravado no banco.
+ */
+export class AnalisarDocumento<Transacao> {
+  constructor(
+    private readonly analisar: AnalisarTexto<Transacao>,
+    private readonly extrator: ExtratorDeTexto,
+    private readonly armazenamento: Pick<ArmazenamentoArquivos, 'gravar'>,
+    private readonly relogio: Clock,
+  ) {}
+
+  async executar(
+    tenantId: Uuid,
+    conteudo: Uint8Array,
+  ): Promise<Result<DocumentoAnalisado, Validacao>> {
+    if (conteudo.byteLength > MAXIMO_DO_PDF_BYTES) {
+      return err(
+        new Validacao(
+          [{ campo: 'arquivo', mensagem: 'O PDF passa de 10 MB.' }],
+          'pdf-grande',
+          'O PDF passa de 10 MB.',
+        ),
+      );
+    }
+    let extraido: TextoExtraido;
+    try {
+      extraido = await this.extrator.extrairDePdf(conteudo);
+    } catch (erro) {
+      // Erro permanente (não é PDF, corrompido, protegido): resposta clara ao advogado.
+      if (erro instanceof ErroIntegracao && !erro.retentavel) {
+        return err(
+          new Validacao(
+            [{ campo: 'arquivo', mensagem: 'Não foi possível ler este PDF.' }],
+            'pdf-invalido',
+            'Não foi possível ler este PDF.',
+          ),
+        );
+      }
+      throw erro;
+    }
+    if (extraido.texto === '') {
+      return err(
+        new Validacao(
+          [
+            {
+              campo: 'arquivo',
+              mensagem: 'O PDF não tem texto (parece escaneado). Cadastre o prazo à mão.',
+            },
+          ],
+          'pdf-sem-texto',
+          'O PDF não tem texto (parece escaneado). Cadastre o prazo à mão.',
+        ),
+      );
+    }
+    const arquivoId = `assistente/${gerarUuidV7(this.relogio)}.pdf`;
+    await this.armazenamento.gravar({
+      tenantId,
+      caminho: arquivoId,
+      conteudo,
+      tipoMime: 'application/pdf',
+    });
+    return ok({
+      arquivoId,
+      paginas: extraido.paginas,
+      analise: await this.analisar.executar(extraido.texto, tenantId),
+    });
   }
 }

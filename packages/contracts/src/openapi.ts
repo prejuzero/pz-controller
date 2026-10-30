@@ -106,6 +106,14 @@ function operacao(rota: Rota): Json {
             content: { 'application/json': { schema: REF(rota.corpo.nome) } },
           },
         }),
+    ...(rota.corpoBinario === undefined
+      ? {}
+      : {
+          requestBody: {
+            required: true,
+            content: { [rota.corpoBinario]: { schema: { type: 'string', format: 'binary' } } },
+          },
+        }),
     responses: respostas,
   };
 }

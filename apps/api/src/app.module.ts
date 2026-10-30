@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ExtratorPdf } from '@pz/adapter-pdf';
 import { ArmazenamentoS3 } from '@pz/adapter-s3';
 import { DESCRITOR_SES, WebhooksSes } from '@pz/adapter-ses';
 import {
@@ -48,6 +49,7 @@ import {
 } from '@pz/calendario';
 import { ConsultarStatusDaCaptura, LeituraDoStatusPostgres } from '@pz/captura';
 import {
+  AnalisarDocumento,
   AnalisarTexto,
   CandidatosPostgres,
   DecidirCandidato,
@@ -139,6 +141,7 @@ import {
   ConsultarTabelaDePrazos,
   CumprirPrazo,
   ImportarTabelaDePrazos,
+  LinkDoDocumento,
   ListarPrazos,
   PrazosPostgres,
   ProporVersaoDaTabela,
@@ -491,7 +494,7 @@ function arquivosDoAmbiente(ambiente: AmbienteApi): ArmazenamentoArquivos {
           }),
       forcarPathStyle: ambiente.S3_FORCE_PATH_STYLE,
       criptografia: ambiente.S3_ENDPOINT === undefined ? 'AES256' : 'nenhuma',
-      tiposPermitidos: ['application/json', 'text/csv'],
+      tiposPermitidos: ['application/json', 'text/csv', 'application/pdf'],
       tamanhoMaximoBytes: 100 * 1024 * 1024,
     },
     new SystemClock(),
@@ -567,8 +570,16 @@ function provedoresDaTabelaDePrazos(d: DependenciasDaTabelaDePrazos): Provider[]
 }
 
 /** Ciclo de vida do prazo (HU24): o ajuste recalcula pelo motor com processo e calendário. */
-function provedoresDosPrazos(d: DependenciasDaTabelaDePrazos): Provider[] {
+function provedoresDosPrazos(
+  d: DependenciasDaTabelaDePrazos,
+  arquivos: ArmazenamentoArquivos,
+): Provider[] {
   const prazos = new PrazosPostgres();
+  const analisarTexto = new AnalisarTexto({
+    unidade: d.unidade,
+    regras: new RegrasPostgres(),
+    taxonomia: new TaxonomiaPostgres(),
+  });
   const deps = (relogio: Clock) => ({
     unidade: d.unidade,
     prazos,
@@ -602,12 +613,13 @@ function provedoresDosPrazos(d: DependenciasDaTabelaDePrazos): Provider[] {
     ),
     {
       provide: AnalisarTexto,
-      useValue: new AnalisarTexto({
-        unidade: d.unidade,
-        regras: new RegrasPostgres(),
-        taxonomia: new TaxonomiaPostgres(),
-      }),
+      useValue: analisarTexto,
     },
+    comRelogio(
+      AnalisarDocumento,
+      (r) => new AnalisarDocumento(analisarTexto, new ExtratorPdf(), arquivos, r),
+    ),
+    { provide: LinkDoDocumento, useValue: new LinkDoDocumento(d.unidade, prazos, arquivos) },
     { provide: ListarPrazos, useValue: new ListarPrazos(d.unidade, prazos) },
     { provide: ConsultarPrazo, useValue: new ConsultarPrazo(d.unidade, prazos) },
     comRelogio(ConfirmarPrazo, (r) => new ConfirmarPrazo(deps(r))),
@@ -1173,7 +1185,7 @@ export class AppModule {
         },
       ),
       ...provedoresDaTabelaDePrazos(tabelaDePrazos),
-      ...provedoresDosPrazos(tabelaDePrazos),
+      ...provedoresDosPrazos(tabelaDePrazos, arquivosDoAmbiente(opcoes.ambiente)),
       ...provedoresDoCadastro(cadastro),
       {
         provide: VerificarEmail,

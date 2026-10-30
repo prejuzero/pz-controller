@@ -1,11 +1,11 @@
 'use client';
 
-import { EstadoCarregando, SeloStatus } from '@pz/ui';
+import { Botao, EstadoCarregando, SeloStatus } from '@pz/ui';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
-import { usePrazo } from '../../../../api/hooks';
+import { useLinkDoDocumento, usePrazo } from '../../../../api/hooks';
 import { formatarDataCivil, formatarInstante } from '../../../../i18n/formatar';
 
 import { AcoesDoPrazo } from './acoes-do-prazo';
@@ -26,6 +26,8 @@ interface Memoria {
 
 const comoMemoria = (valor: unknown): Memoria =>
   valor !== null && typeof valor === 'object' ? valor : {};
+const documentoDe = (parametros: unknown) =>
+  (parametros as { documento?: string } | null)?.documento;
 const prazoNoTexto = (parametros: unknown) =>
   (parametros as { prazoNoTexto?: { dias: number; unidade: string } } | null)?.prazoNoTexto;
 
@@ -62,6 +64,7 @@ export function DetalhePrazo({ id }: { id: string }) {
       </div>
 
       <AcoesDoPrazo prazo={p} />
+      {documentoDe(p.parametros) === undefined ? null : <AbrirDocumento id={p.id} />}
 
       <dl className="grid gap-3 rounded-lg border border-borda p-4 sm:grid-cols-2">
         <Item rotulo={t('detalhe.aplicado')}>
@@ -166,5 +169,26 @@ function Item({ rotulo, children }: { rotulo: string; children: React.ReactNode 
       <dt className="text-sm text-texto-suave">{rotulo}</dt>
       <dd>{children}</dd>
     </div>
+  );
+}
+
+/** Abre o PDF de origem por link assinado e curto (gerado na hora, nunca guardado na tela). */
+function AbrirDocumento({ id }: { id: string }) {
+  const t = useTranslations('prazos.detalhe');
+  const link = useLinkDoDocumento();
+  return (
+    <Botao
+      variante="secundaria"
+      carregando={link.isPending}
+      onClick={() => {
+        link.mutate(id, {
+          onSuccess: ({ url }) => {
+            window.open(url, '_blank', 'noopener,noreferrer');
+          },
+        });
+      }}
+    >
+      {t('documento')}
+    </Botao>
   );
 }
