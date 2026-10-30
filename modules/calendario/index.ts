@@ -40,6 +40,8 @@ export type {
 } from './application/portas.js';
 export { diasNaoUteis } from './domain/dias-nao-uteis.js';
 export type { DiaNaoUtil, Jurisdicao } from './domain/dias-nao-uteis.js';
+export { FUSO_DE_BRASILIA, fusoDoJuizo } from './domain/fuso-do-juizo.js';
+export type { FusoDoJuizo } from './domain/fuso-do-juizo.js';
 export { jurisdicaoDoProcesso, LACUNAS_DA_JURISDICAO } from './domain/jurisdicao-do-processo.js';
 export type {
   JurisdicaoResolvida,

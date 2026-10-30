@@ -145,7 +145,10 @@ describe('@Consome e o despachante', () => {
         ],
         ['DispositivoRegistrado@1', ['ConsumidorDeAuditoria.dispositivoRegistrado']],
         ['SessaoRevogada@1', ['ConsumidorDeAuditoria.sessaoRevogada']],
-        ['CalendarioAlterado@1', ['ConsumidorDoCalendario.alterado']],
+        [
+          'CalendarioAlterado@1',
+          ['ConsumidorDoCalendario.alterado', 'ConsumidorDosPrazos.calendarioAlterado'],
+        ],
         ['NotificacaoSolicitada@1', ['ConsumidorDeNotificacoes.solicitada']],
         ['FonteDegradada@1', ['ConsumidorDeNotificacoes.fonteDegradada']],
         ['FonteRestabelecida@1', ['ConsumidorDeNotificacoes.fonteRestabelecida']],
@@ -202,9 +205,23 @@ describe('@Consome e o despachante', () => {
       tenantId,
       agregadoId: gerarUuidV7(relogio),
       ocorridoEm: relogio.agora(),
-      payload: { origem: 'local', inicio: '2030-12-20', fim: '2031-01-20' },
+      // Município: o recálculo de prazos não tem o que fazer (sem fila no teste unitário).
+      payload: {
+        eventoId: gerarUuidV7(relogio),
+        origem: 'local',
+        acao: 'incluido',
+        abrangencia: 'municipio',
+        uf: 'XA',
+        municipioIbge: '0000001',
+        inicio: '2030-12-20',
+        fim: '2031-01-20',
+        usuarioId: gerarUuidV7(relogio),
+      },
     };
-    expect(await app.get(DespachanteDeEventos).despachar(evento)).toEqual(['processado']);
+    expect(await app.get(DespachanteDeEventos).despachar(evento)).toEqual([
+      'processado',
+      'processado',
+    ]);
     expect(invalidacoes.at(-1)).toEqual({ origem: 'local', tenantId, anos: [2030, 2031] });
   });
 

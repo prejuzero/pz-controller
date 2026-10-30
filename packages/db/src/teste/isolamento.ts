@@ -239,4 +239,5 @@ export const TABELAS_SEM_DELETE: readonly string[] = [
   'processo',
   'encerramento_conta',
   'publicacao_destinatario',
+  'prazo',
 ];

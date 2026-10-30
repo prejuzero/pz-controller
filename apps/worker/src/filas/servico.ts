@@ -8,6 +8,7 @@ import {
   registrarErro,
   registrarSituacaoDasFilas,
 } from '@pz/observability';
+import { RecalcularPrazosPorCalendario, lerAlteracaoDoCalendario } from '@pz/prazos';
 import { AplicarRetencao, EfetivarEncerramentos } from '@pz/privacidade';
 
 import {
@@ -29,6 +30,7 @@ import {
   UNIDADE_DOS_WEBHOOKS,
 } from '../fichas.js';
 import { processarWebhook, tratarWebhook } from '../integracoes/webhooks.js';
+import { chaveDoLote, recalcularPrazosJob } from '../prazos/jobs.js';
 import {
   AGENDAMENTO_DA_RETENCAO,
   AGENDAMENTO_DOS_ENCERRAMENTOS,
@@ -48,7 +50,7 @@ import type { AmbienteWorker } from '../ambiente.js';
 import type { ProcessadorDeWebhook } from '../integracoes/webhooks.js';
 import type { OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import type { Transacao } from '@pz/db';
-import type { Clock, LimpezaDoOutbox, UnidadeDeTrabalho } from '@pz/kernel';
+import type { Clock, LimpezaDoOutbox, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 import type { Redis } from 'ioredis';
 
 const logger = criarLogger('worker.manutencao');
@@ -79,6 +81,8 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     @Inject(EfetivarEncerramentos)
     private readonly efetivarEncerramentos: EfetivarEncerramentos<unknown>,
     @Inject(AplicarRetencao) private readonly retencao: AplicarRetencao<unknown>,
+    @Inject(RecalcularPrazosPorCalendario)
+    private readonly recalcularPrazos: RecalcularPrazosPorCalendario<unknown>,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -129,6 +133,23 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     this.filas.registrar(executarCapturaJob, async (dados) => {
       const resultado = await this.executarCaptura.executar(dados);
       logger.info({ alvoId: dados.alvoId, ...resultado }, 'captura executada');
+    });
+    // Recálculo dos prazos (HU16): um lote por job; o seguinte entra como outro job.
+    this.filas.registrar(recalcularPrazosJob, async (dados) => {
+      const alteracao = lerAlteracaoDoCalendario(dados.evento);
+      const lote = await this.recalcularPrazos.executarLote(
+        alteracao,
+        dados.depoisDe as Uuid | null,
+      );
+      logger.info({ eventoId: dados.evento.id, ...lote }, 'lote do recálculo de prazos');
+      if (lote.proximo === null) return;
+      const proximo = { ...dados, depoisDe: lote.proximo };
+      await this.filas.publicar(
+        recalcularPrazosJob,
+        proximo,
+        { tenantId: dados.tenantId },
+        chaveDoLote(proximo),
+      );
     });
     this.filas.registrar(efetivarEncerramentosJob, async () => {
       const encerrados = await this.efetivarEncerramentos.executar();

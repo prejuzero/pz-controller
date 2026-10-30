@@ -19,11 +19,18 @@ import {
 } from '@pz/auditoria';
 import {
   AdvogadosPostgres,
+  ConsultarProcesso,
   ExportacaoDoCadastroPostgres,
   ObterOuCriarProcesso,
   ProcessosPostgres,
 } from '@pz/cadastro';
-import { CacheDeDiasNaoUteisRedis, InvalidarCacheDoCalendario } from '@pz/calendario';
+import {
+  CacheDeDiasNaoUteisRedis,
+  ConsultarDiasNaoUteis,
+  EventosGlobaisPostgres,
+  FeriadosLocaisPostgres,
+  InvalidarCacheDoCalendario,
+} from '@pz/calendario';
 import {
   AssinaturasPostgres,
   CapturaPostgres,
@@ -62,6 +69,11 @@ import {
   SupressaoPostgres,
 } from '@pz/notificacoes';
 import { criarLogger, registrarErro } from '@pz/observability';
+import {
+  PrazosPostgres,
+  RecalcularPrazosPorCalendario,
+  TenantsAfetadosPeloCalendario,
+} from '@pz/prazos';
 import {
   AplicarRetencao,
   EfetivarEncerramentos,
@@ -117,6 +129,8 @@ import { PublicacaoDaSaudeDasIntegracoes } from './integracoes/saude-das-integra
 import { RelayDeWebhooks } from './integracoes/webhooks.js';
 import { ConsumidorDeNotificacoes } from './notificacoes/consumidor.js';
 import { processadorDeEntregas } from './notificacoes/entregas.js';
+import { ConsumidorDosPrazos } from './prazos/consumidor.js';
+import { processoNoCalendario } from './prazos/processo.js';
 import { ConsumidorDaPrivacidade } from './privacidade/consumidor.js';
 import { ConsumidorDasPublicacoes } from './publicacoes/consumidor.js';
 import { noTenantDoBanco, processoPeloCadastro } from './publicacoes/processos.js';
@@ -504,6 +518,7 @@ export class WorkerModule {
       ConsumidorDeNotificacoes,
       ConsumidorDeAuditoria,
       ConsumidorDoCalendario,
+      ConsumidorDosPrazos,
       ConsumidorDaCaptura,
       ConsumidorDaPrivacidade,
       ConsumidorDasPublicacoes,
@@ -635,6 +650,35 @@ export class WorkerModule {
             new CacheDeDiasNaoUteisRedis(redis, (erro) => {
               registrarErro(logger, erro, 'cache do calendário indisponível', 'calendario.cache');
             }),
+        ),
+      },
+      {
+        // Recálculo dos prazos (HU16): lê o calendário direto do banco, sem o cache, para não
+        // depender da ordem entre este consumidor e o que invalida o cache do mesmo evento.
+        provide: RecalcularPrazosPorCalendario,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new RecalcularPrazosPorCalendario(
+            banco,
+            new PrazosPostgres(),
+            processoNoCalendario(
+              new ConsultarProcesso(banco, new ProcessosPostgres(relogio)),
+              new ConsultarDiasNaoUteis(
+                banco,
+                new EventosGlobaisPostgres(),
+                new FeriadosLocaisPostgres(),
+              ),
+            ),
+            new TrilhaPostgres(),
+            outboxPostgres,
+            relogio,
+          ),
+      },
+      {
+        provide: TenantsAfetadosPeloCalendario,
+        useValue: new TenantsAfetadosPeloCalendario(
+          sistema.unidade('prazos: tenants alcançados por mudança do calendário global'),
+          new PrazosPostgres(),
         ),
       },
       { provide: AuditarEvento, useValue: new AuditarEvento(new TrilhaPostgres()) },

@@ -1,0 +1,318 @@
+import { TrilhaPostgres } from '@pz/auditoria';
+import {
+  AprovarEventoDoCalendario,
+  ConsultarDiasNaoUteis,
+  EventosGlobaisPostgres,
+  FeriadosLocaisPostgres,
+  fusoDoJuizo,
+  jurisdicaoDoProcesso,
+  ProporEventoDoCalendario,
+} from '@pz/calendario';
+import { Banco, BancoSistema, executarNoTenant, OutboxPostgres } from '@pz/db';
+import { subirBancoDeTeste } from '@pz/db/teste';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import {
+  CalcularPrazoParaProcesso,
+  CriarPrazo,
+  lerAlteracaoDoCalendario,
+  RecalcularPrazosPorCalendario,
+  TenantsAfetadosPeloCalendario,
+} from '../application/prazos.js';
+import {
+  AprovarVersaoDaTabela,
+  CadastrarTipoDeAto,
+  ProporVersaoDaTabela,
+  ResolverPrazoAplicavel,
+} from '../application/tabela-de-prazos.js';
+import { ANA, BETO, PLATAFORMA, relogio } from '../teste/ficticios.js';
+
+import { PrazosPostgres } from './prazos-postgres.js';
+import { TabelaPostgres, TiposDeAtoPostgres } from './tabela-postgres.js';
+
+import type { LocalizadorDoProcesso } from '../application/portas.js';
+import type { PrazoListado } from '../application/prazos.js';
+import type { Transacao } from '@pz/db';
+import type { BancoDeTeste } from '@pz/db/teste';
+import type { Uuid } from '@pz/kernel';
+
+// Ponta a ponta com banco real (HU16, PZ-143): motor + calendário + tabela + prazo. Tabela,
+// portaria e datas FICTÍCIAS (2030): exercitam a ligação, não são regras jurídicas.
+// Referência: 05/08/2030 é uma segunda-feira.
+const ESCRITORIO = '01a10e00-0000-7000-8000-0000000f0e01' as Uuid;
+const OUTRO = '01a10e00-0000-7000-8000-0000000f0e02' as Uuid;
+const PROCESSO_GO = '01a10e00-0000-7000-8000-0000000f0c01' as Uuid;
+const PROCESSO_OUTRO = '01a10e00-0000-7000-8000-0000000f0c02' as Uuid;
+const ana = { ...ANA, canal: 'portal' as const };
+const beto = { ...BETO, canal: 'portal' as const };
+
+let postgres: BancoDeTeste;
+let banco: Banco;
+let sistema: BancoSistema;
+let calcular: CalcularPrazoParaProcesso<Transacao>;
+let criar: CriarPrazo<Transacao>;
+let recalcular: RecalcularPrazosPorCalendario<Transacao>;
+let tenants: TenantsAfetadosPeloCalendario<Transacao>;
+let proporEvento: ProporEventoDoCalendario<Transacao>;
+let aprovarEvento: AprovarEventoDoCalendario<Transacao>;
+
+const naPlataforma = <T>(trabalho: () => Promise<T>) => executarNoTenant(PLATAFORMA, trabalho);
+
+beforeAll(async () => {
+  postgres = await subirBancoDeTeste();
+  await postgres.migrar();
+  sistema = new BancoSistema({ url: postgres.url('pz_sistema') });
+  await sistema.executarComoSistema('preparar tenants e processos', async (tx) => {
+    await tx.tenant.createMany({
+      data: [
+        { id: PLATAFORMA, nome: 'PrejuZero (fictício)', tipo: 'plataforma' },
+        { id: ESCRITORIO, nome: 'Escritório (fictício)', tipo: 'escritorio' },
+        { id: OUTRO, nome: 'Outro escritório (fictício)', tipo: 'escritorio' },
+      ],
+    });
+    await tx.processo.createMany({
+      data: [
+        {
+          id: PROCESSO_GO,
+          tenantId: ESCRITORIO,
+          numeroCnj: '00000010120308090001',
+          tribunal: 'TJGO',
+          ramo: 'estadual',
+          comarca: 'Comarca Fictícia',
+        },
+        {
+          id: PROCESSO_OUTRO,
+          tenantId: OUTRO,
+          numeroCnj: '00000020120308090001',
+          tribunal: 'TJGO',
+          ramo: 'estadual',
+          comarca: 'Comarca Fictícia',
+        },
+      ],
+    });
+  });
+  banco = new Banco({ url: postgres.url('pz_app'), maxConexoes: 10 });
+  const r = relogio();
+  const trilha = new TrilhaPostgres();
+  const outbox = new OutboxPostgres();
+  const tabela = new TabelaPostgres();
+  const tiposDeAto = new TiposDeAtoPostgres();
+  const globais = new EventosGlobaisPostgres();
+  const dias = new ConsultarDiasNaoUteis(banco, globais, new FeriadosLocaisPostgres());
+  // Mesma composição do worker (apps/worker/src/prazos/processo.ts), lendo o processo direto.
+  const localizar: LocalizadorDoProcesso = async (processoId) => {
+    const p = await banco.executar((tx) => tx.processo.findUnique({ where: { id: processoId } }));
+    if (p === null) return undefined;
+    const { jurisdicao, lacunas } = jurisdicaoDoProcesso(p);
+    return {
+      ramoDoTribunal: p.ramo,
+      jurisdicao,
+      lacunas,
+      fuso: fusoDoJuizo(p.tribunal),
+      diasNaoUteis: async (inicio, fim) =>
+        (await dias.diasNaoUteis(jurisdicao, inicio, fim)).map((d) => ({
+          data: d.data,
+          tipo: d.tipo,
+          motivo: d.motivo,
+          atoNormativo: d.fonte.atoNormativo,
+          urlAto: d.fonte.urlAto,
+        })),
+    };
+  };
+  const prazos = new PrazosPostgres();
+  calcular = new CalcularPrazoParaProcesso(localizar, new ResolverPrazoAplicavel(banco, tabela));
+  criar = new CriarPrazo(banco, prazos, trilha, outbox, r);
+  recalcular = new RecalcularPrazosPorCalendario(banco, prazos, localizar, trilha, outbox, r);
+  tenants = new TenantsAfetadosPeloCalendario(sistema.unidade('teste: tenants afetados'), prazos);
+  proporEvento = new ProporEventoDoCalendario(banco, globais, trilha, r);
+  aprovarEvento = new AprovarEventoDoCalendario(banco, globais, trilha, outbox, r);
+
+  // Tabela FICTÍCIA: 15 dias úteis no cível, aprovada por outra curadora (quatro olhos).
+  await naPlataforma(async () => {
+    const tipo = await new CadastrarTipoDeAto(banco, tiposDeAto, trilha).executar(ana, {
+      codigo: 'ato-ficticio',
+      nome: 'Ato fictício',
+      descricao: '',
+    });
+    if (!tipo.ok) throw tipo.erro;
+    const proposta = await new ProporVersaoDaTabela(banco, tiposDeAto, tabela, trilha, r).executar(
+      ana,
+      {
+        tipoAto: 'ato-ficticio',
+        ramo: 'civel',
+        dias: 15,
+        unidade: 'dias',
+        fundamento: 'FICTÍCIO: Lei de Teste, art. 1º',
+        fonteUrl: 'https://exemplo.invalid/ficticio',
+        vigenciaInicio: '2020-01-01',
+      },
+    );
+    if (!proposta.ok) throw proposta.erro;
+    const aprovacao = await new AprovarVersaoDaTabela(banco, tabela, trilha, outbox, r).executar(
+      beto,
+      proposta.valor.id,
+    );
+    if (!aprovacao.ok) throw aprovacao.erro;
+  });
+}, 300_000);
+
+afterAll(async () => {
+  await banco.encerrar();
+  await sistema.encerrar();
+  await postgres.parar();
+});
+
+async function prazoNovo(tenantId: Uuid, processoId: Uuid): Promise<PrazoListado> {
+  return executarNoTenant(tenantId, async () => {
+    const sugestao = await calcular.executar({
+      processoId,
+      tipoAto: 'ato-ficticio',
+      ramo: 'civel',
+      meio: 'djen',
+      dataDeReferencia: '2030-08-05',
+    });
+    if (!sugestao.ok) throw sugestao.erro;
+    const r = await criar.executar(
+      sugestao.valor,
+      { origem: 'djen', responsavelId: null, publicacaoConteudoId: null },
+      { tenantId, canal: 'evento' },
+    );
+    if (!r.ok) throw r.erro;
+    return r.valor;
+  });
+}
+
+/** Evento global aprovado; devolve o CalendarioAlterado gravado no outbox (como o worker recebe). */
+async function eventoAprovado(parcial: Record<string, unknown>) {
+  return naPlataforma(async () => {
+    const p = await proporEvento.executar(ana, {
+      tipo: 'feriado',
+      inicio: '2030-08-14',
+      fim: '2030-08-14',
+      descricao: 'FICTÍCIO',
+      atoNormativo: 'FICTÍCIO: Portaria de Teste 1/2030',
+      urlAto: 'https://exemplo.invalid/portaria',
+      ...parcial,
+    });
+    if (!p.ok) throw p.erro;
+    const a = await aprovarEvento.executar(beto, p.valor.id);
+    if (!a.ok) throw a.erro;
+    const evento = await banco.executar((tx) =>
+      tx.eventoDominio.findFirstOrThrow({
+        where: { tipo: 'CalendarioAlterado', agregadoId: p.valor.id },
+      }),
+    );
+    return lerAlteracaoDoCalendario(evento);
+  });
+}
+
+const doTenant = <T>(tenantId: Uuid, trabalho: (tx: Transacao) => Promise<T>) =>
+  executarNoTenant(tenantId, () => banco.executar(trabalho));
+
+async function recalcularTodos(alteracao: Awaited<ReturnType<typeof eventoAprovado>>) {
+  const alcancados = await tenants.executar(alteracao);
+  const lotes = [];
+  for (const tenantId of alcancados) {
+    lotes.push(await executarNoTenant(tenantId, () => recalcular.executarLote(alteracao, null)));
+  }
+  return { alcancados, lotes };
+}
+
+describe('prazos no PostgreSQL (HU16)', () => {
+  it('grava o prazo "a confirmar" com trilha e PrazoSugerido no tenant, isolado por RLS', async () => {
+    const prazo = await prazoNovo(ESCRITORIO, PROCESSO_GO);
+    expect(prazo).toMatchObject({
+      status: 'a-confirmar',
+      vencimento: '2030-08-27',
+      versaoTabela: 1,
+      jurisdicao: { tribunal: 'TJGO', uf: 'GO', comarca: 'Comarca Fictícia' },
+    });
+    const [auditoria, eventos] = await doTenant(ESCRITORIO, async (tx) => [
+      await tx.eventoAuditoria.findMany({ where: { entidadeId: prazo.id } }),
+      await tx.eventoDominio.findMany({ where: { agregadoId: prazo.id } }),
+    ]);
+    expect(auditoria.map((a) => a.tipo)).toEqual(['prazos.prazo-sugerido']);
+    expect(eventos.map((e) => [e.tipo, e.tenantId])).toEqual([['PrazoSugerido', ESCRITORIO]]);
+    expect(
+      await doTenant(OUTRO, (tx) => tx.prazo.findUnique({ where: { id: prazo.id } })),
+    ).toBeNull();
+    // Sem DELETE para a aplicação: cancelamento é estado.
+    await expect(
+      doTenant(ESCRITORIO, (tx) => tx.prazo.delete({ where: { id: prazo.id } })),
+    ).rejects.toThrow();
+  });
+
+  it('portaria nova do TJGO: vencimento muda, trilha antes/depois, PrazoRecalculado; cumprido intacto; sem duplicar', async () => {
+    const aberto = await prazoNovo(ESCRITORIO, PROCESSO_GO);
+    const cumprido = await prazoNovo(OUTRO, PROCESSO_OUTRO);
+    await sistema.executarComoSistema('teste: prazo cumprido', (tx) =>
+      tx.prazo.update({ where: { id: cumprido.id }, data: { status: 'cumprido' } }),
+    );
+
+    // Portaria de suspensão de prazos (tipo `portaria`), só do TJGO.
+    const portaria = await eventoAprovado({
+      abrangencia: 'tribunal',
+      tribunal: 'TJGO',
+      tipo: 'portaria',
+    });
+    const { alcancados, lotes } = await recalcularTodos(portaria);
+    expect(alcancados).toEqual([ESCRITORIO]);
+    expect(lotes[0]).toMatchObject({ proximo: null });
+    expect(lotes[0]?.vencimentosAlterados).toBeGreaterThanOrEqual(1);
+
+    const [linha, auditoria, eventos] = await doTenant(ESCRITORIO, async (tx) => [
+      await tx.prazo.findUniqueOrThrow({ where: { id: aberto.id } }),
+      await tx.eventoAuditoria.findMany({
+        where: { entidadeId: aberto.id, tipo: 'prazos.prazo-recalculado' },
+      }),
+      await tx.eventoDominio.findMany({
+        where: { agregadoId: aberto.id, tipo: 'PrazoRecalculado' },
+      }),
+    ]);
+    expect(linha.vencimento?.toISOString().slice(0, 10)).toBe('2030-08-28');
+    expect(linha.versaoOtimista).toBe(2);
+    expect(auditoria).toHaveLength(1);
+    expect(eventos.map((e) => e.payload)).toEqual([
+      expect.objectContaining({
+        vencimentoAnterior: '2030-08-27',
+        vencimentoNovo: '2030-08-28',
+        eventoCalendarioId: portaria.eventoCalendarioId,
+      }),
+    ]);
+    const intacto = await doTenant(OUTRO, (tx) =>
+      tx.prazo.findUniqueOrThrow({ where: { id: cumprido.id } }),
+    );
+    expect(intacto.vencimento?.toISOString().slice(0, 10)).toBe('2030-08-27');
+
+    // Reprocessar o mesmo evento não duplica trilha nem evento.
+    const deNovo = await executarNoTenant(ESCRITORIO, () =>
+      recalcular.executarLote(portaria, null),
+    );
+    expect(deNovo.alterados).toBe(0);
+    const depois = await doTenant(ESCRITORIO, (tx) =>
+      tx.eventoAuditoria.count({
+        where: { entidadeId: aberto.id, tipo: 'prazos.prazo-recalculado' },
+      }),
+    );
+    expect(depois).toBe(1);
+  });
+
+  it('feriado de outra UF não alcança nenhum prazo', async () => {
+    const antes = await prazoNovo(ESCRITORIO, PROCESSO_GO);
+    const outraUf = await eventoAprovado({
+      abrangencia: 'uf',
+      uf: 'SP',
+      inicio: '2030-08-20',
+      fim: '2030-08-20',
+    });
+    const { alcancados, lotes } = await recalcularTodos(outraUf);
+    expect(alcancados).toEqual([]);
+    expect(lotes).toEqual([]);
+    const lote = await executarNoTenant(ESCRITORIO, () => recalcular.executarLote(outraUf, null));
+    expect(lote.lidos).toBe(0);
+    const linha = await doTenant(ESCRITORIO, (tx) =>
+      tx.prazo.findUniqueOrThrow({ where: { id: antes.id } }),
+    );
+    expect(linha.versaoOtimista).toBe(1);
+  });
+});
