@@ -129,6 +129,12 @@ export const ajustarPrazo = acao(
   'Ajusta ato, ramo ou dias (recalcula pelo motor) ou informa o vencimento; sempre com motivo.',
   PedidoDeAjuste,
 );
+export const simularAjustePrazo = acao(
+  'simularAjustePrazo',
+  'simular-ajuste',
+  'Prévia do ajuste: o novo cálculo do motor, sem gravar.',
+  PedidoDeAjuste,
+);
 export const cumprirPrazo = acao(
   'cumprirPrazo',
   'cumprir',
@@ -146,6 +152,7 @@ export const ROTAS_PRAZOS = [
   consultarPrazo,
   confirmarPrazo,
   ajustarPrazo,
+  simularAjustePrazo,
   cumprirPrazo,
   cancelarPrazo,
 ] as const;

@@ -25,6 +25,10 @@ describe('PrazosController (HU24)', () => {
   it('repassa autor (canal pela sessão), id e corpo; erro do caso de uso vira exceção', async () => {
     const chamadas: unknown[] = [];
     const acao = (nome: string) => ({
+      simular: (autor: unknown, id: string, corpo: unknown) => {
+        chamadas.push([`${nome}:simular`, autor, id, corpo]);
+        return Promise.resolve(ok({ id }));
+      },
       executar: (autor: unknown, id: string, corpo: unknown) => {
         chamadas.push([nome, autor, id, corpo]);
         return Promise.resolve(
@@ -50,11 +54,13 @@ describe('PrazosController (HU24)', () => {
     await expect(controller.consultarPrazo(USUARIO)).rejects.toThrow('não encontrado');
     expect(await controller.confirmarPrazo(requisicao(), ID, { versao: 1 })).toEqual({ id: ID });
     await controller.ajustarPrazo(requisicao('disp'), ID, { versao: 2 });
+    await controller.simularAjustePrazo(requisicao(), ID, { versao: 2 });
     await controller.cumprirPrazo(requisicao(), ID, { versao: 3 });
     await expect(controller.cancelarPrazo(requisicao(), ID, {})).rejects.toThrow(Conflito);
     expect(chamadas).toEqual([
       ['confirmar', { usuarioId: USUARIO, canal: 'portal' }, ID, { versao: 1 }],
       ['ajustar', { usuarioId: USUARIO, canal: 'app' }, ID, { versao: 2 }],
+      ['ajustar:simular', { usuarioId: USUARIO, canal: 'portal' }, ID, { versao: 2 }],
       ['cumprir', { usuarioId: USUARIO, canal: 'portal' }, ID, { versao: 3 }],
       ['cancelar', { usuarioId: USUARIO, canal: 'portal' }, ID, {}],
     ]);

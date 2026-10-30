@@ -169,6 +169,7 @@ export {
   PedidoDeCancelamento,
   Prazo,
   ROTAS_PRAZOS,
+  simularAjustePrazo,
 } from './prazos/prazos.js';
 export {
   CABECALHO_IDEMPOTENCIA,

@@ -745,5 +745,81 @@
         "criadaEm": "Desde"
       }
     }
+  },
+  "prazos": {
+    "titulo": "Prazos",
+    "descricao": "Prazos sugeridos a partir das publicações. O sistema sugere, você decide: todo prazo começa \"a confirmar\" e só vale depois da sua confirmação.",
+    "abas": {
+      "a-confirmar": "A confirmar",
+      "pendente": "Pendentes",
+      "vencido": "Vencidos",
+      "cumprido": "Cumpridos",
+      "cancelado": "Cancelados"
+    },
+    "colunas": {
+      "vencimento": "Vencimento",
+      "ato": "Ato",
+      "processo": "Processo",
+      "ciencia": "Ciência",
+      "origem": "Origem",
+      "situacao": "Situação"
+    },
+    "semData": "Sem data sugerida",
+    "manual": "Definida manualmente",
+    "incerta": "Classificação a conferir",
+    "ciencia": {
+      "pendente": "Pendente",
+      "confirmada": "Confirmada"
+    },
+    "origem": {
+      "djen": "DJEN",
+      "manual": "Manual",
+      "painel": "Painel"
+    },
+    "vazio": "Nenhum prazo nesta situação.",
+    "carregarMais": "Carregar mais",
+    "detalhe": {
+      "voltar": "Voltar para os prazos",
+      "aviso": "O sistema sugere, você decide. Confira a memória de cálculo e o fundamento antes de confirmar.",
+      "publicacao": "Ver a publicação de origem",
+      "processo": "Ver o processo",
+      "aplicado": "Prazo aplicado",
+      "noTexto": "Prazo citado no texto",
+      "naoCitado": "Não citado",
+      "fundamento": "Fundamento",
+      "fimDoPrazo": "Fim do prazo (horário do juízo)",
+      "fuso": "Fuso do juízo",
+      "publicacaoEm": "Publicação",
+      "inicio": "Início da contagem",
+      "memoria": "Memória de cálculo",
+      "diasDesconsiderados": "Dias desconsiderados",
+      "semDiasDesconsiderados": "Nenhum dia desconsiderado além dos fins de semana.",
+      "fundamentos": "Dispositivos aplicados",
+      "avisos": "Atenção",
+      "alternativas": "Outras datas possíveis",
+      "aConfirmar": "Sem data sugerida: {detalhe}. Informe o vencimento pelo ajuste.",
+      "motivoAjuste": "Último motivo de ajuste",
+      "versoes": "Motor {motor} · tabela {tabela}"
+    },
+    "acoes": {
+      "confirmar": "Confirmar prazo",
+      "confirmado": "Prazo confirmado.",
+      "cumprir": "Marcar como cumprido",
+      "cumprido": "Prazo marcado como cumprido.",
+      "cancelar": "Cancelar prazo",
+      "cancelado": "Prazo cancelado.",
+      "ajustar": "Ajustar",
+      "ajustado": "Prazo ajustado.",
+      "motivo": "Motivo",
+      "motivoAjuda": "Obrigatório (mínimo de 10 caracteres). Fica registrado na trilha de auditoria.",
+      "dias": "Dias",
+      "vencimento": "Vencimento informado",
+      "vencimentoAjuda": "Preencha só para informar a data você mesmo (fica \"definida manualmente\").",
+      "previa": "Ver prévia",
+      "previaResultado": "Novo vencimento: {vencimento}",
+      "previaSemData": "Sem data sugerida com estes dados.",
+      "salvar": "Salvar ajuste",
+      "voltar": "Voltar"
+    }
   }
 }
