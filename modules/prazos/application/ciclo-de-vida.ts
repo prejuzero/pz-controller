@@ -78,6 +78,7 @@ async function alterarPrazo<Transacao>(
   autor: AutorNoPrazo,
   tipo: TipoDeAuditoria,
   acao: (prazo: Prazo) => Promise<Result<void, ErroDaAcao>> | Result<void, ErroDaAcao>,
+  simular = false,
 ): Promise<Result<PrazoListado, ErroDaAcao>> {
   const prazo = await deps.unidade.executar((tx) => deps.prazos.buscar(tx, id));
   if (prazo === undefined) return err(naoEncontrado());
@@ -86,6 +87,8 @@ async function alterarPrazo<Transacao>(
   // O cálculo (ajuste) lê tabela e calendário fora da transação de escrita.
   const r = await acao(prazo);
   if (!r.ok) return r;
+  // Prévia (HU24): o mesmo cálculo, sem gravar nem emitir evento.
+  if (simular) return ok(prazoListado(prazo.estado));
   return deps.unidade.executar(async (tx) => {
     if (!(await deps.prazos.atualizar(tx, prazo, versao))) return err(desatualizado());
     const depois = prazoListado(prazo.estado);
@@ -156,77 +159,90 @@ export class AjustarPrazo<Transacao> {
     private readonly calcular: CalcularPrazoParaProcesso<Transacao>,
   ) {}
 
-  async executar(autor: AutorNoPrazo, id: Uuid, entrada: unknown) {
+  /** Prévia do ajuste (POST .../simular-ajuste): o resultado do motor, sem gravar. */
+  simular(autor: AutorNoPrazo, id: Uuid, entrada: unknown) {
+    return this.executar(autor, id, entrada, true);
+  }
+
+  async executar(autor: AutorNoPrazo, id: Uuid, entrada: unknown, simular = false) {
     const dados = EntradaDeAjuste.safeParse(entrada);
     if (!dados.success) return err(validacao(dados.error));
     const a = dados.data;
-    return alterarPrazo(this.deps, id, a.versao, autor, 'prazos.prazo-ajustado', async (p) => {
-      const e = p.estado;
-      const tipoAto = a.tipoAto ?? e.tipoAto;
-      if (a.vencimento !== undefined) {
+    return alterarPrazo(
+      this.deps,
+      id,
+      a.versao,
+      autor,
+      'prazos.prazo-ajustado',
+      async (p) => {
+        const e = p.estado;
+        const tipoAto = a.tipoAto ?? e.tipoAto;
+        if (a.vencimento !== undefined) {
+          return p.ajustar(
+            {
+              tipoAto,
+              ramo: a.ramo ?? e.ramo,
+              vencimentoManual: true,
+              entrada: e.entrada,
+              parametros: e.parametros,
+              calculo: {
+                ...e.calculo,
+                situacao: 'calculado',
+                dias: a.dias ?? e.calculo.dias,
+                unidade: a.unidade ?? e.calculo.unidade,
+                inicio: null,
+                vencimento: a.vencimento,
+                // O fim às 24h no fuso do juízo é do motor; a data manual não o calcula.
+                fimDoPrazo: null,
+                memoria: {
+                  situacao: 'definido-manualmente',
+                  vencimento: a.vencimento.paraIso(),
+                  motivo: a.motivo,
+                },
+              },
+            },
+            a.motivo,
+            autor.usuarioId,
+            this.deps.relogio,
+          );
+        }
+        const base = e.parametros as Record<string, Json> | null;
+        if (base === null || typeof base !== 'object' || base.meio === undefined) {
+          return err(
+            new Conflito(
+              'prazo-sem-parametros',
+              'Este prazo não guarda a entrada do cálculo: informe o vencimento.',
+            ),
+          );
+        }
+        const prazoNoTexto =
+          a.dias === undefined ? base.prazoNoTexto : { dias: a.dias, unidade: a.unidade ?? 'dias' };
+        const sugestao = await this.calcular.executar({
+          ...base,
+          processoId: e.processoId,
+          tipoAto,
+          ...(a.ramo === undefined ? {} : { ramo: a.ramo }),
+          ...(prazoNoTexto === undefined ? {} : { prazoNoTexto }),
+        });
+        if (!sugestao.ok) return sugestao;
+        const s = sugestao.valor;
+        if (!SugestaoDePrazo.ehValida(s)) return err(desatualizado());
         return p.ajustar(
           {
             tipoAto,
-            ramo: a.ramo ?? e.ramo,
-            vencimentoManual: true,
-            entrada: e.entrada,
-            parametros: e.parametros,
-            calculo: {
-              ...e.calculo,
-              situacao: 'calculado',
-              dias: a.dias ?? e.calculo.dias,
-              unidade: a.unidade ?? e.calculo.unidade,
-              inicio: null,
-              vencimento: a.vencimento,
-              // O fim às 24h no fuso do juízo é do motor; a data manual não o calcula.
-              fimDoPrazo: null,
-              memoria: {
-                situacao: 'definido-manualmente',
-                vencimento: a.vencimento.paraIso(),
-                motivo: a.motivo,
-              },
-            },
+            ramo: s.ramo,
+            vencimentoManual: false,
+            entrada: s.entrada ?? e.entrada,
+            parametros: s.parametros,
+            calculo: s.calculo,
           },
           a.motivo,
           autor.usuarioId,
           this.deps.relogio,
         );
-      }
-      const base = e.parametros as Record<string, Json> | null;
-      if (base === null || typeof base !== 'object' || base.meio === undefined) {
-        return err(
-          new Conflito(
-            'prazo-sem-parametros',
-            'Este prazo não guarda a entrada do cálculo: informe o vencimento.',
-          ),
-        );
-      }
-      const prazoNoTexto =
-        a.dias === undefined ? base.prazoNoTexto : { dias: a.dias, unidade: a.unidade ?? 'dias' };
-      const sugestao = await this.calcular.executar({
-        ...base,
-        processoId: e.processoId,
-        tipoAto,
-        ...(a.ramo === undefined ? {} : { ramo: a.ramo }),
-        ...(prazoNoTexto === undefined ? {} : { prazoNoTexto }),
-      });
-      if (!sugestao.ok) return sugestao;
-      const s = sugestao.valor;
-      if (!SugestaoDePrazo.ehValida(s)) return err(desatualizado());
-      return p.ajustar(
-        {
-          tipoAto,
-          ramo: s.ramo,
-          vencimentoManual: false,
-          entrada: s.entrada ?? e.entrada,
-          parametros: s.parametros,
-          calculo: s.calculo,
-        },
-        a.motivo,
-        autor.usuarioId,
-        this.deps.relogio,
-      );
-    });
+      },
+      simular,
+    );
   }
 }
 

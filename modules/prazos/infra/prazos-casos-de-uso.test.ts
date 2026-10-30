@@ -531,6 +531,15 @@ describe('ciclo de vida do prazo (HU24, PZ-169)', () => {
     const nada = await ajustar.executar(quem, p.id, { versao: 2, motivo: 'sem nada para ajustar' });
     expect(!nada.ok && nada.erro.codigo).toBe('validacao');
 
+    // Prévia: o mesmo cálculo, sem gravar.
+    const previa = await ajustar.simular(quem, p.id, {
+      versao: 2,
+      motivo: 'o despacho fixou dez dias',
+      dias: 10,
+    });
+    expect(previa.ok && previa.valor).toMatchObject({ vencimento: '2027-03-16', versao: 3 });
+    const intacto = await outbox.executar((tx) => prazos.buscar(tx, p.id));
+    expect(intacto?.estado.versaoOtimista).toBe(2);
     // Dias diferentes: recalcula pelo motor (prazo do texto prevalece).
     const a = await ajustar.executar(quem, p.id, {
       versao: 2,

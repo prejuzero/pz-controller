@@ -38,7 +38,7 @@ export function Dialogo({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
         <Dialog.Content
-          className="fixed top-1/2 left-1/2 z-50 grid w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg border border-borda bg-superficie-elevada p-6 text-texto shadow-lg"
+          className="fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-lg border border-borda bg-superficie-elevada p-6 text-texto shadow-lg"
           {...(descricao === undefined ? { 'aria-describedby': undefined } : {})}
         >
           <div className="grid gap-1.5 pr-8">

@@ -78,6 +78,17 @@ export class PrazosController {
     return this.#resultado(this.ajustar.executar(autor(requisicao), idDe(id), corpo));
   }
 
+  @Post(':id/simular-ajuste')
+  @RequerPermissao('prazos:ajustar')
+  @HttpCode(200)
+  async simularAjustePrazo(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Param('id') id: string,
+    @Body() corpo: unknown,
+  ): Promise<Prazo> {
+    return this.#resultado(this.ajustar.simular(autor(requisicao), idDe(id), corpo));
+  }
+
   @Post(':id/cumprir')
   @RequerPermissao('prazos:confirmar')
   @HttpCode(200)
