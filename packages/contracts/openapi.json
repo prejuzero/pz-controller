@@ -2275,6 +2275,79 @@
         }
       }
     },
+    "/v1/assistente/pdf": {
+      "post": {
+        "operationId": "analisarPdf",
+        "summary": "Cadastro assistido por PDF (até 10 MB): guarda o arquivo e sugere ato e prazo citado.",
+        "tags": [
+          "prazos"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/pdf": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentoAnalisado"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/auth/2fa/ativar": {
       "post": {
         "operationId": "ativarSegundoFator",
@@ -5787,6 +5860,89 @@
         }
       }
     },
+    "/v1/prazos/{id}/documento": {
+      "get": {
+        "operationId": "linkDoDocumentoDoPrazo",
+        "summary": "Link assinado (5 minutos) para o PDF que originou o prazo.",
+        "tags": [
+          "prazos"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkDoDocumento"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/prazos/{id}/simular-ajuste": {
       "post": {
         "operationId": "simularAjustePrazo",
@@ -8852,6 +9008,29 @@
         ],
         "additionalProperties": false
       },
+      "DocumentoAnalisado": {
+        "type": "object",
+        "properties": {
+          "arquivoId": {
+            "type": "string",
+            "description": "Informe em `documento` ao cadastrar o prazo, para vinculá-lo."
+          },
+          "paginas": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "analise": {
+            "$ref": "#/components/schemas/AnaliseDoTexto"
+          }
+        },
+        "required": [
+          "arquivoId",
+          "paginas",
+          "analise"
+        ],
+        "additionalProperties": false
+      },
       "DocumentosPendentes": {
         "type": "object",
         "properties": {
@@ -9379,6 +9558,19 @@
         },
         "required": [
           "itens"
+        ],
+        "additionalProperties": false
+      },
+      "LinkDoDocumento": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "url"
         ],
         "additionalProperties": false
       },
@@ -10613,6 +10805,10 @@
           "observacao": {
             "type": "string",
             "maxLength": 1000
+          },
+          "documento": {
+            "description": "`arquivoId` do PDF analisado (cadastro assistido).",
+            "type": "string"
           },
           "vencimentoConfirmado": {
             "description": "Vencimento visto na prévia: o prazo nasce pendente; outra data dá 409.",

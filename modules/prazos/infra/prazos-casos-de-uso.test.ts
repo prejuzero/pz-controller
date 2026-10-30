@@ -9,6 +9,7 @@ import {
   ConsultarPrazo,
   CumprirPrazo,
   GerarPrazoDaPublicacao,
+  LinkDoDocumento,
   ListarPrazos,
   MarcarPrazosVencidos,
 } from '../application/ciclo-de-vida.js';
@@ -931,5 +932,68 @@ describe('cadastro manual de prazo (HU25, PZ-172)', () => {
       manual({ processoId: OUTRO_TENANT }),
     );
     expect(!semProcesso.ok && semProcesso.erro.codigo).toBe('processo-inexistente');
+  });
+});
+
+describe('documento do prazo (HU25, PZ-173)', () => {
+  const autorManual = {
+    tenantId: TENANT,
+    usuarioId: '01a10e00-0000-7000-8000-00000000d001' as Uuid,
+    canal: 'portal' as const,
+  };
+  const DOC = 'assistente/01a10e00-0000-7000-8000-0000000d0c01.pdf';
+
+  it('o PDF fica nos parâmetros do prazo e sai por link assinado curto', async () => {
+    const r = await new CadastrarPrazoManual(calcular, criar, relogio()).executar(autorManual, {
+      processoId: PROCESSO,
+      tipoAto: 'ato-ficticio',
+      ramo: 'civel',
+      meio: 'djen',
+      dataDeReferencia: '2027-03-01',
+      origem: 'manual',
+      documento: DOC,
+    });
+    if (!r.ok) throw r.erro;
+    const pedidos: unknown[] = [];
+    const link = new LinkDoDocumento(outbox, prazos, {
+      urlAssinada: (pedido) => {
+        pedidos.push(pedido);
+        return Promise.resolve('https://armazenamento.invalid/assinada');
+      },
+    });
+    expect(await link.executar(TENANT, r.valor.id)).toEqual({
+      ok: true,
+      valor: { url: 'https://armazenamento.invalid/assinada' },
+    });
+    expect(pedidos).toEqual([
+      { tenantId: TENANT, caminho: DOC, operacao: 'download', expiraEmSegundos: 300 },
+    ]);
+    // Bug: o ajuste repassava observação e documento ao cálculo, que os recusava.
+    const ajuste = await new AjustarPrazo(
+      { unidade: outbox, prazos, trilha, outbox, relogio: relogio() },
+      calcular,
+    ).simular({ usuarioId: autorManual.usuarioId, canal: 'portal' }, r.valor.id, {
+      versao: 1,
+      motivo: 'o despacho fixou dez dias',
+      dias: 10,
+    });
+    expect(ajuste.ok && ajuste.valor.vencimento).toBe('2027-03-16');
+    const semDocumento = await criado();
+    const nenhum = await link.executar(TENANT, semDocumento.id);
+    expect(!nenhum.ok && nenhum.erro.codigo).toBe('documento-inexistente');
+    const inexistente = await link.executar(TENANT, OUTRO_TENANT);
+    expect(inexistente.ok).toBe(false);
+    const invalido = await new CadastrarPrazoManual(calcular, criar, relogio()).executar(
+      autorManual,
+      {
+        processoId: PROCESSO,
+        tipoAto: 'ato-ficticio',
+        meio: 'djen',
+        dataDeReferencia: '2027-03-01',
+        origem: 'manual',
+        documento: '../outro-tenant/arquivo.pdf',
+      },
+    );
+    expect(!invalido.ok && invalido.erro.codigo).toBe('validacao');
   });
 });

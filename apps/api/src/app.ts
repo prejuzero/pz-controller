@@ -30,6 +30,8 @@ export async function criarApi(opcoes: OpcoesApi): Promise<NestFastifyApplicatio
     void jsonPadrao(requisicao, corpo.toString('utf8'), pronto);
   });
   api.useBodyParser('text/plain');
+  // Cadastro assistido por PDF (HU25): corpo binário até 10 MB, só nesta rota de tipo próprio.
+  api.useBodyParser('application/pdf', { bodyLimit: 10 * 1024 * 1024 });
   api.useGlobalPipes(validacaoPorContrato);
   await registrarPainelDeFilas(api);
   api.enableShutdownHooks();

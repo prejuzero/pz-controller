@@ -183,3 +183,5 @@ export const useCompromissos = (de: string, ate: string) =>
 export const useAgendarCompromisso = () => useMutation(useMutacoesPrazos().agendar);
 export const useCancelarCompromisso = () => useMutation(useMutacoesPrazos().cancelarCompromisso);
 export const useAnalisarTexto = () => useMutation(useMutacoesPrazos().analisar);
+export const useAnalisarPdf = () => useMutation(useMutacoesPrazos().analisarPdf);
+export const useLinkDoDocumento = () => useMutation(useMutacoesPrazos().linkDoDocumento);

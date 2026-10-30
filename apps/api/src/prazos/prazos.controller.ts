@@ -3,6 +3,7 @@ import {
   AjustarPrazo,
   CadastrarPrazoManual,
   ConsultarTabelaDePrazos,
+  LinkDoDocumento,
   CancelarPrazo,
   ConfirmarPrazo,
   ConsultarPrazo,
@@ -61,7 +62,19 @@ export class PrazosController {
     @Inject(CumprirPrazo) private readonly cumprir: CumprirPrazo<unknown>,
     @Inject(CancelarPrazo) private readonly cancelar: CancelarPrazo<unknown>,
     @Inject(CadastrarPrazoManual) private readonly cadastrar: CadastrarPrazoManual<unknown>,
+    @Inject(LinkDoDocumento) private readonly documento: LinkDoDocumento<unknown>,
   ) {}
+
+  @Get(':id/documento')
+  @RequerPermissao('prazos:ler')
+  async linkDoDocumento(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Param('id') id: string,
+  ): Promise<{ url: string }> {
+    const r = await this.documento.executar(autorDoCadastro(requisicao).tenantId, idDe(id));
+    if (!r.ok) throw r.erro;
+    return r.valor;
+  }
 
   @Post()
   @RequerPermissao('prazos:confirmar')

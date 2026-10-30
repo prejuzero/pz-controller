@@ -1,0 +1,27 @@
+{
+  "name": "@pz/adapter-pdf",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Adaptador ExtratorDeTexto para PDF com camada de texto (unpdf); OCR fica para um adaptador futuro (ADR-019).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint --max-warnings=0 .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@pz/integracoes": "workspace:*",
+    "unpdf": "2.0.0"
+  },
+  "devDependencies": {
+    "@pz/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "@vitest/coverage-v8": "5.0.4",
+    "eslint": "10.12.0",
+    "typescript": "6.0.3",
+    "vitest": "5.0.4"
+  }
+}

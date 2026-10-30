@@ -10,6 +10,7 @@ import type { FiltroDePrazos, FontesDaGeracao, RepositorioDePrazos } from './por
 import type { CalcularPrazoParaProcesso, CriarPrazo, PrazoListado } from './prazos.js';
 import type { Json } from '../domain/prazo.js';
 import type { OrigemDaAuditoria, TipoDeAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
+import type { ArmazenamentoArquivos } from '@pz/integracoes';
 import type { Clock, Outbox, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 
 /** Quem age no prazo (vem da sessão, nunca do corpo da requisição). */
@@ -217,8 +218,12 @@ export class AjustarPrazo<Transacao> {
         }
         const prazoNoTexto =
           a.dias === undefined ? base.prazoNoTexto : { dias: a.dias, unidade: a.unidade ?? 'dias' };
+        // Só a entrada do cálculo: observação e documento ficam nos parâmetros, fora do motor.
+        const entradaDoCalculo = Object.fromEntries(
+          Object.entries(base).filter(([chave]) => chave !== 'observacao' && chave !== 'documento'),
+        );
         const sugestao = await this.calcular.executar({
-          ...base,
+          ...entradaDoCalculo,
           processoId: e.processoId,
           tipoAto,
           ...(a.ramo === undefined ? {} : { ramo: a.ramo }),
@@ -480,6 +485,11 @@ export const EntradaDoPrazoManual = z
     /** Onde o prazo foi visto (RF90): DJEN, cadastro manual ou painel do tribunal. */
     origem: z.enum(['djen', 'manual', 'painel']),
     observacao: z.string().trim().max(1000).optional(),
+    /** PDF enviado no cadastro assistido (POST /v1/assistente/pdf), guardado no tenant. */
+    documento: z
+      .string()
+      .regex(/^assistente\/[0-9a-f-]{36}\.pdf$/, 'Documento inválido.')
+      .optional(),
     /**
      * Vencimento que o advogado viu na prévia e confirma: o prazo já nasce pendente. Se o motor
      * der outra data, recusa (409) para ele rever.
@@ -572,8 +582,12 @@ export class CadastrarPrazoManual<Transacao> {
     if (!sugestao.ok) return sugestao;
     const v = sugestao.valor;
     // A observação do advogado fica junto da entrada do cálculo (aparece no detalhe).
+    const extras = {
+      ...(d.observacao === undefined || d.observacao === '' ? {} : { observacao: d.observacao }),
+      ...(d.documento === undefined ? {} : { documento: d.documento }),
+    };
     const comObservacao =
-      d.observacao === undefined || d.observacao === ''
+      Object.keys(extras).length === 0
         ? v
         : new SugestaoDePrazo(
             v.processoId,
@@ -583,8 +597,39 @@ export class CadastrarPrazoManual<Transacao> {
             v.calculo,
             v.entrada,
             v.jurisdicao,
-            { ...(v.parametros as Record<string, Json>), observacao: d.observacao },
+            { ...(v.parametros as Record<string, Json>), ...extras },
           );
     return ok({ sugestao: comObservacao, dados: d });
+  }
+}
+
+/** Validade do link de download do PDF do prazo. */
+const VALIDADE_DO_LINK_SEGUNDOS = 300;
+
+/**
+ * GET /v1/prazos/{id}/documento (HU25): link assinado e curto para o PDF que originou o prazo.
+ * O armazenamento prefixa o caminho com o tenant: um escritório nunca alcança arquivo de outro.
+ */
+export class LinkDoDocumento<Transacao> {
+  constructor(
+    private readonly unidade: UnidadeDeTrabalho<Transacao>,
+    private readonly prazos: RepositorioDePrazos<Transacao>,
+    private readonly armazenamento: Pick<ArmazenamentoArquivos, 'urlAssinada'>,
+  ) {}
+
+  async executar(tenantId: Uuid, id: Uuid): Promise<Result<{ url: string }, NaoEncontrado>> {
+    const prazo = await this.unidade.executar((tx) => this.prazos.buscar(tx, id));
+    const documento = (prazo?.estado.parametros as { documento?: unknown } | null | undefined)
+      ?.documento;
+    if (typeof documento !== 'string') {
+      return err(new NaoEncontrado('documento-inexistente', 'Este prazo não tem documento.'));
+    }
+    const url = await this.armazenamento.urlAssinada({
+      tenantId,
+      caminho: documento,
+      operacao: 'download',
+      expiraEmSegundos: VALIDADE_DO_LINK_SEGUNDOS,
+    });
+    return ok({ url });
   }
 }

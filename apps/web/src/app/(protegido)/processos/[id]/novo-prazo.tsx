@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
 import {
+  useAnalisarPdf,
   useAnalisarTexto,
   useAtosDaTaxonomia,
   useCadastrarPrazo,
@@ -62,8 +63,21 @@ function Formulario({ processoId, aoSalvar }: { processoId: string; aoSalvar: ()
   const [confirmo, setConfirmo] = useState(false);
   const [texto, setTexto] = useState('');
   const analisar = useAnalisarTexto();
-  const analise = analisar.data;
+  const analisarPdf = useAnalisarPdf();
+  const [erroPdf, setErroPdf] = useState<string | null>(null);
+  const analise = analisarPdf.data?.analise ?? analisar.data;
+  const documento = analisarPdf.data?.arquivoId;
   const atoSugerido = (atos.data?.itens ?? []).find((a) => a.codigo === analise?.tipoAto);
+
+  /** Preenche o formulário com a sugestão (o advogado confere e calcula). */
+  const aplicar = (a: NonNullable<typeof analise>) => {
+    const conhecido = (atos.data?.itens ?? []).some((x) => x.codigo === a.tipoAto);
+    if (conhecido && a.tipoAto !== null) setTipoAto(a.tipoAto);
+    if (a.prazoCitado !== null && !a.prazoCitado.divergente) {
+      setDias(String(a.prazoCitado.quantidade));
+    }
+    simular.reset();
+  };
 
   const pedido = (): PrazoManual => ({
     processoId,
@@ -74,6 +88,7 @@ function Formulario({ processoId, aoSalvar }: { processoId: string; aoSalvar: ()
     origem: origem as PrazoManual['origem'],
     ...(dias === '' ? {} : { dias: Number(dias) }),
     ...(observacao.trim() === '' ? {} : { observacao: observacao.trim() }),
+    ...(documento === undefined ? {} : { documento }),
   });
   const completo = tipoAto !== '' && data !== '';
   const previa = simular.data;
@@ -119,20 +134,55 @@ function Formulario({ processoId, aoSalvar }: { processoId: string; aoSalvar: ()
           disabled={texto.trim() === ''}
           carregando={analisar.isPending}
           onClick={() => {
-            analisar.mutate(texto, {
-              onSuccess: (a) => {
-                const conhecido = (atos.data?.itens ?? []).some((x) => x.codigo === a.tipoAto);
-                if (conhecido && a.tipoAto !== null) setTipoAto(a.tipoAto);
-                if (a.prazoCitado !== null && !a.prazoCitado.divergente) {
-                  setDias(String(a.prazoCitado.quantidade));
-                }
-                simular.reset();
-              },
-            });
+            analisarPdf.reset();
+            analisar.mutate(texto, { onSuccess: aplicar });
           }}
         >
           {t('analisar')}
         </Botao>
+        <label className="grid gap-1.5 text-sm font-medium">
+          {t('pdf')}
+          <input
+            type="file"
+            accept="application/pdf"
+            className="text-sm font-normal"
+            onChange={(evento) => {
+              const arquivo = evento.target.files?.[0];
+              setErroPdf(null);
+              if (arquivo === undefined) return;
+              // Validação no cliente para responder rápido; a API confere de novo.
+              if (arquivo.type !== 'application/pdf') {
+                setErroPdf(t('pdfTipo'));
+                return;
+              }
+              if (arquivo.size > 10 * 1024 * 1024) {
+                setErroPdf(t('pdfGrande'));
+                return;
+              }
+              analisar.reset();
+              analisarPdf.mutate(arquivo, {
+                onSuccess: (r) => {
+                  aplicar(r.analise);
+                },
+              });
+            }}
+          />
+        </label>
+        {erroPdf === null ? null : (
+          <p role="alert" className="text-sm text-perigo">
+            {erroPdf}
+          </p>
+        )}
+        {analisarPdf.isPending ? (
+          <p role="status" className="text-sm">
+            {t('enviando')}
+          </p>
+        ) : null}
+        {analisarPdf.data === undefined ? null : (
+          <p className="text-sm text-texto-suave">
+            {t('pdfEnviado', { paginas: analisarPdf.data.paginas })}
+          </p>
+        )}
         {analise === undefined ? null : (
           <div role="status" className="space-y-1 rounded-md border border-borda p-3 text-sm">
             <p>

@@ -160,6 +160,10 @@ export const PedidoDePrazoManual = nomear(
       dataDeReferencia: DataCivil.describe('Disponibilização, envio ou ciência, conforme o meio.'),
       origem: z.enum(['djen', 'manual', 'painel']),
       observacao: z.string().max(1000).optional(),
+      documento: z
+        .string()
+        .optional()
+        .describe('`arquivoId` do PDF analisado (cadastro assistido).'),
       vencimentoConfirmado: DataCivil.optional().describe(
         'Vencimento visto na prévia: o prazo nasce pendente; outra data dá 409.',
       ),

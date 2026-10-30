@@ -69,6 +69,7 @@ export {
   EntradaDeCancelamento,
   EntradaDeVersao,
   GerarPrazoDaPublicacao,
+  LinkDoDocumento,
   ListarPrazos,
   MarcarPrazosVencidos,
 } from './application/ciclo-de-vida.js';

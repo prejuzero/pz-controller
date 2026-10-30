@@ -56,6 +56,8 @@ describe('prazos (HU24)', () => {
     await m.agendar.mutationFn({ titulo: 'Audiência', dataHora: '2026-11-10T17:00:00.000Z' });
     await m.cancelarCompromisso.mutationFn({ id: ID, motivo: 'audiência redesignada' });
     await m.analisar.mutationFn('Cite-se');
+    await m.analisarPdf.mutationFn(new Blob(['%PDF-1.4'], { type: 'application/pdf' }));
+    await m.linkDoDocumento.mutationFn(ID);
     await m.confirmar.onSuccess();
     expect(cache.getQueryState(chaves.prazos.detalhe(ID))?.isInvalidated).toBe(true);
     expect(rotas).toEqual([
@@ -74,6 +76,8 @@ describe('prazos (HU24)', () => {
       'POST /v1/compromissos {"titulo":"Audiência","dataHora":"2026-11-10T17:00:00.000Z"}',
       `POST /v1/compromissos/${ID}/cancelar {"motivo":"audiência redesignada"}`,
       'POST /v1/assistente/analisar {"texto":"Cite-se"}',
+      'POST /v1/assistente/pdf %PDF-1.4',
+      `GET /v1/prazos/${ID}/documento`,
     ]);
   });
 });

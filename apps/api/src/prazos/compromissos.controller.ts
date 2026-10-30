@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, Inject, Param, Post, Query, Req } from '@nestjs/common';
-import { AnalisarTexto } from '@pz/classificacao';
+import { AnalisarDocumento, AnalisarTexto } from '@pz/classificacao';
 import { AgendarCompromisso, CancelarCompromisso, ListarCompromissos } from '@pz/prazos';
 import { z } from 'zod';
 
@@ -7,7 +7,8 @@ import { autenticacao, validar } from '../auth/auth.controller.js';
 import { RequerPermissao } from '../http/acesso.js';
 
 import type { RequisicaoAutenticada } from '../http/acesso.js';
-import type { AnaliseDoTexto, Compromisso, Compromissos } from '@pz/contracts';
+import type { Classificacao } from '@pz/classificacao';
+import type { AnaliseDoTexto, Compromisso, Compromissos, DocumentoAnalisado } from '@pz/contracts';
 import type { Uuid } from '@pz/kernel';
 import type { AutorDoCadastro } from '@pz/prazos';
 
@@ -68,7 +69,28 @@ const PedidoDeAnalise = z.object({ texto: z.string().trim().min(1).max(50_000) }
 /** Cadastro assistido (HU25): sugere ato e prazo citado do texto colado; nada é gravado. */
 @Controller('v1/assistente')
 export class AssistenteController {
-  constructor(@Inject(AnalisarTexto) private readonly analisar: AnalisarTexto<unknown>) {}
+  constructor(
+    @Inject(AnalisarTexto) private readonly analisar: AnalisarTexto<unknown>,
+    @Inject(AnalisarDocumento) private readonly documento: AnalisarDocumento<unknown>,
+  ) {}
+
+  @Post('pdf')
+  @RequerPermissao('prazos:ler')
+  @HttpCode(200)
+  async analisarPdf(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Body() corpo: unknown,
+  ): Promise<DocumentoAnalisado> {
+    // Sem Content-Type application/pdf o corpo não chega como bytes: pedido inválido.
+    const bytes = validar(z.instanceof(Buffer), corpo);
+    const r = await this.documento.executar(autor(requisicao).tenantId, new Uint8Array(bytes));
+    if (!r.ok) throw r.erro;
+    return {
+      arquivoId: r.valor.arquivoId,
+      paginas: r.valor.paginas,
+      analise: analiseDe(r.valor.analise),
+    };
+  }
 
   @Post('analisar')
   @RequerPermissao('prazos:ler')
@@ -78,22 +100,25 @@ export class AssistenteController {
     @Body() corpo: unknown,
   ): Promise<AnaliseDoTexto> {
     const { texto } = validar(PedidoDeAnalise, corpo);
-    const c = await this.analisar.executar(texto, autor(requisicao).tenantId);
-    return {
-      origem: c.origem,
-      situacao: c.situacao,
-      tipoAto: c.tipoAto,
-      confianca: c.confianca,
-      prazoCitado:
-        c.prazoCitado === null
-          ? null
-          : {
-              quantidade: c.prazoCitado.quantidade,
-              unidade: c.prazoCitado.unidade,
-              divergente: c.prazoCitado.divergente,
-            },
-      evidencias: c.evidencias.map((e) => ({ inicio: e.inicio, fim: e.fim, trecho: e.trecho })),
-      motivo: c.motivo ?? null,
-    };
+    return analiseDe(await this.analisar.executar(texto, autor(requisicao).tenantId));
   }
+}
+
+function analiseDe(c: Classificacao): AnaliseDoTexto {
+  return {
+    origem: c.origem,
+    situacao: c.situacao,
+    tipoAto: c.tipoAto,
+    confianca: c.confianca,
+    prazoCitado:
+      c.prazoCitado === null
+        ? null
+        : {
+            quantidade: c.prazoCitado.quantidade,
+            unidade: c.prazoCitado.unidade,
+            divergente: c.prazoCitado.divergente,
+          },
+    evidencias: c.evidencias.map((e) => ({ inicio: e.inicio, fim: e.fim, trecho: e.trecho })),
+    motivo: c.motivo ?? null,
+  };
 }

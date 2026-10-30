@@ -33,6 +33,7 @@ export interface PrazoManual {
   dataDeReferencia: string;
   origem: 'djen' | 'manual' | 'painel';
   observacao?: string;
+  documento?: string;
   vencimentoConfirmado?: string;
 }
 
@@ -116,7 +117,26 @@ export const mutacoesPrazos = (api: ClienteApi, cache: QueryClient) => {
             body: { motivo },
           }),
         ),
-      onSuccess: invalidar,
+      // Sem aguardar: a lista recarregada desmonta o item (e o diálogo) antes do aviso de sucesso.
+      onSuccess: () => {
+        void invalidar();
+      },
+    },
+    /** Cadastro assistido por PDF: o arquivo vai como corpo binário (até 10 MB). */
+    analisarPdf: {
+      mutationFn: (arquivo: Blob) =>
+        exigir(
+          api.POST('/v1/assistente/pdf', {
+            // O contrato descreve o corpo como binário; o cliente gerado o tipa como string.
+            body: arquivo as unknown as string,
+            bodySerializer: (corpo: unknown) => corpo as BodyInit,
+            headers: { 'Content-Type': 'application/pdf' },
+          }),
+        ),
+    },
+    linkDoDocumento: {
+      mutationFn: (id: string) =>
+        exigir(api.GET('/v1/prazos/{id}/documento', { params: { path: { id } } })),
     },
     /** Cadastro assistido: ato e prazo citado do texto colado (nunca data). */
     analisar: {
