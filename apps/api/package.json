@@ -13,7 +13,7 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
-    "@bull-board/api": "9.10.4",
+    "@bull-board/api": "9.10.5",
     "@bull-board/fastify": "9.10.4",
     "@nestjs/common": "12.1.2",
     "@nestjs/core": "12.1.2",
