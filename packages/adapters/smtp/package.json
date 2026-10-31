@@ -16,7 +16,7 @@
   "dependencies": {
     "@pz/integracoes": "workspace:*",
     "@pz/kernel": "workspace:*",
-    "nodemailer": "10.0.15"
+    "nodemailer": "10.2.1"
   },
   "devDependencies": {
     "@pz/config": "workspace:*",
