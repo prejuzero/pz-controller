@@ -16,7 +16,7 @@
     "@bull-board/api": "9.10.4",
     "@bull-board/fastify": "9.10.4",
     "@nestjs/common": "12.1.2",
-    "@nestjs/core": "12.1.2",
+    "@nestjs/core": "12.2.0",
     "@nestjs/platform-fastify": "12.1.2",
     "@pz/adapter-pdf": "workspace:*",
     "@pz/adapter-s3": "workspace:*",
