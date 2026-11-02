@@ -14,7 +14,11 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { Suspense } from 'react';
+
+import { hrefComFiltro } from '../../../filtro-global';
 
 import type { ChaveMenu, ItemMenu } from '../../../navegacao';
 
@@ -40,19 +44,34 @@ interface LinkMenuProps {
   aoNavegar?: (() => void) | undefined;
 }
 
-export function LinkMenu({
+/** O link leva o filtro global atual às telas que o aplicam (HU27). */
+export function LinkMenu(props: LinkMenuProps) {
+  // useSearchParams exige Suspense; sem ele, o link sai sem o filtro (renderização estática).
+  return (
+    <Suspense fallback={<LinkDoItem {...props} href={props.item.href} />}>
+      <LinkComFiltro {...props} />
+    </Suspense>
+  );
+}
+
+function LinkComFiltro(props: LinkMenuProps) {
+  return <LinkDoItem {...props} href={hrefComFiltro(props.item.href, useSearchParams())} />;
+}
+
+function LinkDoItem({
   item,
+  href,
   ativo,
   compacto = false,
   vertical = false,
   aoNavegar,
-}: LinkMenuProps) {
+}: LinkMenuProps & { href: string }) {
   const t = useTranslations('menu');
   const Icone = ICONES[item.chave];
   const nome = t(item.chave);
   return (
     <Link
-      href={item.href}
+      href={href}
       aria-current={ativo ? 'page' : undefined}
       title={compacto ? nome : undefined}
       {...(aoNavegar === undefined ? {} : { onClick: aoNavegar })}

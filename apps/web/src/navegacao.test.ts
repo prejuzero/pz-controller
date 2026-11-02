@@ -47,7 +47,7 @@ describe('navegacao', () => {
     });
     expect(secaoDoSegmento('publicacoes')).toMatchObject({ permissao: 'publicacoes:ler' });
     expect(secaoDoSegmento('calendario')).toMatchObject({
-      permissao: { algum: ['calendario:ler', 'curadoria:calendario'] },
+      permissao: { algum: ['prazos:ler', 'calendario:ler', 'curadoria:calendario'] },
     });
     expect(secaoDoSegmento('configuracoes')).not.toHaveProperty('permissao');
   });

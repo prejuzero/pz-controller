@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
 import { useLinhaDoTempo, useProximosPrazos, useResumoDoDashboard } from '../../../api/hooks';
+import { campos, comFiltroGlobal, type FiltroGlobal } from '../../../filtro-global';
 import { formatarDataCivil } from '../../../i18n/formatar';
+import { BarraDeFiltroGlobal, useFiltroGlobal } from '../_casca/filtro-global';
 
 import type { ResumoDoDashboard } from '@pz/contracts';
 
@@ -24,6 +26,16 @@ const CARDS: readonly { chave: Indicador; href: string }[] = [
 const LINK_DO_CARD =
   'block rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foco';
 
+/** Campos do filtro global que o dashboard aceita (período e cliente: pendência da HU26). */
+const APLICADOS = ['responsavelId', 'tribunal'] as const;
+
+/** O card abre a lista levando o filtro global junto. */
+function comFiltro(href: string, filtro: FiltroGlobal): string {
+  const [caminho = href, query] = href.split('?');
+  const busca = comFiltroGlobal(new URLSearchParams(query), filtro).toString();
+  return busca === '' ? caminho : `${caminho}?${busca}`;
+}
+
 /** Cor por urgência: vence hoje em vermelho, até 2 dias úteis em amarelo. */
 function tomDaUrgencia(dias: number | null): TomSelo {
   if (dias === null) return 'neutro';
@@ -37,16 +49,23 @@ function tomDaUrgencia(dias: number | null): TomSelo {
  */
 export function Dashboard() {
   const t = useTranslations('dashboard');
-  const resumo = useResumoDoDashboard();
-  const linha = useLinhaDoTempo();
-  const proximos = useProximosPrazos();
+  const filtro = useFiltroGlobal();
+  const doDashboard = campos(filtro, APLICADOS);
+  const resumo = useResumoDoDashboard(doDashboard);
+  const linha = useLinhaDoTempo(doDashboard);
+  const proximos = useProximosPrazos(doDashboard);
   const maximo = Math.max(1, ...(linha.data?.itens ?? []).map((d) => d.quantidade));
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">{t('titulo')}</h1>
+      <BarraDeFiltroGlobal aplicados={APLICADOS} />
 
-      <Link href="/prazos?recorte=sem-ciencia" className={LINK_DO_CARD} data-dinamico>
+      <Link
+        href={comFiltro('/prazos?recorte=sem-ciencia', filtro)}
+        className={LINK_DO_CARD}
+        data-dinamico
+      >
         <CardIndicador
           titulo={t('cards.semCienciaConfirmada')}
           valor={resumo.data?.semCienciaConfirmada ?? <Esqueleto className="h-9 w-16" />}
@@ -57,7 +76,7 @@ export function Dashboard() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {CARDS.map(({ chave, href }) => (
-          <Link key={chave} href={href} className={LINK_DO_CARD} data-dinamico>
+          <Link key={chave} href={comFiltro(href, filtro)} className={LINK_DO_CARD} data-dinamico>
             <CardIndicador
               titulo={t(`cards.${chave}`)}
               valor={resumo.data?.[chave] ?? <Esqueleto className="h-9 w-16" />}

@@ -1,4 +1,5 @@
 import { getTranslations } from 'next-intl/server';
+import { Suspense } from 'react';
 
 import { RECORTES_DA_LISTA, STATUS_DO_PRAZO } from '../../../api/prazos';
 import { AcessoNegado } from '../_casca/acesso-negado';
@@ -29,7 +30,9 @@ export default async function PaginaPrazos({
   // Escritório: a lista de prazos (HU24). Curadoria: a tabela de prazos por ato (HU15).
   const escritorio = (
     <SePermitido permissao="prazos:ler" alternativa={<AcessoNegado />}>
-      <ListaDePrazos recorte={recorte} status={status} />
+      <Suspense>
+        <ListaDePrazos recorte={recorte} status={status} />
+      </Suspense>
     </SePermitido>
   );
   return (

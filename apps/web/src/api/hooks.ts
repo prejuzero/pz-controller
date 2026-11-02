@@ -12,7 +12,13 @@ import { consultasCalendario, mutacoesCalendario } from './calendario';
 import { consultasCaptura } from './captura';
 import { mutacoesCiencia } from './ciencia';
 import { consultasNotificacoes, mutacoesNotificacoes } from './notificacoes';
-import { consultasPrazos, mutacoesPrazos, type FiltroDaLista } from './prazos';
+import {
+  consultasPrazos,
+  mutacoesPrazos,
+  type ConsultaDaAgenda,
+  type FiltroDaLista,
+  type FiltroDoDashboard,
+} from './prazos';
 import { consultasPrivacidade, mutacoesPrivacidade } from './privacidade';
 import { consultasProcessos, mutacoesProcessos, type FiltrosProcessos } from './processos';
 import { consultasPublicacoes, mutacoesPublicacoes, type FiltrosPublicacoes } from './publicacoes';
@@ -186,9 +192,14 @@ export const useConsultarLinkDeCiencia = () => useMutation(useMutacoesCiencia().
 export const useConfirmarCienciaPeloLink = () =>
   useMutation(useMutacoesCiencia().confirmarPeloLink);
 export const useConfirmarCiencia = () => useMutation(useMutacoesCiencia().confirmar);
-export const useResumoDoDashboard = () => useQuery(consultasPrazos(useApi()).resumo());
-export const useLinhaDoTempo = () => useQuery(consultasPrazos(useApi()).linhaDoTempo());
-export const useProximosPrazos = () => useQuery(consultasPrazos(useApi()).proximos());
+export const useResumoDoDashboard = (filtro?: FiltroDoDashboard) =>
+  useQuery(consultasPrazos(useApi()).resumo(filtro));
+export const useLinhaDoTempo = (filtro?: FiltroDoDashboard) =>
+  useQuery(consultasPrazos(useApi()).linhaDoTempo(filtro));
+export const useProximosPrazos = (filtro?: FiltroDoDashboard) =>
+  useQuery(consultasPrazos(useApi()).proximos(filtro));
+export const useAgenda = (consulta: ConsultaDaAgenda) =>
+  useQuery(consultasPrazos(useApi()).agenda(consulta));
 export const usePrazo = (id: string) => useQuery(consultasPrazos(useApi()).detalhe(id));
 export const useConfirmarPrazo = () => useMutation(useMutacoesPrazos().confirmar);
 export const useCumprirPrazo = () => useMutation(useMutacoesPrazos().cumprir);

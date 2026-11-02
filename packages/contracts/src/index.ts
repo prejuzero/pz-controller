@@ -26,11 +26,16 @@ export {
 } from './cadastro/processos.js';
 import { ROTAS_PROCESSOS } from './cadastro/processos.js';
 export {
+  Agenda,
   ATALHOS_DE_PERIODO,
   buscaRapida,
   buscarPrazos,
   buscarPublicacoes,
+  ConsultaDaAgenda,
+  consultarAgenda,
+  FiltroGlobal,
   FiltrosBusca,
+  MAXIMO_DIAS_DA_AGENDA,
   PedidoDeBuscaRapida,
   ResultadoDaBuscaDePrazos,
   ResultadoDaBuscaDePublicacoes,

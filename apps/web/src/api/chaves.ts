@@ -59,9 +59,13 @@ export const chaves = {
   },
   /** Indicadores dos prazos: invalidados junto com `prazos.todas` (mesmo prefixo). */
   dashboard: {
-    resumo: () => [...chaves.prazos.todas, 'dashboard', 'resumo'] as const,
-    linhaDoTempo: () => [...chaves.prazos.todas, 'dashboard', 'linha-do-tempo'] as const,
-    proximos: () => [...chaves.prazos.todas, 'dashboard', 'proximos'] as const,
+    resumo: (filtro: object) => [...chaves.prazos.todas, 'dashboard', 'resumo', filtro] as const,
+    linhaDoTempo: (filtro: object) =>
+      [...chaves.prazos.todas, 'dashboard', 'linha-do-tempo', filtro] as const,
+    proximos: (filtro: object) =>
+      [...chaves.prazos.todas, 'dashboard', 'proximos', filtro] as const,
+    /** Calendário (HU27): mesmo prefixo, invalidado quando um prazo muda. */
+    agenda: (consulta: object) => [...chaves.prazos.todas, 'agenda', consulta] as const,
   },
   busca: {
     todas: ['busca'] as const,

@@ -1,4 +1,5 @@
 import { getTranslations } from 'next-intl/server';
+import { Suspense } from 'react';
 
 import { AcessoNegado } from './_casca/acesso-negado';
 import { SePermitido } from './_casca/se-permitido';
@@ -13,7 +14,10 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function PaginaDashboard() {
   return (
     <SePermitido permissao="prazos:ler" alternativa={<AcessoNegado />}>
-      <Dashboard />
+      {/* O filtro global vem da URL (useSearchParams exige Suspense). */}
+      <Suspense>
+        <Dashboard />
+      </Suspense>
     </SePermitido>
   );
 }

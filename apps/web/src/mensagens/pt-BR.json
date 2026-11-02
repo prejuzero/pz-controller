@@ -155,7 +155,7 @@
   "calendario": {
     "titulo": "Calendário forense",
     "descricaoCuradoria": "Feriados, recessos, portarias e indisponibilidades que valem para todos os escritórios. Cada evento só passa a contar depois de aprovado por outro curador.",
-    "descricaoEscritorio": "A consulta dos dias sem contagem por jurisdição chega nas próximas entregas. Os feriados do seu escritório ficam em Configurações > Feriados locais.",
+    "descricaoEscritorio": "Feriados do seu escritório ficam em Configurações > Feriados locais.",
     "irFeriadosLocais": "Ir para Feriados locais",
     "ano": "Ano",
     "filtroAbrangencia": "Abrangência",
@@ -1036,5 +1036,38 @@
       "invalido": "Link inválido. Confirme a ciência pelo portal."
     },
     "irAoPortal": "Ir ao portal"
+  },
+  "filtroGlobal": {
+    "titulo": "Filtro",
+    "de": "De",
+    "ate": "Até",
+    "advogado": "Advogado",
+    "todos": "Todos",
+    "meus": "Meus prazos",
+    "tribunal": "Tribunal",
+    "tribunalMarcador": "Ex.: TJGO",
+    "cliente": "Cliente",
+    "limpar": "Limpar filtro",
+    "naoAplicado": "Nesta tela o filtro não usa: {campos}."
+  },
+  "agenda": {
+    "titulo": "Calendário de prazos",
+    "descricao": "Prazos pelo vencimento e compromissos do escritório. Datas no horário de Brasília.",
+    "mes": "Mês",
+    "semana": "Semana",
+    "visao": "Visão",
+    "anterior": "Anterior",
+    "proximo": "Próximo",
+    "hoje": "Hoje",
+    "diasDaSemana": ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"],
+    "semItens": "Nada neste dia.",
+    "vazio": "Nenhum prazo ou compromisso neste período.",
+    "truncado": "Há prazos demais neste período: só os primeiros aparecem. Use o filtro para refinar.",
+    "legendaFeriados": "Dias marcados: feriados e suspensões nacionais e, com um tribunal no filtro, os do tribunal. Os demais feriados da comarca aparecem na memória de cálculo de cada prazo.",
+    "prazo": "Prazo: {ato}",
+    "compromisso": "{hora} {titulo}",
+    "aConfirmar": "a confirmar",
+    "semExpediente": "Sem expediente: {motivo}",
+    "itens": "{quantidade, plural, =0 {nenhum item} one {# item} other {# itens}}"
   }
 }

@@ -13,7 +13,7 @@ import {
   UsoDeIaPostgres,
 } from '@pz/administracao';
 import { TrilhaPostgres } from '@pz/auditoria';
-import { Buscar } from '@pz/busca';
+import { Buscar, ConsultarAgenda } from '@pz/busca';
 import {
   AdicionarOab,
   AdvogadosPostgres,
@@ -191,6 +191,7 @@ import { AdminController } from './admin/admin.controller.js';
 import { CuradoriaDaClassificacaoController } from './admin/curadoria.controller.js';
 import { AuthController } from './auth/auth.controller.js';
 import { ContextoDoUsuario } from './auth/contexto-do-usuario.js';
+import { AgendaController } from './busca/agenda.controller.js';
 import { BuscaController } from './busca/busca.controller.js';
 import { CadastroController } from './cadastro/cadastro.controller.js';
 import { ProcessosController } from './cadastro/processos.controller.js';
@@ -677,6 +678,34 @@ function provedoresDosPrazos(
           },
           r,
         ),
+    },
+    {
+      // Agenda do calendário (HU27): a busca de prazos, os compromissos e o calendário forense.
+      provide: ConsultarAgenda,
+      inject: [Buscar, ProcessosParaBusca, ListarCompromissos, ConsultarDiasNaoUteis],
+      useFactory: (
+        buscar: Buscar,
+        processos: ProcessosParaBusca<unknown>,
+        compromissos: ListarCompromissos<unknown>,
+        dias: ConsultarDiasNaoUteis<unknown>,
+      ) =>
+        new ConsultarAgenda(buscar, {
+          processos: (f) => processos.executar(f),
+          compromissos: async (de, ate) => {
+            const r = await compromissos.executar({
+              de: de.paraIso(),
+              ate: ate.paraIso(),
+              limite: 500,
+            });
+            if (!r.ok) throw r.erro;
+            return r.valor;
+          },
+          diasNaoUteis: async (jurisdicao, de, ate) =>
+            (await dias.diasNaoUteis(jurisdicao, de, ate)).map((dia) => ({
+              ...dia,
+              data: dia.data.paraIso(),
+            })),
+        }),
     },
     {
       provide: PainelDosPrazos,
@@ -1364,6 +1393,7 @@ export class AppModule {
         CompromissosController,
         DashboardController,
         BuscaController,
+        AgendaController,
         CienciaController,
         AssistenteController,
         CuradoriaDaClassificacaoController,

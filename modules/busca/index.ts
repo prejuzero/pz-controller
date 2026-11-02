@@ -3,3 +3,5 @@ export { Buscar } from './application/buscar.js';
 export type { FontesDaBusca } from './application/buscar.js';
 export { ATALHOS, resolverAtalho } from './domain/periodo.js';
 export type { Atalho, Intervalo } from './domain/periodo.js';
+export { ConsultarAgenda } from './application/agenda.js';
+export type { FontesDaAgenda } from './application/agenda.js';
