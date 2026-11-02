@@ -15,11 +15,11 @@ export const ITENS_MENU = [
   { chave: 'publicacoes', href: '/publicacoes', permissao: 'publicacoes:ler' },
   { chave: 'busca', href: '/busca' },
   { chave: 'processos', href: '/processos', permissao: 'processos:ler' },
-  // O escritório consulta (e informa feriados locais); a curadoria mantém o calendário global (HU13).
+  // O escritório vê os prazos no calendário (HU27); a curadoria mantém o calendário global (HU13).
   {
     chave: 'calendario',
     href: '/calendario',
-    permissao: { algum: ['calendario:ler', 'curadoria:calendario'] },
+    permissao: { algum: ['prazos:ler', 'calendario:ler', 'curadoria:calendario'] },
   },
   { chave: 'relatorios', href: '/relatorios' },
   // Administração da plataforma (HU39): só para o administrador PrejuZero.

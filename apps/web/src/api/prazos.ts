@@ -26,8 +26,23 @@ export const RECORTES_DA_LISTA: readonly RecorteDaLista[] = [
   'sem-ciencia',
 ];
 
-/** Lista por situação (aba) ou pelo recorte de um card do dashboard. */
-export type FiltroDaLista = { status: StatusDoPrazo } | { recorte: RecorteDaLista };
+/** Lista por situação (aba) ou pelo recorte de um card do dashboard; advogado do filtro global. */
+export type FiltroDaLista = ({ status: StatusDoPrazo } | { recorte: RecorteDaLista }) & {
+  responsavelId?: string;
+};
+
+/** Campos do filtro global (HU27) que o dashboard aceita. */
+export interface FiltroDoDashboard {
+  responsavelId?: string;
+  tribunal?: string;
+}
+
+/** Consulta da agenda do calendário (HU27): período e filtros globais. */
+export interface ConsultaDaAgenda extends FiltroDoDashboard {
+  de: string;
+  ate: string;
+  clienteId?: string;
+}
 
 /** Corpo do ajuste (PedidoDeAjuste): só os campos que mudam. */
 export interface Ajuste {
@@ -83,26 +98,40 @@ export const consultasPrazos = (api: ClienteApi) => ({
       getNextPageParam: (pagina) => pagina.proximoCursor ?? undefined,
       placeholderData: keepPreviousData,
     }),
-  resumo: () =>
+  resumo: (filtro: FiltroDoDashboard = {}) =>
     queryOptions({
-      queryKey: chaves.dashboard.resumo(),
-      queryFn: ({ signal }) => exigir(api.GET('/v1/dashboard/resumo', { signal })),
+      queryKey: chaves.dashboard.resumo(filtro),
+      queryFn: ({ signal }) =>
+        exigir(api.GET('/v1/dashboard/resumo', { params: { query: filtro }, signal })),
     }),
-  linhaDoTempo: () =>
+  linhaDoTempo: (filtro: FiltroDoDashboard = {}) =>
     queryOptions({
-      queryKey: chaves.dashboard.linhaDoTempo(),
+      queryKey: chaves.dashboard.linhaDoTempo(filtro),
       queryFn: ({ signal }) =>
         exigir(
-          api.GET('/v1/dashboard/linha-do-tempo', { params: { query: { dias: 30 } }, signal }),
+          api.GET('/v1/dashboard/linha-do-tempo', {
+            params: { query: { ...filtro, dias: 30 } },
+            signal,
+          }),
         ),
     }),
-  proximos: () =>
+  proximos: (filtro: FiltroDoDashboard = {}) =>
     queryOptions({
-      queryKey: chaves.dashboard.proximos(),
+      queryKey: chaves.dashboard.proximos(filtro),
       queryFn: ({ signal }) =>
         exigir(
-          api.GET('/v1/dashboard/proximos-prazos', { params: { query: { limite: 10 } }, signal }),
+          api.GET('/v1/dashboard/proximos-prazos', {
+            params: { query: { ...filtro, limite: 10 } },
+            signal,
+          }),
         ),
+    }),
+  agenda: (consulta: ConsultaDaAgenda) =>
+    queryOptions({
+      queryKey: chaves.dashboard.agenda(consulta),
+      queryFn: ({ signal }) =>
+        exigir(api.GET('/v1/agenda', { params: { query: consulta }, signal })),
+      placeholderData: keepPreviousData,
     }),
   atos: () =>
     queryOptions({

@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
+import { DiasNaoUteis } from './calendario/index.js';
 import { DataCivil, Uuid } from './comum.js';
+import { Compromisso } from './prazos/compromissos.js';
 import { Prazo } from './prazos/prazos.js';
 import { PublicacaoDoTenant } from './publicacoes.js';
 import { definirRota, nomear } from './rota.js';
@@ -156,4 +158,54 @@ export const buscaRapida = definirRota({
   resposta: { status: 200, corpo: SugestoesDaBuscaRapida },
 });
 
-export const ROTAS_BUSCA = [buscarPrazos, buscarPublicacoes, buscaRapida] as const;
+/**
+ * Filtro global do portal (HU27, RF43): o mesmo nas telas de dashboard, calendário e listas, e
+ * guardado na URL. Cada tela aplica os campos que o seu endpoint aceita.
+ */
+export const FiltroGlobal = nomear(
+  'FiltroGlobal',
+  z
+    .object({
+      de: DataCivil.optional(),
+      ate: DataCivil.optional(),
+      responsavelId: Uuid.optional().describe('Advogado responsável pelo prazo.'),
+      tribunal: z.string().trim().min(1).max(20).optional().describe('Sigla do tribunal.'),
+      clienteId: Uuid.optional(),
+    })
+    .strict(),
+);
+export type FiltroGlobal = z.infer<typeof FiltroGlobal.esquema>;
+
+/** Maior período da agenda: a grade mensal tem até 6 semanas, com folga. */
+export const MAXIMO_DIAS_DA_AGENDA = 62;
+
+export const ConsultaDaAgenda = FiltroGlobal.esquema
+  .omit({ de: true, ate: true })
+  .extend({ de: DataCivil, ate: DataCivil });
+
+export const Agenda = nomear(
+  'Agenda',
+  z.object({
+    prazos: z.array(Prazo.esquema).describe('Prazos com vencimento no período (datas civis).'),
+    prazosTruncados: z
+      .boolean()
+      .describe('true: há mais prazos no período do que os devolvidos; refine os filtros.'),
+    compromissos: z.array(Compromisso.esquema),
+    diasNaoUteis: DiasNaoUteis.esquema.shape.itens.describe(
+      'Feriados e suspensões nacionais e, com o filtro de tribunal, os do tribunal.',
+    ),
+  }),
+);
+export type Agenda = z.infer<typeof Agenda.esquema>;
+
+export const consultarAgenda = definirRota({
+  id: 'consultarAgenda',
+  metodo: 'get',
+  caminho: '/v1/agenda',
+  resumo: 'Prazos, compromissos e dias sem expediente do período (calendário do portal).',
+  tag: 'busca',
+  consulta: ConsultaDaAgenda,
+  resposta: { status: 200, corpo: Agenda },
+});
+
+export const ROTAS_BUSCA = [buscarPrazos, buscarPublicacoes, buscaRapida, consultarAgenda] as const;

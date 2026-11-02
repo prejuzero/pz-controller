@@ -15,6 +15,7 @@ import { useState } from 'react';
 import { usePrazos } from '../../../api/hooks';
 import { STATUS_DO_PRAZO } from '../../../api/prazos';
 import { formatarDataCivil } from '../../../i18n/formatar';
+import { BarraDeFiltroGlobal, useFiltroGlobal } from '../_casca/filtro-global';
 
 import { Compromissos } from './compromissos';
 
@@ -22,6 +23,8 @@ import type { RecorteDaLista, StatusDoPrazo } from '../../../api/prazos';
 import type { Prazo } from '@pz/contracts';
 
 const ABAS = STATUS_DO_PRAZO;
+/** A lista aceita o advogado; período, tribunal e cliente ficam com a busca (pendência). */
+const APLICADOS = ['responsavelId'] as const;
 
 interface Props {
   /** Aba inicial (ex.: o card "aguardando confirmação" do dashboard). */
@@ -35,7 +38,11 @@ export function ListaDePrazos({ status: inicial, recorte: doCard }: Props) {
   const t = useTranslations('prazos');
   const [aba, setAba] = useState<StatusDoPrazo>(inicial ?? 'a-confirmar');
   const [recorte, setRecorte] = useState(doCard);
-  const prazos = usePrazos(recorte === undefined ? { status: aba } : { recorte });
+  const { responsavelId } = useFiltroGlobal();
+  const doFiltro = responsavelId === undefined ? {} : { responsavelId };
+  const prazos = usePrazos(
+    recorte === undefined ? { status: aba, ...doFiltro } : { recorte, ...doFiltro },
+  );
 
   const colunas: ColunaTabela<Prazo>[] = [
     {
@@ -94,6 +101,7 @@ export function ListaDePrazos({ status: inicial, recorte: doCard }: Props) {
         <h1 className="text-2xl font-semibold">{t('titulo')}</h1>
         <p className="max-w-3xl text-texto-suave">{t('descricao')}</p>
       </div>
+      <BarraDeFiltroGlobal aplicados={APLICADOS} />
       {recorte === undefined ? null : (
         <div className="flex flex-wrap items-center gap-2">
           <SeloStatus tom="info">{t(`recortes.${recorte}`)}</SeloStatus>

@@ -64,6 +64,10 @@ describe('prazos (HU24)', () => {
     await consultas.resumo().queryFn?.(sinal as never);
     await consultas.linhaDoTempo().queryFn?.(sinal as never);
     await consultas.proximos().queryFn?.(sinal as never);
+    await consultas.resumo({ tribunal: 'TJGO' }).queryFn?.(sinal as never);
+    await consultas
+      .agenda({ de: '2026-11-01', ate: '2026-11-30', tribunal: 'TJGO' })
+      .queryFn?.(sinal as never);
     await m.confirmar.onSuccess();
     expect(cache.getQueryState(chaves.prazos.detalhe(ID))?.isInvalidated).toBe(true);
     expect(rotas).toEqual([
@@ -88,6 +92,8 @@ describe('prazos (HU24)', () => {
       'GET /v1/dashboard/resumo',
       'GET /v1/dashboard/linha-do-tempo?dias=30',
       'GET /v1/dashboard/proximos-prazos?limite=10',
+      'GET /v1/dashboard/resumo?tribunal=TJGO',
+      'GET /v1/agenda?de=2026-11-01&ate=2026-11-30&tribunal=TJGO',
     ]);
   });
 });

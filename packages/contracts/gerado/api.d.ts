@@ -379,6 +379,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/agenda": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Prazos, compromissos e dias sem expediente do período (calendário do portal). */
+        get: operations["consultarAgenda"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/assistente/analisar": {
         parameters: {
             query?: never;
@@ -1591,6 +1608,29 @@ export interface components {
                 userAgent: string;
                 /** Format: date-time */
                 ocorridoEm: string;
+            }[];
+        };
+        Agenda: {
+            /** @description Prazos com vencimento no período (datas civis). */
+            prazos: components["schemas"]["Prazo"][];
+            /** @description true: há mais prazos no período do que os devolvidos; refine os filtros. */
+            prazosTruncados: boolean;
+            compromissos: components["schemas"]["Compromisso"][];
+            /** @description Feriados e suspensões nacionais e, com o filtro de tribunal, os do tribunal. */
+            diasNaoUteis: {
+                /** Format: date */
+                data: string;
+                /** @enum {string} */
+                tipo: "feriado" | "recesso" | "portaria" | "indisponibilidade";
+                motivo: string;
+                fonte: {
+                    /** @enum {string} */
+                    origem: "global" | "local";
+                    /** Format: uuid */
+                    eventoId: string;
+                    atoNormativo: string;
+                    urlAto: string;
+                };
             }[];
         };
         AlteracaoDoCliente: {
@@ -4600,6 +4640,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PainelDeUsoDeIa"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    consultarAgenda: {
+        parameters: {
+            query: {
+                /** @description Advogado responsável pelo prazo. */
+                responsavelId?: string;
+                /** @description Sigla do tribunal. */
+                tribunal?: string;
+                clienteId?: string;
+                de: string;
+                ate: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Agenda"];
                 };
             };
             /** @description Entrada inválida. */

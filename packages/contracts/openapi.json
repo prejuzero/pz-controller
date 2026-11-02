@@ -2203,6 +2203,123 @@
         }
       }
     },
+    "/v1/agenda": {
+      "get": {
+        "operationId": "consultarAgenda",
+        "summary": "Prazos, compromissos e dias sem expediente do período (calendário do portal).",
+        "tags": [
+          "busca"
+        ],
+        "parameters": [
+          {
+            "name": "responsavelId",
+            "in": "query",
+            "required": false,
+            "description": "Advogado responsável pelo prazo.",
+            "schema": {
+              "description": "Advogado responsável pelo prazo.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "tribunal",
+            "in": "query",
+            "required": false,
+            "description": "Sigla do tribunal.",
+            "schema": {
+              "description": "Sigla do tribunal.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20
+            }
+          },
+          {
+            "name": "clienteId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "de",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            }
+          },
+          {
+            "name": "ate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Agenda"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/assistente/analisar": {
       "post": {
         "operationId": "analisarTexto",
@@ -8736,6 +8853,98 @@
         },
         "required": [
           "itens"
+        ],
+        "additionalProperties": false
+      },
+      "Agenda": {
+        "type": "object",
+        "properties": {
+          "prazos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Prazo"
+            },
+            "description": "Prazos com vencimento no período (datas civis)."
+          },
+          "prazosTruncados": {
+            "type": "boolean",
+            "description": "true: há mais prazos no período do que os devolvidos; refine os filtros."
+          },
+          "compromissos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Compromisso"
+            }
+          },
+          "diasNaoUteis": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                },
+                "tipo": {
+                  "type": "string",
+                  "enum": [
+                    "feriado",
+                    "recesso",
+                    "portaria",
+                    "indisponibilidade"
+                  ]
+                },
+                "motivo": {
+                  "type": "string"
+                },
+                "fonte": {
+                  "type": "object",
+                  "properties": {
+                    "origem": {
+                      "type": "string",
+                      "enum": [
+                        "global",
+                        "local"
+                      ]
+                    },
+                    "eventoId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "atoNormativo": {
+                      "type": "string"
+                    },
+                    "urlAto": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "origem",
+                    "eventoId",
+                    "atoNormativo",
+                    "urlAto"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "data",
+                "tipo",
+                "motivo",
+                "fonte"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Feriados e suspensões nacionais e, com o filtro de tribunal, os do tribunal."
+          }
+        },
+        "required": [
+          "prazos",
+          "prazosTruncados",
+          "compromissos",
+          "diasNaoUteis"
         ],
         "additionalProperties": false
       },
