@@ -11,6 +11,7 @@ export { AvisarSituacaoDaFonte } from './application/avisos-da-fonte.js';
 export type { SituacaoDaFonte } from './application/avisos-da-fonte.js';
 export type {
   AvisosDeEntrega,
+  LinkDeCienciaNoEnvio,
   ResultadoDoPedido,
   ResumoDosDesfechos,
 } from './application/notificacoes.js';

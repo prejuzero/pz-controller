@@ -7,6 +7,7 @@ import { useState } from 'react';
 import {
   useAjustarPrazo,
   useCancelarPrazo,
+  useConfirmarCiencia,
   useConfirmarPrazo,
   useCumprirPrazo,
   usePermissao,
@@ -26,6 +27,7 @@ export function AcoesDoPrazo({ prazo }: { prazo: DetalheDoPrazo }) {
   const podeAjustar = usePermissao('prazos:ajustar') === true;
   const confirmar = useConfirmarPrazo();
   const cumprir = useCumprirPrazo();
+  const ciencia = useConfirmarCiencia();
   const alvo = { id: prazo.id, versao: prazo.versao };
   const aberto = prazo.status === 'a-confirmar' || prazo.status === 'pendente';
   if (!aberto) return null;
@@ -40,6 +42,18 @@ export function AcoesDoPrazo({ prazo }: { prazo: DetalheDoPrazo }) {
           }}
         >
           {t('confirmar')}
+        </Botao>
+      ) : null}
+      {podeConfirmar && prazo.statusCiencia === 'pendente' ? (
+        // Ciência (HU33): registra que o advogado viu o prazo; não muda a data nem o status.
+        <Botao
+          variante="secundaria"
+          carregando={ciencia.isPending}
+          onClick={() => {
+            ciencia.mutate(prazo.id, { onSuccess: () => avisar.sucesso(t('cienciaConfirmada')) });
+          }}
+        >
+          {t('confirmarCiencia')}
         </Botao>
       ) : null}
       {podeConfirmar && prazo.status === 'pendente' ? (

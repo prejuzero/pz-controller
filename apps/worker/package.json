@@ -26,6 +26,7 @@
     "@pz/cadastro": "workspace:*",
     "@pz/calendario": "workspace:*",
     "@pz/captura": "workspace:*",
+    "@pz/ciencia": "workspace:*",
     "@pz/classificacao": "workspace:*",
     "@pz/config": "workspace:*",
     "@pz/contracts": "workspace:*",

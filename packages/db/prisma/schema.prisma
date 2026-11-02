@@ -74,6 +74,8 @@ model Tenant {
   prazos                 Prazo[]
   compromissos           Compromisso[]
   lembretes              LembreteAgendado[]
+  tokenCiencias          TokenCiencia[]
+  cienciaPrazos          CienciaPrazo[]
 
   @@map("tenant")
 }
@@ -1167,4 +1169,55 @@ model Compromisso {
 
   @@index([tenantId, dataHora])
   @@map("compromisso")
+}
+
+enum EstadoCiencia {
+  nao_enviado
+  enviado
+  entregue
+  aberto
+  visualizado
+  confirmado
+  cumprido
+
+  @@map("estado_ciencia")
+}
+
+/// Token do link de ciência (HU33): só o hash, uso único, 7 dias; reemitir revoga os ativos.
+model TokenCiencia {
+  id           String    @id @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  prazoId      String    @map("prazo_id") @db.Uuid
+  usuarioId    String    @map("usuario_id") @db.Uuid
+  hashToken    String    @unique @map("hash_token")
+  expiraEm     DateTime  @map("expira_em") @db.Timestamptz(6)
+  usadoEm      DateTime? @map("usado_em") @db.Timestamptz(6)
+  usadoIp      String?   @map("usado_ip")
+  revogadoEm   DateTime? @map("revogado_em") @db.Timestamptz(6)
+  criadoEm     DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime  @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, prazoId, usuarioId])
+  @@map("token_ciencia")
+}
+
+/// Estado da ciência do prazo (HU33): só avança; confirmação com canal, IP e user agent.
+model CienciaPrazo {
+  prazoId       String        @id @map("prazo_id") @db.Uuid
+  tenantId      String        @map("tenant_id") @db.Uuid
+  estado        EstadoCiencia @default(nao_enviado)
+  confirmadaPor String?       @map("confirmada_por") @db.Uuid
+  confirmadaEm  DateTime?     @map("confirmada_em") @db.Timestamptz(6)
+  canal         String?
+  ip            String?
+  userAgent     String?       @map("user_agent")
+  criadoEm      DateTime      @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm  DateTime      @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, estado])
+  @@map("ciencia_prazo")
 }

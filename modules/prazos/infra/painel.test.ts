@@ -266,3 +266,27 @@ describe('agenda dos lembretes (HU31)', () => {
     ).toEqual([0]);
   });
 });
+
+describe('ciência no prazo (HU33)', () => {
+  it('marca a ciência uma vez; prazo inexistente não faz nada', async () => {
+    const { RegistrarCienciaNoPrazo } = await import('../application/ciclo-de-vida.js');
+    const p = prazo('2026-11-04', 'pendente');
+    const { unidade, repo } = await repositorio([p]);
+    const registrar = new RegistrarCienciaNoPrazo(repo);
+    expect(await unidade.executar((tx) => registrar.executar(tx, p.id))).toBe('registrada');
+    expect(await unidade.executar((tx) => registrar.executar(tx, p.id))).toBe('sem-mudanca');
+    expect(await unidade.executar((tx) => registrar.executar(tx, ANA))).toBe('sem-mudanca');
+    const lido = await unidade.executar((tx) => repo.buscar(tx, p.id));
+    expect(lido?.estado).toMatchObject({ statusCiencia: 'confirmada', versaoOtimista: 2 });
+  });
+
+  it('edição concorrente o tempo todo: falha alto (nada em silêncio)', async () => {
+    const { RegistrarCienciaNoPrazo } = await import('../application/ciclo-de-vida.js');
+    const p = prazo('2026-11-04', 'pendente');
+    const { unidade, repo } = await repositorio([p]);
+    repo.atualizar = () => Promise.resolve(false);
+    await expect(
+      unidade.executar((tx) => new RegistrarCienciaNoPrazo(repo).executar(tx, p.id)),
+    ).rejects.toThrow('edição concorrente');
+  });
+});

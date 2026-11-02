@@ -92,6 +92,11 @@ test('cadastra, confirma, ajusta e cumpre um prazo', async ({ page }) => {
   await page.getByRole('button', { name: 'Confirmar prazo' }).click();
   await expect(page.getByText('Prazo confirmado.')).toBeVisible();
 
+  // Ciência (HU33) pelo portal: registra que o advogado viu; o botão some depois.
+  await page.getByRole('button', { name: 'Confirmar ciência' }).click();
+  await expect(page.getByText('Ciência registrada.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Confirmar ciência' })).toHaveCount(0);
+
   await page.getByRole('button', { name: 'Ajustar' }).click();
   const ajuste = page.getByRole('dialog');
   await ajuste.getByLabel('Motivo').fill('o despacho fixou dez dias');

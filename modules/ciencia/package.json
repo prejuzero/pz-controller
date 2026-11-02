@@ -1,0 +1,30 @@
+{
+  "name": "@pz/ciencia",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Ciência dos prazos (HU33): tokens de uso único e máquina de estados.",
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "scripts": {
+    "lint": "eslint --max-warnings=0 .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --coverage",
+    "test:int": "vitest run --config vitest.int.config.ts"
+  },
+  "dependencies": {
+    "@pz/auditoria": "workspace:*",
+    "@pz/db": "workspace:*",
+    "@pz/kernel": "workspace:*"
+  },
+  "devDependencies": {
+    "@pz/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "@vitest/coverage-v8": "5.0.4",
+    "eslint": "10.12.0",
+    "typescript": "6.0.3",
+    "vitest": "5.0.4",
+    "fast-check": "4.10.2"
+  }
+}

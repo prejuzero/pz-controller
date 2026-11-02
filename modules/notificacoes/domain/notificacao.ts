@@ -52,7 +52,7 @@ export type NotificacaoSolicitada = EventoDominio<
 >;
 export type NotificacaoEntregue = EventoDominio<
   'NotificacaoEntregue',
-  { notificacaoId: Uuid; usuarioId: Uuid; canal: Canal; tipo: TipoDeNotificacao }
+  { notificacaoId: Uuid; usuarioId: Uuid; canal: Canal; tipo: TipoDeNotificacao; prazoId?: Uuid }
 >;
 export type NotificacaoRejeitada = EventoDominio<
   'NotificacaoRejeitada',
@@ -177,7 +177,7 @@ export class Notificacao extends AggregateRoot<EventoDaNotificacao> {
   }
 
   #base(relogio: Clock) {
-    const { id, tenantId, usuarioId, canal, tipo } = this.estadoAtual;
+    const { id, tenantId, usuarioId, canal, tipo, prazoId } = this.estadoAtual;
     return {
       evento: {
         id: gerarUuidV7(relogio),
@@ -186,7 +186,13 @@ export class Notificacao extends AggregateRoot<EventoDaNotificacao> {
         agregadoId: id,
         ocorridoEm: relogio.agora(),
       },
-      payload: { notificacaoId: id, usuarioId, canal, tipo },
+      payload: {
+        notificacaoId: id,
+        usuarioId,
+        canal,
+        tipo,
+        ...(prazoId === undefined ? {} : { prazoId }),
+      },
     };
   }
 }

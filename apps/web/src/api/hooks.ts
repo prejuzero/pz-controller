@@ -10,6 +10,7 @@ import { consultasBusca, type FiltrosDaTela } from './busca';
 import { consultasCadastro, mutacoesCadastro } from './cadastro';
 import { consultasCalendario, mutacoesCalendario } from './calendario';
 import { consultasCaptura } from './captura';
+import { mutacoesCiencia } from './ciencia';
 import { consultasNotificacoes, mutacoesNotificacoes } from './notificacoes';
 import { consultasPrazos, mutacoesPrazos, type FiltroDaLista } from './prazos';
 import { consultasPrivacidade, mutacoesPrivacidade } from './privacidade';
@@ -180,6 +181,11 @@ export const useBuscaDePrazos = (filtros: FiltrosDaTela, ativa: boolean) =>
 export const useBuscaDePublicacoes = (filtros: FiltrosDaTela, ativa: boolean) =>
   useInfiniteQuery({ ...consultasBusca(useApi()).publicacoes(filtros), enabled: ativa });
 export const useBuscaRapida = (texto: string) => useQuery(consultasBusca(useApi()).rapida(texto));
+const useMutacoesCiencia = () => mutacoesCiencia(useApi(), useQueryClient());
+export const useConsultarLinkDeCiencia = () => useMutation(useMutacoesCiencia().consultar);
+export const useConfirmarCienciaPeloLink = () =>
+  useMutation(useMutacoesCiencia().confirmarPeloLink);
+export const useConfirmarCiencia = () => useMutation(useMutacoesCiencia().confirmar);
 export const useResumoDoDashboard = () => useQuery(consultasPrazos(useApi()).resumo());
 export const useLinhaDoTempo = () => useQuery(consultasPrazos(useApi()).linhaDoTempo());
 export const useProximosPrazos = () => useQuery(consultasPrazos(useApi()).proximos());

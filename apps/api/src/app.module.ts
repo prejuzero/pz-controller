@@ -52,6 +52,7 @@ import {
   RevogarFeriadoLocal,
 } from '@pz/calendario';
 import { ConsultarStatusDaCaptura, LeituraDoStatusPostgres } from '@pz/captura';
+import { CienciaPostgres, ConfirmarCiencia, ConsultarLinkDeCiencia, TokensHmac } from '@pz/ciencia';
 import {
   AnalisarDocumento,
   AnalisarTexto,
@@ -64,7 +65,7 @@ import {
   RevisaoManualPostgres,
   TaxonomiaPostgres,
 } from '@pz/classificacao';
-import { Banco, OutboxPostgres, WebhooksPostgres } from '@pz/db';
+import { Banco, executarNoTenant, OutboxPostgres, WebhooksPostgres } from '@pz/db';
 import {
   AtivarSegundoFator,
   Autenticar,
@@ -195,6 +196,7 @@ import { CadastroController } from './cadastro/cadastro.controller.js';
 import { ProcessosController } from './cadastro/processos.controller.js';
 import { CalendarioController } from './calendario/calendario.controller.js';
 import { CapturaController } from './captura/captura.controller.js';
+import { CienciaController } from './ciencia/ciencia.controller.js';
 import {
   AMBIENTE,
   CAIXA_DE_WEBHOOKS,
@@ -854,6 +856,68 @@ interface DependenciasDeNotificacoes {
   readonly outbox: Outbox<unknown>;
 }
 
+/**
+ * Ciência (HU33): token com HMAC derivado da CHAVE_CIFRAGEM; o prazo (processo, ato, vencimento)
+ * pelas APIs públicas de prazos e cadastro.
+ */
+function provedoresDaCiencia(d: DependenciasDaTabelaDePrazos, chave: string): Provider[] {
+  const tokens = new TokensHmac(Buffer.from(chave, 'base64'));
+  const noTenant = <T>(tenantId: Uuid, trabalho: () => Promise<T>) =>
+    executarNoTenant(tenantId, trabalho);
+  const dadosDoPrazo =
+    (consultar: ConsultarPrazo<unknown>, processos: ConsultarProcesso<unknown>) =>
+    async (prazoId: Uuid) => {
+      const prazo = await consultar.executar(prazoId);
+      if (!prazo.ok) return undefined;
+      const processo = await processos.executar(prazo.valor.processoId);
+      return {
+        prazoId,
+        numeroProcesso: processo.ok ? processo.valor.numeroCnj : 'sem número',
+        tipoAto: prazo.valor.tipoAto,
+        vencimento: prazo.valor.vencimento,
+        status: prazo.valor.status,
+      };
+    };
+  return [
+    {
+      provide: ConsultarLinkDeCiencia,
+      inject: [RELOGIO, ConsultarPrazo, ConsultarProcesso],
+      useFactory: (
+        r: Clock,
+        prazos: ConsultarPrazo<unknown>,
+        processos: ConsultarProcesso<unknown>,
+      ) =>
+        new ConsultarLinkDeCiencia(
+          noTenant,
+          d.unidade,
+          new CienciaPostgres(),
+          tokens,
+          dadosDoPrazo(prazos, processos),
+          r,
+        ),
+    },
+    {
+      provide: ConfirmarCiencia,
+      inject: [RELOGIO, ConsultarPrazo, ConsultarProcesso],
+      useFactory: (
+        r: Clock,
+        prazos: ConsultarPrazo<unknown>,
+        processos: ConsultarProcesso<unknown>,
+      ) =>
+        new ConfirmarCiencia(
+          noTenant,
+          d.unidade,
+          new CienciaPostgres(),
+          tokens,
+          dadosDoPrazo(prazos, processos),
+          d.trilha,
+          d.outbox,
+          r,
+        ),
+    },
+  ];
+}
+
 /** Casos de uso das notificações (HU30): avisos de entrega, consentimentos e push. */
 function provedoresDeNotificacoes(
   criar: (relogio: Clock) => DependenciasDeNotificacoes,
@@ -1263,6 +1327,7 @@ export class AppModule {
       ),
       ...provedoresDaTabelaDePrazos(tabelaDePrazos),
       ...provedoresDosPrazos(tabelaDePrazos, arquivosDoAmbiente(opcoes.ambiente)),
+      ...provedoresDaCiencia(tabelaDePrazos, opcoes.ambiente.CHAVE_CIFRAGEM),
       ...provedoresDoCadastro(cadastro),
       {
         provide: VerificarEmail,
@@ -1299,6 +1364,7 @@ export class AppModule {
         CompromissosController,
         DashboardController,
         BuscaController,
+        CienciaController,
         AssistenteController,
         CuradoriaDaClassificacaoController,
         TermosController,
