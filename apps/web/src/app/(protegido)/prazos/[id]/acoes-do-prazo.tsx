@@ -44,7 +44,8 @@ export function AcoesDoPrazo({ prazo }: { prazo: DetalheDoPrazo }) {
           {t('confirmar')}
         </Botao>
       ) : null}
-      {podeConfirmar && prazo.statusCiencia === 'pendente' ? (
+      {/* O prazo espelha a ciência pelo evento (assíncrono): some já no sucesso. */}
+      {podeConfirmar && prazo.statusCiencia === 'pendente' && !ciencia.isSuccess ? (
         // Ciência (HU33): registra que o advogado viu o prazo; não muda a data nem o status.
         <Botao
           variante="secundaria"
