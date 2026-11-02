@@ -14,7 +14,7 @@ import type {
   RepositorioDeConsentimentos,
   RepositorioDeNotificacoes,
 } from './portas.js';
-import type { Canal, MotivoDeRejeicao } from '../domain/notificacao.js';
+import type { Canal, MotivoDeRejeicao, TipoDeNotificacao } from '../domain/notificacao.js';
 import type { EventoEntrega } from '@pz/integracoes';
 import type { Clock, Outbox, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 
@@ -116,6 +116,7 @@ export class EnviarNotificacao<Transacao> {
     private readonly notificacoes: RepositorioDeNotificacoes<Transacao>,
     private readonly enviadores: Partial<Record<Canal, EnviadorDeCanal>>,
     private readonly relogio: Clock,
+    private readonly linkDeCiencia?: LinkDeCienciaNoEnvio<Transacao>,
   ) {}
 
   async executar(transacao: Transacao, notificacaoId: Uuid): Promise<void> {
@@ -132,12 +133,43 @@ export class EnviarNotificacao<Transacao> {
     const resultado = await enviador.enviar({
       idempotencia: chave,
       destinatarios,
-      mensagem: await renderizar(tipo, dados, canal, enviador.capacidades),
+      mensagem: await renderizar(
+        tipo,
+        await this.#comCiencia(transacao, notificacao, dados),
+        canal,
+        enviador.capacidades,
+      ),
     });
     notificacao.registrarEnvio(resultado.idExterno, this.relogio.agora());
     await this.notificacoes.registrarEnvio(transacao, notificacao);
   }
+
+  /**
+   * E-mail de prazo com "Confirmar ciência" (HU33): o link é gerado agora, no envio; o token não
+   * fica gravado na notificação (só o hash, no módulo ciencia). Reenvio gera outro e revoga o anterior.
+   */
+  async #comCiencia(transacao: Transacao, notificacao: Notificacao, dados: unknown) {
+    const { tipo, canal, prazoId, tenantId, usuarioId } = notificacao.estado;
+    if (this.linkDeCiencia === undefined || prazoId === undefined || canal !== 'email')
+      return dados;
+    if (!TIPOS_COM_CIENCIA.includes(tipo)) return dados;
+    const linkCiencia = await this.linkDeCiencia(transacao, { tenantId, prazoId, usuarioId });
+    return { ...(dados as object), linkCiencia };
+  }
 }
+
+/** Porta: gera o link de ciência no envio (módulo ciencia, na composição). */
+export type LinkDeCienciaNoEnvio<Transacao> = (
+  transacao: Transacao,
+  p: { tenantId: Uuid; prazoId: Uuid; usuarioId: Uuid },
+) => Promise<string>;
+
+/** Tipos cujo e-mail traz "Confirmar ciência" (o template aceita `linkCiencia`). */
+const TIPOS_COM_CIENCIA: readonly TipoDeNotificacao[] = [
+  'nova-intimacao',
+  'lembrete-prazo',
+  'prazo-recalculado',
+];
 
 export interface ResumoDosDesfechos {
   /** Rejeições novas (já gravadas e com evento), para métrica e alerta ao administrador. */

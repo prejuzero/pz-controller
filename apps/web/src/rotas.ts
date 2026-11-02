@@ -11,12 +11,15 @@ export const ROTA_VERIFICAR_EMAIL = '/verificar-email';
 /** Documentos legais públicos e a tela de novo aceite (HU38). */
 export const ROTAS_LEGAIS = ['/termos', '/privacidade', '/cobertura'] as const;
 export const ROTA_ACEITAR_TERMOS = '/aceitar-termos';
+/** Link de ciência do e-mail (HU33): público; só mostra, a confirmação é um clique na página. */
+export const ROTA_CIENCIA = '/ciencia';
 const ROTAS_PUBLICAS = [
   ROTA_ENTRAR,
   ROTA_RECUPERAR_SENHA,
   ROTA_REDEFINIR_SENHA,
   ROTA_CADASTRO,
   ROTA_VERIFICAR_EMAIL,
+  ROTA_CIENCIA,
   ...ROTAS_LEGAIS,
 ];
 

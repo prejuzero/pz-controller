@@ -297,6 +297,20 @@ export class Prazo extends AggregateRoot {
     return r;
   }
 
+  /**
+   * Espelho da ciência confirmada no módulo ciencia (HU33), que audita e publica o evento. Só
+   * avança: `false` se já estava confirmada.
+   */
+  registrarCiencia(): boolean {
+    if (this.#estado.statusCiencia === 'confirmada') return false;
+    this.#estado = {
+      ...this.#estado,
+      statusCiencia: 'confirmada',
+      versaoOtimista: this.#estado.versaoOtimista + 1,
+    };
+    return true;
+  }
+
   cancelar(motivo: string, usuarioId: Uuid, relogio: Clock): Result<void, Conflito> {
     const r = this.#transicao(['a-confirmar', 'pendente'], 'cancelado', { motivoAjuste: motivo });
     if (r.ok) this.#evento('PrazoCancelado', relogio, { motivo, usuarioId });

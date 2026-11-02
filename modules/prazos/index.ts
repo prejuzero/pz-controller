@@ -72,6 +72,7 @@ export {
   LinkDoDocumento,
   ListarPrazos,
   MarcarPrazosVencidos,
+  RegistrarCienciaNoPrazo,
 } from './application/ciclo-de-vida.js';
 export type {
   AutorDoCadastro,

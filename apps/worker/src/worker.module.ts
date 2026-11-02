@@ -39,6 +39,12 @@ import {
   PlanejarCaptura,
 } from '@pz/captura';
 import {
+  CienciaPostgres,
+  EmitirLinkDeCiencia,
+  RegistrarIndicioDeCiencia,
+  TokensHmac,
+} from '@pz/ciencia';
+import {
   CandidatosPostgres,
   ClassificacoesPostgres,
   ClassificadorIaPlataforma,
@@ -87,6 +93,7 @@ import {
   MarcarPrazosVencidos,
   PrazosPostgres,
   RecalcularPrazosPorCalendario,
+  RegistrarCienciaNoPrazo,
   ResolverPrazoAplicavel,
   TabelaPostgres,
   TenantsAfetadosPeloCalendario,
@@ -121,6 +128,7 @@ import { ConsumidorDeAuditoria } from './auditoria/consumidor.js';
 import { ConsumidorDoCalendario } from './calendario/consumidor.js';
 import { alertasDaCaptura } from './captura/alertas.js';
 import { ConsumidorDaCaptura } from './captura/consumidor.js';
+import { ConsumidorDaCiencia } from './ciencia/consumidor.js';
 import { ConsumidorDaClassificacao } from './classificacao/consumidor.js';
 import { registroDeUsoDeIa } from './classificacao/uso-ia.js';
 import { DespachanteDeEventos } from './eventos/consome.js';
@@ -485,6 +493,7 @@ export class WorkerModule {
     const sistema = new BancoSistema({ url: ambiente.DATABASE_URL_SISTEMA, maxConexoes: 4 });
     const outboxPostgres = new OutboxPostgres();
     const localizadorDosPrazos = (relogio: Clock) => localizadorDosPrazosNoBanco(banco, relogio);
+    const tokensDaCiencia = new TokensHmac(Buffer.from(ambiente.CHAVE_CIFRAGEM, 'base64'));
     const agendaDosLembretes = (relogio: Clock) =>
       new AgendaDosLembretes(banco, new PrazosPostgres(), localizadorDosPrazos(relogio));
     const numeroDoProcesso = (relogio: Clock) => {
@@ -563,6 +572,7 @@ export class WorkerModule {
       ConsumidorDeAvisosDeIdentidade,
       ConsumidorDeNotificacoes,
       ConsumidorDosLembretes,
+      ConsumidorDaCiencia,
       ConsumidorDeAuditoria,
       ConsumidorDoCalendario,
       ConsumidorDosPrazos,
@@ -890,8 +900,25 @@ export class WorkerModule {
               },
             },
             relogio,
+            // "Confirmar ciência" (HU33): o link nasce no envio; o token não fica na notificação.
+            (tx, p) =>
+              new EmitirLinkDeCiencia(
+                new CienciaPostgres(),
+                tokensDaCiencia,
+                ambiente.PORTAL_URL,
+                relogio,
+              ).executar(tx, p),
           );
         },
+      },
+      // Ciência (HU33): o prazo espelha a confirmação; entrega e cumprimento são indícios.
+      {
+        provide: RegistrarCienciaNoPrazo,
+        useValue: new RegistrarCienciaNoPrazo(new PrazosPostgres()),
+      },
+      {
+        provide: RegistrarIndicioDeCiencia,
+        useValue: new RegistrarIndicioDeCiencia(new CienciaPostgres()),
       },
       {
         provide: AvisarSituacaoDaFonte,

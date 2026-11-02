@@ -131,6 +131,8 @@ const DaNotificacao = z.object({
   usuarioId: z.uuid(),
   canal: z.enum(['email', 'push', 'whatsapp', 'sms']),
   tipo: z.string().min(1),
+  /** Prazo da notificação, quando houver (indício de ciência, HU33). */
+  prazoId: z.uuid().optional(),
 });
 
 /** O provedor confirmou a entrega (webhook, HU30). */
@@ -158,6 +160,18 @@ export const ConsentimentoCanalAlterado = definirEvento(
     usuarioId: z.uuid(),
     canal: z.enum(['push', 'whatsapp', 'sms']),
     situacao: z.enum(['concedido', 'revogado']),
+  }),
+);
+
+/** Ciência confirmada pelo advogado (HU33): o prazo passa a ter ciência; sem IP nem agente. */
+export const CienciaConfirmada = definirEvento(
+  'CienciaConfirmada',
+  1,
+  z.object({
+    prazoId: z.uuid(),
+    usuarioId: z.uuid(),
+    canal: z.enum(['email', 'portal', 'app']),
+    confirmadaEm: z.iso.datetime(),
   }),
 );
 
@@ -411,6 +425,7 @@ export const EVENTOS = catalogoDeEventos(
   NotificacaoRejeitada,
   ConsentimentoCanalAlterado,
   PreferenciasDeNotificacaoAlteradas,
+  CienciaConfirmada,
   CapturaConcluida,
   SugestaoIaCorrigida,
   ExportacaoDeDadosSolicitada,

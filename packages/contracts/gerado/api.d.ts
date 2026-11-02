@@ -771,6 +771,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/ciencia/confirmacao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirma a ciência com o token do e-mail (uso único). Pública, com limite por IP. */
+        post: operations["confirmarCienciaPeloLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ciencia/consulta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mostra o prazo do link de ciência (não confirma nada). Pública, com limite por IP. */
+        post: operations["consultarLinkDeCiencia"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/clientes": {
         parameters: {
             query?: never;
@@ -1114,6 +1148,23 @@ export interface paths {
         put?: never;
         /** Cancela o prazo, com motivo. */
         post: operations["cancelarPrazo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/prazos/{id}/ciencia": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirma a ciência do prazo pela sessão (portal ou app). */
+        post: operations["confirmarCiencia"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1618,6 +1669,17 @@ export interface components {
             /** @description Casos aceitos no formato de eval/casos (HU22). */
             casos: unknown[];
         };
+        CienciaRegistrada: {
+            /** Format: uuid */
+            prazoId: string;
+            /**
+             * Format: date-time
+             * @description Horário do servidor.
+             */
+            confirmadaEm: string;
+            /** @description Já havia ciência: nada novo foi gravado. */
+            jaConfirmada: boolean;
+        };
         ClienteDoTenant: {
             /** Format: uuid */
             id: string;
@@ -1962,6 +2024,21 @@ export interface components {
                 quantidade: number;
             }[];
         };
+        LinkDeCiencia: {
+            /**
+             * @description "substituido": um e-mail mais novo trouxe outro link.
+             * @enum {string}
+             */
+            situacao: "valido" | "usado" | "expirado" | "substituido" | "invalido";
+            /** @description Só o necessário para conferir antes de confirmar. */
+            prazo?: {
+                numeroProcesso: string;
+                tipoAto: string;
+                vencimento: string | null;
+            };
+            /** Format: date-time */
+            confirmadaEm?: string;
+        };
         LinkDoDocumento: {
             /** Format: uri */
             url: string;
@@ -2083,6 +2160,10 @@ export interface components {
                 tokensCacheLidos: number;
                 custoUsd: number;
             }[];
+        };
+        PedidoComToken: {
+            /** @description Token do link do e-mail (vai no corpo, nunca na URL da API). */
+            token: string;
         };
         PedidoComVersao: {
             /** @description Versão lida: outra gravação no meio dá 409. */
@@ -5951,6 +6032,144 @@ export interface operations {
             };
         };
     };
+    confirmarCienciaPeloLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoComToken"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CienciaRegistrada"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    consultarLinkDeCiencia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoComToken"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkDeCiencia"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
     listarClientes: {
         parameters: {
             query?: {
@@ -7777,6 +7996,82 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Prazo"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    confirmarCiencia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CienciaRegistrada"];
                 };
             };
             /** @description Entrada inválida. */

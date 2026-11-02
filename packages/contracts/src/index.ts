@@ -39,6 +39,16 @@ export {
 } from './busca.js';
 import { ROTAS_CALENDARIO } from './calendario/index.js';
 import { ROTAS_CAPTURA } from './captura.js';
+import { ROTAS_CIENCIA } from './ciencia.js';
+export {
+  CienciaRegistrada,
+  confirmarCiencia,
+  confirmarCienciaPeloLink,
+  consultarLinkDeCiencia,
+  LinkDeCiencia,
+  PedidoComToken,
+  ROTAS_CIENCIA,
+} from './ciencia.js';
 import { ROTAS_NOTIFICACOES } from './notificacoes/index.js';
 import { gerarOpenApi } from './openapi.js';
 import { ROTAS_COMPROMISSOS } from './prazos/compromissos.js';
@@ -328,6 +338,7 @@ export const ROTAS = [
   ...ROTAS_COMPROMISSOS,
   ...ROTAS_DASHBOARD,
   ...ROTAS_BUSCA,
+  ...ROTAS_CIENCIA,
   ...ROTAS_TERMOS,
   ...ROTAS_PRIVACIDADE,
   ...ROTAS_PUBLICACOES,

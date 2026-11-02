@@ -827,7 +827,9 @@
       "previaResultado": "Novo vencimento: {vencimento}",
       "previaSemData": "Sem data sugerida com estes dados.",
       "salvar": "Salvar ajuste",
-      "voltar": "Voltar"
+      "voltar": "Voltar",
+      "confirmarCiencia": "Confirmar ciência",
+      "cienciaConfirmada": "Ciência registrada."
     },
     "novo": {
       "botao": "Novo prazo",
@@ -1015,5 +1017,24 @@
     "salvar": "Salvar",
     "salvas": "Preferências salvas. Os próximos lembretes já seguem a nova escolha.",
     "suprimidos": "Estes e-mails rejeitaram mensagens e não recebem nada até serem trocados: {emails}."
+  },
+  "ciencia": {
+    "titulo": "Confirmar ciência",
+    "descricao": "Confira o prazo. A ciência só é registrada quando você clicar no botão.",
+    "processo": "Processo",
+    "ato": "Ato",
+    "vencimento": "Vencimento",
+    "semData": "A confirmar",
+    "confirmar": "Confirmar ciência",
+    "confirmada": "Ciência registrada em {quando}.",
+    "jaConfirmada": "A ciência deste prazo já foi registrada em {quando}.",
+    "situacoes": {
+      "valido": "",
+      "usado": "Este link já foi usado.",
+      "expirado": "Este link expirou (vale 7 dias). Confirme a ciência pelo portal.",
+      "substituido": "Um e-mail mais novo trouxe outro link. Use o mais recente ou confirme pelo portal.",
+      "invalido": "Link inválido. Confirme a ciência pelo portal."
+    },
+    "irAoPortal": "Ir ao portal"
   }
 }

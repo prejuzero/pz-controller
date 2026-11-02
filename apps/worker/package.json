@@ -14,7 +14,7 @@
     "test:int": "vitest run --config vitest.int.config.ts"
   },
   "dependencies": {
-    "@nestjs/common": "12.1.2",
+    "@nestjs/common": "12.2.0",
     "@nestjs/core": "12.2.0",
     "@pz/adapter-anthropic": "workspace:*",
     "@pz/adapter-djen": "workspace:*",
@@ -26,6 +26,7 @@
     "@pz/cadastro": "workspace:*",
     "@pz/calendario": "workspace:*",
     "@pz/captura": "workspace:*",
+    "@pz/ciencia": "workspace:*",
     "@pz/classificacao": "workspace:*",
     "@pz/config": "workspace:*",
     "@pz/contracts": "workspace:*",

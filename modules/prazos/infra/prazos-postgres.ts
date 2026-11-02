@@ -179,6 +179,7 @@ export class PrazosPostgres implements RepositorioDePrazos<Transacao> {
         parametros: paraJson(e.parametros),
         motivoAjuste: e.motivoAjuste,
         status: paraBanco(e.status),
+        statusCiencia: e.statusCiencia,
         versaoOtimista: e.versaoOtimista,
       },
     });

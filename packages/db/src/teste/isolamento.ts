@@ -118,6 +118,15 @@ const COLUNAS_FIXAS: Readonly<Record<string, Record<string, unknown>>> = {
   oab: { uf: 'XA' },
   consentimento_canal: { canal: 'push', origem: 'app' },
   cliente: { documento: null },
+  token_ciencia: {
+    hash_token: () =>
+      randomInt(1e10, 1e11 - 1)
+        .toString(16)
+        .padStart(64, '0'),
+    usado_em: null,
+    revogado_em: null,
+  },
+  ciencia_prazo: { confirmada_por: null, confirmada_em: null },
   auditoria_dado_pessoal: {
     valor: 'FICTÍCIO',
     sal: '00',
@@ -242,4 +251,6 @@ export const TABELAS_SEM_DELETE: readonly string[] = [
   'prazo',
   'compromisso',
   'lembrete_agendado',
+  'token_ciencia',
+  'ciencia_prazo',
 ];
