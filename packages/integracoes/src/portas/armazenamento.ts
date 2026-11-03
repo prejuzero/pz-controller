@@ -62,6 +62,8 @@ export interface ArmazenamentoArquivos {
   gravar(arquivo: ArquivoParaGravar): Promise<void>;
   urlAssinada(pedido: PedidoUrlAssinada): Promise<string>;
   remover(tenantId: Uuid, caminho: string): Promise<void>;
+  /** Conteúdo do arquivo, ou undefined se não existir (ex.: anexo de e-mail, HU32). */
+  ler(tenantId: Uuid, caminho: string): Promise<Uint8Array | undefined>;
   /** Metadados do arquivo, ou undefined se não existir. */
   metadados(tenantId: Uuid, caminho: string): Promise<MetadadosArquivo | undefined>;
   saude(): Promise<SaudeAdaptador>;

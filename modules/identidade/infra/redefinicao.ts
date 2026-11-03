@@ -63,6 +63,21 @@ export class EmailsDosUsuariosPostgres implements EmailsDosUsuarios<Transacao> {
   }
 }
 
+/**
+ * Quais e-mails são de usuários do escritório da transação (RLS): o envio manual (HU32) pede a
+ * confirmação de sigilo para os demais.
+ */
+export class EmailsDoEscritorioPostgres {
+  async internos(transacao: Transacao, emails: readonly string[]): Promise<ReadonlySet<string>> {
+    if (emails.length === 0) return new Set();
+    const usuarios = await transacao.usuario.findMany({
+      where: { email: { in: [...emails], mode: 'insensitive' } },
+      select: { email: true },
+    });
+    return new Set(usuarios.map((u) => u.email.trim().toLowerCase()));
+  }
+}
+
 /** Nome do usuário no tenant da transação (ex.: cabeçalho dos relatórios, HU29). */
 export class NomesDosUsuariosPostgres {
   async nomeDe(transacao: Transacao, usuarioId: Uuid): Promise<string | undefined> {

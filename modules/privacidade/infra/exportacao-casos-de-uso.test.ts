@@ -40,6 +40,9 @@ class ArmazenamentoFalso implements ArmazenamentoArquivos {
   metadados() {
     return Promise.resolve(undefined);
   }
+  ler() {
+    return Promise.resolve(undefined);
+  }
   saude() {
     return Promise.resolve({ estado: 'operacional' as const, verificadoEm: relogio.agora() });
   }

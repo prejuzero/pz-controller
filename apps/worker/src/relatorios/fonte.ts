@@ -6,7 +6,8 @@ import {
   ProcessosPostgres,
 } from '@pz/cadastro';
 import { NomesDosUsuariosPostgres } from '@pz/identidade';
-import { BuscarPrazos, PrazosPostgres } from '@pz/prazos';
+import { formatarNumeroCnj, lerNumeroCnj } from '@pz/kernel';
+import { BuscarPrazos, prazoDetalhado, PrazosPostgres } from '@pz/prazos';
 import { BuscarPublicacoes, LeituraPostgres } from '@pz/publicacoes';
 
 import type { ProtecaoDeCampos } from '@pz/cadastro';
@@ -28,6 +29,9 @@ export function fonteDosRelatorios(
   const oabs = new OabsParaBusca(banco, new AdvogadosPostgres(relogio, protecao));
   const prazos = new BuscarPrazos(banco, new PrazosPostgres());
   const nomes = new NomesDosUsuariosPostgres();
+  const repositorioDePrazos = new PrazosPostgres();
+  const repositorioDeProcessos = new ProcessosPostgres(relogio);
+  const leitura = new LeituraPostgres();
   const buscar = new Buscar(
     {
       processos: (f) => processos.executar(f),
@@ -43,6 +47,20 @@ export function fonteDosRelatorios(
   return {
     prazos: (filtros) => buscar.prazos(filtros),
     publicacoes: (filtros) => buscar.publicacoes(filtros),
+    // Envio manual (HU32): um prazo (com o número do processo) ou uma publicação do tenant.
+    prazo: (id) =>
+      banco.executar(async (tx) => {
+        const prazo = await repositorioDePrazos.buscar(tx, id);
+        if (prazo === undefined) return undefined;
+        const detalhe = prazoDetalhado(prazo.estado);
+        const processo = await repositorioDeProcessos.buscar(tx, detalhe.processoId);
+        const partes = processo === undefined ? undefined : lerNumeroCnj(processo.estado.numeroCnj);
+        return {
+          prazo: detalhe,
+          ...(partes === undefined ? {} : { numeroProcesso: formatarNumeroCnj(partes) }),
+        };
+      }),
+    publicacao: (id) => banco.executar((tx) => leitura.buscar(tx, id)),
     nomeDoUsuario: async (usuarioId) =>
       (await banco.executar((tx) => nomes.nomeDe(tx, usuarioId))) ?? '',
   };

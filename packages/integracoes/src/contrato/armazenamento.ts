@@ -47,6 +47,7 @@ export function verificarContratoArmazenamento(nome: string, cenario: CenarioArm
         tamanhoBytes: conteudo.byteLength,
         tipoMime: cenario.tipoPermitido,
       });
+      expect(await armazenamento.ler(tenant, 'contrato/ida-e-volta.txt')).toEqual(conteudo);
       const url = await armazenamento.urlAssinada({
         tenantId: tenant,
         caminho: 'contrato/ida-e-volta.txt',
@@ -99,6 +100,7 @@ export function verificarContratoArmazenamento(nome: string, cenario: CenarioArm
         tipoMime: cenario.tipoPermitido,
       });
       expect(await armazenamento.metadados(outroTenant, 'contrato/sigiloso.txt')).toBeUndefined();
+      expect(await armazenamento.ler(outroTenant, 'contrato/sigiloso.txt')).toBeUndefined();
       const url = await armazenamento.urlAssinada({
         tenantId: outroTenant,
         caminho: 'contrato/sigiloso.txt',
@@ -108,9 +110,10 @@ export function verificarContratoArmazenamento(nome: string, cenario: CenarioArm
       expect((await fetch(url)).status).toBe(404);
     });
 
-    it('inexistente: metadados vazio; remover é idempotente', async () => {
+    it('inexistente: metadados e leitura vazios; remover é idempotente', async () => {
       const armazenamento = cenario.criar();
       expect(await armazenamento.metadados(tenant, 'contrato/nunca-existiu.txt')).toBeUndefined();
+      expect(await armazenamento.ler(tenant, 'contrato/nunca-existiu.txt')).toBeUndefined();
       await armazenamento.remover(tenant, 'contrato/nunca-existiu.txt');
       await armazenamento.gravar({
         tenantId: tenant,

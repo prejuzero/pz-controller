@@ -65,6 +65,15 @@ export class ProvedorEmailSmtp implements ProvedorEmail {
         subject: valido.data.assunto,
         html: valido.data.html,
         text: valido.data.texto,
+        ...(valido.data.anexos === undefined
+          ? {}
+          : {
+              attachments: valido.data.anexos.map((a) => ({
+                filename: a.nome,
+                contentType: a.tipoMime,
+                content: Buffer.from(a.conteudo),
+              })),
+            }),
         // Correlaciona reenvios do mesmo e-mail (idempotência do lado de quem lê os eventos).
         headers: { 'X-PZ-Idempotencia': valido.data.idempotencia },
       });

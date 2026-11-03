@@ -979,6 +979,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/envios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Envia prazo, publicação, busca ou relatório por e-mail com anexo; o arquivo é gerado e enviado em segundo plano. Destinatário de fora do escritório exige confirmacaoSigilo (422 "confirmacao-de-sigilo"). */
+        post: operations["enviarPorEmail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/notificacoes/avisos": {
         parameters: {
             query?: never;
@@ -2029,6 +2046,12 @@ export interface components {
             solicitadoEm: string | null;
             efetivarEm: string | null;
         };
+        EnvioSolicitado: {
+            /** Format: uuid */
+            id: string;
+            /** @description Destinatários de fora do escritório (enviados com a confirmação de sigilo). */
+            externos: string[];
+        };
         EventoDoCalendario: {
             /** Format: uuid */
             id: string;
@@ -2442,6 +2465,95 @@ export interface components {
             plataforma: "ios" | "android" | "web";
             /** @description Token de push do sistema do aparelho. */
             token: string;
+        };
+        PedidoDeEnvio: {
+            /** @enum {string} */
+            recurso: "prazo" | "publicacao";
+            /** Format: uuid */
+            recursoId: string;
+            /**
+             * @default pdf
+             * @enum {string}
+             */
+            formato: "pdf" | "xlsx";
+            /** @description E-mails de quem recebe; até 10. */
+            destinatarios: string[];
+            /** @description Texto livre de quem envia. */
+            mensagem?: string;
+            /** @description Obrigatória (true) quando algum destinatário não é e-mail de usuário do escritório: confirma o envio de dados sob sigilo profissional para fora (RF70). */
+            confirmacaoSigilo?: boolean;
+        } | {
+            /** @constant */
+            recurso: "relatorio";
+            /** Format: uuid */
+            recursoId: string;
+            /** @description E-mails de quem recebe; até 10. */
+            destinatarios: string[];
+            /** @description Texto livre de quem envia. */
+            mensagem?: string;
+            /** @description Obrigatória (true) quando algum destinatário não é e-mail de usuário do escritório: confirma o envio de dados sob sigilo profissional para fora (RF70). */
+            confirmacaoSigilo?: boolean;
+        } | {
+            /** @constant */
+            recurso: "busca";
+            /** @enum {string} */
+            alvo: "prazos" | "publicacoes";
+            filtros: {
+                /** @description Com ou sem pontuação; 20 dígitos é exato, menos é parcial. */
+                numeroCnj?: string;
+                /** @description Busca no teor (o cadastro ainda não guarda as partes). */
+                partes?: string;
+                /** Format: uuid */
+                clienteId?: string;
+                tribunal?: string;
+                /** @description Vara ou órgão julgador, parcial. */
+                orgao?: string;
+                comarca?: string;
+                tiposAto?: string[];
+                statusPrazo?: ("a-confirmar" | "pendente" | "cumprido" | "vencido" | "cancelado")[];
+                statusCiencia?: ("pendente" | "confirmada")[];
+                /**
+                 * Format: uuid
+                 * @description Advogado responsável.
+                 */
+                responsavelId?: string;
+                /** @description UF + número, exato (ex.: GO12345). */
+                oab?: string;
+                /** @enum {string} */
+                ramo?: "civel" | "juizados" | "trabalhista" | "penal" | "juizado-criminal";
+                /** @description Texto livre no teor, sem diferença de acentos. */
+                palavraChave?: string;
+                origem?: ("djen" | "manual" | "painel")[];
+                periodo?: {
+                    /** @enum {string} */
+                    atalho?: "hoje" | "amanha" | "esta-semana" | "proxima-semana" | "este-mes" | "proximos-30-dias" | "vencidos";
+                    /** Format: date */
+                    de?: string;
+                    /** Format: date */
+                    ate?: string;
+                    /**
+                     * @description Data alvo (RF47). Padrão: vencimento nos prazos; em publicações só vale "publicacao" (disponibilização).
+                     * @enum {string}
+                     */
+                    campoData?: "vencimento" | "publicacao" | "inicio";
+                };
+                /**
+                 * @description Pela data alvo; padrão por recurso.
+                 * @enum {string}
+                 */
+                ordem?: "asc" | "desc";
+            };
+            /**
+             * @default pdf
+             * @enum {string}
+             */
+            formato: "pdf" | "xlsx";
+            /** @description E-mails de quem recebe; até 10. */
+            destinatarios: string[];
+            /** @description Texto livre de quem envia. */
+            mensagem?: string;
+            /** @description Obrigatória (true) quando algum destinatário não é e-mail de usuário do escritório: confirma o envio de dados sob sigilo profissional para fora (RF70). */
+            confirmacaoSigilo?: boolean;
         };
         PedidoDeEventoDoCalendario: {
             /**
@@ -7306,6 +7418,93 @@ export interface operations {
             };
             /** @description Não autenticado. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Limite de requisições excedido. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    enviarPorEmail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeEnvio"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvioSolicitado"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Regra de negócio violada. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

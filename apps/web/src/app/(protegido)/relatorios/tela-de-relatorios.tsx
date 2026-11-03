@@ -16,6 +16,7 @@ import { useState } from 'react';
 
 import { useRelatorios, useSolicitarRelatorio } from '../../../api/hooks';
 import { formatarInstante } from '../../../i18n/formatar';
+import { EnviarPorEmail } from '../_casca/enviar-por-email';
 
 import type { PedidoDeRelatorio } from '../../../api/relatorios';
 import type { Relatorio } from '@pz/contracts';
@@ -83,9 +84,12 @@ export function TelaDeRelatorios({
         const r = row.original;
         if (r.url !== null) {
           return (
-            <a href={r.url} className="underline underline-offset-4" download>
-              {t('baixar')}
-            </a>
+            <div className="flex flex-wrap items-center gap-3">
+              <a href={r.url} className="underline underline-offset-4" download>
+                {t('baixar')}
+              </a>
+              <EnviarPorEmail anexo={{ recurso: 'relatorio', recursoId: r.id }} />
+            </div>
           );
         }
         if (r.situacao === 'pendente')

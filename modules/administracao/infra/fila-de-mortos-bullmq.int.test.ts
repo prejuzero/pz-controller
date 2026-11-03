@@ -154,6 +154,7 @@ describe('QA do painel (PZ-230)', () => {
         gravar: () => Promise.resolve(),
         urlAssinada: () => Promise.resolve('https://exemplo.invalid'),
         remover: () => Promise.resolve(),
+        ler: () => Promise.resolve(undefined),
         saude: () =>
           Promise.resolve({ estado: 'operacional' as const, verificadoEm: relogio.agora() }),
       }),

@@ -11,6 +11,8 @@ export interface EmailRecebido {
   readonly assunto: string;
   readonly html: string;
   readonly texto: string;
+  /** Nomes dos arquivos anexados. */
+  readonly anexos: readonly string[];
 }
 
 export interface CenarioEmail {
@@ -42,6 +44,25 @@ export function verificarContratoEmail(nome: string, cenario: CenarioEmail): voi
         'ana@exemplo.invalid',
         'bia@exemplo.invalid',
       ]);
+    });
+
+    it('entrega o anexo com o nome informado', async () => {
+      const assunto = `Contrato anexo ${String(Math.random()).slice(2)}`;
+      await cenario.criar().enviar({
+        idempotencia: `contrato-${assunto}`,
+        para: ['ana@exemplo.invalid'],
+        assunto,
+        html: '<p>Segue o relatório.</p>',
+        texto: 'Segue o relatório.',
+        anexos: [
+          {
+            nome: 'relatorio.pdf',
+            tipoMime: 'application/pdf',
+            conteudo: new TextEncoder().encode('%PDF-1.4 conteúdo fictício'),
+          },
+        ],
+      });
+      expect((await cenario.recebido(assunto))?.anexos).toEqual(['relatorio.pdf']);
     });
 
     it('recusa e-mail fora do modelo canônico sem enviar', async () => {

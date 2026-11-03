@@ -49,6 +49,9 @@ export interface FonteDosRelatorios {
   publicacoes(
     filtros: Record<string, unknown>,
   ): Promise<Result<Pagina<PublicacaoDoRelatorio>, Validacao>>;
+  /** Um prazo do tenant (envio manual, HU32), com o número do processo; `undefined` se não existe. */
+  prazo(id: Uuid): Promise<{ prazo: PrazoDoRelatorio; numeroProcesso?: string } | undefined>;
+  publicacao(id: Uuid): Promise<PublicacaoDoRelatorio | undefined>;
   /** Nome de quem pediu, para o cabeçalho. */
   nomeDoUsuario(usuarioId: Uuid): Promise<string>;
 }

@@ -21,3 +21,10 @@ Notificações multicanal com idempotência e supressão.
 - `AvisarNovaIntimacao`: no `PrazoSugerido` de uma publicação (DJEN), e-mail ao responsável com o link do prazo. O botão "Confirmar ciência" entra com a HU33.
 - `EnviarResumosDiarios` (job a cada 15 min): no horário do usuário (padrão 07:00), um resumo por dia com o que vence hoje, os próximos 7 dias, os prazos sem ciência e as publicações não lidas. Resumo vazio não sai.
 - Preferências (`/v1/notificacoes/preferencias`): antecedências, horário do resumo e tipos ligados no e-mail. A mudança é auditada e publica `PreferenciasDeNotificacaoAlteradas`; o worker reprograma os lembretes futuros.
+
+## Envio manual por e-mail (HU32)
+
+- `POST /v1/envios`: prazo, publicação, resultado de busca ou relatório já pedido, com o arquivo em anexo (PDF ou Excel). Até 10 destinatários e 30 envios por hora por usuário.
+- Destinatário que não é usuário do escritório exige `confirmacaoSigilo: true` (sem ela, 422 `confirmacao-de-sigilo`). O pedido grava a trilha (`notificacoes.envio-manual-solicitado`, com destinatários e externos) e o evento `EnvioManualSolicitado` na mesma transação.
+- O worker (fila `relatorios`) gera o anexo pelo pipeline de relatórios (`GerarArquivo`), grava em `envios/<id>/` no armazenamento do tenant e pede a notificação `envio-manual` com os destinatários escolhidos (sem preferências, com a lista de supressão). O envio lê o anexo e o entrega pelo `ProvedorEmail`.
+- Recurso que sumiu ou destinatários todos suprimidos: `notificacoes.envio-manual-falhou` na trilha.

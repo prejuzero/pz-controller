@@ -123,6 +123,29 @@ describe('notificações no PostgreSQL (HU30)', () => {
     expect(await noTenant(OUTRO, (tx) => tx.notificacao.count())).toBe(0);
   });
 
+  it('envio manual: destinatários explícitos e a referência do anexo gravados (HU32)', async () => {
+    const anexo = {
+      caminho: 'envios/x/prejuzero-prazo.pdf',
+      nome: 'prejuzero-prazo.pdf',
+      tipoMime: 'application/pdf',
+    };
+    const r = await noTenant(TENANT, (tx) =>
+      notificar.executar(tx, {
+        tipo: 'envio-manual',
+        tenantId: TENANT,
+        usuarioId: USUARIO,
+        janela: 'envio-1',
+        destinatarios: ['Cliente@Fora.invalid'],
+        anexo,
+        dados: { recurso: 'prazo', remetente: 'Ana', link: 'https://app.exemplo.invalid/x' },
+      }),
+    );
+    if (!r.ok || !r.valor.solicitada) throw new Error('não solicitada');
+    const id = r.valor.notificacaoId;
+    const lida = await noTenant(TENANT, (tx) => new NotificacoesPostgres().buscar(tx, id));
+    expect(lida?.estado).toMatchObject({ destinatarios: ['cliente@fora.invalid'], anexo });
+  });
+
   it('lista as supressões globais em ordem de e-mail (HU39)', async () => {
     const lista = await noTenant(OUTRO, (tx) => new SupressaoPostgres().listar(tx, { limite: 10 }));
     expect(lista).toContainEqual(

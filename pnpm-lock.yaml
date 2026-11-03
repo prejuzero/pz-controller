@@ -1012,6 +1012,9 @@ importers:
       '@pz/auditoria':
         specifier: workspace:*
         version: link:../auditoria
+      '@pz/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@pz/db':
         specifier: workspace:*
         version: link:../../packages/db

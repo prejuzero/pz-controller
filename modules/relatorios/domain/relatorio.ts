@@ -149,7 +149,10 @@ export function linhasDaAgenda(prazos: readonly PrazoDoRelatorio[]) {
 }
 
 /** Busca de publicações (RF57): as colunas da tela de busca. */
-export function linhasDaBuscaDePublicacoes(publicacoes: readonly PublicacaoDoRelatorio[]) {
+export function linhasDaBuscaDePublicacoes(
+  publicacoes: readonly PublicacaoDoRelatorio[],
+  teorCompleto = false,
+) {
   const colunas: Coluna[] = [
     { chave: 'publicacao', titulo: 'Publicação', largura: 1.1 },
     { chave: 'processo', titulo: 'Processo', largura: 2 },
@@ -162,16 +165,19 @@ export function linhasDaBuscaDePublicacoes(publicacoes: readonly PublicacaoDoRel
       publicacao: dataCivil(p.dataDisponibilizacao),
       processo: partes === undefined ? (p.numeroCnj ?? '') : formatarNumeroCnj(partes),
       tribunal: p.siglaTribunal ?? '',
-      teor: p.teor.length > TRECHO ? `${p.teor.slice(0, TRECHO)}…` : p.teor,
+      teor: !teorCompleto && p.teor.length > TRECHO ? `${p.teor.slice(0, TRECHO)}…` : p.teor,
     };
   });
   return { colunas, rotuloDoGrupo: null, grupos: [{ titulo: null, linhas }] };
 }
 
-export const TITULOS: Readonly<Record<TipoDeRelatorio, string>> = {
+export const TITULOS: Readonly<Record<TipoDeRelatorio | 'prazo' | 'publicacao', string>> = {
   agenda: 'Agenda de prazos',
   'busca-prazos': 'Busca de prazos',
   'busca-publicacoes': 'Busca de publicações',
+  // Envio manual (HU32): um prazo ou uma publicação.
+  prazo: 'Prazo',
+  publicacao: 'Publicação',
 };
 
 const ROTULOS_DOS_FILTROS: Readonly<Record<string, string>> = {

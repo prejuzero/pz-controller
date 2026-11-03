@@ -108,3 +108,16 @@ export { LembretesEmMemoria, PreferenciasEmMemoria } from './infra/em-memoria.js
 export { LembretesPostgres } from './infra/lembretes-postgres.js';
 export { LembrarConferencias } from './application/conferencias.js';
 export type { ConferenciaDevida } from './application/conferencias.js';
+export { PrepararEnvioManual, SolicitarEnvioManual } from './application/envio-manual.js';
+export type {
+  AnexoDoEnvio,
+  DependenciasDoPreparo,
+  EmailsDoEscritorio,
+  EnvioManualPedido,
+  GeradorDoAnexo,
+  RecursoDoEnvioExiste,
+  RemetenteDoEnvio,
+  ResultadoDoPreparo,
+} from './application/envio-manual.js';
+export { MAXIMO_DE_DESTINATARIOS } from './application/notificacoes.js';
+export type { AnexoDaNotificacao } from './domain/notificacao.js';

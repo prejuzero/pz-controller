@@ -1,4 +1,11 @@
-import { HttpException, HttpStatus, Inject, Injectable, SetMetadata } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  Optional,
+  SetMetadata,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { gerarUuidV7 } from '@pz/kernel';
 import { criarLogger } from '@pz/observability';
@@ -23,6 +30,15 @@ export interface LimitePorIp {
 /** Rate limit por IP numa janela deslizante (CLAUDE.md, seção 14: rotas públicas com limite). */
 export const LimitarPorIp = (maximo: number, janelaMs = 60_000): MethodDecorator =>
   SetMetadata(CHAVE_LIMITE, { maximo, janelaMs } satisfies LimitePorIp);
+
+const CHAVE_LIMITE_USUARIO = 'pz:limite-por-usuario';
+
+/**
+ * Rate limit por usuário autenticado numa janela deslizante (ex.: envio manual por e-mail, HU32:
+ * ninguém dispara e-mails em massa pelo portal).
+ */
+export const LimitarPorUsuario = (maximo: number, janelaMs: number): MethodDecorator =>
+  SetMetadata(CHAVE_LIMITE_USUARIO, { maximo, janelaMs } satisfies LimitePorIp);
 
 /** Conta requisições por chave numa janela deslizante; compartilhada entre instâncias. */
 export interface JanelaDeRequisicoes {
@@ -119,11 +135,26 @@ export class LimiteDoTenant implements NestInterceptor {
   constructor(
     @Inject(JANELA_DE_REQUISICOES) private readonly janela: JanelaDeRequisicoes,
     @Inject(AMBIENTE) private readonly ambiente: AmbienteApi,
+    @Optional() @Inject(Reflector) private readonly refletor?: Reflector,
   ) {}
 
   async intercept(contexto: ExecutionContext, proximo: CallHandler): Promise<Observable<unknown>> {
     const requisicao = contexto.switchToHttp().getRequest<RequisicaoAutenticada>();
     const tenantId = requisicao.autenticacao?.sessao.tenantId;
+    const usuarioId = requisicao.autenticacao?.sessao.usuarioId;
+    const porUsuario = this.refletor?.get<LimitePorIp | undefined>(
+      CHAVE_LIMITE_USUARIO,
+      contexto.getHandler(),
+    );
+    if (porUsuario !== undefined && usuarioId !== undefined) {
+      const rota = requisicao.routeOptions.url ?? requisicao.url;
+      const total = await this.janela.registrar(
+        `pz:limite-usuario:${rota}:${usuarioId}`,
+        porUsuario.janelaMs,
+      );
+      if (total > porUsuario.maximo)
+        demais(contexto, porUsuario.janelaMs, rota, { usuarioId, total, escopo: 'usuario' });
+    }
     if (tenantId !== undefined) {
       const total = await this.janela.registrar(`pz:limite-tenant:${tenantId}`, MINUTO_MS);
       if (total > this.ambiente.LIMITE_POR_TENANT_POR_MINUTO) {

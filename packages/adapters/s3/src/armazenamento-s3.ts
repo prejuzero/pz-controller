@@ -224,6 +224,21 @@ export class ArmazenamentoS3 implements ArmazenamentoArquivos {
     }
   }
 
+  async ler(tenantId: Uuid, caminho: string): Promise<Uint8Array | undefined> {
+    const chave = chaveDoArquivo(tenantId, caminho);
+    try {
+      const resposta = await this.#cliente.send(
+        new GetObjectCommand({ Bucket: this.config.bucket, Key: chave }),
+        opcoesDeEnvio(),
+      );
+      if (resposta.Body === undefined) return undefined;
+      return await resposta.Body.transformToByteArray();
+    } catch (erro) {
+      if (ehNaoEncontrado(erro)) return undefined;
+      throw classificarErroS3(erro);
+    }
+  }
+
   async saude(): Promise<SaudeAdaptador> {
     try {
       await this.#cliente.send(new HeadBucketCommand({ Bucket: this.config.bucket }));

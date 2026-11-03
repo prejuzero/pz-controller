@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 
 import { useLinkDoDocumento, usePrazo } from '../../../../api/hooks';
 import { formatarDataCivil, formatarInstante } from '../../../../i18n/formatar';
+import { EnviarPorEmail } from '../../_casca/enviar-por-email';
 
 import { AcoesDoPrazo } from './acoes-do-prazo';
 
@@ -64,6 +65,7 @@ export function DetalhePrazo({ id }: { id: string }) {
       </div>
 
       <AcoesDoPrazo prazo={p} />
+      <EnviarPorEmail anexo={{ recurso: 'prazo', recursoId: p.id }} />
       {documentoDe(p.parametros) === undefined ? null : <AbrirDocumento id={p.id} />}
 
       <dl className="grid gap-3 rounded-lg border border-borda p-4 sm:grid-cols-2">

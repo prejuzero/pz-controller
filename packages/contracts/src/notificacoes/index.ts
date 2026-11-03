@@ -3,6 +3,15 @@ import { z } from 'zod';
 import { Instante, Uuid } from '../comum.js';
 import { definirRota, nomear } from '../rota.js';
 
+import { enviarPorEmail } from './envios.js';
+
+export {
+  EnvioSolicitado,
+  enviarPorEmail,
+  MAXIMO_DE_DESTINATARIOS_DO_ENVIO,
+  PedidoDeEnvio,
+} from './envios.js';
+
 export const AvisosDeEntrega = nomear(
   'AvisosDeEntrega',
   z.object({
@@ -189,4 +198,5 @@ export const ROTAS_NOTIFICACOES = [
   revogarConsentimento,
   registrarDestinoPush,
   desativarDestinoPush,
+  enviarPorEmail,
 ] as const;

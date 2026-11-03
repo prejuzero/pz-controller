@@ -39,6 +39,7 @@ import { CredenciaisPostgres } from './credenciais-postgres.js';
 import { DispositivosPostgres, RenovacoesRedis } from './dispositivos.js';
 import { PerfisPostgres, UsuariosComPermissaoPostgres } from './perfis-postgres.js';
 import {
+  EmailsDoEscritorioPostgres,
   EmailsDosUsuariosPostgres,
   NomesDosUsuariosPostgres,
   noTenantDoBanco,
@@ -360,6 +361,21 @@ describe('redefinição de senha com Redis e PostgreSQL (HU06)', () => {
     expect(
       await executarNoTenant(TENANT_A, () => banco.executar((tx) => nomes.nomeDe(tx, BIA))),
     ).toBeUndefined();
+    // Envio manual (HU32): só e-mail de usuário do próprio escritório conta como interno.
+    const doEscritorio = new EmailsDoEscritorioPostgres();
+    const pedidos = ['bia@exemplo.invalid', 'fora@exemplo.invalid'];
+    expect([
+      ...(await executarNoTenant(TENANT_B, () =>
+        banco.executar((tx) => doEscritorio.internos(tx, pedidos)),
+      )),
+    ]).toEqual(['bia@exemplo.invalid']);
+    expect(
+      (
+        await executarNoTenant(TENANT_A, () =>
+          banco.executar((tx) => doEscritorio.internos(tx, pedidos)),
+        )
+      ).size,
+    ).toBe(0);
   });
 });
 

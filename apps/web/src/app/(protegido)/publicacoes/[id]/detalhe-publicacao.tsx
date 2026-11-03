@@ -8,6 +8,7 @@ import { useEffect, useRef } from 'react';
 
 import { useMarcarPublicacaoLida, usePublicacao } from '../../../../api/hooks';
 import { formatarDataCivil, formatarInstante } from '../../../../i18n/formatar';
+import { EnviarPorEmail } from '../../_casca/enviar-por-email';
 
 /**
  * Detalhe da publicação (HU18): teor integral, link da fonte e data de captura. Abrir registra a
@@ -52,6 +53,7 @@ export function DetalhePublicacao({ id }: { id: string }) {
           )}
         </div>
       </div>
+      <EnviarPorEmail anexo={{ recurso: 'publicacao', recursoId: p.id }} />
 
       <dl className="grid gap-3 rounded-lg border border-borda p-4 sm:grid-cols-2">
         <Item rotulo={t('colunas.processo')}>

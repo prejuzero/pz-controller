@@ -56,11 +56,11 @@ const EXEMPLOS: Record<TipoDeNotificacao, unknown> = {
     link: 'https://app.exemplo.invalid/configuracoes/notificacoes',
   },
   'envio-manual': {
+    recurso: 'prazo',
     numeroProcesso: PROCESSO,
     remetente: 'Bruno Lima',
     observacao: 'Pode cuidar desta? <b>Obrigado</b>',
     link: PORTAL,
-    linkCiencia: CIENCIA,
   },
   'fonte-degradada': {
     fonte: 'DJEN',
@@ -117,6 +117,17 @@ describe('templates', () => {
     const m = await renderizar('envio-manual', EXEMPLOS['envio-manual']);
     expect(m.html).toContain('&lt;b&gt;Obrigado&lt;/b&gt;');
     expect(m.html).not.toContain('<b>Obrigado');
+  });
+
+  it('envio manual: busca sem processo e sem observação', async () => {
+    const m = await renderizar('envio-manual', {
+      recurso: 'busca',
+      remetente: 'Bruno Lima',
+      observacao: '',
+      link: PORTAL,
+    });
+    expect(m.assunto).toBe('Bruno Lima enviou o resultado de uma busca pelo PrejuZero');
+    expect(m.texto).not.toContain('Mensagem:');
   });
 
   it('resumo diário exige ao menos um item e respeita o plural', async () => {

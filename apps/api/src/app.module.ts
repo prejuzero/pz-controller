@@ -99,6 +99,7 @@ import {
   TenantsPostgres,
   PerfisPostgres,
   ElevarSessao,
+  EmailsDoEscritorioPostgres,
   EmailsDosUsuariosPostgres,
   EncerrarSessao,
   ProtecaoDeAcesso,
@@ -132,6 +133,7 @@ import {
   PreferenciasPostgres,
   RegistrarDestinoPush,
   RevogarConsentimento,
+  SolicitarEnvioManual,
   SupressaoPostgres,
 } from '@pz/notificacoes';
 import { criarLogger, registrarErro } from '@pz/observability';
@@ -220,7 +222,9 @@ import {
 import { GuardaDeAcesso } from './http/acesso.js';
 import { GuardaDeLimite, JanelaRedis, LimiteDoTenant } from './http/limite.js';
 import { FiltroDeProblemas } from './http/problemas.js';
+import { EnviosController } from './notificacoes/envios.controller.js';
 import { NotificacoesController } from './notificacoes/notificacoes.controller.js';
+import { recursoDoEnvioExiste } from './notificacoes/recurso-do-envio.js';
 import { OpenApiController } from './openapi.controller.js';
 import { AssistenteController, CompromissosController } from './prazos/compromissos.controller.js';
 import { DashboardController } from './prazos/dashboard.controller.js';
@@ -281,7 +285,9 @@ import type { ReceptorWebhook, ArmazenamentoArquivos } from '@pz/integracoes';
 import type { Clock, Outbox, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 import type {
   DestinosDoUsuario,
+  EmailsDoEscritorio,
   ListaDeSupressao,
+  RecursoDoEnvioExiste,
   RepositorioDeConsentimentos,
   RepositorioDeDestinosPush,
   RepositorioDeNotificacoes,
@@ -345,6 +351,8 @@ export interface OpcoesApi {
   readonly privacidade?: DependenciasDaPrivacidade;
   /** Relatórios (HU29); nos testes, repositório em memória. */
   readonly relatorios?: DependenciasDosRelatorios;
+  /** Envio manual por e-mail (HU32); nos testes, portas em memória. */
+  readonly envios?: DependenciasDosEnvios;
   /** Termos e aceite versionado (HU38); nos testes, repositórios em memória. */
   readonly termos?: DependenciasDosTermos;
   /** Cadastro do advogado (HU11); nos testes, repositórios em memória. */
@@ -498,6 +506,26 @@ function provedoresDosRelatorios(d: DependenciasDosRelatorios): Provider[] {
       inject: [RELOGIO],
       useFactory: (r: Clock) =>
         new ConsultarRelatorios(d.unidade, d.relatorios, d.armazenamento, r),
+    },
+  ];
+}
+
+interface DependenciasDosEnvios {
+  readonly unidade: UnidadeDeTrabalho<unknown>;
+  readonly emails: EmailsDoEscritorio<unknown>;
+  readonly existe: RecursoDoEnvioExiste<unknown>;
+  readonly trilha: TrilhaDeAuditoria<unknown>;
+  readonly outbox: Outbox<unknown>;
+}
+
+/** Envio manual por e-mail (HU32): pedido na API; anexo e envio no worker. */
+function provedoresDosEnvios(d: DependenciasDosEnvios): Provider[] {
+  return [
+    {
+      provide: SolicitarEnvioManual,
+      inject: [RELOGIO],
+      useFactory: (r: Clock) =>
+        new SolicitarEnvioManual(d.unidade, d.emails, d.existe, d.trilha, d.outbox, r),
     },
   ];
 }
@@ -1418,6 +1446,19 @@ export class AppModule {
           armazenamento: arquivosDoAmbiente(opcoes.ambiente),
         },
       ),
+      ...provedoresDosEnvios(
+        opcoes.envios ?? {
+          unidade: recursos.banco,
+          emails: new EmailsDoEscritorioPostgres(),
+          existe: recursoDoEnvioExiste({
+            prazos: new PrazosPostgres(),
+            publicacoes: new LeituraPostgres(),
+            relatorios: new RelatoriosPostgres(),
+          }) as RecursoDoEnvioExiste<unknown>,
+          trilha: new TrilhaPostgres(),
+          outbox: new OutboxPostgres(),
+        },
+      ),
       ...provedoresDosTermos(
         opcoes.termos ?? {
           noTenant: {
@@ -1471,6 +1512,7 @@ export class AppModule {
         BuscaController,
         AgendaController,
         RelatoriosController,
+        EnviosController,
         ConferenciasController,
         CienciaController,
         AssistenteController,
