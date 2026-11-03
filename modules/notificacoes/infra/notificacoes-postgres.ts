@@ -14,7 +14,7 @@ import type {
   TipoConfiguravel,
 } from '../application/preferencias.js';
 import type { ConsultaDeSupressoes, Supressao } from '../application/supressoes.js';
-import type { Canal, TipoDeNotificacao } from '../domain/notificacao.js';
+import type { AnexoDaNotificacao, Canal, TipoDeNotificacao } from '../domain/notificacao.js';
 import type { Transacao } from '@pz/db';
 import type { Uuid } from '@pz/kernel';
 
@@ -37,6 +37,7 @@ export class NotificacoesPostgres implements RepositorioDeNotificacoes<Transacao
           versaoTemplate: e.versaoTemplate,
           destinatarios: [...e.destinatarios],
           dados: e.dados as object,
+          ...(e.anexo === undefined ? {} : { anexo: { ...e.anexo } }),
         },
       ],
       skipDuplicates: true,
@@ -111,6 +112,7 @@ function restaurar(l: LinhaNotificacao): Notificacao {
     versaoTemplate: l.versaoTemplate,
     destinatarios: l.destinatarios,
     dados: l.dados,
+    ...(l.anexo === null ? {} : { anexo: l.anexo as unknown as AnexoDaNotificacao }),
     ...(enviadaEm === undefined ? {} : { enviadaEm }),
     ...(l.idExterno === null ? {} : { idExterno: l.idExterno }),
     ...(entregueEm === undefined ? {} : { entregueEm }),

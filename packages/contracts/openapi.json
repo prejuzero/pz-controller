@@ -5280,6 +5280,108 @@
         }
       }
     },
+    "/v1/envios": {
+      "post": {
+        "operationId": "enviarPorEmail",
+        "summary": "Envia prazo, publicação, busca ou relatório por e-mail com anexo; o arquivo é gerado e enviado em segundo plano. Destinatário de fora do escritório exige confirmacaoSigilo (422 \"confirmacao-de-sigilo\").",
+        "tags": [
+          "notificacoes"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeEnvio"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvioSolicitado"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições excedido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/notificacoes/avisos": {
       "get": {
         "operationId": "consultarAvisosDeEntrega",
@@ -10763,6 +10865,28 @@
         ],
         "additionalProperties": false
       },
+      "EnvioSolicitado": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "externos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Destinatários de fora do escritório (enviados com a confirmação de sigilo)."
+          }
+        },
+        "required": [
+          "id",
+          "externos"
+        ],
+        "additionalProperties": false
+      },
       "EventoDoCalendario": {
         "type": "object",
         "properties": {
@@ -12497,6 +12621,310 @@
           "token"
         ],
         "additionalProperties": false
+      },
+      "PedidoDeEnvio": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "recurso": {
+                "type": "string",
+                "enum": [
+                  "prazo",
+                  "publicacao"
+                ]
+              },
+              "recursoId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "formato": {
+                "default": "pdf",
+                "type": "string",
+                "enum": [
+                  "pdf",
+                  "xlsx"
+                ]
+              },
+              "destinatarios": {
+                "minItems": 1,
+                "maxItems": 10,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 254,
+                  "format": "email",
+                  "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                },
+                "description": "E-mails de quem recebe; até 10."
+              },
+              "mensagem": {
+                "description": "Texto livre de quem envia.",
+                "type": "string",
+                "maxLength": 1000
+              },
+              "confirmacaoSigilo": {
+                "description": "Obrigatória (true) quando algum destinatário não é e-mail de usuário do escritório: confirma o envio de dados sob sigilo profissional para fora (RF70).",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "recurso",
+              "recursoId",
+              "formato",
+              "destinatarios"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "recurso": {
+                "type": "string",
+                "const": "relatorio"
+              },
+              "recursoId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "destinatarios": {
+                "minItems": 1,
+                "maxItems": 10,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 254,
+                  "format": "email",
+                  "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                },
+                "description": "E-mails de quem recebe; até 10."
+              },
+              "mensagem": {
+                "description": "Texto livre de quem envia.",
+                "type": "string",
+                "maxLength": 1000
+              },
+              "confirmacaoSigilo": {
+                "description": "Obrigatória (true) quando algum destinatário não é e-mail de usuário do escritório: confirma o envio de dados sob sigilo profissional para fora (RF70).",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "recurso",
+              "recursoId",
+              "destinatarios"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "recurso": {
+                "type": "string",
+                "const": "busca"
+              },
+              "alvo": {
+                "type": "string",
+                "enum": [
+                  "prazos",
+                  "publicacoes"
+                ]
+              },
+              "filtros": {
+                "type": "object",
+                "properties": {
+                  "numeroCnj": {
+                    "type": "string",
+                    "maxLength": 30,
+                    "description": "Com ou sem pontuação; 20 dígitos é exato, menos é parcial."
+                  },
+                  "partes": {
+                    "description": "Busca no teor (o cadastro ainda não guarda as partes).",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "clienteId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "tribunal": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20
+                  },
+                  "orgao": {
+                    "description": "Vara ou órgão julgador, parcial.",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "comarca": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "tiposAto": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    }
+                  },
+                  "statusPrazo": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "a-confirmar",
+                        "pendente",
+                        "cumprido",
+                        "vencido",
+                        "cancelado"
+                      ]
+                    }
+                  },
+                  "statusCiencia": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "pendente",
+                        "confirmada"
+                      ]
+                    }
+                  },
+                  "responsavelId": {
+                    "description": "Advogado responsável.",
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "oab": {
+                    "description": "UF + número, exato (ex.: GO12345).",
+                    "type": "string",
+                    "pattern": "^[A-Za-z]{2}\\s*\\d{1,7}[A-Za-z]?$"
+                  },
+                  "ramo": {
+                    "type": "string",
+                    "enum": [
+                      "civel",
+                      "juizados",
+                      "trabalhista",
+                      "penal",
+                      "juizado-criminal"
+                    ]
+                  },
+                  "palavraChave": {
+                    "description": "Texto livre no teor, sem diferença de acentos.",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "origem": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "djen",
+                        "manual",
+                        "painel"
+                      ]
+                    }
+                  },
+                  "periodo": {
+                    "type": "object",
+                    "properties": {
+                      "atalho": {
+                        "type": "string",
+                        "enum": [
+                          "hoje",
+                          "amanha",
+                          "esta-semana",
+                          "proxima-semana",
+                          "este-mes",
+                          "proximos-30-dias",
+                          "vencidos"
+                        ]
+                      },
+                      "de": {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                      },
+                      "ate": {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                      },
+                      "campoData": {
+                        "description": "Data alvo (RF47). Padrão: vencimento nos prazos; em publicações só vale \"publicacao\" (disponibilização).",
+                        "type": "string",
+                        "enum": [
+                          "vencimento",
+                          "publicacao",
+                          "inicio"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "ordem": {
+                    "description": "Pela data alvo; padrão por recurso.",
+                    "type": "string",
+                    "enum": [
+                      "asc",
+                      "desc"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "formato": {
+                "default": "pdf",
+                "type": "string",
+                "enum": [
+                  "pdf",
+                  "xlsx"
+                ]
+              },
+              "destinatarios": {
+                "minItems": 1,
+                "maxItems": 10,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 254,
+                  "format": "email",
+                  "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                },
+                "description": "E-mails de quem recebe; até 10."
+              },
+              "mensagem": {
+                "description": "Texto livre de quem envia.",
+                "type": "string",
+                "maxLength": 1000
+              },
+              "confirmacaoSigilo": {
+                "description": "Obrigatória (true) quando algum destinatário não é e-mail de usuário do escritório: confirma o envio de dados sob sigilo profissional para fora (RF70).",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "recurso",
+              "alvo",
+              "filtros",
+              "formato",
+              "destinatarios"
+            ],
+            "additionalProperties": false
+          }
+        ]
       },
       "PedidoDeEventoDoCalendario": {
         "type": "object",

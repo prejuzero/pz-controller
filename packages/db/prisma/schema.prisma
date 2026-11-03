@@ -695,6 +695,8 @@ model Notificacao {
   destinatarios     String[]
   /// Dados do template; mínimos, sem partes nem teor (CLAUDE.md, seção 10).
   dados             Json
+  /// Envio manual (HU32): referência do arquivo anexado no armazenamento (caminho, nome, tipo).
+  anexo             Json?
   enviadaEm         DateTime?        @map("enviada_em") @db.Timestamptz(6)
   entregueEm        DateTime?        @map("entregue_em") @db.Timestamptz(6)
   abertaEm          DateTime?        @map("aberta_em") @db.Timestamptz(6)

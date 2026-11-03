@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   caminhoDoArquivo,
   ConsultarRelatorios,
+  GerarArquivo,
   GerarRelatorio,
   SolicitarRelatorio,
 } from '../application/relatorios.js';
@@ -25,6 +26,8 @@ const relogio = new FixedClock(Instant.deIso('2026-11-02T15:00:00Z'));
 const TENANT = gerarUuidV7();
 const USUARIO = gerarUuidV7();
 const OUTRO = gerarUuidV7();
+const PRAZO = gerarUuidV7();
+const PUBLICACAO = gerarUuidV7();
 const solicitante = { tenantId: TENANT, usuarioId: USUARIO, canal: 'portal' as const };
 
 class ArmazenamentoFalso implements ArmazenamentoArquivos {
@@ -42,6 +45,9 @@ class ArmazenamentoFalso implements ArmazenamentoArquivos {
     return Promise.resolve();
   }
   metadados() {
+    return Promise.resolve(undefined);
+  }
+  ler() {
     return Promise.resolve(undefined);
   }
   saude() {
@@ -88,6 +94,21 @@ function fonteCom(total: number, pedidos: Record<string, unknown>[] = []): Fonte
           ],
           proximoCursor: null,
         }),
+      ),
+    prazo: (id) =>
+      Promise.resolve(
+        id === PRAZO ? { prazo: prazo(0), numeroProcesso: '0000001-09.2030.8.09.0001' } : undefined,
+      ),
+    publicacao: (id) =>
+      Promise.resolve(
+        id === PUBLICACAO
+          ? {
+              dataDisponibilizacao: '2026-11-02',
+              numeroCnj: '00000010920308090001',
+              siglaTribunal: 'TJGO',
+              teor: `Intimação fictícia ${'longa '.repeat(80)}fim do teor.`,
+            }
+          : undefined,
       ),
     nomeDoUsuario: () => Promise.resolve('Ana Fictícia'),
   };
@@ -323,5 +344,114 @@ describe('relatórios (HU29)', () => {
 
   it('job de relatório inexistente lança (vai para a DLQ)', async () => {
     await expect(gerador(fonteCom(1)).executar(gerarUuidV7())).rejects.toThrow(/não encontrado/);
+  });
+});
+
+describe('arquivo do envio manual (HU32)', () => {
+  const arquivo = (fonte = fonteCom(3)) =>
+    new GerarArquivo(outbox, repo, fonte, [new RenderizadorPdf(), new RenderizadorXlsx()], relogio);
+  const texto = async (conteudo: Uint8Array) =>
+    (await new ExtratorPdf().extrairDePdf(conteudo)).texto.replace(/\s+/g, ' ');
+
+  it('prazo: PDF com a memória resumida e o número do processo', async () => {
+    const r = await arquivo().executar(USUARIO, { origem: 'prazo', id: PRAZO, formato: 'pdf' });
+    if (!r.ok) throw r.erro;
+    expect(r.valor).toMatchObject({
+      tipoMime: 'application/pdf',
+      extensao: 'pdf',
+      numeroProcesso: '0000001-09.2030.8.09.0001',
+    });
+    const t = await texto(r.valor.conteudo);
+    expect(t).toContain('Número CNJ: 0000001-09.2030.8.09.0001');
+    expect(t).toContain('CPC, art. 335');
+  });
+
+  it('publicação: teor completo, sem o corte da busca', async () => {
+    const r = await arquivo().executar(USUARIO, {
+      origem: 'publicacao',
+      id: PUBLICACAO,
+      formato: 'pdf',
+    });
+    if (!r.ok) throw r.erro;
+    expect(r.valor.numeroProcesso).toBe('00000010920308090001');
+    expect(await texto(r.valor.conteudo)).toContain('fim do teor.');
+  });
+
+  it('busca e relatório pedido: mesmo pipeline; relatório de outro usuário não sai', async () => {
+    const busca = await arquivo().executar(USUARIO, {
+      origem: 'busca',
+      alvo: 'prazos',
+      filtros: { tribunal: 'TJGO' },
+      formato: 'xlsx',
+    });
+    expect(busca.ok && busca.valor.extensao).toBe('xlsx');
+    const id = await pedir({ tipo: 'busca-prazos', formato: 'pdf', filtros: { tribunal: 'TJGO' } });
+    const relatorio = await arquivo().executar(USUARIO, { origem: 'relatorio', id });
+    expect(relatorio.ok && relatorio.valor.tipoMime).toBe('application/pdf');
+    const deOutro = await arquivo().executar(OUTRO, { origem: 'relatorio', id });
+    expect(!deOutro.ok && deOutro.erro.codigo).toBe('relatorio-inexistente');
+  });
+
+  it('inexistente e filtro recusado: erro esperado, sem arquivo', async () => {
+    const prazo = await arquivo().executar(USUARIO, {
+      origem: 'prazo',
+      id: gerarUuidV7(),
+      formato: 'pdf',
+    });
+    expect(!prazo.ok && prazo.erro.codigo).toBe('prazo-inexistente');
+    const filtro = await arquivo().executar(USUARIO, {
+      origem: 'busca',
+      alvo: 'prazos',
+      filtros: { tribunal: 'XX' },
+      formato: 'pdf',
+    });
+    expect(filtro.ok).toBe(false);
+  });
+
+  it('variações: busca de publicações, relatório com filtro recusado, sem número e sem renderizador', async () => {
+    const pub = await arquivo().executar(USUARIO, {
+      origem: 'busca',
+      alvo: 'publicacoes',
+      filtros: {},
+      formato: 'pdf',
+    });
+    expect(pub.ok).toBe(true);
+    const id = await pedir({ tipo: 'busca-prazos', formato: 'pdf', filtros: { tribunal: 'XX' } });
+    expect((await arquivo().executar(USUARIO, { origem: 'relatorio', id })).ok).toBe(false);
+    const semPublicacao = await arquivo().executar(USUARIO, {
+      origem: 'publicacao',
+      id: gerarUuidV7(),
+      formato: 'pdf',
+    });
+    expect(!semPublicacao.ok && semPublicacao.erro.codigo).toBe('publicacao-inexistente');
+
+    const base = fonteCom(1);
+    const semNumero: FonteDosRelatorios = {
+      ...base,
+      prazo: () => Promise.resolve({ prazo: prazo(1) }),
+      publicacao: () =>
+        Promise.resolve({
+          dataDisponibilizacao: '2026-11-02',
+          numeroCnj: null,
+          siglaTribunal: null,
+          teor: 'Teor fictício.',
+        }),
+    };
+    const p = await arquivo(semNumero).executar(USUARIO, {
+      origem: 'prazo',
+      id: PRAZO,
+      formato: 'xlsx',
+    });
+    expect(p.ok && p.valor.numeroProcesso).toBeUndefined();
+    const u = await arquivo(semNumero).executar(USUARIO, {
+      origem: 'publicacao',
+      id: PUBLICACAO,
+      formato: 'xlsx',
+    });
+    expect(u.ok && 'numeroProcesso' in u.valor).toBe(false);
+    const soPdf = new GerarArquivo(outbox, repo, base, [new RenderizadorPdf()], relogio);
+    await expect(
+      soPdf.executar(USUARIO, { origem: 'prazo', id: PRAZO, formato: 'xlsx' }),
+    ).rejects.toThrow(/Sem renderizador/);
   });
 });

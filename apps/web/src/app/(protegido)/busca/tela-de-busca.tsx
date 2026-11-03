@@ -26,6 +26,7 @@ import {
 } from '../../../api/hooks';
 import { STATUS_DO_PRAZO } from '../../../api/prazos';
 import { formatarDataCivil } from '../../../i18n/formatar';
+import { EnviarPorEmail } from '../_casca/enviar-por-email';
 import { BotoesExportar } from '../_casca/exportar';
 
 import {
@@ -177,6 +178,7 @@ export function TelaDeBusca() {
           filtros: enviados,
         })}
       />
+      <EnviarPorEmail anexo={{ recurso: 'busca', alvo: recurso, filtros: enviados }} />
 
       <div className="flex flex-wrap gap-2" role="group" aria-label={t('oQueBuscar')}>
         {(['prazos', 'publicacoes'] as const).map((r) => (

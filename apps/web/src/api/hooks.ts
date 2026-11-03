@@ -11,7 +11,7 @@ import { consultasCadastro, mutacoesCadastro } from './cadastro';
 import { consultasCalendario, mutacoesCalendario } from './calendario';
 import { consultasCaptura } from './captura';
 import { mutacoesCiencia } from './ciencia';
-import { consultasNotificacoes, mutacoesNotificacoes } from './notificacoes';
+import { consultasNotificacoes, mutacaoEnvioPorEmail, mutacoesNotificacoes } from './notificacoes';
 import {
   consultasPrazos,
   mutacoesPrazos,
@@ -226,3 +226,4 @@ export const useRelatorios = (ativa = true) =>
   useQuery({ ...consultasRelatorios(useApi()).lista(), enabled: ativa });
 export const useSolicitarRelatorio = () =>
   useMutation(mutacoesRelatorios(useApi(), useQueryClient()).solicitar);
+export const useEnviarPorEmail = () => useMutation(mutacaoEnvioPorEmail(useApi()));

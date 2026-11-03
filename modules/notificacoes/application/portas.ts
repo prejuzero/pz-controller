@@ -1,7 +1,7 @@
 import type { MensagemRenderizada } from './templates.js';
 import type { CanalComConsentimento, ConsentimentoCanal } from '../domain/consentimento.js';
 import type { Canal, Notificacao, TipoDeNotificacao } from '../domain/notificacao.js';
-import type { CapacidadesCanal, ResultadoEnvio } from '@pz/integracoes';
+import type { AnexoDeEmail, CapacidadesCanal, ResultadoEnvio } from '@pz/integracoes';
 import type { Instant, Uuid } from '@pz/kernel';
 
 /** Porta: notificações do tenant da transação (tabela `notificacao`, RLS). */
@@ -93,6 +93,8 @@ export interface EnviadorDeCanal {
     idempotencia: string;
     destinatarios: readonly string[];
     mensagem: MensagemRenderizada;
+    /** Só no e-mail (envio manual, HU32). */
+    anexos?: readonly AnexoDeEmail[];
   }): Promise<ResultadoEnvio>;
 }
 

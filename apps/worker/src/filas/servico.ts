@@ -3,7 +3,12 @@ import { VerificarIntegridade } from '@pz/auditoria';
 import { RecifrarCamposSensiveis } from '@pz/cadastro';
 import { ExecutarCaptura, PlanejarCaptura } from '@pz/captura';
 import { limparOutbox } from '@pz/kernel';
-import { DispararLembretes, EnviarResumosDiarios, LembrarConferencias } from '@pz/notificacoes';
+import {
+  DispararLembretes,
+  EnviarResumosDiarios,
+  LembrarConferencias,
+  PrepararEnvioManual,
+} from '@pz/notificacoes';
 import {
   criarLogger,
   registrarDivergenciaDeAuditoria,
@@ -39,6 +44,7 @@ import {
   UNIDADE_DOS_WEBHOOKS,
 } from '../fichas.js';
 import { processarWebhook, tratarWebhook } from '../integracoes/webhooks.js';
+import { prepararEnvioJob } from '../notificacoes/envios.js';
 import {
   dispararLembretesJob,
   enviarResumosJob,
@@ -71,6 +77,7 @@ import type { ProcessadorDeWebhook } from '../integracoes/webhooks.js';
 import type { OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import type { Transacao } from '@pz/db';
 import type { Clock, LimpezaDoOutbox, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
+import type { AnexoDoEnvio } from '@pz/notificacoes';
 import type { Redis } from 'ioredis';
 
 const logger = criarLogger('worker.manutencao');
@@ -111,6 +118,7 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     @Inject(LembrarConferencias) private readonly conferencias: LembrarConferencias<unknown>,
     @Inject(RecifrarCamposSensiveis)
     private readonly recifrar: RecifrarCamposSensiveis<unknown>,
+    @Inject(PrepararEnvioManual) private readonly envios: PrepararEnvioManual<unknown>,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -196,6 +204,18 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     this.filas.registrar(gerarRelatorioJob, async ({ relatorioId, tenantId }) => {
       const resultado = await this.gerarRelatorio.executar(relatorioId as Uuid);
       logger.info({ relatorioId, tenantId, resultado }, 'relatório processado');
+    });
+    // Envio manual (HU32): gera o anexo e pede a notificação; falha esperada fica na trilha.
+    this.filas.registrar(prepararEnvioJob, async ({ tenantId, envio }) => {
+      const resultado = await this.envios.executar({
+        ...envio,
+        envioId: envio.envioId as Uuid,
+        usuarioId: envio.usuarioId as Uuid,
+        tenantId: tenantId as Uuid,
+        anexo: envio.anexo as AnexoDoEnvio,
+      });
+      const log = resultado === 'falhou' ? logger.warn.bind(logger) : logger.info.bind(logger);
+      log({ envioId: envio.envioId, tenantId, resultado }, 'envio manual processado');
     });
     this.filas.registrar(recifrarCamposJob, async () => {
       logger.info(await this.recifrar.executar(), 'recifra dos campos sensíveis');

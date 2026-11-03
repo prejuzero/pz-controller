@@ -85,6 +85,7 @@ export type {
   PublicadorDeEventos,
 } from './application/redefinicao.js';
 export {
+  EmailsDoEscritorioPostgres,
   EmailsDosUsuariosPostgres,
   NomesDosUsuariosPostgres,
   noTenantDoBanco,

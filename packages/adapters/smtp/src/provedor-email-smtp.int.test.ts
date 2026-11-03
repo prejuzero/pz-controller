@@ -63,12 +63,14 @@ verificarContratoEmail('SMTP (Mailpit)', {
     const completa = (await (await fetch(`${api}/message/${mensagem.ID}`)).json()) as {
       HTML: string;
       Text: string;
+      Attachments?: { FileName: string }[];
     };
     return {
       para: mensagem.To.map((d) => d.Address),
       assunto: mensagem.Subject,
       html: completa.HTML,
       texto: completa.Text,
+      anexos: (completa.Attachments ?? []).map((a) => a.FileName),
     };
   },
 });

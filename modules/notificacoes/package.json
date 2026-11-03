@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@pz/auditoria": "workspace:*",
+    "@pz/contracts": "workspace:*",
     "@pz/db": "workspace:*",
     "@pz/design-tokens": "workspace:*",
     "@pz/integracoes": "workspace:*",

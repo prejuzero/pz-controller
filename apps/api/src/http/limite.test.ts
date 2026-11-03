@@ -18,6 +18,7 @@ import { JanelaEmMemoria, LimiteDoTenant } from './limite.js';
 
 import type { AmbienteApi } from '../ambiente.js';
 import type { CallHandler, ExecutionContext } from '@nestjs/common';
+import type { Reflector } from '@nestjs/core';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 
 let api: NestFastifyApplication;
@@ -174,5 +175,43 @@ describe('hardening da API (HU37)', () => {
     expect(cabecalhos['retry-after']).toBe('60');
     await limite.intercept(contexto('b'), proximo);
     for (let i = 0; i < 5; i++) await limite.intercept(contexto(), proximo);
+  });
+
+  it('limite por usuário na rota marcada (envio manual, HU32)', async () => {
+    const refletor = { get: () => ({ maximo: 1, janelaMs: 3_600_000 }) } as unknown as Reflector;
+    const limite = new LimiteDoTenant(
+      new JanelaEmMemoria(),
+      { LIMITE_POR_TENANT_POR_MINUTO: 100 } as AmbienteApi,
+      refletor,
+    );
+    const contexto = (usuarioId: string) =>
+      ({
+        getHandler: () => undefined,
+        switchToHttp: () => ({
+          getRequest: () => ({
+            url: '/v1/envios',
+            routeOptions: { url: '/v1/envios' },
+            autenticacao: { sessao: { tenantId: 't', usuarioId } },
+          }),
+          getResponse: () => ({ header: () => undefined }),
+        }),
+      }) as unknown as ExecutionContext;
+    const proximo = { handle: () => 'ok' } as unknown as CallHandler;
+    await limite.intercept(contexto('u1'), proximo);
+    await expect(limite.intercept(contexto('u1'), proximo)).rejects.toMatchObject({ status: 429 });
+    await limite.intercept(contexto('u2'), proximo);
+    // Sem a rota no Fastify, a chave usa a URL.
+    const semRota = {
+      getHandler: () => undefined,
+      switchToHttp: () => ({
+        getRequest: () => ({
+          url: '/v1/envios',
+          routeOptions: {},
+          autenticacao: { sessao: { tenantId: 't', usuarioId: 'u3' } },
+        }),
+        getResponse: () => ({ header: () => undefined }),
+      }),
+    } as unknown as ExecutionContext;
+    await limite.intercept(semRota, proximo);
   });
 });

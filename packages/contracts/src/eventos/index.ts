@@ -256,6 +256,35 @@ export const RelatorioSolicitado = definirEvento(
 );
 
 /**
+ * Envio manual por e-mail pedido (HU32): o worker gera o anexo e pede a notificação. Leva os
+ * destinatários (dado pessoal): o evento some no encerramento da conta, a trilha os registra.
+ */
+export const EnvioManualSolicitado = definirEvento(
+  'EnvioManualSolicitado',
+  1,
+  z.object({
+    envioId: z.uuid(),
+    usuarioId: z.uuid(),
+    anexo: z.discriminatedUnion('origem', [
+      z.object({
+        origem: z.enum(['prazo', 'publicacao']),
+        id: z.uuid(),
+        formato: z.enum(['pdf', 'xlsx']),
+      }),
+      z.object({ origem: z.literal('relatorio'), id: z.uuid() }),
+      z.object({
+        origem: z.literal('busca'),
+        alvo: z.enum(['prazos', 'publicacoes']),
+        filtros: z.record(z.string(), z.unknown()),
+        formato: z.enum(['pdf', 'xlsx']),
+      }),
+    ]),
+    destinatarios: z.array(z.email()).min(1).max(10),
+    mensagem: z.string().max(1000).optional(),
+  }),
+);
+
+/**
  * Fonte de publicações degradada (HU19): um por escritório que assina algum alvo. A captura está
  * parada até a fonte voltar; o escritório é avisado (transparência de cobertura).
  */
@@ -437,6 +466,7 @@ export const EVENTOS = catalogoDeEventos(
   SugestaoIaCorrigida,
   ExportacaoDeDadosSolicitada,
   RelatorioSolicitado,
+  EnvioManualSolicitado,
   PublicacaoNova,
   PublicacaoClassificada,
   PublicacaoRecebida,

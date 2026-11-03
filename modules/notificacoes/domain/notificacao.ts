@@ -18,6 +18,16 @@ export const TIPOS_DE_NOTIFICACAO = [
 export type TipoDeNotificacao = (typeof TIPOS_DE_NOTIFICACAO)[number];
 export type Canal = (typeof CANAIS)[number];
 
+/**
+ * Arquivo anexado ao e-mail (envio manual, HU32): fica no armazenamento do tenant e é lido no
+ * envio; a notificação guarda só a referência.
+ */
+export interface AnexoDaNotificacao {
+  readonly caminho: string;
+  readonly nome: string;
+  readonly tipoMime: string;
+}
+
 export interface EstadoDaNotificacao {
   readonly id: Uuid;
   readonly tenantId: Uuid;
@@ -29,6 +39,7 @@ export interface EstadoDaNotificacao {
   readonly versaoTemplate: number;
   readonly destinatarios: readonly string[];
   readonly dados: unknown;
+  readonly anexo?: AnexoDaNotificacao;
   readonly enviadaEm?: Instant;
   readonly idExterno?: string;
   readonly entregueEm?: Instant;

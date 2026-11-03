@@ -64,6 +64,7 @@ import {
   EmailsDosUsuariosPostgres,
   EnviarAvisosDeSeguranca,
   ExportacaoDaIdentidadePostgres,
+  NomesDosUsuariosPostgres,
   SessoesRedis,
   TenantsPostgres,
   UsuariosComPermissaoPostgres,
@@ -89,6 +90,7 @@ import {
   NotificacoesPostgres,
   Notificar,
   PreferenciasPostgres,
+  PrepararEnvioManual,
   ProgramarLembretes,
   RegistrarDesfechosDeEntrega,
   SupressaoPostgres,
@@ -126,6 +128,7 @@ import {
   TeoresPostgres,
 } from '@pz/publicacoes';
 import {
+  GerarArquivo,
   GerarRelatorio,
   RelatoriosPostgres,
   RenderizadorPdf,
@@ -174,6 +177,7 @@ import { PublicacaoDaSaudeDasIntegracoes } from './integracoes/saude-das-integra
 import { RelayDeWebhooks } from './integracoes/webhooks.js';
 import { ConsumidorDeNotificacoes } from './notificacoes/consumidor.js';
 import { processadorDeEntregas } from './notificacoes/entregas.js';
+import { ConsumidorDosEnvios, enviadorDeEmail, linkDoEnvio } from './notificacoes/envios.js';
 import { ConsumidorDosLembretes, REPOSITORIO_DE_LEMBRETES } from './notificacoes/lembretes.js';
 import { fontesDoResumo } from './notificacoes/resumo.js';
 import { ConsumidorDosPrazos } from './prazos/consumidor.js';
@@ -613,6 +617,7 @@ export class WorkerModule {
       ConsumidorDaCaptura,
       ConsumidorDaPrivacidade,
       ConsumidorDosRelatorios,
+      ConsumidorDosEnvios,
       ConsumidorDasPublicacoes,
       ConsumidorDaClassificacao,
       {
@@ -715,6 +720,30 @@ export class WorkerModule {
             opcoes.arquivos ?? arquivosDoAmbiente(ambiente, relogio),
             relogio,
           ),
+      },
+      {
+        // Envio manual (HU32): anexo pelo pipeline dos relatórios; e-mail pelo módulo notificacoes.
+        provide: PrepararEnvioManual,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) => {
+          const gerar = new GerarArquivo(
+            banco,
+            new RelatoriosPostgres(),
+            fonteDosRelatorios(banco, relogio, protecao),
+            [new RenderizadorPdf(), new RenderizadorXlsx()],
+            relogio,
+          );
+          const nomes = new NomesDosUsuariosPostgres();
+          return new PrepararEnvioManual({
+            unidade: banco,
+            arquivos: opcoes.arquivos ?? arquivosDoAmbiente(ambiente, relogio),
+            gerar: (usuarioId, anexo) => gerar.executar(usuarioId, anexo),
+            notificar: notificarDoBanco(relogio, protecao),
+            trilha: new TrilhaPostgres(),
+            nomeDoRemetente: (tx, usuarioId) => nomes.nomeDe(tx, usuarioId),
+            link: (anexo) => linkDoEnvio(ambiente.PORTAL_URL, anexo),
+          });
+        },
       },
       {
         provide: ManterAssinaturas,
@@ -974,16 +1003,7 @@ export class WorkerModule {
           return new EnviarNotificacao(
             new NotificacoesPostgres(),
             {
-              email: {
-                enviar: ({ idempotencia, destinatarios, mensagem }) =>
-                  email.enviar({
-                    idempotencia,
-                    para: [...destinatarios],
-                    assunto: mensagem.assunto,
-                    html: mensagem.html,
-                    texto: mensagem.texto,
-                  }),
-              },
+              email: enviadorDeEmail(email),
             },
             relogio,
             // "Confirmar ciência" (HU33): o link nasce no envio; o token não fica na notificação.
@@ -994,6 +1014,8 @@ export class WorkerModule {
                 ambiente.PORTAL_URL,
                 relogio,
               ).executar(tx, p),
+            // Anexo do envio manual (HU32), lido do armazenamento do tenant.
+            opcoes.arquivos ?? arquivosDoAmbiente(ambiente, relogio),
           );
         },
       },

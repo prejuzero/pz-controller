@@ -191,44 +191,178 @@ export class GerarRelatorio<Transacao> {
     return 'gerado';
   }
 
-  async #documento(
-    r: Relatorio,
-  ): Promise<Result<{ documento: Documento; linhas: number }, Validacao>> {
-    const filtros = r.filtros as Record<string, unknown>;
-    let corpo: Pick<Documento, 'colunas' | 'rotuloDoGrupo' | 'grupos'>;
-    let linhas: number;
-    let truncado: boolean;
-    if (r.tipo === 'busca-publicacoes') {
-      const lidas = await todas((cursor) => this.fonte.publicacoes(comCursor(filtros, cursor)));
-      if (!lidas.ok) return lidas;
-      linhas = lidas.valor.itens.length;
-      truncado = lidas.valor.truncado;
-      corpo = linhasDaBuscaDePublicacoes(lidas.valor.itens);
-    } else {
-      const pedido = r.tipo === 'agenda' ? filtrosDaAgenda(filtros) : filtros;
-      const lidos = await todas((cursor) => this.fonte.prazos(comCursor(pedido, cursor)));
-      if (!lidos.ok) return lidos;
-      linhas = lidos.valor.itens.length;
-      truncado = lidos.valor.truncado;
-      corpo =
-        r.tipo === 'agenda'
-          ? linhasDaAgenda(lidos.valor.itens)
-          : linhasDaBuscaDePrazos(lidos.valor.itens);
+  #documento(r: Relatorio) {
+    return montarDocumento(this.fonte, this.relogio, r.tipo, r.filtros, r.usuarioId);
+  }
+}
+
+type Corpo = Pick<Documento, 'colunas' | 'rotuloDoGrupo' | 'grupos'>;
+
+/** Monta o documento de um relatório pelos filtros, com a busca da HU28 (mesma ordem da tela). */
+async function montarDocumento(
+  fonte: FonteDosRelatorios,
+  relogio: Clock,
+  tipo: Relatorio['tipo'],
+  filtros: Readonly<Record<string, unknown>>,
+  usuarioId: Uuid,
+): Promise<Result<{ documento: Documento; linhas: number }, Validacao>> {
+  let corpo: Corpo;
+  let linhas: number;
+  let truncado: boolean;
+  const f = filtros as Record<string, unknown>;
+  if (tipo === 'busca-publicacoes') {
+    const lidas = await todas((cursor) => fonte.publicacoes(comCursor(f, cursor)));
+    if (!lidas.ok) return lidas;
+    linhas = lidas.valor.itens.length;
+    truncado = lidas.valor.truncado;
+    corpo = linhasDaBuscaDePublicacoes(lidas.valor.itens);
+  } else {
+    const pedido = tipo === 'agenda' ? filtrosDaAgenda(f) : f;
+    const lidos = await todas((cursor) => fonte.prazos(comCursor(pedido, cursor)));
+    if (!lidos.ok) return lidos;
+    linhas = lidos.valor.itens.length;
+    truncado = lidos.valor.truncado;
+    corpo =
+      tipo === 'agenda'
+        ? linhasDaAgenda(lidos.valor.itens)
+        : linhasDaBuscaDePrazos(lidos.valor.itens);
+  }
+  return ok({
+    linhas,
+    documento: await comCabecalho(
+      fonte,
+      relogio,
+      TITULOS[tipo],
+      filtros,
+      usuarioId,
+      corpo,
+      truncado,
+    ),
+  });
+}
+
+async function comCabecalho(
+  fonte: FonteDosRelatorios,
+  relogio: Clock,
+  titulo: string,
+  filtros: Readonly<Record<string, unknown>>,
+  usuarioId: Uuid,
+  corpo: Corpo,
+  truncado = false,
+): Promise<Documento> {
+  return {
+    titulo,
+    cabecalho: {
+      geradoEm: dataHora(relogio.agora()),
+      usuario: await fonte.nomeDoUsuario(usuarioId),
+      filtros: descreverFiltros(filtros),
+      aviso: truncado
+        ? `Limitado às primeiras ${MAXIMO_DE_LINHAS.toLocaleString('pt-BR')} linhas: refine os filtros.`
+        : null,
+    },
+    ...corpo,
+  };
+}
+
+/** O que o envio manual (HU32) anexa: um prazo, uma publicação, uma busca ou um relatório pedido. */
+export type PedidoDeArquivo =
+  | { readonly origem: 'prazo'; readonly id: Uuid; readonly formato: Formato }
+  | { readonly origem: 'publicacao'; readonly id: Uuid; readonly formato: Formato }
+  | {
+      readonly origem: 'busca';
+      readonly alvo: 'prazos' | 'publicacoes';
+      readonly filtros: Readonly<Record<string, unknown>>;
+      readonly formato: Formato;
     }
+  | { readonly origem: 'relatorio'; readonly id: Uuid };
+
+export interface ArquivoGerado {
+  readonly conteudo: Uint8Array;
+  readonly tipoMime: string;
+  readonly extensao: string;
+  /** Do prazo ou da publicação, para o assunto do e-mail. */
+  readonly numeroProcesso?: string;
+}
+
+const relatorioInexistente = () =>
+  new NaoEncontrado('relatorio-inexistente', 'Relatório não encontrado.');
+
+/**
+ * Gera o arquivo do envio manual (HU32) pelo mesmo pipeline dos relatórios (documento e
+ * renderizadores), sem gravar pedido de relatório. Relatório já pedido é gerado de novo com os
+ * mesmos tipo, formato e filtros, só para quem o pediu. Roda no tenant do chamador (RLS).
+ */
+export class GerarArquivo<Transacao> {
+  constructor(
+    private readonly unidade: UnidadeDeTrabalho<Transacao>,
+    private readonly relatorios: RepositorioDeRelatorios<Transacao>,
+    private readonly fonte: FonteDosRelatorios,
+    private readonly renderizadores: readonly Renderizador[],
+    private readonly relogio: Clock,
+  ) {}
+
+  async executar(
+    usuarioId: Uuid,
+    pedido: PedidoDeArquivo,
+  ): Promise<Result<ArquivoGerado, Validacao | NaoEncontrado>> {
+    let formato: Formato;
+    let documento: Documento;
+    let numeroProcesso: string | undefined;
+    if (pedido.origem === 'relatorio') {
+      const r = await this.unidade.executar((tx) => this.relatorios.buscar(tx, pedido.id));
+      if (r?.usuarioId !== usuarioId) return err(relatorioInexistente());
+      const montado = await montarDocumento(this.fonte, this.relogio, r.tipo, r.filtros, usuarioId);
+      if (!montado.ok) return montado;
+      formato = r.formato;
+      documento = montado.valor.documento;
+    } else if (pedido.origem === 'busca') {
+      const tipo = pedido.alvo === 'prazos' ? 'busca-prazos' : 'busca-publicacoes';
+      const montado = await montarDocumento(
+        this.fonte,
+        this.relogio,
+        tipo,
+        pedido.filtros,
+        usuarioId,
+      );
+      if (!montado.ok) return montado;
+      formato = pedido.formato;
+      documento = montado.valor.documento;
+    } else if (pedido.origem === 'prazo') {
+      const lido = await this.fonte.prazo(pedido.id);
+      if (lido === undefined)
+        return err(new NaoEncontrado('prazo-inexistente', 'Prazo não encontrado.'));
+      formato = pedido.formato;
+      numeroProcesso = lido.numeroProcesso;
+      documento = await comCabecalho(
+        this.fonte,
+        this.relogio,
+        TITULOS.prazo,
+        numeroProcesso === undefined ? {} : { numeroCnj: numeroProcesso },
+        usuarioId,
+        linhasDaAgenda([lido.prazo]),
+      );
+    } else {
+      const lida = await this.fonte.publicacao(pedido.id);
+      if (lida === undefined)
+        return err(new NaoEncontrado('publicacao-inexistente', 'Publicação não encontrada.'));
+      formato = pedido.formato;
+      numeroProcesso = lida.numeroCnj ?? undefined;
+      documento = await comCabecalho(
+        this.fonte,
+        this.relogio,
+        TITULOS.publicacao,
+        {},
+        usuarioId,
+        linhasDaBuscaDePublicacoes([lida], true),
+      );
+    }
+    const renderizador = this.renderizadores.find((r) => r.formato === formato);
+    if (renderizador === undefined) throw new Error(`Sem renderizador para ${formato}`);
     return ok({
-      linhas,
-      documento: {
-        titulo: TITULOS[r.tipo],
-        cabecalho: {
-          geradoEm: dataHora(this.relogio.agora()),
-          usuario: await this.fonte.nomeDoUsuario(r.usuarioId),
-          filtros: descreverFiltros(filtros),
-          aviso: truncado
-            ? `Limitado às primeiras ${MAXIMO_DE_LINHAS.toLocaleString('pt-BR')} linhas: refine os filtros.`
-            : null,
-        },
-        ...corpo,
-      },
+      conteudo: await renderizador.renderizar(documento),
+      tipoMime: renderizador.tipoMime,
+      extensao: EXTENSOES[formato],
+      ...(numeroProcesso === undefined ? {} : { numeroProcesso }),
     });
   }
 }

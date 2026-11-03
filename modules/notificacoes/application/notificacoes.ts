@@ -1,3 +1,4 @@
+import { AnexoDeEmail } from '@pz/integracoes';
 import { err, ok, Validacao } from '@pz/kernel';
 import { z } from 'zod';
 
@@ -15,8 +16,11 @@ import type {
   RepositorioDeNotificacoes,
 } from './portas.js';
 import type { Canal, MotivoDeRejeicao, TipoDeNotificacao } from '../domain/notificacao.js';
-import type { EventoEntrega } from '@pz/integracoes';
+import type { ArmazenamentoArquivos, EventoEntrega } from '@pz/integracoes';
 import type { Clock, Outbox, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
+
+/** Teto de destinatários de um envio manual (HU32). */
+export const MAXIMO_DE_DESTINATARIOS = 10;
 
 export const PedidoDeNotificacao = z
   .object({
@@ -27,6 +31,19 @@ export const PedidoDeNotificacao = z
     /** Janela da idempotência (ex.: o dia do lembrete, AAAA-MM-DD). */
     janela: z.string().min(1).max(40),
     dados: z.unknown(),
+    /**
+     * Envio manual (HU32): endereços escolhidos por quem envia, no lugar dos do usuário. Não passa
+     * pelas preferências (o envio é um pedido explícito), mas respeita a lista de supressão.
+     */
+    destinatarios: z.array(z.email()).min(1).max(MAXIMO_DE_DESTINATARIOS).optional(),
+    anexo: z
+      .object({
+        caminho: z.string().min(1).max(900),
+        nome: z.string().min(1).max(120),
+        tipoMime: z.string().min(1).max(120),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -61,16 +78,25 @@ export class Notificar<Transacao> {
   ): Promise<Result<ResultadoDoPedido, Validacao>> {
     const pedido = PedidoDeNotificacao.safeParse(entrada);
     if (!pedido.success) return err(problemas(pedido.error));
-    const { tipo, usuarioId, tenantId, prazoId, janela } = pedido.data;
+    const { tipo, usuarioId, tenantId, prazoId, janela, anexo } = pedido.data;
     const dados = TEMPLATES[tipo].dados.safeParse(pedido.data.dados);
     if (!dados.success) return err(problemas(dados.error, 'dados'));
+    const explicitos = pedido.data.destinatarios;
+    if (explicitos !== undefined && canal !== 'email')
+      return err(new Validacao([{ campo: 'destinatarios', mensagem: 'Só no e-mail.' }]));
 
     const uid = usuarioId as Uuid;
-    if ((await this.preferencias.ativo(transacao, uid, tipo, canal)) === false)
+    if (
+      explicitos === undefined &&
+      (await this.preferencias.ativo(transacao, uid, tipo, canal)) === false
+    )
       return ok({ solicitada: false, motivo: 'desativada' });
-    const destinatarios = exigeConsentimento(canal)
-      ? [...new Set(await this.consentimentos.enderecos(transacao, uid, canal))]
-      : await this.#emails(transacao, uid);
+    const destinatarios =
+      explicitos !== undefined
+        ? await this.#semSuprimidos(transacao, explicitos)
+        : exigeConsentimento(canal)
+          ? [...new Set(await this.consentimentos.enderecos(transacao, uid, canal))]
+          : await this.#emails(transacao, uid);
     if (destinatarios.length === 0) return ok({ solicitada: false, motivo: 'sem-destinatario' });
 
     const notificacao = Notificacao.solicitar(
@@ -83,6 +109,7 @@ export class Notificar<Transacao> {
         versaoTemplate: TEMPLATES[tipo].versao,
         destinatarios,
         dados: dados.data,
+        ...(anexo === undefined ? {} : { anexo }),
         janela,
       },
       this.relogio,
@@ -95,13 +122,14 @@ export class Notificar<Transacao> {
 
   async #emails(transacao: Transacao, usuarioId: Uuid): Promise<string[]> {
     const { principal, copias } = await this.destinos.emails(transacao, usuarioId);
-    const todos = [
-      ...new Set(
-        [principal, ...copias]
-          .filter((e): e is string => e !== undefined)
-          .map((e) => e.trim().toLowerCase()),
-      ),
-    ];
+    return this.#semSuprimidos(
+      transacao,
+      [principal, ...copias].filter((e): e is string => e !== undefined),
+    );
+  }
+
+  async #semSuprimidos(transacao: Transacao, emails: readonly string[]): Promise<string[]> {
+    const todos = [...new Set(emails.map((e) => e.trim().toLowerCase()))];
     const suprimidos = await this.supressao.suprimidos(transacao, todos);
     return todos.filter((e) => !suprimidos.has(e));
   }
@@ -117,6 +145,7 @@ export class EnviarNotificacao<Transacao> {
     private readonly enviadores: Partial<Record<Canal, EnviadorDeCanal>>,
     private readonly relogio: Clock,
     private readonly linkDeCiencia?: LinkDeCienciaNoEnvio<Transacao>,
+    private readonly arquivos?: Pick<ArmazenamentoArquivos, 'ler'>,
   ) {}
 
   async executar(transacao: Transacao, notificacaoId: Uuid): Promise<void> {
@@ -130,9 +159,11 @@ export class EnviarNotificacao<Transacao> {
     const enviador = this.enviadores[canal];
     // Nada falha em silêncio: sem enviador o evento vai para a DLQ com o motivo.
     if (enviador === undefined) throw new Error(`Canal ${canal} sem enviador configurado`);
+    const anexos = await this.#anexos(notificacao);
     const resultado = await enviador.enviar({
       idempotencia: chave,
       destinatarios,
+      ...(anexos === undefined ? {} : { anexos }),
       mensagem: await renderizar(
         tipo,
         await this.#comCiencia(transacao, notificacao, dados),
@@ -142,6 +173,17 @@ export class EnviarNotificacao<Transacao> {
     });
     notificacao.registrarEnvio(resultado.idExterno, this.relogio.agora());
     await this.notificacoes.registrarEnvio(transacao, notificacao);
+  }
+
+  /** Anexo do envio manual (HU32), lido do armazenamento do tenant; sumido vai para a DLQ. */
+  async #anexos(notificacao: Notificacao): Promise<AnexoDeEmail[] | undefined> {
+    const { anexo, tenantId, canal } = notificacao.estado;
+    if (anexo === undefined) return undefined;
+    if (canal !== 'email' || this.arquivos === undefined)
+      throw new Error(`Anexo sem leitor de arquivos no canal ${canal}`);
+    const conteudo = await this.arquivos.ler(tenantId, anexo.caminho);
+    if (conteudo === undefined) throw new Error(`Anexo ${anexo.caminho} não encontrado`);
+    return [AnexoDeEmail.parse({ nome: anexo.nome, tipoMime: anexo.tipoMime, conteudo })];
   }
 
   /**

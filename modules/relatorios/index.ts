@@ -2,10 +2,13 @@
 export {
   caminhoDoArquivo,
   ConsultarRelatorios,
+  GerarArquivo,
   GerarRelatorio,
   SolicitarRelatorio,
 } from './application/relatorios.js';
 export type {
+  ArquivoGerado,
+  PedidoDeArquivo,
   RelatorioListado,
   ResultadoDaGeracao,
   Solicitante,

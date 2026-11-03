@@ -51,6 +51,19 @@ export interface DefinicaoDeTemplate<S extends z.ZodType = z.ZodType> {
   minimo(d: z.output<S>): Minimo;
 }
 
+const DESCRICOES = {
+  prazo: 'o prazo',
+  publicacao: 'a publicação',
+  busca: 'o resultado de uma busca',
+  relatorio: 'um relatório',
+} as const;
+
+function descricaoDoEnvio(recurso: keyof typeof DESCRICOES, numeroProcesso?: string): string {
+  return numeroProcesso === undefined
+    ? DESCRICOES[recurso]
+    : `${DESCRICOES[recurso]} do processo ${numeroProcesso}`;
+}
+
 const definir = <S extends z.ZodType>(d: DefinicaoDeTemplate<S>) => d;
 
 /** "Confirmar ciência" e "Ver no portal" quando há prazo; só "Ver no portal" nos demais. */
@@ -276,38 +289,40 @@ export const TEMPLATES = {
     }),
   }),
   'envio-manual': definir({
-    versao: 1,
+    // v2 (HU32): prazo, publicação, busca ou relatório, com o arquivo em anexo.
+    versao: 2,
     dados: z
       .object({
-        numeroProcesso: NumeroDoProcesso,
+        recurso: z.enum(['prazo', 'publicacao', 'busca', 'relatorio']),
+        numeroProcesso: NumeroDoProcesso.optional(),
         remetente: z.string().trim().min(1).max(120),
         /** Digitada por quem encaminha, que confirmou o envio (CLAUDE.md, seção 14). */
         observacao: z.string().trim().max(1000).optional(),
         link: LinkDoPortal,
-        linkCiencia: LinkDeCiencia,
       })
       .strict(),
-    email: (d) => ({
-      assunto: `${d.remetente} encaminhou a intimação do processo ${d.numeroProcesso}`,
-      titulo: 'Intimação encaminhada',
-      previa: `${d.remetente} encaminhou uma intimação para você.`,
-      corpo: [
-        paragrafo(
-          destaque(d.remetente),
-          ' encaminhou para você a intimação do processo ',
-          destaque(d.numeroProcesso),
-          '.',
-        ),
-        ...(d.observacao === undefined || d.observacao === ''
-          ? []
-          : [paragrafo(`Observação: ${d.observacao}`)]),
-      ],
-      acoes: acoes(d.link, d.linkCiencia),
-      link: d.link,
-    }),
+    email: (d) => {
+      const oque = descricaoDoEnvio(d.recurso, d.numeroProcesso);
+      return {
+        assunto: `${d.remetente} enviou ${oque} pelo PrejuZero`,
+        titulo: 'Arquivo encaminhado',
+        previa: `${d.remetente} enviou ${oque}.`,
+        corpo: [
+          paragrafo(destaque(d.remetente), ` enviou ${oque}. O arquivo segue em anexo.`),
+          ...(d.observacao === undefined || d.observacao === ''
+            ? []
+            : [paragrafo(`Mensagem: ${d.observacao}`)]),
+          paragrafo(
+            'O conteúdo pode estar protegido por sigilo profissional: não o repasse sem autorização de quem enviou.',
+          ),
+        ],
+        acoes: acoes(d.link),
+        link: d.link,
+      };
+    },
     minimo: () => ({
-      assunto: 'Intimação encaminhada',
-      texto: 'Uma intimação foi encaminhada para você. Confira no PrejuZero.',
+      assunto: 'Arquivo encaminhado',
+      texto: 'Um arquivo foi encaminhado para você. Confira no PrejuZero.',
     }),
   }),
   'fonte-degradada': definir({

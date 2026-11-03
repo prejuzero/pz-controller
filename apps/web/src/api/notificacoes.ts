@@ -31,3 +31,14 @@ export const mutacoesNotificacoes = (api: ClienteApi, cache: QueryClient) => ({
     },
   },
 });
+
+export type PedidoDeEnvio = components['schemas']['PedidoDeEnvio'];
+
+/**
+ * Envio manual por e-mail (HU32). O erro fica no diálogo: a confirmação de sigilo (422) é um
+ * passo do fluxo, não uma falha.
+ */
+export const mutacaoEnvioPorEmail = (api: ClienteApi) => ({
+  mutationFn: (pedido: PedidoDeEnvio) => exigir(api.POST('/v1/envios', { body: pedido })),
+  meta: { erroNoFormulario: true },
+});

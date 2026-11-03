@@ -357,7 +357,7 @@ Dentro de cada história: Dados → Back-end/Integração → Front-end → Test
 - [ ] **M1 · Núcleo jurídico** — HU11–HU16 (HU12, HU13, HU14 e HU16 concluídas; HU11 em teste com usuários; HU15 em teste)
 - [ ] **M2 · Captura e classificação** — HU17–HU22 (HU17, HU18, HU19, HU20 e HU21 concluídas; HU58, plataforma de IA, concluída)
 - [ ] **M3 · Portal** — HU23–HU29 (HU23, HU24, HU25, HU26, HU27 e HU29 concluídas)
-- [ ] **M4 · Notificação e ciência** — HU30–HU36 (HU33 e HU36 concluídas)
+- [ ] **M4 · Notificação e ciência** — HU30–HU36 (HU32, HU33 e HU36 concluídas)
 - [ ] **M5 · Produção** — HU37–HU40 (HU39 concluída)
 
 Ao concluir uma história, marque-a aqui no mesmo PR.

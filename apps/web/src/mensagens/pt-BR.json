@@ -1159,5 +1159,27 @@
     "vazioDescricao": "Todos os processos estão com cobertura automática e sem sigilo.",
     "cardTitulo": "Conferências de painel atrasadas",
     "cardDescricao": "Processos fora da cobertura automática sem conferência no prazo escolhido."
+  },
+  "envio": {
+    "botao": "Enviar por e-mail",
+    "titulo": "Enviar por e-mail",
+    "descricao": "O arquivo vai em anexo. Use para repassar informações; o envio fica registrado na auditoria.",
+    "destinatarios": "Destinatários",
+    "destinatariosAjuda": "Até 10 e-mails, separados por vírgula ou espaço.",
+    "mensagem": "Mensagem (opcional)",
+    "formato": "Formato do anexo",
+    "formatos": {
+      "pdf": "PDF",
+      "xlsx": "Excel"
+    },
+    "formatoDoRelatorio": "no formato do relatório",
+    "previa": "Anexo: {arquivo}",
+    "sigiloTitulo": "Destinatário de fora do escritório",
+    "sigiloTexto": "O anexo pode conter dados protegidos por sigilo profissional. Envie só com autorização do cliente ou quando a lei permitir.",
+    "sigiloConfirmo": "Confirmo que posso enviar estes dados para fora do escritório.",
+    "enviar": "Enviar",
+    "enviarMesmoAssim": "Confirmar e enviar",
+    "enviado": "Envio solicitado",
+    "enviadoDescricao": "O e-mail sai em instantes, com o arquivo em anexo."
   }
 }
