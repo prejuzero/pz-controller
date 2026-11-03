@@ -20,3 +20,4 @@
 - [ ] Textos dos termos de uso, da política de privacidade e do aviso de cobertura, com o contato do encarregado.
 - [ ] Cláusula de não uso de dados para treino nos termos e no contrato com o provedor de IA.
 - [ ] Aprovação do [RIPD inicial](ripd-inicial.md).
+- [ ] Aprovação do [plano de resposta a incidentes](../runbooks/plano-resposta-incidentes.md) (papéis, controlador × operador, pequeno porte, simulação de mesa).
