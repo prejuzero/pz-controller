@@ -38,6 +38,8 @@ export const esquemaRedis = z.object({
 export const esquemaArmazenamento = z.object({
   /** Vazio em produção na AWS; preenchido para RustFS local ou outro S3-compatível. */
   S3_ENDPOINT: z.url({ protocol: /^https?$/ }).optional(),
+  /** Endpoint alcançável pelo navegador nas URLs assinadas (compose); vazio: o mesmo S3_ENDPOINT. */
+  S3_ENDPOINT_PUBLICO: z.url({ protocol: /^https?$/ }).optional(),
   S3_REGION: z.string().min(1),
   S3_ACCESS_KEY_ID: z.string().min(1).optional(),
   S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),

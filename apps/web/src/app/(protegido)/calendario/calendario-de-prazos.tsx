@@ -8,6 +8,7 @@ import { useTranslations } from 'next-intl';
 import { useAgenda } from '../../../api/hooks';
 import { campos } from '../../../filtro-global';
 import { formatarDataCivil } from '../../../i18n/formatar';
+import { BotoesExportar } from '../_casca/exportar';
 import { BarraDeFiltroGlobal, useFiltroGlobal } from '../_casca/filtro-global';
 
 import {
@@ -95,6 +96,14 @@ export function CalendarioDePrazos({ hoje }: { hoje: string }) {
       </div>
 
       <BarraDeFiltroGlobal aplicados={APLICADOS} />
+      {/* A agenda do período visível, com o mesmo filtro (HU29). */}
+      <BotoesExportar
+        pedido={(formato) => ({
+          tipo: 'agenda',
+          formato,
+          filtros: { de, ate, ...campos(filtro, ['responsavelId', 'tribunal', 'clienteId']) },
+        })}
+      />
 
       <div className="flex flex-wrap items-center gap-2">
         <Botao

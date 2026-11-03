@@ -176,6 +176,12 @@ import {
   ListarPublicacoes,
   MarcarComoLida,
 } from '@pz/publicacoes';
+import {
+  ConsultarRelatorios,
+  RelatoriosPostgres,
+  SolicitarRelatorio,
+  type RepositorioDeRelatorios,
+} from '@pz/relatorios';
 import { ConsultarSituacao, VerificadorHttp, VerificadorTcp } from '@pz/saude';
 import {
   AceitarDocumento,
@@ -219,6 +225,7 @@ import { processoNoCalendario } from './prazos/processo.js';
 import { TabelaPrazosController } from './prazos/tabela-prazos.controller.js';
 import { PrivacidadeController } from './privacidade/privacidade.controller.js';
 import { PublicacoesController } from './publicacoes/publicacoes.controller.js';
+import { RelatoriosController } from './relatorios/relatorios.controller.js';
 import { SaudeController, SondasController } from './saude/saude.controller.js';
 import { TermosController } from './termos/termos.controller.js';
 import { WebhooksController } from './webhooks/webhooks.controller.js';
@@ -331,6 +338,8 @@ export interface OpcoesApi {
   readonly publicacoes?: DependenciasDasPublicacoes;
   /** Exportação de dados (HU38); nos testes, repositório e armazenamento em memória. */
   readonly privacidade?: DependenciasDaPrivacidade;
+  /** Relatórios (HU29); nos testes, repositório em memória. */
+  readonly relatorios?: DependenciasDosRelatorios;
   /** Termos e aceite versionado (HU38); nos testes, repositórios em memória. */
   readonly termos?: DependenciasDosTermos;
   /** Cadastro do advogado (HU11); nos testes, repositórios em memória. */
@@ -462,6 +471,32 @@ interface DependenciasDaPrivacidade {
   readonly encerramentos: RepositorioDeEncerramentos<unknown>;
 }
 
+interface DependenciasDosRelatorios {
+  readonly unidade: UnidadeDeTrabalho<unknown>;
+  readonly relatorios: RepositorioDeRelatorios<unknown>;
+  readonly trilha: TrilhaDeAuditoria<unknown>;
+  readonly outbox: Outbox<unknown>;
+  readonly armazenamento: ArmazenamentoArquivos;
+}
+
+/** Relatórios (HU29): pedido e consulta na API; a geração é do worker (fila relatorios). */
+function provedoresDosRelatorios(d: DependenciasDosRelatorios): Provider[] {
+  return [
+    {
+      provide: SolicitarRelatorio,
+      inject: [RELOGIO],
+      useFactory: (r: Clock) =>
+        new SolicitarRelatorio(d.unidade, d.relatorios, d.trilha, d.outbox, r),
+    },
+    {
+      provide: ConsultarRelatorios,
+      inject: [RELOGIO],
+      useFactory: (r: Clock) =>
+        new ConsultarRelatorios(d.unidade, d.relatorios, d.armazenamento, r),
+    },
+  ];
+}
+
 /** Exportação de dados (HU38): pedido e consulta na API; a geração é do worker. */
 function provedoresDaPrivacidade(d: DependenciasDaPrivacidade): Provider[] {
   return [
@@ -502,6 +537,9 @@ function arquivosDoAmbiente(ambiente: AmbienteApi): ArmazenamentoArquivos {
       bucket: ambiente.ARQUIVOS_BUCKET,
       regiao: ambiente.S3_REGION,
       ...(ambiente.S3_ENDPOINT === undefined ? {} : { endpoint: ambiente.S3_ENDPOINT }),
+      ...(ambiente.S3_ENDPOINT_PUBLICO === undefined
+        ? {}
+        : { endpointPublico: ambiente.S3_ENDPOINT_PUBLICO }),
       ...(ambiente.S3_ACCESS_KEY_ID === undefined || ambiente.S3_SECRET_ACCESS_KEY === undefined
         ? {}
         : {
@@ -1343,6 +1381,15 @@ export class AppModule {
           encerramentos: new EncerramentosPostgres(),
         },
       ),
+      ...provedoresDosRelatorios(
+        opcoes.relatorios ?? {
+          unidade: recursos.banco,
+          relatorios: new RelatoriosPostgres(),
+          trilha: new TrilhaPostgres(),
+          outbox: new OutboxPostgres(),
+          armazenamento: arquivosDoAmbiente(opcoes.ambiente),
+        },
+      ),
       ...provedoresDosTermos(
         opcoes.termos ?? {
           noTenant: {
@@ -1394,6 +1441,7 @@ export class AppModule {
         DashboardController,
         BuscaController,
         AgendaController,
+        RelatoriosController,
         CienciaController,
         AssistenteController,
         CuradoriaDaClassificacaoController,

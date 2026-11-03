@@ -248,6 +248,13 @@ export const ExportacaoDeDadosSolicitada = definirEvento(
   }),
 );
 
+/** Pedido de relatório (HU29): o worker gera o arquivo na fila de relatórios. */
+export const RelatorioSolicitado = definirEvento(
+  'RelatorioSolicitado',
+  1,
+  z.object({ relatorioId: z.uuid(), usuarioId: z.uuid() }),
+);
+
 /**
  * Fonte de publicações degradada (HU19): um por escritório que assina algum alvo. A captura está
  * parada até a fonte voltar; o escritório é avisado (transparência de cobertura).
@@ -429,6 +436,7 @@ export const EVENTOS = catalogoDeEventos(
   CapturaConcluida,
   SugestaoIaCorrigida,
   ExportacaoDeDadosSolicitada,
+  RelatorioSolicitado,
   PublicacaoNova,
   PublicacaoClassificada,
   PublicacaoRecebida,

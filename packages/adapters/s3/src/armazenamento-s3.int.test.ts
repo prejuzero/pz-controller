@@ -109,3 +109,26 @@ describe('cópia WORM (object lock em modo COMPLIANCE, HU08)', () => {
     ).rejects.toThrow();
   });
 });
+
+describe('endpoint público das URLs assinadas (HU29)', () => {
+  it('assina com o host que o navegador alcança e o link baixa o arquivo', async () => {
+    const publico = endpoint.replace('127.0.0.1', 'localhost');
+    const armazenamento = criar({ endpointPublico: publico });
+    const tenantId = gerarUuidV7();
+    await armazenamento.gravar({
+      tenantId,
+      caminho: 'relatorios/r1/relatorio.pdf',
+      conteudo: new TextEncoder().encode('%PDF-1.4 fictício'),
+      tipoMime: 'application/pdf',
+    });
+    const url = await armazenamento.urlAssinada({
+      tenantId,
+      caminho: 'relatorios/r1/relatorio.pdf',
+      operacao: 'download',
+      expiraEmSegundos: 60,
+    });
+    expect(url.startsWith(`${publico}/`)).toBe(true);
+    const resposta = await fetch(url);
+    expect(await resposta.text()).toBe('%PDF-1.4 fictício');
+  });
+});

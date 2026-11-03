@@ -26,6 +26,7 @@ import {
 } from '../../../api/hooks';
 import { STATUS_DO_PRAZO } from '../../../api/prazos';
 import { formatarDataCivil } from '../../../i18n/formatar';
+import { BotoesExportar } from '../_casca/exportar';
 
 import {
   CAMPOS_DE_TEXTO,
@@ -168,6 +169,14 @@ export function TelaDeBusca() {
         <h1 className="text-2xl font-semibold">{t('titulo')}</h1>
         <p className="max-w-3xl text-texto-suave">{t('descricao')}</p>
       </div>
+      {/* Exporta exatamente a busca da tela (HU29): mesmos filtros e mesma ordem. */}
+      <BotoesExportar
+        pedido={(formato) => ({
+          tipo: recurso === 'prazos' ? 'busca-prazos' : 'busca-publicacoes',
+          formato,
+          filtros: enviados,
+        })}
+      />
 
       <div className="flex flex-wrap gap-2" role="group" aria-label={t('oQueBuscar')}>
         {(['prazos', 'publicacoes'] as const).map((r) => (

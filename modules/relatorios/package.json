@@ -1,0 +1,38 @@
+{
+  "name": "@pz/relatorios",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Relatórios e exportação (HU29): pedidos, geração assíncrona e renderizadores plugáveis (PDF, XLSX).",
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "scripts": {
+    "lint": "eslint --max-warnings=0 .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --coverage",
+    "test:int": "vitest run --config vitest.int.config.ts"
+  },
+  "dependencies": {
+    "@pz/auditoria": "workspace:*",
+    "@pz/contracts": "workspace:*",
+    "@pz/db": "workspace:*",
+    "@pz/integracoes": "workspace:*",
+    "@pz/kernel": "workspace:*",
+    "exceljs": "4.4.0",
+    "pdfkit": "0.20.2",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@pz/adapter-pdf": "workspace:*",
+    "@pz/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "@types/pdfkit": "0.17.7",
+    "@vitest/coverage-v8": "5.0.5",
+    "eslint": "10.13.0",
+    "fast-check": "4.10.2",
+    "testcontainers": "12.2.1",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  }
+}

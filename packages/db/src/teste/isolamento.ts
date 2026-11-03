@@ -127,6 +127,14 @@ const COLUNAS_FIXAS: Readonly<Record<string, Record<string, unknown>>> = {
     revogado_em: null,
   },
   ciencia_prazo: { confirmada_por: null, confirmada_em: null },
+  relatorio: {
+    tipo: 'agenda',
+    formato: 'pdf',
+    situacao: 'pendente',
+    linhas: null,
+    concluido_em: null,
+    expira_em: null,
+  },
   auditoria_dado_pessoal: {
     valor: 'FICTÍCIO',
     sal: '00',

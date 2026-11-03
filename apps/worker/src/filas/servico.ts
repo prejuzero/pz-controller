@@ -16,6 +16,7 @@ import {
   RecalcularPrazosPorCalendario,
 } from '@pz/prazos';
 import { AplicarRetencao, EfetivarEncerramentos } from '@pz/privacidade';
+import { GerarRelatorio } from '@pz/relatorios';
 
 import {
   agendamentoDaCaptura,
@@ -49,6 +50,7 @@ import {
   aplicarRetencaoJob,
   efetivarEncerramentosJob,
 } from '../privacidade/jobs.js';
+import { gerarRelatorioJob } from '../relatorios/jobs.js';
 
 import {
   AGENDAMENTOS,
@@ -99,6 +101,7 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     @Inject(MarcarPrazosVencidos) private readonly vencidos: MarcarPrazosVencidos<unknown>,
     @Inject(DispararLembretes) private readonly lembretes: DispararLembretes<unknown>,
     @Inject(EnviarResumosDiarios) private readonly resumos: EnviarResumosDiarios<unknown>,
+    @Inject(GerarRelatorio) private readonly gerarRelatorio: GerarRelatorio<unknown>,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -179,6 +182,11 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     // chave de idempotência; várias réplicas não duplicam.
     this.filas.registrar(dispararLembretesJob, async () => {
       logger.info(await this.lembretes.executar(), 'lembretes disparados');
+    });
+    // Relatórios (HU29): fila própria, poucos por vez (CPU e memória do renderizador).
+    this.filas.registrar(gerarRelatorioJob, async ({ relatorioId, tenantId }) => {
+      const resultado = await this.gerarRelatorio.executar(relatorioId as Uuid);
+      logger.info({ relatorioId, tenantId, resultado }, 'relatório processado');
     });
     this.filas.registrar(enviarResumosJob, async () => {
       logger.info(await this.resumos.executar(), 'resumos diários');

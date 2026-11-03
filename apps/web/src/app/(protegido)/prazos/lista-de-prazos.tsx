@@ -15,6 +15,7 @@ import { useState } from 'react';
 import { usePrazos } from '../../../api/hooks';
 import { STATUS_DO_PRAZO } from '../../../api/prazos';
 import { formatarDataCivil } from '../../../i18n/formatar';
+import { BotoesExportar } from '../_casca/exportar';
 import { BarraDeFiltroGlobal, useFiltroGlobal } from '../_casca/filtro-global';
 
 import { Compromissos } from './compromissos';
@@ -102,6 +103,16 @@ export function ListaDePrazos({ status: inicial, recorte: doCard }: Props) {
         <p className="max-w-3xl text-texto-suave">{t('descricao')}</p>
       </div>
       <BarraDeFiltroGlobal aplicados={APLICADOS} />
+      {/* A aba vira a busca de prazos pela situação (HU29); o recorte do dashboard não exporta. */}
+      {recorte === undefined ? (
+        <BotoesExportar
+          pedido={(formato) => ({
+            tipo: 'busca-prazos',
+            formato,
+            filtros: { statusPrazo: [aba], ...doFiltro },
+          })}
+        />
+      ) : null}
       {recorte === undefined ? null : (
         <div className="flex flex-wrap items-center gap-2">
           <SeloStatus tom="info">{t(`recortes.${recorte}`)}</SeloStatus>

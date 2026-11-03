@@ -1463,6 +1463,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/relatorios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Relatórios recentes do usuário, do mais novo ao mais antigo. */
+        get: operations["listarRelatorios"];
+        put?: never;
+        /** Pede um relatório (PDF ou Excel), gerado em segundo plano. */
+        post: operations["solicitarRelatorio"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/relatorios/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Situação do relatório e, quando pronto, o link do arquivo. */
+        get: operations["consultarRelatorio"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/saude": {
         parameters: {
             query?: never;
@@ -2441,6 +2476,77 @@ export interface components {
         PedidoDeRedefinicaoDeSenha: {
             email: string;
         };
+        PedidoDeRelatorio: {
+            /** @constant */
+            tipo: "agenda";
+            /** @enum {string} */
+            formato: "pdf" | "xlsx";
+            filtros: {
+                /**
+                 * Format: uuid
+                 * @description Advogado responsável pelo prazo.
+                 */
+                responsavelId?: string;
+                /** @description Sigla do tribunal. */
+                tribunal?: string;
+                /** Format: uuid */
+                clienteId?: string;
+                /** Format: date */
+                de: string;
+                /** Format: date */
+                ate: string;
+            };
+        } | {
+            /** @enum {string} */
+            tipo: "busca-prazos" | "busca-publicacoes";
+            /** @enum {string} */
+            formato: "pdf" | "xlsx";
+            filtros: {
+                /** @description Com ou sem pontuação; 20 dígitos é exato, menos é parcial. */
+                numeroCnj?: string;
+                /** @description Busca no teor (o cadastro ainda não guarda as partes). */
+                partes?: string;
+                /** Format: uuid */
+                clienteId?: string;
+                tribunal?: string;
+                /** @description Vara ou órgão julgador, parcial. */
+                orgao?: string;
+                comarca?: string;
+                tiposAto?: string[];
+                statusPrazo?: ("a-confirmar" | "pendente" | "cumprido" | "vencido" | "cancelado")[];
+                statusCiencia?: ("pendente" | "confirmada")[];
+                /**
+                 * Format: uuid
+                 * @description Advogado responsável.
+                 */
+                responsavelId?: string;
+                /** @description UF + número, exato (ex.: GO12345). */
+                oab?: string;
+                /** @enum {string} */
+                ramo?: "civel" | "juizados" | "trabalhista" | "penal" | "juizado-criminal";
+                /** @description Texto livre no teor, sem diferença de acentos. */
+                palavraChave?: string;
+                origem?: ("djen" | "manual" | "painel")[];
+                periodo?: {
+                    /** @enum {string} */
+                    atalho?: "hoje" | "amanha" | "esta-semana" | "proxima-semana" | "este-mes" | "proximos-30-dias" | "vencidos";
+                    /** Format: date */
+                    de?: string;
+                    /** Format: date */
+                    ate?: string;
+                    /**
+                     * @description Data alvo (RF47). Padrão: vencimento nos prazos; em publicações só vale "publicacao" (disponibilização).
+                     * @enum {string}
+                     */
+                    campoData?: "vencimento" | "publicacao" | "inicio";
+                };
+                /**
+                 * @description Pela data alvo; padrão por recurso.
+                 * @enum {string}
+                 */
+                ordem?: "asc" | "desc";
+            };
+        };
         PedidoDeRenovacao: {
             tokenDeRenovacao: string;
         };
@@ -2702,6 +2808,35 @@ export interface components {
             /** @description Token do link enviado por e-mail. */
             token: string;
             novaSenha: string;
+        };
+        Relatorio: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            tipo: "agenda" | "busca-prazos" | "busca-publicacoes";
+            /** @enum {string} */
+            formato: "pdf" | "xlsx";
+            /** @description Filtros como foram pedidos. */
+            filtros: {
+                [key: string]: unknown;
+            };
+            /** @enum {string} */
+            situacao: "pendente" | "concluido" | "falhou";
+            linhas: number | null;
+            /** Format: date-time */
+            solicitadoEm: string;
+            concluidoEm: string | null;
+            /** @description O arquivo fica disponível por 24 h. */
+            expiraEm: string | null;
+            /** @description Link assinado (até 15 min) do arquivo, quando concluído e dentro das 24 h de validade. */
+            url: string | null;
+        };
+        RelatorioSolicitado: {
+            /** Format: uuid */
+            id: string;
+        };
+        Relatorios: {
+            itens: components["schemas"]["Relatorio"][];
         };
         ResultadoDaBuscaDePrazos: {
             itens: components["schemas"]["Prazo"][];
@@ -9490,6 +9625,180 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarRelatorios: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Relatorios"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    solicitarRelatorio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeRelatorio"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelatorioSolicitado"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    consultarRelatorio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Relatorio"];
+                };
             };
             /** @description Entrada inválida. */
             400: {

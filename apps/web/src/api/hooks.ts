@@ -22,6 +22,7 @@ import {
 import { consultasPrivacidade, mutacoesPrivacidade } from './privacidade';
 import { consultasProcessos, mutacoesProcessos, type FiltrosProcessos } from './processos';
 import { consultasPublicacoes, mutacoesPublicacoes, type FiltrosPublicacoes } from './publicacoes';
+import { consultasRelatorios, mutacoesRelatorios } from './relatorios';
 import { consultasSessao, mutacoesSessao } from './sessao';
 import { consultasTabelaPrazos, mutacoesTabelaPrazos } from './tabela-prazos';
 
@@ -216,3 +217,9 @@ export const useCancelarCompromisso = () => useMutation(useMutacoesPrazos().canc
 export const useAnalisarTexto = () => useMutation(useMutacoesPrazos().analisar);
 export const useAnalisarPdf = () => useMutation(useMutacoesPrazos().analisarPdf);
 export const useLinkDoDocumento = () => useMutation(useMutacoesPrazos().linkDoDocumento);
+
+/** Relatórios (HU29): lista recente (com nova consulta enquanto houver pendente) e pedido. */
+export const useRelatorios = (ativa = true) =>
+  useQuery({ ...consultasRelatorios(useApi()).lista(), enabled: ativa });
+export const useSolicitarRelatorio = () =>
+  useMutation(mutacoesRelatorios(useApi(), useQueryClient()).solicitar);
