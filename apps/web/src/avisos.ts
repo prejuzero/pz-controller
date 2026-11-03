@@ -31,6 +31,11 @@ export function avisosDeEntrega(avisos: AvisosDeEntrega): Aviso[] {
   return resultado;
 }
 
+/** Prazos sem ciência (HU34, RF78): a faixa fica enquanto houver pendência. */
+export function avisosDeCiencia(semCiencia: number): Aviso[] {
+  return semCiencia > 0 ? [{ tipo: 'ciencia-pendente', quantidade: semCiencia }] : [];
+}
+
 /** Fonte degradada (HU19): a faixa some sozinha quando a fonte volta (consulta periódica). */
 export function avisosDaCaptura(status: StatusDaCaptura): Aviso[] {
   const { fonte } = status;

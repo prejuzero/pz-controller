@@ -102,5 +102,22 @@ describe('ciência no PostgreSQL (HU33)', () => {
       banco.executar((tx) => tx.eventoDominio.count({ where: { tipo: 'CienciaConfirmada' } })),
     );
     expect(eventos).toBe(1);
+    // Controle de ciência (HU34): a confirmação bate com a trilha; outro tenant não vê.
+    const confirmacoes = await noTenant(A, () =>
+      banco.executar((tx) => new CienciaPostgres().confirmacoes(tx, [PRAZO, B])),
+    );
+    expect([...confirmacoes.keys()]).toEqual([PRAZO]);
+    expect(confirmacoes.get(PRAZO)?.canal).toBe('email');
+    expect(
+      (
+        await noTenant(B, () =>
+          banco.executar((tx) => new CienciaPostgres().confirmacoes(tx, [PRAZO])),
+        )
+      ).size,
+    ).toBe(0);
+    expect(
+      (await noTenant(A, () => banco.executar((tx) => new CienciaPostgres().confirmacoes(tx, []))))
+        .size,
+    ).toBe(0);
   }, 120_000);
 });

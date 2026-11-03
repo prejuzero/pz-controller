@@ -11,6 +11,18 @@ export const mutacoesCiencia = (api: ClienteApi, cache: QueryClient) => ({
   confirmarPeloLink: {
     mutationFn: (token: string) => exigir(api.POST('/v1/ciencia/confirmacao', { body: { token } })),
   },
+  /** Lote (HU34): cada prazo em transação própria; o resultado diz qual falhou. */
+  confirmarEmLote: {
+    mutationFn: (prazoIds: string[]) =>
+      exigir(api.POST('/v1/ciencia/lote', { body: { prazoIds } })),
+    // A seleção vem da lista de prazos ou da busca: as duas mostram a coluna de ciência.
+    onSuccess: async () => {
+      await Promise.all([
+        cache.invalidateQueries({ queryKey: chaves.prazos.todas }),
+        cache.invalidateQueries({ queryKey: chaves.busca.todas }),
+      ]);
+    },
+  },
   confirmar: {
     mutationFn: (id: string) =>
       exigir(api.POST('/v1/prazos/{id}/ciencia', { params: { path: { id } } })),

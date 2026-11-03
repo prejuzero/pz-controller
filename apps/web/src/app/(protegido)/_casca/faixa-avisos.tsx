@@ -4,8 +4,20 @@ import { TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
-import { useAvisosDeEntrega, useSessao, useStatusDaCaptura } from '../../../api/hooks';
-import { avisosDaCaptura, avisosDaSessao, avisosDeEntrega, type Aviso } from '../../../avisos';
+import {
+  useAvisosDeEntrega,
+  usePermissao,
+  useResumoDaCiencia,
+  useSessao,
+  useStatusDaCaptura,
+} from '../../../api/hooks';
+import {
+  avisosDaCaptura,
+  avisosDaSessao,
+  avisosDeCiencia,
+  avisosDeEntrega,
+  type Aviso,
+} from '../../../avisos';
 import { formatarInstante } from '../../../i18n/formatar';
 
 /** Faixa de avisos do topo: some quando não há nada a avisar. */
@@ -14,7 +26,9 @@ export function FaixaAvisos() {
   const sessao = useSessao();
   const entrega = useAvisosDeEntrega();
   const captura = useStatusDaCaptura();
+  const ciencia = useResumoDaCiencia(usePermissao('prazos:ler') === true);
   const avisos = [
+    ...(ciencia.data === undefined ? [] : avisosDeCiencia(ciencia.data.semCienciaConfirmada)),
     ...(sessao.data === undefined ? [] : avisosDaSessao(sessao.data)),
     ...(captura.data === undefined ? [] : avisosDaCaptura(captura.data)),
     ...(entrega.data === undefined ? [] : avisosDeEntrega(entrega.data)),
@@ -47,17 +61,25 @@ export function FaixaAvisos() {
         {avisos.map((aviso) => (
           <li
             key={aviso.tipo}
-            role="status"
             className="flex items-start gap-2 bg-alerta px-4 py-2 text-sm text-alerta-texto"
           >
             <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-            <span>
+            {/* O papel de status fica no texto: com ele no <li>, a lista deixa de ser lista (axe). */}
+            <span role="status">
               {texto(aviso)}
               {aviso.tipo === 'captura-atrasada' && (
                 <>
                   {' '}
                   <Link href="/configuracoes/cobertura" className="font-medium underline">
                     {t('capturaAtrasadaAcao')}
+                  </Link>
+                </>
+              )}
+              {aviso.tipo === 'ciencia-pendente' && (
+                <>
+                  {' '}
+                  <Link href="/prazos?recorte=sem-ciencia" className="font-medium underline">
+                    {t('cienciaPendenteAcao')}
                   </Link>
                 </>
               )}

@@ -26,6 +26,7 @@ import {
 } from '../../../api/hooks';
 import { STATUS_DO_PRAZO } from '../../../api/prazos';
 import { formatarDataCivil } from '../../../i18n/formatar';
+import { useCienciaEmLote } from '../_casca/ciencia-em-lote';
 import { EnviarPorEmail } from '../_casca/enviar-por-email';
 import { BotoesExportar } from '../_casca/exportar';
 
@@ -114,7 +115,10 @@ export function TelaDeBusca() {
     (chave, valores) => t(chave as Parameters<typeof t>[0], valores),
   );
 
+  const linhasDePrazos = prazos.data?.pages.flatMap((p) => p.itens) ?? [];
+  const lote = useCienciaEmLote(linhasDePrazos);
   const colunasPrazos: ColunaTabela<Prazo>[] = [
+    ...(lote.coluna === undefined ? [] : [lote.coluna]),
     {
       accessorKey: 'vencimento',
       header: t('colunas.vencimento'),
@@ -178,6 +182,12 @@ export function TelaDeBusca() {
           filtros: enviados,
         })}
       />
+      {recurso === 'prazos' ? (
+        <BotoesExportar
+          controleDeCiencia
+          pedido={(formato) => ({ tipo: 'controle-ciencia', formato, filtros: enviados })}
+        />
+      ) : null}
       <EnviarPorEmail anexo={{ recurso: 'busca', alvo: recurso, filtros: enviados }} />
 
       <div className="flex flex-wrap gap-2" role="group" aria-label={t('oQueBuscar')}>
@@ -386,13 +396,16 @@ export function TelaDeBusca() {
         ) : atual.data === undefined ? (
           <EstadoCarregando />
         ) : recurso === 'prazos' ? (
-          <TabelaDados
-            titulo={t('recursos.prazos')}
-            colunas={colunasPrazos}
-            dados={prazos.data?.pages.flatMap((p) => p.itens) ?? []}
-            idLinha={(p) => p.id}
-            vazio={<EstadoVazio descricao={t('vazio')} />}
-          />
+          <>
+            {lote.barra}
+            <TabelaDados
+              titulo={t('recursos.prazos')}
+              colunas={colunasPrazos}
+              dados={linhasDePrazos}
+              idLinha={(p) => p.id}
+              vazio={<EstadoVazio descricao={t('vazio')} />}
+            />
+          </>
         ) : (
           <TabelaDados
             titulo={t('recursos.publicacoes')}

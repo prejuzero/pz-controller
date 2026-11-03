@@ -146,6 +146,22 @@ describe('notificações no PostgreSQL (HU30)', () => {
     expect(lida?.estado).toMatchObject({ destinatarios: ['cliente@fora.invalid'], anexo });
   });
 
+  it('controle de ciência: notificações enviadas por prazo, só no tenant (HU34)', async () => {
+    const prazoId = gerarUuidV7();
+    const r = await noTenant(TENANT, (tx) =>
+      notificar.executar(tx, { ...pedido, prazoId, janela: 'controle-1' }),
+    );
+    if (!r.ok || !r.valor.solicitada) throw new Error('não solicitada');
+    const id = r.valor.notificacaoId;
+    await noTenant(TENANT, (tx) => enviar.executar(tx, id));
+    const repo = new NotificacoesPostgres();
+    expect(await noTenant(TENANT, (tx) => repo.resumoPorPrazo(tx, [prazoId]))).toEqual(
+      new Map([[prazoId, { enviadas: 1, entregues: 0, rejeitadas: 0 }]]),
+    );
+    expect((await noTenant(OUTRO, (tx) => repo.resumoPorPrazo(tx, [prazoId]))).size).toBe(0);
+    expect((await noTenant(TENANT, (tx) => repo.resumoPorPrazo(tx, []))).size).toBe(0);
+  });
+
   it('lista as supressões globais em ordem de e-mail (HU39)', async () => {
     const lista = await noTenant(OUTRO, (tx) => new SupressaoPostgres().listar(tx, { limite: 10 }));
     expect(lista).toContainEqual(

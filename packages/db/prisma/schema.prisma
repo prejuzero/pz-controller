@@ -709,6 +709,7 @@ model Notificacao {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@index([tenantId, usuarioId, criadoEm])
+  @@index([tenantId, prazoId])
   @@map("notificacao")
 }
 

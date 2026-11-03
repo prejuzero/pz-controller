@@ -91,4 +91,46 @@ describe('CienciaController (HU33)', () => {
       ],
     ]);
   });
+
+  it('lote: valida o pedido, devolve o resultado por prazo e registra a falha inesperada', async () => {
+    const pedidos: unknown[] = [];
+    const controller = new CienciaController(
+      {} as unknown as ConsultarLinkDeCiencia<unknown>,
+      {
+        emLote: (autor: unknown, ids: string[]) => {
+          pedidos.push([autor, ids]);
+          return Promise.resolve({
+            itens: [
+              { prazoId: PRAZO, situacao: 'confirmada', confirmadaEm: quando },
+              { prazoId: TOKEN, situacao: 'falhou', codigo: 'erro-interno' },
+            ],
+            inesperadas: [new Error('banco fora')],
+          });
+        },
+      } as unknown as ConfirmarCiencia<unknown>,
+    );
+    const sessao = {
+      ip: '203.0.113.8',
+      headers: {},
+      autenticacao: { sessao: { tenantId: 't', usuarioId: 'u' } },
+    } as unknown as RequisicaoAutenticada;
+    expect(await controller.confirmarEmLote(sessao, { prazoIds: [PRAZO] })).toEqual({
+      itens: [
+        {
+          prazoId: PRAZO,
+          situacao: 'confirmada',
+          confirmadaEm: '2026-11-03T12:00:00.000Z',
+          codigo: null,
+        },
+        { prazoId: TOKEN, situacao: 'falhou', confirmadaEm: null, codigo: 'erro-interno' },
+      ],
+    });
+    expect(pedidos).toEqual([[{ tenantId: 't', usuarioId: 'u', canal: 'portal' }, [PRAZO]]]);
+    await expect(controller.confirmarEmLote(sessao, { prazoIds: [] })).rejects.toThrow();
+    await expect(
+      controller.confirmarEmLote(sessao, {
+        prazoIds: Array.from({ length: 201 }, () => PRAZO),
+      }),
+    ).rejects.toThrow();
+  });
 });

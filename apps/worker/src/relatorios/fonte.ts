@@ -5,14 +5,16 @@ import {
   ProcessosParaBusca,
   ProcessosPostgres,
 } from '@pz/cadastro';
+import { CienciaPostgres } from '@pz/ciencia';
 import { NomesDosUsuariosPostgres } from '@pz/identidade';
 import { formatarNumeroCnj, lerNumeroCnj } from '@pz/kernel';
+import { NotificacoesPostgres } from '@pz/notificacoes';
 import { BuscarPrazos, prazoDetalhado, PrazosPostgres } from '@pz/prazos';
 import { BuscarPublicacoes, LeituraPostgres } from '@pz/publicacoes';
 
 import type { ProtecaoDeCampos } from '@pz/cadastro';
 import type { Banco } from '@pz/db';
-import type { Clock } from '@pz/kernel';
+import type { Clock, Uuid } from '@pz/kernel';
 import type { FonteDosRelatorios } from '@pz/relatorios';
 
 /**
@@ -32,6 +34,8 @@ export function fonteDosRelatorios(
   const repositorioDePrazos = new PrazosPostgres();
   const repositorioDeProcessos = new ProcessosPostgres(relogio);
   const leitura = new LeituraPostgres();
+  const ciencia = new CienciaPostgres();
+  const notificacoesDoPrazo = new NotificacoesPostgres();
   const buscar = new Buscar(
     {
       processos: (f) => processos.executar(f),
@@ -61,6 +65,22 @@ export function fonteDosRelatorios(
         };
       }),
     publicacao: (id) => banco.executar((tx) => leitura.buscar(tx, id)),
+    // Controle de ciência (HU34): confirmações (ciência) e notificações por prazo, no tenant.
+    controleDeCiencia: (prazoIds) =>
+      banco.executar(async (tx) => {
+        const ids = prazoIds as Uuid[];
+        const [confirmacoes, notificacoes] = [
+          await ciencia.confirmacoes(tx, ids),
+          await notificacoesDoPrazo.resumoPorPrazo(tx, ids),
+        ];
+        return new Map(
+          ids.map((id) => {
+            const c = confirmacoes.get(id);
+            const n = notificacoes.get(id) ?? { enviadas: 0, entregues: 0, rejeitadas: 0 };
+            return [id, { ...n, ...(c ?? {}) }] as const;
+          }),
+        );
+      }),
     nomeDoUsuario: async (usuarioId) =>
       (await banco.executar((tx) => nomes.nomeDe(tx, usuarioId))) ?? '',
   };

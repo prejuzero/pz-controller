@@ -184,8 +184,8 @@ export const useImpersonar = () => useMutation(useMutacoesAdmin().impersonar);
 function useMutacoesPrazos() {
   return mutacoesPrazos(useApi(), useQueryClient());
 }
-export const usePrazos = (filtro: FiltroDaLista) =>
-  useInfiniteQuery(consultasPrazos(useApi()).lista(filtro));
+export const usePrazos = (filtro: FiltroDaLista, ativa = true) =>
+  useInfiniteQuery({ ...consultasPrazos(useApi()).lista(filtro), enabled: ativa });
 export const useBuscaDePrazos = (filtros: FiltrosDaTela, ativa: boolean) =>
   useInfiniteQuery({ ...consultasBusca(useApi()).prazos(filtros), enabled: ativa });
 export const useBuscaDePublicacoes = (filtros: FiltrosDaTela, ativa: boolean) =>
@@ -196,8 +196,12 @@ export const useConsultarLinkDeCiencia = () => useMutation(useMutacoesCiencia().
 export const useConfirmarCienciaPeloLink = () =>
   useMutation(useMutacoesCiencia().confirmarPeloLink);
 export const useConfirmarCiencia = () => useMutation(useMutacoesCiencia().confirmar);
+export const useConfirmarCienciaEmLote = () => useMutation(useMutacoesCiencia().confirmarEmLote);
 export const useResumoDoDashboard = (filtro?: FiltroDoDashboard) =>
   useQuery(consultasPrazos(useApi()).resumo(filtro));
+/** Contagem de prazos sem ciência para a faixa e o alerta do login (HU34); só com permissão. */
+export const useResumoDaCiencia = (ativa: boolean) =>
+  useQuery({ ...consultasPrazos(useApi()).resumo(), enabled: ativa });
 export const useLinhaDoTempo = (filtro?: FiltroDoDashboard) =>
   useQuery(consultasPrazos(useApi()).linhaDoTempo(filtro));
 export const useProximosPrazos = (filtro?: FiltroDoDashboard) =>

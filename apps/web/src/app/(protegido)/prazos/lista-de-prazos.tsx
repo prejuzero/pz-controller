@@ -15,6 +15,7 @@ import { useState } from 'react';
 import { usePrazos } from '../../../api/hooks';
 import { STATUS_DO_PRAZO } from '../../../api/prazos';
 import { formatarDataCivil } from '../../../i18n/formatar';
+import { useCienciaEmLote } from '../_casca/ciencia-em-lote';
 import { BotoesExportar } from '../_casca/exportar';
 import { BarraDeFiltroGlobal, useFiltroGlobal } from '../_casca/filtro-global';
 
@@ -45,7 +46,10 @@ export function ListaDePrazos({ status: inicial, recorte: doCard }: Props) {
     recorte === undefined ? { status: aba, ...doFiltro } : { recorte, ...doFiltro },
   );
 
+  const linhas = prazos.data?.pages.flatMap((pagina) => pagina.itens) ?? [];
+  const lote = useCienciaEmLote(linhas);
   const colunas: ColunaTabela<Prazo>[] = [
+    ...(lote.coluna === undefined ? [] : [lote.coluna]),
     {
       accessorKey: 'vencimento',
       header: t('colunas.vencimento'),
@@ -145,10 +149,11 @@ export function ListaDePrazos({ status: inicial, recorte: doCard }: Props) {
         <EstadoCarregando />
       ) : (
         <>
+          {lote.barra}
           <TabelaDados
             titulo={recorte === undefined ? t(`abas.${aba}`) : t(`recortes.${recorte}`)}
             colunas={colunas}
-            dados={prazos.data.pages.flatMap((pagina) => pagina.itens)}
+            dados={linhas}
             idLinha={(prazo) => prazo.id}
             vazio={<EstadoVazio descricao={t('vazio')} />}
           />

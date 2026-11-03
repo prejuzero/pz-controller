@@ -10,10 +10,12 @@ export type {
   CienciaDoPrazo,
   ContextoDaRequisicao,
   DadosDoPrazo,
+  ItemDoLote,
   NoTenant as NoTenantDaCiencia,
   PrazoParaCiencia,
   RepositorioDeCiencia,
   ResultadoDaConfirmacao,
+  ResultadoDoLote,
   SituacaoDoLink,
   TokensDeCiencia,
 } from './application/ciencia.js';

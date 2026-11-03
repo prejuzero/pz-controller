@@ -11,6 +11,7 @@ import { usePermissoes } from '../../../api/hooks';
 import { ITENS_BARRA_INFERIOR, ITENS_MENU, itemAtivo } from '../../../navegacao';
 import { filtrarPermitidos } from '../../../permissoes';
 
+import { AlertaDeCiencia } from './alerta-de-ciencia';
 import { AvisoDeRelatorios } from './aviso-de-relatorios';
 import { Cabecalho } from './cabecalho';
 import { FaixaAvisos } from './faixa-avisos';
@@ -83,6 +84,7 @@ export function Casca({ children }: { children: ReactNode }) {
         <Cabecalho />
         <FaixaAvisos />
         <AvisoDeRelatorios />
+        <AlertaDeCiencia />
         <main id="conteudo" tabIndex={-1} className="flex-1 p-4 pb-24 outline-none md:p-6">
           {children}
         </main>

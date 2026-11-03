@@ -103,7 +103,8 @@
     "emailRejeitadoAcao": "Revisar e-mails no perfil",
     "equipeComRejeicao": "{quantidade, plural, one {# pessoa da equipe teve} other {# pessoas da equipe tiveram}} e-mails rejeitados nos últimos 7 dias.",
     "capturaAtrasadaDesde": "Captura do {fonte} atrasada desde {desde}. Recuperaremos automaticamente; até lá, confira as intimações no diário.",
-    "capturaAtrasadaAcao": "Ver a cobertura"
+    "capturaAtrasadaAcao": "Ver a cobertura",
+    "cienciaPendenteAcao": "Ver prazos"
   },
   "secao": {
     "emConstrucao": "Esta seção chega nas próximas entregas."
@@ -1040,7 +1041,27 @@
       "substituido": "Um e-mail mais novo trouxe outro link. Use o mais recente ou confirme pelo portal.",
       "invalido": "Link inválido. Confirme a ciência pelo portal."
     },
-    "irAoPortal": "Ir ao portal"
+    "irAoPortal": "Ir ao portal",
+    "lote": {
+      "grupo": "Ciência em lote",
+      "marcarTodos": "Marcar todos sem ciência",
+      "marcar": "Marcar {ato}",
+      "marcados": "{total, plural, =0 {Nenhum prazo marcado} one {# prazo marcado} other {# prazos marcados}}",
+      "confirmar": "Confirmar ciência ({total})",
+      "confirmados": "{total, plural, one {Ciência registrada em # prazo.} other {Ciência registrada em # prazos.}}",
+      "comFalhas": "{falhas, plural, one {# prazo não foi confirmado.} other {# prazos não foram confirmados.}}",
+      "comFalhasDescricao": "Os demais ({total}) foram confirmados. Confira os que ficaram sem ciência."
+    },
+    "alerta": {
+      "titulo": "Prazos aguardando ciência",
+      "descricao": "Estes prazos ainda não têm ciência confirmada. Confira antes de confirmar.",
+      "semData": "A confirmar",
+      "ver": "Ver prazo",
+      "confirmarListados": "Confirmar ciência dos {total} listados",
+      "verTodos": "Ver todos",
+      "confirmados": "{total, plural, one {Ciência registrada em # prazo.} other {Ciência registrada em # prazos.}}",
+      "comFalhas": "{falhas, plural, one {# prazo não foi confirmado.} other {# prazos não foram confirmados.}}"
+    }
   },
   "filtroGlobal": {
     "titulo": "Filtro",
@@ -1095,7 +1116,8 @@
     "tipos": {
       "agenda": "Agenda de prazos",
       "busca-prazos": "Busca de prazos",
-      "busca-publicacoes": "Busca de publicações"
+      "busca-publicacoes": "Busca de publicações",
+      "controle-ciencia": "Controle de ciência"
     },
     "formatos": {
       "pdf": "PDF",
@@ -1120,7 +1142,9 @@
     "pronto": "Relatório pronto.",
     "prontoDescricao": "Baixe em Relatórios (disponível por 24 horas).",
     "falhou": "Não foi possível gerar o relatório.",
-    "falhouDescricao": "Os filtros foram recusados. Ajuste e peça de novo."
+    "falhouDescricao": "Os filtros foram recusados. Ajuste e peça de novo.",
+    "controleDeCiencia": "Controle de ciência",
+    "controleComo": "Controle de ciência em {formato}"
   },
   "conferencias": {
     "titulo": "Conferências de painel",

@@ -45,6 +45,29 @@ export class NotificacoesPostgres implements RepositorioDeNotificacoes<Transacao
     return count === 1;
   }
 
+  /** Notificações de cada prazo (controle de ciência, HU34): enviadas, entregues e rejeitadas. */
+  async resumoPorPrazo(
+    tx: Transacao,
+    prazoIds: readonly Uuid[],
+  ): Promise<ReadonlyMap<Uuid, { enviadas: number; entregues: number; rejeitadas: number }>> {
+    const resumo = new Map<Uuid, { enviadas: number; entregues: number; rejeitadas: number }>();
+    if (prazoIds.length === 0) return resumo;
+    const linhas = await tx.notificacao.findMany({
+      where: { prazoId: { in: [...prazoIds] } },
+      select: { prazoId: true, enviadaEm: true, entregueEm: true, rejeitadaEm: true },
+    });
+    for (const l of linhas) {
+      const id = l.prazoId as Uuid;
+      const atual = resumo.get(id) ?? { enviadas: 0, entregues: 0, rejeitadas: 0 };
+      resumo.set(id, {
+        enviadas: atual.enviadas + (l.enviadaEm === null ? 0 : 1),
+        entregues: atual.entregues + (l.entregueEm === null ? 0 : 1),
+        rejeitadas: atual.rejeitadas + (l.rejeitadaEm === null ? 0 : 1),
+      });
+    }
+    return resumo;
+  }
+
   async buscar(tx: Transacao, id: Uuid): Promise<Notificacao | undefined> {
     const l = await tx.notificacao.findUnique({ where: { id } });
     return l === null ? undefined : restaurar(l);
