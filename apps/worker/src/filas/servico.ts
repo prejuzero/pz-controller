@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { VerificarIntegridade } from '@pz/auditoria';
+import { RecifrarCamposSensiveis } from '@pz/cadastro';
 import { ExecutarCaptura, PlanejarCaptura } from '@pz/captura';
 import { limparOutbox } from '@pz/kernel';
 import { DispararLembretes, EnviarResumosDiarios, LembrarConferencias } from '@pz/notificacoes';
@@ -18,6 +19,7 @@ import {
 import { AplicarRetencao, EfetivarEncerramentos } from '@pz/privacidade';
 import { GerarRelatorio } from '@pz/relatorios';
 
+import { recifrarCamposJob } from '../cadastro/jobs.js';
 import {
   agendamentoDaCaptura,
   ESCOPO_DA_CAPTURA,
@@ -107,6 +109,8 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     @Inject(EnviarResumosDiarios) private readonly resumos: EnviarResumosDiarios<unknown>,
     @Inject(GerarRelatorio) private readonly gerarRelatorio: GerarRelatorio<unknown>,
     @Inject(LembrarConferencias) private readonly conferencias: LembrarConferencias<unknown>,
+    @Inject(RecifrarCamposSensiveis)
+    private readonly recifrar: RecifrarCamposSensiveis<unknown>,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -192,6 +196,9 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     this.filas.registrar(gerarRelatorioJob, async ({ relatorioId, tenantId }) => {
       const resultado = await this.gerarRelatorio.executar(relatorioId as Uuid);
       logger.info({ relatorioId, tenantId, resultado }, 'relatório processado');
+    });
+    this.filas.registrar(recifrarCamposJob, async () => {
+      logger.info(await this.recifrar.executar(), 'recifra dos campos sensíveis');
     });
     this.filas.registrar(lembrarConferenciasJob, async () => {
       logger.info(await this.conferencias.executar(), 'lembretes de conferência de painel');

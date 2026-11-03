@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { recifrarCamposJob } from '../cadastro/jobs.js';
 import {
   dispararLembretesJob,
   enviarResumosJob,
@@ -65,6 +66,13 @@ export const AGENDAMENTOS: readonly Agendamento<unknown>[] = [
     cron: '0 3 * * *', // diário às 3h, fora do horário de expediente
     dados: {},
     motivo: 'limpeza diária do outbox (retenção de 30 dias)',
+  }),
+  definirAgendamento({
+    id: 'cadastro.recifrar-campos',
+    job: recifrarCamposJob,
+    cron: '30 3 * * *', // diário às 3h30: legados em claro e chaves antigas (ADR-021)
+    dados: {},
+    motivo: 'cifra dos campos sensíveis legados e recifra após rotação de chaves',
   }),
   definirAgendamento({
     id: 'manutencao.verificar-auditoria',

@@ -1,8 +1,11 @@
+import { randomBytes } from 'node:crypto';
+
 import { TrilhaPostgres } from '@pz/auditoria';
 import { ExportacaoDoCadastroPostgres } from '@pz/cadastro';
 import { Banco, BancoSistema, executarNoTenant, OutboxPostgres } from '@pz/db';
 import { subirBancoDeTeste } from '@pz/db/teste';
 import { ExportacaoDaIdentidadePostgres } from '@pz/identidade';
+import { protecaoDeCampos, ProvedorChavesLocal } from '@pz/integracoes';
 import { FixedClock, Instant } from '@pz/kernel';
 import { ExportacaoDasNotificacoesPostgres } from '@pz/notificacoes';
 import { ExportacaoDosTermosPostgres } from '@pz/termos';
@@ -16,6 +19,9 @@ import type { Transacao } from '@pz/db';
 import type { BancoDeTeste } from '@pz/db/teste';
 import type { ArmazenamentoArquivos } from '@pz/integracoes';
 import type { Uuid } from '@pz/kernel';
+
+// Chaves de dados FICTÍCIAS (ADR-021): o banco do teste guarda CPF e documento cifrados.
+const protecao = protecaoDeCampos(new ProvedorChavesLocal(randomBytes(32).toString('base64')));
 
 // Escritórios, pessoas e processos FICTÍCIOS (CPF gerado, e-mails inválidos).
 const relogio = new FixedClock(Instant.deIso('2026-10-07T12:00:00Z'));
@@ -109,7 +115,7 @@ describe('exportação no PostgreSQL com as fontes dos módulos (HU38)', () => {
       repo,
       [
         new ExportacaoDaIdentidadePostgres(),
-        new ExportacaoDoCadastroPostgres(),
+        new ExportacaoDoCadastroPostgres(protecao),
         new ExportacaoDosTermosPostgres(),
         new ExportacaoDasNotificacoesPostgres(),
       ],

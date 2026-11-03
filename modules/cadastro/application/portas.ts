@@ -3,6 +3,19 @@ import type { Cliente } from '../domain/cliente.js';
 import type { Cobertura, EstadoDoProcesso, Processo } from '../domain/processo.js';
 import type { Conflito, EventoDominio, Result, Uuid, Validacao } from '@pz/kernel';
 
+/**
+ * Porta: proteção de campos sensíveis (HU37, ADR-021), composta nas apps com as chaves de dados.
+ * CPF e documento do cliente são gravados cifrados; o CPF tem índice cego para a unicidade.
+ */
+export interface ProtecaoDeCampos {
+  cifrar(texto: string): string;
+  decifrar(cifrado: string): string;
+  /** HMAC estável do texto (busca exata e unicidade sem o texto em claro). */
+  indice(texto: string): string;
+  /** Cifrado com chave que não é a ativa (ou no formato antigo): a recifra o atualiza. */
+  precisaRecifrar(cifrado: string): boolean;
+}
+
 /** Porta: advogado e OABs do tenant da transação (tabelas `advogado` e `oab`, RLS). */
 export interface RepositorioDeAdvogados<Transacao> {
   /**

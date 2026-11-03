@@ -7,7 +7,6 @@ import { tenantAtual } from '@pz/db';
 import {
   DispositivosEmMemoria,
   RenovacoesEmMemoria,
-  CifraAesGcm,
   PublicadorEmMemoria,
   RedefinicoesEmMemoria,
   AcessosEmMemoria,
@@ -19,6 +18,7 @@ import {
   SegundoFatorEmMemoria,
   SessoesEmMemoria,
 } from '@pz/identidade';
+import { CifraVersionada, ProvedorChavesLocal } from '@pz/integracoes';
 import { gerarUuidV7, SystemClock } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -369,7 +369,10 @@ describe('recuperação de senha na api (HU06)', () => {
     expect((await pedir('ana@exemplo.invalid')).statusCode).toBe(204);
     expect(publicador.publicados).toHaveLength(antes + 1);
     const evento = publicador.publicados.at(-1) as { payload: { tokenCifrado: string } };
-    const token = new CifraAesGcm(CHAVE).decifrar(evento.payload.tokenCifrado);
+    // A api cifra com as chaves de dados (ADR-021) derivadas da CHAVE_CIFRAGEM.
+    const token = new CifraVersionada(new ProvedorChavesLocal(CHAVE)).decifrar(
+      evento.payload.tokenCifrado,
+    );
 
     const redefinir = (novaSenha: string) =>
       api.inject({

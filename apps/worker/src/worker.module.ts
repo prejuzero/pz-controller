@@ -19,12 +19,14 @@ import {
 } from '@pz/auditoria';
 import {
   AdvogadosPostgres,
+  CamposSensiveisPostgres,
   ConferenciasPostgres,
   ConsultarConferencias,
   ConsultarProcesso,
   ExportacaoDoCadastroPostgres,
   ObterOuCriarProcesso,
   ProcessosPostgres,
+  RecifrarCamposSensiveis,
   TenantsComConferenciaPostgres,
 } from '@pz/cadastro';
 import {
@@ -59,7 +61,6 @@ import {
 import { Banco, BancoSistema, executarNoTenant, OutboxPostgres } from '@pz/db';
 import { configuracaoPadrao, PlataformaIa, promptsPadrao } from '@pz/ia';
 import {
-  CifraAesGcm,
   EmailsDosUsuariosPostgres,
   EnviarAvisosDeSeguranca,
   ExportacaoDaIdentidadePostgres,
@@ -67,7 +68,12 @@ import {
   TenantsPostgres,
   UsuariosComPermissaoPostgres,
 } from '@pz/identidade';
-import { RegistroDeAdaptadores } from '@pz/integracoes';
+import {
+  CifraVersionada,
+  protecaoDeCampos,
+  ProvedorChavesLocal,
+  RegistroDeAdaptadores,
+} from '@pz/integracoes';
 import { SystemClock } from '@pz/kernel';
 import {
   AvisarNovaIntimacao,
@@ -186,6 +192,7 @@ import type { ProcessadorDeWebhook } from './integracoes/webhooks.js';
 import type { DynamicModule, Provider } from '@nestjs/common';
 import type { ArmazemDoPainel } from '@pz/administracao';
 import type { DestinoWorm } from '@pz/auditoria';
+import type { ProtecaoDeCampos } from '@pz/cadastro';
 import type { CacheDeDiasNaoUteis } from '@pz/calendario';
 import type { ClassificadorIa } from '@pz/classificacao';
 import type { Transacao } from '@pz/db';
@@ -445,9 +452,9 @@ function arquivosDoAmbiente(ambiente: AmbienteWorker, relogio: Clock): Armazenam
  * Pedido de notificações no banco (HU30). Destinos pelas APIs públicas, como na API: e-mail da
  * conta (identidade) e cópias do advogado (cadastro).
  */
-function notificarDoBanco(relogio: Clock): Notificar<Transacao> {
+function notificarDoBanco(relogio: Clock, protecao: ProtecaoDeCampos): Notificar<Transacao> {
   const contas = new EmailsDosUsuariosPostgres();
-  const advogados = new AdvogadosPostgres(relogio);
+  const advogados = new AdvogadosPostgres(relogio, protecao);
   return new Notificar(
     new NotificacoesPostgres(),
     new PreferenciasPostgres(),
@@ -514,6 +521,9 @@ export class WorkerModule {
       registrarErro(logger, erro, 'conexão com o Redis indisponível', 'worker.redis');
     });
     const banco = new Banco({ url: ambiente.DATABASE_URL });
+    // Chaves de dados (HU37, ADR-021): CPF, documento do cliente e segredos cifrados.
+    const chaves = new ProvedorChavesLocal(ambiente.CHAVE_CIFRAGEM, ambiente.CHAVES_DE_DADOS);
+    const protecao = protecaoDeCampos(chaves, ambiente.CHAVE_CIFRAGEM);
     const sistema = new BancoSistema({ url: ambiente.DATABASE_URL_SISTEMA, maxConexoes: 4 });
     const outboxPostgres = new OutboxPostgres();
     const localizadorDosPrazos = (relogio: Clock) => localizadorDosPrazosNoBanco(banco, relogio);
@@ -682,7 +692,7 @@ export class WorkerModule {
             new ExportacoesPostgres(),
             [
               new ExportacaoDaIdentidadePostgres(),
-              new ExportacaoDoCadastroPostgres(),
+              new ExportacaoDoCadastroPostgres(protecao),
               new ExportacaoDosTermosPostgres(),
               new ExportacaoDasNotificacoesPostgres(),
               new ExportacaoDasPublicacoesPostgres(),
@@ -700,7 +710,7 @@ export class WorkerModule {
             banco,
             new RelatoriosPostgres(),
             new TrilhaPostgres(),
-            fonteDosRelatorios(banco, relogio),
+            fonteDosRelatorios(banco, relogio, protecao),
             [new RenderizadorPdf(), new RenderizadorXlsx()],
             opcoes.arquivos ?? arquivosDoAmbiente(ambiente, relogio),
             relogio,
@@ -772,7 +782,7 @@ export class WorkerModule {
         useFactory: (relogio: Clock) => {
           const classificacoes = new ClassificacoesPostgres();
           const destinatarios = new DestinatariosPostgres();
-          const advogados = new AdvogadosPostgres(relogio);
+          const advogados = new AdvogadosPostgres(relogio, protecao);
           return new GerarPrazoDaPublicacao(
             banco,
             new PrazosPostgres(),
@@ -814,7 +824,7 @@ export class WorkerModule {
           new AvisarNovaIntimacao(
             agendaDosLembretes(relogio),
             numeroDoProcesso(relogio),
-            notificarDoBanco(relogio),
+            notificarDoBanco(relogio, protecao),
             ambiente.PORTAL_URL,
           ),
       },
@@ -824,15 +834,26 @@ export class WorkerModule {
         useFactory: (relogio: Clock) =>
           new DispararLembretes(
             sistema.unidade('notificacoes: tenants com lembretes devidos'),
-            (tenantId, trabalho) => executarNoTenant(tenantId, trabalho),
+            executarNoTenant,
             banco,
             new LembretesPostgres(),
             agendaDosLembretes(relogio),
             numeroDoProcesso(relogio),
-            notificarDoBanco(relogio),
+            notificarDoBanco(relogio, protecao),
             ambiente.PORTAL_URL,
             relogio,
           ),
+      },
+      {
+        // Recifra (HU37, ADR-021): lista os tenants como sistema e grava em cada um (RLS).
+        provide: RecifrarCamposSensiveis,
+        useValue: new RecifrarCamposSensiveis(
+          sistema.unidade('cadastro: tenants com campos sensíveis para recifrar'),
+          executarNoTenant,
+          banco,
+          new CamposSensiveisPostgres(),
+          protecao,
+        ),
       },
       {
         // Conferência de painel (HU36): o cadastro diz o que é devido; avisa quem confirma prazos.
@@ -847,13 +868,13 @@ export class WorkerModule {
           return new LembrarConferencias(
             sistema.unidade('notificacoes: escritórios com conferência de painel'),
             (tx) => new TenantsComConferenciaPostgres().listar(tx),
-            (tenantId, trabalho) => executarNoTenant(tenantId, trabalho),
+            executarNoTenant,
             banco,
             () => conferencias.executar(),
             {
               usuarios: (tx) => new UsuariosComPermissaoPostgres().listar(tx, 'prazos:confirmar'),
             },
-            notificarDoBanco(relogio),
+            notificarDoBanco(relogio, protecao),
             ambiente.PORTAL_URL,
             relogio,
           );
@@ -865,7 +886,7 @@ export class WorkerModule {
         useFactory: (relogio: Clock) =>
           new EnviarResumosDiarios(
             sistema.unidade('notificacoes: escritórios para o resumo diário'),
-            (tenantId, trabalho) => executarNoTenant(tenantId, trabalho),
+            executarNoTenant,
             banco,
             new PreferenciasPostgres(),
             fontesDoResumo<Transacao>({
@@ -876,7 +897,7 @@ export class WorkerModule {
               processos: new ConsultarProcesso(banco, new ProcessosPostgres(relogio)),
               urlDoPortal: ambiente.PORTAL_URL,
             }),
-            notificarDoBanco(relogio),
+            notificarDoBanco(relogio, protecao),
             ambiente.PORTAL_URL,
             relogio,
           ),
@@ -887,7 +908,7 @@ export class WorkerModule {
         useFactory: (relogio: Clock) =>
           new MarcarPrazosVencidos(
             sistema.unidade('prazos: tenants com prazos vencidos'),
-            (tenantId, trabalho) => executarNoTenant(tenantId, trabalho),
+            executarNoTenant,
             {
               unidade: banco,
               prazos: new PrazosPostgres(),
@@ -941,7 +962,7 @@ export class WorkerModule {
           new EnviarAvisosDeSeguranca(
             emailUnico(relogio),
             new EmailsDosUsuariosPostgres(),
-            new CifraAesGcm(ambiente.CHAVE_CIFRAGEM),
+            new CifraVersionada(chaves, ambiente.CHAVE_CIFRAGEM),
             ambiente.PORTAL_URL,
           ),
       },
@@ -990,7 +1011,7 @@ export class WorkerModule {
         inject: [RELOGIO],
         useFactory: (relogio: Clock) =>
           new AvisarSituacaoDaFonte(
-            notificarDoBanco(relogio),
+            notificarDoBanco(relogio, protecao),
             {
               // Quem administra a equipe responde pelo escritório (PZ-311).
               usuarios: (tx) => new UsuariosComPermissaoPostgres().listar(tx, 'usuarios:gerir'),

@@ -767,6 +767,9 @@ importers:
       '@pz/identidade':
         specifier: workspace:*
         version: link:../identidade
+      '@pz/integracoes':
+        specifier: workspace:*
+        version: link:../../packages/integracoes
       '@types/node':
         specifier: 24.19.2
         version: 24.19.2
@@ -1768,6 +1771,9 @@ importers:
       eslint:
         specifier: 10.13.0
         version: 10.13.0(jiti@2.6.1)(supports-color@10.2.2)
+      fast-check:
+        specifier: 4.10.2
+        version: 4.10.2
       ioredis:
         specifier: 6.0.0
         version: 6.0.0(supports-color@10.2.2)

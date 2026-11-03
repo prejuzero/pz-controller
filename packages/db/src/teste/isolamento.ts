@@ -114,7 +114,11 @@ const LINHAS_GLOBAIS: Readonly<Record<string, string>> = { perfil: 'advogado' };
  */
 const COLUNAS_FIXAS: Readonly<Record<string, Record<string, unknown>>> = {
   feriado_local: { abrangencia: 'uf', uf: 'XA' },
-  advogado: { cpf: () => String(randomInt(1e10, 1e11 - 1)).padStart(11, '0') },
+  advogado: {
+    cpf: () => String(randomInt(1e10, 1e11 - 1)).padStart(11, '0'),
+    cpf_cifrado: null,
+    cpf_indice: null,
+  },
   oab: { uf: 'XA' },
   consentimento_canal: { canal: 'push', origem: 'app' },
   cliente: { documento: null },

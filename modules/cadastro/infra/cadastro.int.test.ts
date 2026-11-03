@@ -12,6 +12,7 @@ import {
   SolicitarVerificacaoDeEmail,
   CifraAesGcm,
 } from '@pz/identidade';
+import { protecaoDeCampos, ProvedorChavesLocal } from '@pz/integracoes';
 import { FixedClock, gerarUuidV7, Instant } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -21,14 +22,21 @@ import {
   ConsultarPerfil,
   RemoverOab,
 } from '../application/cadastro.js';
+import { RecifrarCamposSensiveis } from '../application/recifra.js';
 
 import { AdvogadosPostgres } from './advogados-postgres.js';
+import { CamposSensiveisPostgres } from './campos-sensiveis-postgres.js';
 
 import type { AutorDoCadastro } from '../application/cadastro.js';
 import type { Transacao } from '@pz/db';
 import type { BancoDeTeste } from '@pz/db/teste';
 import type { Email } from '@pz/identidade';
 import type { Uuid } from '@pz/kernel';
+
+// Chaves de dados FICTÍCIAS (ADR-021): o banco do teste guarda CPF e documento cifrados.
+const MESTRA = randomBytes(32).toString('base64');
+const DADOS = randomBytes(32).toString('base64');
+const protecao = protecaoDeCampos(new ProvedorChavesLocal(MESTRA, `l1:${DADOS}`));
 
 // Dados FICTÍCIOS: CPFs gerados, OABs e e-mails inventados.
 const relogio = new FixedClock(Instant.deEpochMs(Date.UTC(2026, 9, 7, 12)));
@@ -64,7 +72,7 @@ beforeAll(async () => {
   await postgres.migrar();
   banco = new Banco({ url: postgres.url('pz_app'), maxConexoes: 5 });
   sistema = new BancoSistema({ url: postgres.url('pz_sistema') });
-  const advogados = new AdvogadosPostgres(relogio);
+  const advogados = new AdvogadosPostgres(relogio, protecao);
   const trilha = new TrilhaPostgres();
   const outbox = new OutboxPostgres();
   const noTenant = {
@@ -202,5 +210,58 @@ describe('cadastro no PostgreSQL (HU11)', () => {
     await expect(
       executarNoTenant(ana.tenantId, () => banco.executar((tx) => tx.oab.deleteMany({}))),
     ).rejects.toThrow();
+  });
+
+  it('dump sem CPF em claro; recifra cifra o legado e roda a chave (HU37, ADR-021)', async () => {
+    const linha = () =>
+      sistema.executarComoSistema('conferir o teste', (tx) =>
+        tx.advogado.findUniqueOrThrow({
+          where: { usuarioId: ana.usuarioId },
+          select: { cpf: true, cpfCifrado: true, cpfIndice: true },
+        }),
+      );
+    const gravada = await linha();
+    expect(gravada.cpf).toBeNull();
+    expect(gravada.cpfCifrado).toMatch(/^v2\.l1\./);
+    expect(gravada.cpfCifrado).not.toContain('52998224725');
+    expect(gravada.cpfIndice).toBe(protecao.indice('52998224725'));
+
+    // Registro legado (de antes da cifra): CPF em claro, sem índice.
+    await sistema.executarComoSistema('preparar o teste', (tx) =>
+      tx.advogado.update({
+        where: { usuarioId: ana.usuarioId },
+        data: { cpf: '52998224725', cpfCifrado: null, cpfIndice: null },
+      }),
+    );
+    const nova = randomBytes(32).toString('base64');
+    const recifrar = (p: ReturnType<typeof protecaoDeCampos>) =>
+      new RecifrarCamposSensiveis(
+        sistema.unidade('recifra no teste'),
+        (tenantId, trabalho) => executarNoTenant(tenantId, trabalho),
+        banco,
+        new CamposSensiveisPostgres(),
+        p,
+      ).executar();
+    const antiga = randomBytes(32).toString('base64');
+    // A rotação mantém as chaves antigas na lista: os já cifrados com l1 também passam para k1.
+    const primeira = protecaoDeCampos(new ProvedorChavesLocal(MESTRA, `k1:${antiga},l1:${DADOS}`));
+    expect((await recifrar(primeira)).atualizados).toBeGreaterThanOrEqual(1);
+    const cifrada = await linha();
+    expect(cifrada.cpf).toBeNull();
+    expect(cifrada.cpfCifrado).toMatch(/^v2\.k1\./);
+    expect(primeira.decifrar(cifrada.cpfCifrado ?? '')).toBe('52998224725');
+    // Repetir não muda nada (idempotente).
+    const repetida = await recifrar(primeira);
+    expect(repetida.atualizados).toBe(0);
+
+    // Rotação: a nova chave na frente; a antiga só decifra.
+    const rodada = protecaoDeCampos(
+      new ProvedorChavesLocal(MESTRA, `k2:${nova},k1:${antiga},l1:${DADOS}`),
+    );
+    await recifrar(rodada);
+    const final = await linha();
+    expect(final.cpfCifrado).toMatch(/^v2\.k2\./);
+    expect(rodada.decifrar(final.cpfCifrado ?? '')).toBe('52998224725');
+    expect(final.cpfIndice).toBe(rodada.indice('52998224725'));
   });
 });

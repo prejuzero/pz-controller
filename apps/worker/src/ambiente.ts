@@ -39,6 +39,8 @@ export const esquemaWorker = esquemaBase
           .filter((fila) => fila.length > 0),
       )
       .pipe(z.array(z.enum(NOMES_FILAS))),
+    /** As mesmas chaves de dados da api (ADR-021): "id:base64,…", a primeira cifra. */
+    CHAVES_DE_DADOS: z.string().optional(),
     /** Mesma chave da api: decifra o token do link de redefinição de senha (HU06). */
     CHAVE_CIFRAGEM: z
       .base64()

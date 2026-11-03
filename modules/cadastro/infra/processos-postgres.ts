@@ -1,6 +1,7 @@
 import { Processo } from '../domain/processo.js';
 
 import type {
+  ProtecaoDeCampos,
   FiltroDeProcessos,
   FiltroDeProcessosNaBusca,
   Paginacao,
@@ -126,34 +127,62 @@ export class ProcessosPostgres implements RepositorioDeProcessos<Transacao> {
   }
 }
 
-const clienteDe = (linha: {
-  id: string;
-  tenantId: string;
-  nome: string;
-  documento: string | null;
-}) =>
-  ({
-    id: linha.id as Uuid,
-    tenantId: linha.tenantId as Uuid,
-    nome: linha.nome,
-    documento: linha.documento,
-  }) satisfies Cliente;
+/** Documento da linha: o cifrado (atual) ou o legado em claro, até a recifra. */
+export function documentoDe(
+  linha: { documento: string | null; documentoCifrado: string | null },
+  protecao: ProtecaoDeCampos,
+): string | null {
+  return linha.documentoCifrado === null
+    ? linha.documento
+    : protecao.decifrar(linha.documentoCifrado);
+}
 
-/** Clientes no PostgreSQL (HU12), no tenant da transação (RLS). */
+/** Clientes no PostgreSQL (HU12), no tenant da transação (RLS); documento só cifrado (HU37). */
 export class ClientesPostgres implements RepositorioDeClientes<Transacao> {
+  constructor(private readonly protecao: ProtecaoDeCampos) {}
+
+  #clienteDe(linha: {
+    id: string;
+    tenantId: string;
+    nome: string;
+    documento: string | null;
+    documentoCifrado: string | null;
+  }): Cliente {
+    return {
+      id: linha.id as Uuid,
+      tenantId: linha.tenantId as Uuid,
+      nome: linha.nome,
+      documento: documentoDe(linha, this.protecao),
+    };
+  }
+
+  #documento(documento: string | null) {
+    return {
+      documento: null,
+      documentoCifrado: documento === null ? null : this.protecao.cifrar(documento),
+    };
+  }
+
   async inserir(tx: Transacao, cliente: Cliente): Promise<void> {
-    await tx.cliente.create({ data: { ...cliente } });
+    await tx.cliente.create({
+      data: {
+        id: cliente.id,
+        tenantId: cliente.tenantId,
+        nome: cliente.nome,
+        ...this.#documento(cliente.documento),
+      },
+    });
   }
 
   async buscar(tx: Transacao, id: Uuid): Promise<Cliente | undefined> {
     const linha = await tx.cliente.findUnique({ where: { id } });
-    return linha === null ? undefined : clienteDe(linha);
+    return linha === null ? undefined : this.#clienteDe(linha);
   }
 
   async salvar(tx: Transacao, cliente: Cliente): Promise<void> {
     await tx.cliente.update({
       where: { id: cliente.id },
-      data: { nome: cliente.nome, documento: cliente.documento },
+      data: { nome: cliente.nome, ...this.#documento(cliente.documento) },
     });
   }
 
@@ -174,6 +203,6 @@ export class ClientesPostgres implements RepositorioDeClientes<Transacao> {
       orderBy: ordem,
       take: limite,
     });
-    return linhas.map(clienteDe);
+    return linhas.map((l) => this.#clienteDe(l));
   }
 }
