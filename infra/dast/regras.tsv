@@ -1,0 +1,15 @@
+# Regras do ZAP (HU37, PZ-220): id	ação (IGNORE, INFO, WARN, FAIL)	motivo. Padrão: WARN; aqui sobe para FAIL o que é grave.
+# Estilos inline são permitidos na CSP de propósito (Tailwind e Radix); scripts não (ADR/PR #163).
+10055	WARN	CSP: style-src 'unsafe-inline' é intencional; script-src tem nonce
+# Cabeçalhos obrigatórios (PZ-218): a ausência quebra o build.
+10020	FAIL	Anti-clickjacking (X-Frame-Options/frame-ancestors)
+10021	FAIL	X-Content-Type-Options
+10035	FAIL	Strict-Transport-Security
+10038	FAIL	Content-Security-Policy ausente
+10202	WARN	Formulários não enviam nativamente: o JS chama a API, que exige CSRF double-submit (V4/V13, auth.test.ts)
+40012	FAIL	XSS refletido
+40014	FAIL	XSS persistente
+40018	FAIL	SQL injection
+90020	FAIL	Injeção de comando
+10024	FAIL	Dado sensível na URL (formulários usam POST)
+10109	IGNORE	Aplicação moderna (informativo)

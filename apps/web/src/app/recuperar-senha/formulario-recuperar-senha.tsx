@@ -32,7 +32,12 @@ export function FormularioRecuperarSenha() {
           {t('recuperarSenha.enviado')}
         </p>
       ) : (
-        <form noValidate onSubmit={(evento) => void enviar(evento)} className="grid gap-4">
+        <form
+          method="post"
+          noValidate
+          onSubmit={(evento) => void enviar(evento)}
+          className="grid gap-4"
+        >
           <AlertaFormulario erro={solicitar.error} seNaoAutorizado="credenciaisInvalidas" />
           <Campo
             rotulo={t('recuperarSenha.email')}

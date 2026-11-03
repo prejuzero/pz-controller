@@ -153,6 +153,7 @@ function EditarProcesso({ processo }: { processo: ProcessoDoTenant }) {
       titulo={t('detalhe.editar')}
     >
       <form
+        method="post"
         noValidate
         className="grid gap-4"
         onSubmit={(evento) => {
@@ -224,6 +225,7 @@ function AlterarCobertura({ processo }: { processo: ProcessoDoTenant }) {
       titulo={rotulo}
     >
       <form
+        method="post"
         noValidate
         className="grid gap-4"
         onSubmit={(evento) => {

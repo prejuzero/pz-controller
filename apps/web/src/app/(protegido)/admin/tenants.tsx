@@ -160,6 +160,7 @@ function FormularioAssinatura({ tenant }: { tenant: TenantAdministrado }) {
   const situacao = useWatch({ control, name: 'situacaoAssinatura' });
   return (
     <form
+      method="post"
       noValidate
       className="grid gap-3"
       onSubmit={(evento) =>
@@ -252,7 +253,12 @@ function FormularioMotivo({
     }
   };
   return (
-    <form noValidate className="grid gap-3" onSubmit={(e) => void handleSubmit(enviar)(e)}>
+    <form
+      method="post"
+      noValidate
+      className="grid gap-3"
+      onSubmit={(e) => void handleSubmit(enviar)(e)}
+    >
       <h3 className="font-medium">{t(`${acao}.titulo`)}</h3>
       <p className="text-sm text-texto-suave">{t(`${acao}.explicacao`)}</p>
       <Campo

@@ -64,6 +64,7 @@ export function FormularioTipoDeAto({
   });
   return (
     <form
+      method="post"
       noValidate
       onSubmit={(evento) => void handleSubmit(aoEnviar)(evento)}
       className="grid gap-4"
@@ -129,6 +130,7 @@ export function FormularioVersao({
   });
   return (
     <form
+      method="post"
       noValidate
       onSubmit={(evento) => void handleSubmit(aoEnviar)(evento)}
       className="grid gap-4"

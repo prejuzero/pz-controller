@@ -86,6 +86,7 @@ function NovoCompromisso() {
       titulo={t('novo')}
     >
       <form
+        method="post"
         noValidate
         className="grid gap-4"
         onSubmit={(evento) => {
@@ -162,6 +163,7 @@ function CancelarCompromisso({ id }: { id: string }) {
       titulo={t('cancelar')}
     >
       <form
+        method="post"
         noValidate
         className="grid gap-4"
         onSubmit={(evento) => {

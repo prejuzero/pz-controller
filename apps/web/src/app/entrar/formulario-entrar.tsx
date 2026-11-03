@@ -32,7 +32,12 @@ export function FormularioEntrar({ retorno }: { retorno: string | undefined }) {
   });
 
   return (
-    <form noValidate onSubmit={(evento) => void enviar(evento)} className="grid gap-4">
+    <form
+      method="post"
+      noValidate
+      onSubmit={(evento) => void enviar(evento)}
+      className="grid gap-4"
+    >
       <AlertaFormulario erro={entrar.error} seNaoAutorizado="credenciaisInvalidas" />
       <Campo
         rotulo={t('entrar.email')}

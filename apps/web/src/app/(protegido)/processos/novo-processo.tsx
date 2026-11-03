@@ -56,6 +56,7 @@ function FormularioProcesso({ aoCadastrar }: { aoCadastrar: () => void }) {
 
   return (
     <form
+      method="post"
       noValidate
       className="grid gap-4"
       onSubmit={(evento) => {

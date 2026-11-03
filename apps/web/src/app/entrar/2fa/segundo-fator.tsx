@@ -76,7 +76,12 @@ function FormularioCodigo({
     enviar(codigo.trim());
   });
   return (
-    <form noValidate onSubmit={(evento) => void aoEnviar(evento)} className="grid gap-4">
+    <form
+      method="post"
+      noValidate
+      onSubmit={(evento) => void aoEnviar(evento)}
+      className="grid gap-4"
+    >
       <AlertaFormulario erro={erro} seNaoAutorizado="codigoInvalido" />
       <Campo
         rotulo={t('segundoFator.codigo')}

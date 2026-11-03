@@ -65,7 +65,12 @@ export function FormularioEvento({
   });
 
   return (
-    <form noValidate onSubmit={(evento) => void enviar(evento)} className="grid gap-4">
+    <form
+      method="post"
+      noValidate
+      onSubmit={(evento) => void enviar(evento)}
+      className="grid gap-4"
+    >
       <div className="grid gap-4 sm:grid-cols-2">
         <Controller
           control={control}

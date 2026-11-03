@@ -19,7 +19,18 @@ const config: NextConfig = {
   // mapeamento; por isso o portal usa o webpack (`--webpack` nos scripts).
   experimental: { extensionAlias: { '.js': ['.ts', '.tsx', '.js'] } },
   // Cabeçalhos fixos de segurança (HU37); a CSP com nonce sai de src/proxy.ts.
-  headers: () => Promise.resolve([{ source: '/:caminho*', headers: [...CABECALHOS_DE_SEGURANCA] }]),
+  headers: () =>
+    Promise.resolve([
+      { source: '/:caminho*', headers: [...CABECALHOS_DE_SEGURANCA] },
+      // Arquivos públicos fora do proxy (sem nonce): CSP fechada, nada executa. Lista explícita:
+      // rotas com ponto (ex.: /ciencia/v1.…) são páginas e levam a CSP com nonce do proxy.
+      {
+        source: '/:arquivo(robots\\.txt|sitemap\\.xml|favicon\\.ico)',
+        headers: [
+          { key: 'Content-Security-Policy', value: "default-src 'none'; frame-ancestors 'none'" },
+        ],
+      },
+    ]),
 };
 
 export default createNextIntlPlugin('./src/i18n/requisicao.ts')(config);

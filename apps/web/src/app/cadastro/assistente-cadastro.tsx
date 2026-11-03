@@ -138,7 +138,12 @@ function PassoDados({ inicial, aoAvancar }: { inicial: Dados; aoAvancar: (dados:
   };
   const enviar = handleSubmit(aoAvancar);
   return (
-    <form noValidate onSubmit={(evento) => void enviar(evento)} className="grid gap-4">
+    <form
+      method="post"
+      noValidate
+      onSubmit={(evento) => void enviar(evento)}
+      className="grid gap-4"
+    >
       <Campo
         rotulo={t('cadastro.nome')}
         autoComplete="name"

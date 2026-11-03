@@ -29,6 +29,10 @@ describe('proxy de sessão', () => {
     const uma = csp(requisicao('/entrar'));
     expect(uma).toMatch(/script-src 'self' 'nonce-[A-Za-z0-9+/=]+' 'strict-dynamic'/);
     expect(uma).not.toBe(csp(requisicao('/entrar')));
+    // Link de ciência: público, com pontos no token, também leva a CSP (sem ir para /entrar).
+    const ciencia = proxy(requisicao('/ciencia/v1.token.ficticio'));
+    expect(ciencia.headers.get('location')).toBeNull();
+    expect(ciencia.headers.get('content-security-policy')).toContain("'nonce-");
   });
 
   it('encaminha /v1 para a API_URL lida em execução, com a query', () => {

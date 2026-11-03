@@ -45,7 +45,12 @@ function comPolitica(requisicao: NextRequest): NextResponse {
   return resposta;
 }
 
-// Fora da sessão: /health, os arquivos do Next.js e arquivos estáticos (com extensão).
+// Fora da sessão: /health, os arquivos do Next.js e arquivos estáticos (pela extensão). Rotas com
+// ponto no meio (ex.: o token em /ciencia/v1.…) passam pelo proxy e recebem a CSP com nonce.
 export const config = {
-  matcher: ['/v1/:caminho*', '/admin/filas/:caminho*', '/((?!v1/|_next/|health/|.*\\..*).*)'],
+  matcher: [
+    '/v1/:caminho*',
+    '/admin/filas/:caminho*',
+    '/((?!v1/|_next/|health/|.*\\.(?:ico|png|jpg|jpeg|svg|gif|webp|txt|xml|webmanifest|js|css|map|woff2?)$).*)',
+  ],
 };
