@@ -822,6 +822,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/ciencia/lote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirma a ciência de vários prazos pela sessão (até 200), com um registro na trilha por prazo. */
+        post: operations["confirmarCienciaEmLote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/clientes": {
         parameters: {
             query?: never;
@@ -1795,6 +1812,20 @@ export interface components {
             /** @description Casos aceitos no formato de eval/casos (HU22). */
             casos: unknown[];
         };
+        CienciaEmLote: {
+            itens: {
+                /** Format: uuid */
+                prazoId: string;
+                /**
+                 * @description Cada prazo em transação própria: a falha de um não impede os outros.
+                 * @enum {string}
+                 */
+                situacao: "confirmada" | "ja-confirmada" | "falhou";
+                confirmadaEm: string | null;
+                /** @description Motivo da falha (ex.: prazo-cancelado). */
+                codigo: string | null;
+            }[];
+        };
         CienciaRegistrada: {
             /** Format: uuid */
             prazoId: string;
@@ -2397,6 +2428,10 @@ export interface components {
         PedidoDeCancelamentoDeCompromisso: {
             motivo: string;
         };
+        PedidoDeCienciaEmLote: {
+            /** @description Prazos a confirmar; repetidos contam uma vez. */
+            prazoIds: string[];
+        };
         PedidoDeCliente: {
             nome: string;
             /** @description CPF ou CNPJ, com ou sem máscara. */
@@ -2698,7 +2733,7 @@ export interface components {
             };
         } | {
             /** @enum {string} */
-            tipo: "busca-prazos" | "busca-publicacoes";
+            tipo: "busca-prazos" | "busca-publicacoes" | "controle-ciencia";
             /** @enum {string} */
             formato: "pdf" | "xlsx";
             filtros: {
@@ -3015,7 +3050,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            tipo: "agenda" | "busca-prazos" | "busca-publicacoes";
+            tipo: "agenda" | "busca-prazos" | "busca-publicacoes" | "controle-ciencia";
             /** @enum {string} */
             formato: "pdf" | "xlsx";
             /** @description Filtros como foram pedidos. */
@@ -6571,6 +6606,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LinkDeCiencia"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    confirmarCienciaEmLote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeCienciaEmLote"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CienciaEmLote"];
                 };
             };
             /** @description Entrada inválida. */

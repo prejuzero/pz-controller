@@ -4179,6 +4179,78 @@
         }
       }
     },
+    "/v1/ciencia/lote": {
+      "post": {
+        "operationId": "confirmarCienciaEmLote",
+        "summary": "Confirma a ciência de vários prazos pela sessão (até 200), com um registro na trilha por prazo.",
+        "tags": [
+          "ciencia"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeCienciaEmLote"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CienciaEmLote"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/clientes": {
       "get": {
         "operationId": "listarClientes",
@@ -9796,6 +9868,63 @@
         ],
         "additionalProperties": false
       },
+      "CienciaEmLote": {
+        "type": "object",
+        "properties": {
+          "itens": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "prazoId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "situacao": {
+                  "type": "string",
+                  "enum": [
+                    "confirmada",
+                    "ja-confirmada",
+                    "falhou"
+                  ],
+                  "description": "Cada prazo em transação própria: a falha de um não impede os outros."
+                },
+                "confirmadaEm": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "codigo": {
+                  "description": "Motivo da falha (ex.: prazo-cancelado).",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "prazoId",
+                "situacao",
+                "confirmadaEm",
+                "codigo"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "itens"
+        ],
+        "additionalProperties": false
+      },
       "CienciaRegistrada": {
         "type": "object",
         "properties": {
@@ -12378,6 +12507,26 @@
         ],
         "additionalProperties": false
       },
+      "PedidoDeCienciaEmLote": {
+        "type": "object",
+        "properties": {
+          "prazoIds": {
+            "minItems": 1,
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "description": "Prazos a confirmar; repetidos contam uma vez."
+          }
+        },
+        "required": [
+          "prazoIds"
+        ],
+        "additionalProperties": false
+      },
       "PedidoDeCliente": {
         "type": "object",
         "properties": {
@@ -13358,7 +13507,8 @@
                 "type": "string",
                 "enum": [
                   "busca-prazos",
-                  "busca-publicacoes"
+                  "busca-publicacoes",
+                  "controle-ciencia"
                 ]
               },
               "formato": {
@@ -14695,7 +14845,8 @@
             "enum": [
               "agenda",
               "busca-prazos",
-              "busca-publicacoes"
+              "busca-publicacoes",
+              "controle-ciencia"
             ]
           },
           "formato": {

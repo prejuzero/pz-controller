@@ -35,6 +35,14 @@ export interface RepositorioDeRelatorios<Transacao> {
   falhar(transacao: Transacao, id: Uuid): Promise<void>;
 }
 
+export interface CienciaDoPrazoNoRelatorio {
+  readonly confirmadaEm?: Instant;
+  readonly canal?: string;
+  readonly enviadas: number;
+  readonly entregues: number;
+  readonly rejeitadas: number;
+}
+
 export interface Pagina<T> {
   readonly itens: readonly T[];
   readonly proximoCursor: string | null;
@@ -52,6 +60,10 @@ export interface FonteDosRelatorios {
   /** Um prazo do tenant (envio manual, HU32), com o número do processo; `undefined` se não existe. */
   prazo(id: Uuid): Promise<{ prazo: PrazoDoRelatorio; numeroProcesso?: string } | undefined>;
   publicacao(id: Uuid): Promise<PublicacaoDoRelatorio | undefined>;
+  /** Ciência e notificações dos prazos (controle de ciência, HU34); sem linha = nada registrado. */
+  controleDeCiencia(
+    prazoIds: readonly string[],
+  ): Promise<ReadonlyMap<string, CienciaDoPrazoNoRelatorio>>;
   /** Nome de quem pediu, para o cabeçalho. */
   nomeDoUsuario(usuarioId: Uuid): Promise<string>;
 }

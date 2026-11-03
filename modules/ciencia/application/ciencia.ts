@@ -77,6 +77,23 @@ export interface PrazoParaCiencia {
 }
 export type DadosDoPrazo = (prazoId: Uuid) => Promise<PrazoParaCiencia | undefined>;
 
+export type ItemDoLote =
+  | {
+      readonly prazoId: Uuid;
+      readonly situacao: 'confirmada' | 'ja-confirmada';
+      readonly confirmadaEm: Instant;
+    }
+  | { readonly prazoId: Uuid; readonly situacao: 'falhou'; readonly codigo: string };
+
+export interface ResultadoDoLote {
+  readonly itens: readonly ItemDoLote[];
+  /** Falhas que não são de negócio (banco, rede): o chamador registra e alerta. */
+  readonly inesperadas: readonly unknown[];
+}
+
+/** Transações simultâneas no lote: 200 confirmações em menos de 3 s sem esgotar o pool. */
+const CONCORRENCIA_DO_LOTE = 8;
+
 export type NoTenant = <T>(tenantId: Uuid, trabalho: () => Promise<T>) => Promise<T>;
 
 export type CienciaConfirmada = EventoDominio<
@@ -269,6 +286,46 @@ export class ConfirmarCiencia<Transacao> {
         agora: this.relogio.agora(),
       }),
     );
+  }
+
+  /**
+   * Confirmação em lote (HU34, RF75): cada prazo na própria transação, com o próprio registro na
+   * trilha e o próprio evento; a falha de um não impede os outros. Falha inesperada volta à parte
+   * para quem chama registrar (nada falha em silêncio).
+   */
+  async emLote(
+    autor: { tenantId: Uuid; usuarioId: Uuid; canal: 'portal' | 'app' },
+    prazoIds: readonly Uuid[],
+    contexto: ContextoDaRequisicao,
+  ): Promise<ResultadoDoLote> {
+    const unicos = [...new Set(prazoIds)];
+    const itens: ItemDoLote[] = new Array<ItemDoLote>(unicos.length);
+    const inesperadas: unknown[] = [];
+    let proximo = 0;
+    const trabalhar = async () => {
+      while (proximo < unicos.length) {
+        const i = proximo++;
+        const prazoId = unicos[i];
+        if (prazoId === undefined) return;
+        try {
+          const r = await this.pelaSessao(autor, prazoId, contexto);
+          itens[i] = r.ok
+            ? {
+                prazoId,
+                situacao: r.valor.jaConfirmada ? 'ja-confirmada' : 'confirmada',
+                confirmadaEm: r.valor.confirmadaEm,
+              }
+            : { prazoId, situacao: 'falhou', codigo: r.erro.codigo };
+        } catch (erro) {
+          inesperadas.push(erro);
+          itens[i] = { prazoId, situacao: 'falhou', codigo: 'erro-interno' };
+        }
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(CONCORRENCIA_DO_LOTE, unicos.length) }, trabalhar),
+    );
+    return { itens, inesperadas };
   }
 
   async #confirmar(

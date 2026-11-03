@@ -1,6 +1,7 @@
 import { Body, Controller, HttpCode, Inject, Param, Post, Req } from '@nestjs/common';
 import { ConfirmarCiencia, ConsultarLinkDeCiencia } from '@pz/ciencia';
-import { PedidoComToken } from '@pz/contracts';
+import { PedidoComToken, PedidoDeCienciaEmLote } from '@pz/contracts';
+import { criarLogger, registrarErro } from '@pz/observability';
 import { z } from 'zod';
 
 import { autenticacao, contextoDe, validar } from '../auth/auth.controller.js';
@@ -9,9 +10,11 @@ import { LimitarPorIp } from '../http/limite.js';
 
 import type { RequisicaoAutenticada } from '../http/acesso.js';
 import type { ResultadoDaConfirmacao } from '@pz/ciencia';
-import type { CienciaRegistrada, LinkDeCiencia } from '@pz/contracts';
+import type { CienciaEmLote, CienciaRegistrada, LinkDeCiencia } from '@pz/contracts';
 import type { Uuid } from '@pz/kernel';
 import type { FastifyRequest } from 'fastify';
+
+const logger = criarLogger('api.ciencia');
 
 const registrada = (r: ResultadoDaConfirmacao): CienciaRegistrada => ({
   prazoId: r.prazoId,
@@ -84,5 +87,40 @@ export class CienciaController {
     );
     if (!r.ok) throw r.erro;
     return registrada(r.valor);
+  }
+
+  @Post('ciencia/lote')
+  @RequerPermissao('prazos:confirmar')
+  @HttpCode(200)
+  async confirmarEmLote(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Body() corpo: unknown,
+  ): Promise<CienciaEmLote> {
+    const { sessao } = autenticacao(requisicao);
+    const { prazoIds } = validar(PedidoDeCienciaEmLote.esquema, corpo);
+    const r = await this.confirmar.emLote(
+      {
+        tenantId: sessao.tenantId,
+        usuarioId: sessao.usuarioId,
+        canal: sessao.dispositivoId === undefined ? 'portal' : 'app',
+      },
+      prazoIds as Uuid[],
+      contextoDe(requisicao),
+    );
+    // Nada falha em silêncio: o item volta "falhou" e o erro vai para o log e o Sentry.
+    for (const erro of r.inesperadas)
+      registrarErro(logger, erro, 'falha inesperada na ciência em lote', 'api.ciencia');
+    return {
+      itens: r.itens.map((i) =>
+        i.situacao === 'falhou'
+          ? { prazoId: i.prazoId, situacao: i.situacao, confirmadaEm: null, codigo: i.codigo }
+          : {
+              prazoId: i.prazoId,
+              situacao: i.situacao,
+              confirmadaEm: i.confirmadaEm.paraIso(),
+              codigo: null,
+            },
+      ),
+    };
   }
 }

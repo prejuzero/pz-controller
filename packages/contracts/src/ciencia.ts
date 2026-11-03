@@ -72,8 +72,54 @@ export const confirmarCiencia = definirRota({
   erros: [404, 409],
 });
 
+/** Teto do lote (HU34): 200 confirmações por pedido. */
+export const MAXIMO_DO_LOTE_DE_CIENCIA = 200;
+
+export const PedidoDeCienciaEmLote = nomear(
+  'PedidoDeCienciaEmLote',
+  z
+    .object({
+      prazoIds: z
+        .array(Uuid)
+        .min(1)
+        .max(MAXIMO_DO_LOTE_DE_CIENCIA)
+        .describe('Prazos a confirmar; repetidos contam uma vez.'),
+    })
+    .strict(),
+);
+export type PedidoDeCienciaEmLote = z.infer<typeof PedidoDeCienciaEmLote.esquema>;
+
+export const CienciaEmLote = nomear(
+  'CienciaEmLote',
+  z.object({
+    itens: z.array(
+      z.object({
+        prazoId: Uuid,
+        situacao: z
+          .enum(['confirmada', 'ja-confirmada', 'falhou'])
+          .describe('Cada prazo em transação própria: a falha de um não impede os outros.'),
+        confirmadaEm: Instante.nullable(),
+        codigo: z.string().nullable().describe('Motivo da falha (ex.: prazo-cancelado).'),
+      }),
+    ),
+  }),
+);
+export type CienciaEmLote = z.infer<typeof CienciaEmLote.esquema>;
+
+export const confirmarCienciaEmLote = definirRota({
+  id: 'confirmarCienciaEmLote',
+  metodo: 'post',
+  caminho: '/v1/ciencia/lote',
+  resumo:
+    'Confirma a ciência de vários prazos pela sessão (até 200), com um registro na trilha por prazo.',
+  tag: 'ciencia',
+  corpo: PedidoDeCienciaEmLote,
+  resposta: { status: 200, corpo: CienciaEmLote },
+});
+
 export const ROTAS_CIENCIA = [
   consultarLinkDeCiencia,
   confirmarCienciaPeloLink,
   confirmarCiencia,
+  confirmarCienciaEmLote,
 ] as const;

@@ -194,3 +194,73 @@ describe('ciência pela sessão e indícios (HU33)', () => {
     expect(repo.estados.get(PRAZO)?.confirmacao?.canal).toBe('app');
   });
 });
+
+describe('ciência em lote (HU34)', () => {
+  const autor = { tenantId: TENANT, usuarioId: ANA, canal: 'portal' as const };
+
+  it('um registro na trilha e um evento por prazo; falha de um não impede os outros', async () => {
+    await confirmar().pelaSessao(autor, OUTRO_PRAZO, contexto);
+    auditados = [];
+    const inexistente = gerarUuidV7();
+    const r = await confirmar().emLote(autor, [PRAZO, OUTRO_PRAZO, inexistente, PRAZO], contexto);
+    expect(r.inesperadas).toEqual([]);
+    expect(r.itens).toEqual([
+      { prazoId: PRAZO, situacao: 'confirmada', confirmadaEm: relogio.agora() },
+      { prazoId: OUTRO_PRAZO, situacao: 'ja-confirmada', confirmadaEm: relogio.agora() },
+      { prazoId: inexistente, situacao: 'falhou', codigo: 'prazo-inexistente' },
+    ]);
+    expect(auditados.map((a) => [a.entrada.tipo, a.entrada.entidadeId])).toEqual([
+      ['ciencia.ciencia-confirmada', PRAZO],
+    ]);
+    expect(outbox.pendentes().filter((e) => e.tipo === 'CienciaConfirmada')).toHaveLength(2);
+  });
+
+  it('falha inesperada num prazo volta à parte e não derruba o lote', async () => {
+    const quebrado = gerarUuidV7();
+    const comFalha = new ConfirmarCiencia(
+      noTenant,
+      outbox,
+      repo,
+      tokens,
+      (id) => (id === quebrado ? Promise.reject(new Error('banco fora')) : prazos(id)),
+      trilha,
+      outbox,
+      relogio,
+    );
+    const r = await comFalha.emLote(autor, [quebrado, PRAZO], contexto);
+    expect(r.itens.map((i) => i.situacao)).toEqual(['falhou', 'confirmada']);
+    expect(r.itens[0]).toMatchObject({ codigo: 'erro-interno' });
+    expect(r.inesperadas).toHaveLength(1);
+  });
+
+  it('200 prazos em menos de 3 s (aceite técnico)', async () => {
+    const ids = Array.from({ length: 200 }, () => gerarUuidV7());
+    const todos = new Set(ids);
+    const rapido = new ConfirmarCiencia(
+      noTenant,
+      outbox,
+      repo,
+      tokens,
+      (id) =>
+        Promise.resolve(
+          todos.has(id)
+            ? {
+                prazoId: id,
+                numeroProcesso: '1',
+                tipoAto: 'x',
+                vencimento: null,
+                status: 'pendente',
+              }
+            : undefined,
+        ),
+      trilha,
+      outbox,
+      relogio,
+    );
+    const inicio = performance.now();
+    const r = await rapido.emLote(autor, ids, contexto);
+    expect(performance.now() - inicio).toBeLessThan(3_000);
+    expect(r.itens.every((i) => i.situacao === 'confirmada')).toBe(true);
+    expect(auditados).toHaveLength(200);
+  });
+});

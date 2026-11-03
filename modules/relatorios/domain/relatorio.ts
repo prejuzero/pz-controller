@@ -1,7 +1,12 @@
 import { formatarNumeroCnj, lerNumeroCnj } from '@pz/kernel';
 
 /** Relatórios do MVP (HU29, RF55–RF57): agenda de prazos e o resultado de qualquer busca. */
-export const TIPOS_DE_RELATORIO = ['agenda', 'busca-prazos', 'busca-publicacoes'] as const;
+export const TIPOS_DE_RELATORIO = [
+  'agenda',
+  'busca-prazos',
+  'busca-publicacoes',
+  'controle-ciencia',
+] as const;
 export type TipoDeRelatorio = (typeof TIPOS_DE_RELATORIO)[number];
 
 /** Formatos do MVP; CSV e .ics entram como novos renderizadores (F2). */
@@ -16,6 +21,7 @@ export const MAXIMO_DE_LINHAS = 5_000;
 
 /** Prazo como a busca devolve (contrato `Prazo`), só os campos que o relatório usa. */
 export interface PrazoDoRelatorio {
+  readonly id: string;
   readonly vencimento: string | null;
   readonly inicio: string | null;
   readonly tipoAto: string;
@@ -148,6 +154,56 @@ export function linhasDaAgenda(prazos: readonly PrazoDoRelatorio[]) {
   return { colunas, rotuloDoGrupo: 'Vencimento', grupos };
 }
 
+/** Ciência e notificações de um prazo, como o controle de ciência imprime (HU34, RF83). */
+export interface CienciaDoRelatorio {
+  /** "DD/MM/AAAA HH:MM (horário de Brasília)"; `null` sem confirmação. */
+  readonly confirmadaEm: string | null;
+  readonly canal: string | null;
+  readonly enviadas: number;
+  readonly entregues: number;
+  readonly rejeitadas: number;
+}
+
+const CANAIS: Readonly<Record<string, string>> = {
+  email: 'Link do e-mail',
+  portal: 'Portal',
+  app: 'App',
+};
+
+/**
+ * Controle de ciência (HU34, RF83): por prazo, a situação da ciência, as notificações enviadas,
+ * entregues e rejeitadas e a data e o canal da confirmação (os mesmos dados da trilha).
+ */
+export function linhasDoControleDeCiencia(
+  prazos: readonly PrazoDoRelatorio[],
+  ciencias: ReadonlyMap<string, CienciaDoRelatorio>,
+) {
+  const colunas: Coluna[] = [
+    { chave: 'vencimento', titulo: 'Vencimento', largura: 1.2 },
+    { chave: 'ato', titulo: 'Ato', largura: 2 },
+    { chave: 'ciencia', titulo: 'Ciência', largura: 1 },
+    { chave: 'confirmadaEm', titulo: 'Confirmada em', largura: 1.8 },
+    { chave: 'canal', titulo: 'Canal', largura: 1.1 },
+    { chave: 'notificacoes', titulo: 'Notificações (env./entr./rej.)', largura: 1.6 },
+  ];
+  const linhas = prazos.map((p) => {
+    const c = ciencias.get(p.id);
+    const base = linhaDoPrazo(p);
+    return {
+      vencimento: base.vencimento ?? '',
+      ato: base.ato ?? '',
+      ciencia: base.ciencia ?? '',
+      confirmadaEm: c?.confirmadaEm ?? '',
+      canal: c?.canal === null || c?.canal === undefined ? '' : (CANAIS[c.canal] ?? c.canal),
+      notificacoes:
+        c === undefined
+          ? '0 / 0 / 0'
+          : `${String(c.enviadas)} / ${String(c.entregues)} / ${String(c.rejeitadas)}`,
+    };
+  });
+  return { colunas, rotuloDoGrupo: null, grupos: [{ titulo: null, linhas }] };
+}
+
 /** Busca de publicações (RF57): as colunas da tela de busca. */
 export function linhasDaBuscaDePublicacoes(
   publicacoes: readonly PublicacaoDoRelatorio[],
@@ -175,6 +231,7 @@ export const TITULOS: Readonly<Record<TipoDeRelatorio | 'prazo' | 'publicacao', 
   agenda: 'Agenda de prazos',
   'busca-prazos': 'Busca de prazos',
   'busca-publicacoes': 'Busca de publicações',
+  'controle-ciencia': 'Controle de ciência',
   // Envio manual (HU32): um prazo ou uma publicação.
   prazo: 'Prazo',
   publicacao: 'Publicação',

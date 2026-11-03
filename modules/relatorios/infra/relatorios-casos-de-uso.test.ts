@@ -56,6 +56,7 @@ class ArmazenamentoFalso implements ArmazenamentoArquivos {
 }
 
 const prazo = (i: number): PrazoDoRelatorio => ({
+  id: `prazo-${String(i)}`,
   vencimento: `2026-11-${String(10 + (i % 3)).padStart(2, '0')}`,
   inicio: '2026-11-03',
   tipoAto: `Ato fictício ${String(i)}`,
@@ -109,6 +110,23 @@ function fonteCom(total: number, pedidos: Record<string, unknown>[] = []): Fonte
               teor: `Intimação fictícia ${'longa '.repeat(80)}fim do teor.`,
             }
           : undefined,
+      ),
+    controleDeCiencia: (ids) =>
+      Promise.resolve(
+        new Map(
+          ids
+            .filter((id) => id === 'prazo-0')
+            .map((id) => [
+              id,
+              {
+                confirmadaEm: Instant.deIso('2026-11-02T13:00:00Z'),
+                canal: 'portal',
+                enviadas: 1,
+                entregues: 1,
+                rejeitadas: 0,
+              },
+            ]),
+        ),
       ),
     nomeDoUsuario: () => Promise.resolve('Ana Fictícia'),
   };
@@ -453,5 +471,27 @@ describe('arquivo do envio manual (HU32)', () => {
     await expect(
       soPdf.executar(USUARIO, { origem: 'prazo', id: PRAZO, formato: 'xlsx' }),
     ).rejects.toThrow(/Sem renderizador/);
+  });
+
+  it('controle de ciência (HU34): prazos da busca com a confirmação e as notificações', async () => {
+    const id = await pedir({
+      tipo: 'controle-ciencia',
+      formato: 'xlsx',
+      filtros: { tribunal: 'TJGO' },
+    });
+    expect(await gerador(fonteCom(2)).executar(id)).toBe('gerado');
+    const linhas = await planilha(id);
+    expect(linhas[0]).toEqual(['Controle de ciência']);
+    expect(linhas.slice(-2)).toEqual([
+      [
+        '10/11/2026',
+        'Ato fictício 0',
+        'Pendente',
+        '02/11/2026, 10:00 (horário de Brasília)',
+        'Portal',
+        '1 / 1 / 0',
+      ],
+      ['11/11/2026', 'Ato fictício 1', 'Pendente', '', '', '0 / 0 / 0'],
+    ]);
   });
 });

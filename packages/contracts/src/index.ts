@@ -51,12 +51,16 @@ import { ROTAS_CALENDARIO } from './calendario/index.js';
 import { ROTAS_CAPTURA } from './captura.js';
 import { ROTAS_CIENCIA } from './ciencia.js';
 export {
+  CienciaEmLote,
   CienciaRegistrada,
   confirmarCiencia,
+  confirmarCienciaEmLote,
   confirmarCienciaPeloLink,
   consultarLinkDeCiencia,
   LinkDeCiencia,
+  MAXIMO_DO_LOTE_DE_CIENCIA,
   PedidoComToken,
+  PedidoDeCienciaEmLote,
   ROTAS_CIENCIA,
 } from './ciencia.js';
 import { ROTAS_NOTIFICACOES } from './notificacoes/index.js';

@@ -59,6 +59,33 @@ export class CienciaPostgres implements RepositorioDeCiencia<Transacao> {
     return count === 1;
   }
 
+  /**
+   * Confirmações dos prazos (controle de ciência, HU34): quando e por qual canal, gravadas na
+   * mesma transação da trilha. Prazo sem confirmação fica de fora do mapa.
+   */
+  async confirmacoes(
+    tx: Transacao,
+    prazoIds: readonly Uuid[],
+  ): Promise<ReadonlyMap<Uuid, { confirmadaEm: Instant; canal: string }>> {
+    if (prazoIds.length === 0) return new Map();
+    const linhas = await tx.cienciaPrazo.findMany({
+      where: { prazoId: { in: [...prazoIds] }, confirmadaEm: { not: null } },
+      select: { prazoId: true, confirmadaEm: true, canal: true },
+    });
+    return new Map(
+      linhas.flatMap((l) =>
+        l.confirmadaEm === null
+          ? []
+          : [
+              [
+                l.prazoId as Uuid,
+                { confirmadaEm: Instant.deEpochMs(l.confirmadaEm.getTime()), canal: l.canal ?? '' },
+              ] as const,
+            ],
+      ),
+    );
+  }
+
   async ciencia(tx: Transacao, prazoId: Uuid): Promise<CienciaDoPrazo | undefined> {
     const l = await tx.cienciaPrazo.findUnique({ where: { prazoId } });
     if (l === null) return undefined;

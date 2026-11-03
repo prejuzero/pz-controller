@@ -13,7 +13,14 @@ type Formato = PedidoDeRelatorio['formato'];
  * Exportar em PDF ou Excel (HU29): pede o relatório com os filtros da tela e avisa que ele fica
  * pronto em Relatórios (erro vira aviso pelo cache global). Só com a permissão de exportar.
  */
-export function BotoesExportar({ pedido }: { pedido: (formato: Formato) => PedidoDeRelatorio }) {
+export function BotoesExportar({
+  pedido,
+  controleDeCiencia = false,
+}: {
+  pedido: (formato: Formato) => PedidoDeRelatorio;
+  /** Controle de ciência (HU34): os mesmos prazos com ciência e notificações de cada um. */
+  controleDeCiencia?: boolean;
+}) {
   const t = useTranslations('relatorios');
   const permitido = usePermissao('relatorios:exportar');
   const solicitar = useSolicitarRelatorio();
@@ -26,7 +33,11 @@ export function BotoesExportar({ pedido }: { pedido: (formato: Formato) => Pedid
     });
   };
   return (
-    <div role="group" aria-label={t('exportar')} className="flex flex-wrap gap-2">
+    <div
+      role="group"
+      aria-label={controleDeCiencia ? t('controleDeCiencia') : t('exportar')}
+      className="flex flex-wrap gap-2"
+    >
       {(['pdf', 'xlsx'] as const).map((formato) => (
         <Botao
           key={formato}
@@ -37,7 +48,9 @@ export function BotoesExportar({ pedido }: { pedido: (formato: Formato) => Pedid
             exportar(formato);
           }}
         >
-          {t(`exportarComo.${formato}`)}
+          {controleDeCiencia
+            ? t('controleComo', { formato: t(`formatos.${formato}`) })
+            : t(`exportarComo.${formato}`)}
         </Botao>
       ))}
     </div>

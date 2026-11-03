@@ -6,6 +6,7 @@ import {
   linhasDaAgenda,
   linhasDaBuscaDePrazos,
   linhasDaBuscaDePublicacoes,
+  linhasDoControleDeCiencia,
   MAXIMO_DE_LINHAS,
   TITULOS,
 } from '../domain/relatorio.js';
@@ -222,10 +223,29 @@ async function montarDocumento(
     if (!lidos.ok) return lidos;
     linhas = lidos.valor.itens.length;
     truncado = lidos.valor.truncado;
-    corpo =
-      tipo === 'agenda'
-        ? linhasDaAgenda(lidos.valor.itens)
-        : linhasDaBuscaDePrazos(lidos.valor.itens);
+    if (tipo === 'controle-ciencia') {
+      const ciencias = await fonte.controleDeCiencia(lidos.valor.itens.map((p) => p.id));
+      corpo = linhasDoControleDeCiencia(
+        lidos.valor.itens,
+        new Map(
+          [...ciencias].map(([id, c]) => [
+            id,
+            {
+              confirmadaEm: c.confirmadaEm === undefined ? null : dataHora(c.confirmadaEm),
+              canal: c.canal ?? null,
+              enviadas: c.enviadas,
+              entregues: c.entregues,
+              rejeitadas: c.rejeitadas,
+            },
+          ]),
+        ),
+      );
+    } else {
+      corpo =
+        tipo === 'agenda'
+          ? linhasDaAgenda(lidos.valor.itens)
+          : linhasDaBuscaDePrazos(lidos.valor.itens);
+    }
   }
   return ok({
     linhas,

@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 
+import { marcarEntrada } from '../../alerta-de-entrada';
 import { useEntrar } from '../../api/hooks';
 import { chaveValidacao } from '../../formularios';
 import { destinoAposEntrar, ROTA_CADASTRO, ROTA_RECUPERAR_SENHA } from '../../rotas';
@@ -26,6 +27,9 @@ export function FormularioEntrar({ retorno }: { retorno: string | undefined }) {
   const enviar = handleSubmit((credenciais) => {
     entrar.mutate(credenciais, {
       onSuccess: (sessao) => {
+        // O alerta de prazos sem ciência (HU34) aparece na primeira tela protegida depois da
+        // entrada (inclusive depois do 2FA).
+        marcarEntrada();
         router.replace(destinoAposEntrar(sessao.proximoPasso, retorno));
       },
     });

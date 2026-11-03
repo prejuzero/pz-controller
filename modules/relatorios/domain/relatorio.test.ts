@@ -7,12 +7,14 @@ import {
   linhasDaAgenda,
   linhasDaBuscaDePrazos,
   linhasDaBuscaDePublicacoes,
+  linhasDoControleDeCiencia,
 } from './relatorio.js';
 
 import type { PrazoDoRelatorio } from './relatorio.js';
 
 // Dados FICTÍCIOS (HU29).
 const prazo = (sobre: Partial<PrazoDoRelatorio> = {}): PrazoDoRelatorio => ({
+  id: 'p1',
   vencimento: '2026-11-10',
   inicio: '2026-11-03',
   tipoAto: 'Contestação',
@@ -22,6 +24,61 @@ const prazo = (sobre: Partial<PrazoDoRelatorio> = {}): PrazoDoRelatorio => ({
   vencimentoManual: false,
   jurisdicao: { tribunal: 'TJGO' },
   ...sobre,
+});
+
+describe('controle de ciência (HU34)', () => {
+  it('por prazo: ciência, confirmação e notificações; sem registro, zeros', () => {
+    const { colunas, grupos } = linhasDoControleDeCiencia(
+      [prazo(), prazo({ id: 'p2', statusCiencia: 'pendente' }), prazo({ id: 'p3' })],
+      new Map([
+        [
+          'p1',
+          {
+            confirmadaEm: '03/11/2026, 10:00 (horário de Brasília)',
+            canal: 'email',
+            enviadas: 2,
+            entregues: 2,
+            rejeitadas: 0,
+          },
+        ],
+        ['p3', { confirmadaEm: null, canal: 'fax', enviadas: 1, entregues: 0, rejeitadas: 1 }],
+      ]),
+    );
+    expect(colunas.map((c) => c.titulo)).toEqual([
+      'Vencimento',
+      'Ato',
+      'Ciência',
+      'Confirmada em',
+      'Canal',
+      'Notificações (env./entr./rej.)',
+    ]);
+    expect(grupos[0]?.linhas).toEqual([
+      {
+        vencimento: '10/11/2026',
+        ato: 'Contestação',
+        ciencia: 'Confirmada',
+        confirmadaEm: '03/11/2026, 10:00 (horário de Brasília)',
+        canal: 'Link do e-mail',
+        notificacoes: '2 / 2 / 0',
+      },
+      {
+        vencimento: '10/11/2026',
+        ato: 'Contestação',
+        ciencia: 'Pendente',
+        confirmadaEm: '',
+        canal: '',
+        notificacoes: '0 / 0 / 0',
+      },
+      {
+        vencimento: '10/11/2026',
+        ato: 'Contestação',
+        ciencia: 'Confirmada',
+        confirmadaEm: '',
+        canal: 'fax',
+        notificacoes: '1 / 0 / 1',
+      },
+    ]);
+  });
 });
 
 describe('documento do relatório (HU29)', () => {
