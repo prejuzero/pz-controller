@@ -7,6 +7,7 @@ import { registrarPainelDeFilas } from './admin/painel-de-filas.js';
 import { AppModule } from './app.module.js';
 import { registrarContextoDeRequisicao } from './http/contexto.js';
 import { validacaoPorContrato } from './http/problemas.js';
+import { origensPermitidas, registrarCabecalhosDeSeguranca } from './http/seguranca.js';
 
 import type { OpcoesApi } from './app.module.js';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
@@ -16,6 +17,9 @@ import type { RawServerDefault } from 'fastify';
 export async function criarApi(opcoes: OpcoesApi): Promise<NestFastifyApplication> {
   const adaptador = new FastifyAdapter({ trustProxy: true, bodyLimit: 1_048_576 });
   registrarContextoDeRequisicao(adaptador.getInstance());
+  registrarCabecalhosDeSeguranca(adaptador.getInstance(), {
+    producao: opcoes.ambiente.NODE_ENV === 'production',
+  });
   const api = await NestFactory.create<NestFastifyApplication>(
     AppModule.registrar(opcoes),
     adaptador,
@@ -33,6 +37,8 @@ export async function criarApi(opcoes: OpcoesApi): Promise<NestFastifyApplicatio
   // Cadastro assistido por PDF (HU25): corpo binário até 10 MB, só nesta rota de tipo próprio.
   api.useBodyParser('application/pdf', { bodyLimit: 10 * 1024 * 1024 });
   api.useGlobalPipes(validacaoPorContrato);
+  const origens = origensPermitidas(opcoes.ambiente.CORS_ORIGENS);
+  if (origens.length > 0) api.enableCors({ origin: origens, credentials: true, maxAge: 600 });
   await registrarPainelDeFilas(api);
   api.enableShutdownHooks();
   return api;

@@ -1,3 +1,4 @@
+import { headers } from 'next/headers';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getTranslations } from 'next-intl/server';
 
@@ -16,6 +17,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function LayoutRaiz({ children }: { children: ReactNode }) {
+  // A CSP traz um nonce por requisição (src/proxy.ts): a página tem de ser renderizada a cada
+  // requisição para o Next.js aplicar o nonce aos scripts. Ler os cabeçalhos garante isso.
+  await headers();
   return (
     <html lang={await getLocale()}>
       <body>

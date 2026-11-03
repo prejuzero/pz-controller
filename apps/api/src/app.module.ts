@@ -218,7 +218,7 @@ import {
   VERIFICADORES,
 } from './fichas.js';
 import { GuardaDeAcesso } from './http/acesso.js';
-import { GuardaDeLimite, JanelaRedis } from './http/limite.js';
+import { GuardaDeLimite, JanelaRedis, LimiteDoTenant } from './http/limite.js';
 import { FiltroDeProblemas } from './http/problemas.js';
 import { NotificacoesController } from './notificacoes/notificacoes.controller.js';
 import { OpenApiController } from './openapi.controller.js';
@@ -1441,6 +1441,7 @@ export class AppModule {
           ),
       },
       { provide: APP_INTERCEPTOR, useClass: ContextoDoUsuario },
+      { provide: APP_INTERCEPTOR, useClass: LimiteDoTenant },
       {
         provide: RECEPTORES_DE_WEBHOOK,
         useValue: opcoes.receptoresDeWebhook ?? receptoresDoAmbiente(opcoes.ambiente),
