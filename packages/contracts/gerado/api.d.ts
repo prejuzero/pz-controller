@@ -894,6 +894,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/conferencias": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Processos que exigem conferência de painel, com a próxima data (atrasados primeiro). */
+        get: operations["listarConferencias"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/dashboard/linha-do-tempo": {
         parameters: {
             query?: never;
@@ -1395,6 +1412,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/processos/{id}/conferencias": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Registra a conferência do painel do tribunal (com ou sem novidade). */
+        post: operations["registrarConferencia"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/processos/{id}/dias-nao-uteis": {
         parameters: {
             query?: never;
@@ -1782,6 +1816,50 @@ export interface components {
         };
         Compromissos: {
             itens: components["schemas"]["Compromisso"][];
+        };
+        ConferenciaDePainel: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            processoId: string;
+            /** Format: uuid */
+            usuarioId: string;
+            /**
+             * Format: date-time
+             * @description Relógio do servidor.
+             */
+            realizadaEm: string;
+            /** @enum {string} */
+            resultado: "sem-novidade" | "nova-intimacao";
+            observacao: string | null;
+        };
+        ConferenciasDoEscritorio: {
+            itens: {
+                /** Format: uuid */
+                processoId: string;
+                numeroCnj: string;
+                tribunal: string | null;
+                /**
+                 * @description Automática: as fontes públicas trazem as intimações; parcial ou manual: conferir no painel do tribunal.
+                 * @enum {string}
+                 */
+                cobertura: "automatica" | "parcial" | "manual";
+                sigiloso: boolean;
+                periodicidade: number;
+                /**
+                 * Format: date
+                 * @description Data da próxima conferência (Brasília).
+                 */
+                proxima: string;
+                atrasada: boolean;
+                lembrarHoje: boolean;
+                ultimaConferencia: {
+                    /** Format: date-time */
+                    realizadaEm: string;
+                    /** @enum {string} */
+                    resultado: "sem-novidade" | "nova-intimacao";
+                } | null;
+            }[];
         };
         ConfiguracaoSegundoFator: {
             /** @description URI otpauth:// para o QR code do aplicativo autenticador. */
@@ -2309,6 +2387,8 @@ export interface components {
             cobertura: "automatica" | "parcial" | "manual";
             /** @description Obrigatório quando a cobertura não é automática. */
             motivo?: string | null;
+            /** @description Conferência de painel a cada N dias corridos (HU36), abaixo dos 10 dias da ciência tácita (Lei 11.419, art. 5º, §3º). null: padrão (5); ausente: mantém. */
+            conferenciaACadaDias?: number | null;
         };
         PedidoDeCompromisso: {
             titulo: string;
@@ -2321,6 +2401,14 @@ export interface components {
             /** Format: uuid */
             processoId?: string;
             lembretesMinutos?: number[];
+        };
+        PedidoDeConferencia: {
+            /**
+             * @description "nova-intimacao": o portal leva ao cadastro assistido.
+             * @enum {string}
+             */
+            resultado: "sem-novidade" | "nova-intimacao";
+            observacao?: string;
         };
         /** @description O e-mail não entra: segue a base legal do serviço contratado. */
         PedidoDeConsentimento: {
@@ -2728,6 +2816,8 @@ export interface components {
              */
             cobertura: "automatica" | "parcial" | "manual";
             motivoCobertura: string | null;
+            /** @description Conferência de painel a cada N dias corridos (HU36), quando exigida. */
+            conferenciaACadaDias: number;
             clienteId: string | null;
         };
         ProximosPrazos: {
@@ -6953,6 +7043,53 @@ export interface operations {
             };
         };
     };
+    listarConferencias: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConferenciasDoEscritorio"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
     linhaDoTempoDoDashboard: {
         parameters: {
             query?: {
@@ -9385,6 +9522,77 @@ export interface operations {
             };
             /** @description Regra de negócio violada. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    registrarConferencia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeConferencia"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConferenciaDePainel"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

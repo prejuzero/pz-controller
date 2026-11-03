@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { VerificarIntegridade } from '@pz/auditoria';
 import { ExecutarCaptura, PlanejarCaptura } from '@pz/captura';
 import { limparOutbox } from '@pz/kernel';
-import { DispararLembretes, EnviarResumosDiarios } from '@pz/notificacoes';
+import { DispararLembretes, EnviarResumosDiarios, LembrarConferencias } from '@pz/notificacoes';
 import {
   criarLogger,
   registrarDivergenciaDeAuditoria,
@@ -37,7 +37,11 @@ import {
   UNIDADE_DOS_WEBHOOKS,
 } from '../fichas.js';
 import { processarWebhook, tratarWebhook } from '../integracoes/webhooks.js';
-import { dispararLembretesJob, enviarResumosJob } from '../notificacoes/jobs.js';
+import {
+  dispararLembretesJob,
+  enviarResumosJob,
+  lembrarConferenciasJob,
+} from '../notificacoes/jobs.js';
 import {
   chaveDoLote,
   gerarPrazoJob,
@@ -102,6 +106,7 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     @Inject(DispararLembretes) private readonly lembretes: DispararLembretes<unknown>,
     @Inject(EnviarResumosDiarios) private readonly resumos: EnviarResumosDiarios<unknown>,
     @Inject(GerarRelatorio) private readonly gerarRelatorio: GerarRelatorio<unknown>,
+    @Inject(LembrarConferencias) private readonly conferencias: LembrarConferencias<unknown>,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -187,6 +192,9 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     this.filas.registrar(gerarRelatorioJob, async ({ relatorioId, tenantId }) => {
       const resultado = await this.gerarRelatorio.executar(relatorioId as Uuid);
       logger.info({ relatorioId, tenantId, resultado }, 'relatório processado');
+    });
+    this.filas.registrar(lembrarConferenciasJob, async () => {
+      logger.info(await this.conferencias.executar(), 'lembretes de conferência de painel');
     });
     this.filas.registrar(enviarResumosJob, async () => {
       logger.info(await this.resumos.executar(), 'resumos diários');

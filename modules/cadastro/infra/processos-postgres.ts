@@ -26,6 +26,7 @@ const estadoDe = (linha: LinhaDoProcesso): EstadoDoProcesso => ({
   cobertura: linha.cobertura,
   motivoCobertura: linha.motivoCobertura,
   clienteId: linha.clienteId as Uuid | null,
+  conferenciaACadaDias: linha.conferenciaACadaDias,
 });
 
 const ordem = [{ id: 'desc' as const }];
@@ -59,10 +60,27 @@ export class ProcessosPostgres implements RepositorioDeProcessos<Transacao> {
   }
 
   async salvar(tx: Transacao, processo: Processo): Promise<void> {
-    const { id, orgao, comarca, sigiloso, cobertura, motivoCobertura, clienteId } = processo.estado;
+    const {
+      id,
+      orgao,
+      comarca,
+      sigiloso,
+      cobertura,
+      motivoCobertura,
+      clienteId,
+      conferenciaACadaDias,
+    } = processo.estado;
     await tx.processo.update({
       where: { id },
-      data: { orgao, comarca, sigiloso, cobertura, motivoCobertura, clienteId },
+      data: {
+        orgao,
+        comarca,
+        sigiloso,
+        cobertura,
+        motivoCobertura,
+        clienteId,
+        conferenciaACadaDias,
+      },
     });
   }
 

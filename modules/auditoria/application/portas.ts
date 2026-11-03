@@ -37,6 +37,7 @@ export const TIPOS_DE_AUDITORIA = [
   'cadastro.processo-atualizado',
   'cadastro.sigilo-alterado',
   'cadastro.cobertura-alterada',
+  'cadastro.conferencia-registrada',
   'cadastro.cliente-cadastrado',
   'cadastro.cliente-atualizado',
   'cadastro.cliente-removido',

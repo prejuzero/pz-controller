@@ -23,7 +23,13 @@ import type { Cobertura } from '../../../../api/processos';
 import type { ProcessoDoTenant } from '@pz/contracts';
 
 /** Detalhe do processo (HU12): dados, cobertura (RF91) e, nas próximas entregas, publicações e prazos. */
-export function DetalheProcesso({ id }: { id: string }) {
+export function DetalheProcesso({
+  id,
+  abrirNovoPrazo = false,
+}: {
+  id: string;
+  abrirNovoPrazo?: boolean;
+}) {
   const t = useTranslations('processos');
   const processo = useProcesso(id);
   const nomeDoCliente = useNomeDoCliente();
@@ -48,7 +54,7 @@ export function DetalheProcesso({ id }: { id: string }) {
       </div>
 
       <SePermitido permissao="prazos:confirmar">
-        <NovoPrazo processoId={p.id} />
+        <NovoPrazo processoId={p.id} abertoInicial={abrirNovoPrazo} />
       </SePermitido>
 
       <Secao
@@ -82,6 +88,14 @@ export function DetalheProcesso({ id }: { id: string }) {
             <Item rotulo={t('detalhe.motivo')} valor={p.motivoCobertura} />
           </dl>
         )}
+        {p.cobertura !== 'automatica' || p.sigiloso ? (
+          <p className="mt-3 text-sm">
+            {t('detalhe.conferenciaResumo', { dias: p.conferenciaACadaDias })}{' '}
+            <Link href="/conferencias" className="underline underline-offset-4">
+              {t('detalhe.irConferencias')}
+            </Link>
+          </p>
+        ) : null}
       </Secao>
 
       <Secao titulo={t('detalhe.publicacoes')}>
@@ -195,7 +209,10 @@ function AlterarCobertura({ processo }: { processo: ProcessoDoTenant }) {
     processo.cobertura === 'automatica' ? 'manual' : processo.cobertura,
   );
   const [motivo, setMotivo] = useState(processo.motivoCobertura ?? '');
+  const [periodicidade, setPeriodicidade] = useState(String(processo.conferenciaACadaDias));
   const exigeMotivo = cobertura !== 'automatica';
+  // Conferência de painel (HU36): sigiloso ou fora da cobertura automática.
+  const exigeConferencia = exigeMotivo || processo.sigiloso;
   const motivoValido = !exigeMotivo || motivo.trim().length >= 3;
   const rotulo =
     processo.cobertura === 'automatica' ? t('detalhe.marcarFora') : t('detalhe.alterarCobertura');
@@ -217,6 +234,7 @@ function AlterarCobertura({ processo }: { processo: ProcessoDoTenant }) {
               id: processo.id,
               cobertura,
               motivo: exigeMotivo ? motivo.trim() : null,
+              ...(exigeConferencia ? { conferenciaACadaDias: Number(periodicidade) } : {}),
             },
             {
               onSuccess: () => {
@@ -247,6 +265,18 @@ function AlterarCobertura({ processo }: { processo: ProcessoDoTenant }) {
             onChange={(evento) => {
               setMotivo(evento.target.value);
             }}
+          />
+        ) : null}
+        {exigeConferencia ? (
+          <Selecao
+            rotulo={t('detalhe.conferenciaACadaDias')}
+            ajuda={t('detalhe.conferenciaAjuda')}
+            opcoes={Array.from({ length: 9 }, (_, i) => ({
+              valor: String(i + 1),
+              rotulo: t('detalhe.dias', { dias: i + 1 }),
+            }))}
+            valor={periodicidade}
+            aoMudar={setPeriodicidade}
           />
         ) : null}
         <Botao

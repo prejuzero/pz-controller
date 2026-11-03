@@ -4,7 +4,12 @@ import { CardIndicador, cn, Esqueleto, EstadoVazio, SeloStatus, type TomSelo } f
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
-import { useLinhaDoTempo, useProximosPrazos, useResumoDoDashboard } from '../../../api/hooks';
+import {
+  useConferencias,
+  useLinhaDoTempo,
+  useProximosPrazos,
+  useResumoDoDashboard,
+} from '../../../api/hooks';
 import { campos, comFiltroGlobal, type FiltroGlobal } from '../../../filtro-global';
 import { formatarDataCivil } from '../../../i18n/formatar';
 import { BarraDeFiltroGlobal, useFiltroGlobal } from '../_casca/filtro-global';
@@ -54,6 +59,9 @@ export function Dashboard() {
   const resumo = useResumoDoDashboard(doDashboard);
   const linha = useLinhaDoTempo(doDashboard);
   const proximos = useProximosPrazos(doDashboard);
+  const tc = useTranslations('conferencias');
+  // Pendência do escritório (HU36): só aparece com conferência de painel atrasada.
+  const atrasadas = useConferencias().data?.itens.filter((c) => c.atrasada).length ?? 0;
   const maximo = Math.max(1, ...(linha.data?.itens ?? []).map((d) => d.quantidade));
 
   return (
@@ -73,6 +81,17 @@ export function Dashboard() {
           className="border-2 border-alerta"
         />
       </Link>
+
+      {atrasadas > 0 ? (
+        <Link href="/conferencias" className={LINK_DO_CARD}>
+          <CardIndicador
+            titulo={tc('cardTitulo')}
+            valor={atrasadas}
+            descricao={tc('cardDescricao')}
+            className="border-2 border-perigo"
+          />
+        </Link>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {CARDS.map(({ chave, href }) => (

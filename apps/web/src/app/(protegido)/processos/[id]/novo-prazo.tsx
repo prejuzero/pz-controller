@@ -24,9 +24,15 @@ const ORIGENS = ['painel', 'manual', 'djen'] as const;
  * Cadastro manual de prazo (HU25): o advogado informa o ato e a referência, vê a data que o motor
  * calcula e pode confirmá-la ao salvar. O navegador não calcula datas.
  */
-export function NovoPrazo({ processoId }: { processoId: string }) {
+export function NovoPrazo({
+  processoId,
+  abertoInicial = false,
+}: {
+  processoId: string;
+  abertoInicial?: boolean;
+}) {
   const t = useTranslations('prazos.novo');
-  const [aberto, setAberto] = useState(false);
+  const [aberto, setAberto] = useState(abertoInicial);
   return (
     <Dialogo
       aberto={aberto}

@@ -27,6 +27,8 @@ export interface EstadoDoProcesso {
   readonly cobertura: Cobertura;
   readonly motivoCobertura: string | null;
   readonly clienteId: Uuid | null;
+  /** Conferência de painel a cada N dias (HU36); null: o padrão. */
+  readonly conferenciaACadaDias: number | null;
 }
 
 export type ProcessoMonitorado = EventoDominio<
@@ -108,6 +110,7 @@ export class Processo extends AggregateRoot<EventoDoProcesso> {
         cobertura,
         motivoCobertura: cobertura === 'automatica' ? null : motivo,
         clienteId: dados.clienteId ?? null,
+        conferenciaACadaDias: null,
       },
       relogio,
     );
@@ -131,11 +134,27 @@ export class Processo extends AggregateRoot<EventoDoProcesso> {
   }
 
   /** Cobertura parcial ou manual exige motivo; a automática limpa o motivo. */
-  alterarCobertura(cobertura: Cobertura, motivo: string | null): Result<void, RegraDeNegocio> {
+  /**
+   * Cobertura e, opcionalmente, a periodicidade da conferência de painel (HU36). `undefined`
+   * mantém a periodicidade atual; `null` volta ao padrão.
+   */
+  alterarCobertura(
+    cobertura: Cobertura,
+    motivo: string | null,
+    conferenciaACadaDias?: number | null,
+  ): Result<void, RegraDeNegocio> {
     if (cobertura !== 'automatica' && motivo === null) return motivoObrigatorio();
     const antes = this.estadoAtual.cobertura;
     const motivoCobertura = cobertura === 'automatica' ? null : motivo;
-    this.estadoAtual = { ...this.estadoAtual, cobertura, motivoCobertura };
+    this.estadoAtual = {
+      ...this.estadoAtual,
+      cobertura,
+      motivoCobertura,
+      conferenciaACadaDias:
+        conferenciaACadaDias === undefined
+          ? this.estadoAtual.conferenciaACadaDias
+          : conferenciaACadaDias,
+    };
     if (antes !== cobertura)
       this.emitir({
         tipo: 'CoberturaAlterada',

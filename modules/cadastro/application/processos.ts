@@ -9,6 +9,7 @@ import {
 } from '@pz/kernel';
 import { z } from 'zod';
 
+import { MAXIMO_DIAS_DA_CONFERENCIA, PERIODICIDADE_PADRAO } from '../domain/conferencia.js';
 import { COBERTURAS, Processo } from '../domain/processo.js';
 
 import { ConsultaPaginada, lerCursor, origemDe, paginar, validacao } from './paginacao.js';
@@ -54,7 +55,18 @@ export const AlteracaoDoProcesso = z
   .strict();
 
 export const EntradaDaCobertura = z
-  .object({ cobertura: z.enum(COBERTURAS), motivo: Motivo.optional() })
+  .object({
+    cobertura: z.enum(COBERTURAS),
+    motivo: Motivo.optional(),
+    // Abaixo dos 10 dias corridos da ciência tácita no portal (Lei 11.419, art. 5º, §3º).
+    conferenciaACadaDias: z
+      .number()
+      .int()
+      .min(1)
+      .max(MAXIMO_DIAS_DA_CONFERENCIA)
+      .nullable()
+      .optional(),
+  })
   .strict();
 
 export const FiltroDaListagem = ConsultaPaginada.extend({
@@ -83,6 +95,7 @@ export interface ProcessoListado {
   readonly sigiloso: boolean;
   readonly cobertura: Cobertura;
   readonly motivoCobertura: string | null;
+  readonly conferenciaACadaDias: number;
   readonly clienteId: Uuid | null;
 }
 
@@ -98,6 +111,7 @@ export function processoListado(estado: EstadoDoProcesso): ProcessoListado {
     sigiloso: estado.sigiloso,
     cobertura: estado.cobertura,
     motivoCobertura: estado.motivoCobertura,
+    conferenciaACadaDias: estado.conferenciaACadaDias ?? PERIODICIDADE_PADRAO,
     clienteId: estado.clienteId,
   };
 }
@@ -363,7 +377,11 @@ export class AlterarCobertura<Transacao> {
       const processo = await this.processos.buscar(transacao, id);
       if (processo === undefined) return err(naoEncontrado());
       const antes = processoListado(processo.estado);
-      const alterada = processo.alterarCobertura(dados.data.cobertura, dados.data.motivo ?? null);
+      const alterada = processo.alterarCobertura(
+        dados.data.cobertura,
+        dados.data.motivo ?? null,
+        dados.data.conferenciaACadaDias,
+      );
       if (!alterada.ok) return alterada;
       const depois = processoListado(processo.estado);
       await this.processos.salvar(transacao, processo);

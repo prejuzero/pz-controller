@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { ConsultaPaginada, pagina, Uuid } from '../comum.js';
+import { ConsultaPaginada, DataCivil, Instante, pagina, Uuid } from '../comum.js';
 import { definirRota, nomear } from '../rota.js';
 
 const Cobertura = z
@@ -23,6 +23,10 @@ export const ProcessoDoTenant = nomear(
     sigiloso: z.boolean(),
     cobertura: Cobertura,
     motivoCobertura: z.string().nullable(),
+    conferenciaACadaDias: z
+      .number()
+      .int()
+      .describe('Conferência de painel a cada N dias corridos (HU36), quando exigida.'),
     clienteId: Uuid.nullable(),
   }),
 );
@@ -60,6 +64,16 @@ export const PedidoDeCobertura = nomear(
   z.object({
     cobertura: Cobertura,
     motivo: Motivo.optional().describe('Obrigatório quando a cobertura não é automática.'),
+    conferenciaACadaDias: z
+      .number()
+      .int()
+      .min(1)
+      .max(9)
+      .nullable()
+      .optional()
+      .describe(
+        'Conferência de painel a cada N dias corridos (HU36), abaixo dos 10 dias da ciência tácita (Lei 11.419, art. 5º, §3º). null: padrão (5); ausente: mantém.',
+      ),
   }),
 );
 export type PedidoDeCobertura = z.infer<typeof PedidoDeCobertura.esquema>;
@@ -210,7 +224,77 @@ export const removerCliente = definirRota({
   erros: [404, 422],
 });
 
+const Resultado = z.enum(['sem-novidade', 'nova-intimacao']);
+
+export const PedidoDeConferencia = nomear(
+  'PedidoDeConferencia',
+  z
+    .object({
+      resultado: Resultado.describe('"nova-intimacao": o portal leva ao cadastro assistido.'),
+      observacao: z.string().max(1000).optional(),
+    })
+    .strict(),
+);
+export type PedidoDeConferencia = z.infer<typeof PedidoDeConferencia.esquema>;
+
+export const ConferenciaDePainel = nomear(
+  'ConferenciaDePainel',
+  z.object({
+    id: Uuid,
+    processoId: Uuid,
+    usuarioId: Uuid,
+    realizadaEm: Instante.describe('Relógio do servidor.'),
+    resultado: Resultado,
+    observacao: z.string().nullable(),
+  }),
+);
+export type ConferenciaDePainel = z.infer<typeof ConferenciaDePainel.esquema>;
+
+export const ConferenciasDoEscritorio = nomear(
+  'ConferenciasDoEscritorio',
+  z.object({
+    itens: z.array(
+      z.object({
+        processoId: Uuid,
+        numeroCnj: z.string(),
+        tribunal: z.string().nullable(),
+        cobertura: Cobertura,
+        sigiloso: z.boolean(),
+        periodicidade: z.number().int(),
+        proxima: DataCivil.describe('Data da próxima conferência (Brasília).'),
+        atrasada: z.boolean(),
+        lembrarHoje: z.boolean(),
+        ultimaConferencia: z.object({ realizadaEm: Instante, resultado: Resultado }).nullable(),
+      }),
+    ),
+  }),
+);
+export type ConferenciasDoEscritorio = z.infer<typeof ConferenciasDoEscritorio.esquema>;
+
+export const listarConferencias = definirRota({
+  id: 'listarConferencias',
+  metodo: 'get',
+  caminho: '/v1/conferencias',
+  resumo: 'Processos que exigem conferência de painel, com a próxima data (atrasados primeiro).',
+  tag: 'processos',
+  resposta: { status: 200, corpo: ConferenciasDoEscritorio },
+});
+
+export const registrarConferencia = definirRota({
+  id: 'registrarConferencia',
+  metodo: 'post',
+  caminho: '/v1/processos/{id}/conferencias',
+  resumo: 'Registra a conferência do painel do tribunal (com ou sem novidade).',
+  tag: 'processos',
+  parametrosDeCaminho: comId,
+  corpo: PedidoDeConferencia,
+  resposta: { status: 201, corpo: ConferenciaDePainel },
+  erros: [404],
+});
+
 export const ROTAS_PROCESSOS = [
+  listarConferencias,
+  registrarConferencia,
   listarProcessos,
   consultarProcesso,
   cadastrarProcesso,

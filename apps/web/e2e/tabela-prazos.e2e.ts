@@ -8,6 +8,21 @@ const SUFIXO = String(Date.now());
 const CODIGO = `ficticio-e2e-${SUFIXO}`;
 const NOME = `FICTÍCIO E2E ${SUFIXO}`;
 
+/**
+ * Linha do ato fictício: o banco local acumula atos de execuções anteriores e a tabela pagina,
+ * então percorre as páginas até achar.
+ */
+async function linhaDoAto(page: Page) {
+  const linha = page.getByRole('row').filter({ hasText: NOME });
+  await expect(page.getByRole('table').first()).toBeVisible();
+  for (let i = 0; i < 20 && (await linha.count()) === 0; i++) {
+    const proxima = page.getByRole('button', { name: 'Próxima página' });
+    if ((await proxima.count()) === 0 || (await proxima.isDisabled())) break;
+    await proxima.click();
+  }
+  return linha;
+}
+
 async function semViolacoes(page: Page): Promise<void> {
   await aguardarAnimacoes(page);
   const { violations } = await new AxeBuilder({ page })
@@ -47,7 +62,7 @@ test.describe('curadoria da tabela de prazos (HU15)', () => {
     await dialogo.getByRole('button', { name: 'Propor' }).click();
     await expect(page.getByText(/Versão proposta/)).toBeVisible();
 
-    const linha = page.getByRole('row').filter({ hasText: NOME });
+    const linha = await linhaDoAto(page);
     await linha.getByRole('button', { name: 'Histórico' }).click();
     const historico = page.getByRole('dialog');
     await expect(historico.getByRole('button', { name: 'Aprovar' })).toBeDisabled();
@@ -59,18 +74,12 @@ test.describe('curadoria da tabela de prazos (HU15)', () => {
     await outro.goto('/entrar');
     await entrar(outro, SENHA, CURADOR_2);
     await outro.goto('/prazos');
-    await outro
-      .getByRole('row')
-      .filter({ hasText: NOME })
-      .getByRole('button', { name: 'Histórico' })
-      .click();
+    await (await linhaDoAto(outro)).getByRole('button', { name: 'Histórico' }).click();
     await outro.getByRole('dialog').getByRole('button', { name: 'Aprovar' }).click();
     await expect(outro.getByText('Versão aprovada.')).toBeVisible();
     await contexto.close();
 
     await page.reload();
-    await expect(
-      page.getByRole('row').filter({ hasText: NOME }).getByText('FICTÍCIO: Lei de Teste'),
-    ).toBeVisible();
+    await expect((await linhaDoAto(page)).getByText('FICTÍCIO: Lei de Teste')).toBeVisible();
   });
 });

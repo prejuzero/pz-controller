@@ -72,6 +72,11 @@ const EXEMPLOS: Record<TipoDeNotificacao, unknown> = {
     em: '07/10/2026 18:05',
     link: 'https://app.exemplo.invalid/configuracoes/cobertura',
   },
+  'conferencia-painel': {
+    numeroProcesso: '0000001-09.2030.8.09.0001',
+    desde: '07/11/2026',
+    link: 'https://app.exemplo.invalid/conferencias',
+  },
 };
 
 describe.each(TIPOS_DE_NOTIFICACAO)('template %s', (tipo) => {

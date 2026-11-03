@@ -19,10 +19,13 @@ import {
 } from '@pz/auditoria';
 import {
   AdvogadosPostgres,
+  ConferenciasPostgres,
+  ConsultarConferencias,
   ConsultarProcesso,
   ExportacaoDoCadastroPostgres,
   ObterOuCriarProcesso,
   ProcessosPostgres,
+  TenantsComConferenciaPostgres,
 } from '@pz/cadastro';
 import {
   CacheDeDiasNaoUteisRedis,
@@ -74,6 +77,7 @@ import {
   DispararLembretes,
   EnviarNotificacao,
   EnviarResumosDiarios,
+  LembrarConferencias,
   ExportacaoDasNotificacoesPostgres,
   LembretesPostgres,
   NotificacoesPostgres,
@@ -829,6 +833,31 @@ export class WorkerModule {
             ambiente.PORTAL_URL,
             relogio,
           ),
+      },
+      {
+        // Conferência de painel (HU36): o cadastro diz o que é devido; avisa quem confirma prazos.
+        provide: LembrarConferencias,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) => {
+          const conferencias = new ConsultarConferencias(
+            banco,
+            new ConferenciasPostgres(),
+            relogio,
+          );
+          return new LembrarConferencias(
+            sistema.unidade('notificacoes: escritórios com conferência de painel'),
+            (tx) => new TenantsComConferenciaPostgres().listar(tx),
+            (tenantId, trabalho) => executarNoTenant(tenantId, trabalho),
+            banco,
+            () => conferencias.executar(),
+            {
+              usuarios: (tx) => new UsuariosComPermissaoPostgres().listar(tx, 'prazos:confirmar'),
+            },
+            notificarDoBanco(relogio),
+            ambiente.PORTAL_URL,
+            relogio,
+          );
+        },
       },
       {
         provide: EnviarResumosDiarios,

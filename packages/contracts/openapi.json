@@ -4879,6 +4879,58 @@
         }
       }
     },
+    "/v1/conferencias": {
+      "get": {
+        "operationId": "listarConferencias",
+        "summary": "Processos que exigem conferência de painel, com a próxima data (atrasados primeiro).",
+        "tags": [
+          "processos"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConferenciasDoEscritorio"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/dashboard/linha-do-tempo": {
       "get": {
         "operationId": "linhaDoTempoDoDashboard",
@@ -7984,6 +8036,99 @@
         }
       }
     },
+    "/v1/processos/{id}/conferencias": {
+      "post": {
+        "operationId": "registrarConferencia",
+        "summary": "Registra a conferência do painel do tribunal (com ou sem novidade).",
+        "tags": [
+          "processos"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeConferencia"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConferenciaDePainel"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/processos/{id}/dias-nao-uteis": {
       "get": {
         "operationId": "consultarDiasNaoUteisDoProcesso",
@@ -9702,6 +9847,156 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Compromisso"
+            }
+          }
+        },
+        "required": [
+          "itens"
+        ],
+        "additionalProperties": false
+      },
+      "ConferenciaDePainel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "processoId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "usuarioId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "realizadaEm": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+            "description": "Relógio do servidor."
+          },
+          "resultado": {
+            "type": "string",
+            "enum": [
+              "sem-novidade",
+              "nova-intimacao"
+            ]
+          },
+          "observacao": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "processoId",
+          "usuarioId",
+          "realizadaEm",
+          "resultado",
+          "observacao"
+        ],
+        "additionalProperties": false
+      },
+      "ConferenciasDoEscritorio": {
+        "type": "object",
+        "properties": {
+          "itens": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "processoId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "numeroCnj": {
+                  "type": "string"
+                },
+                "tribunal": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "cobertura": {
+                  "type": "string",
+                  "enum": [
+                    "automatica",
+                    "parcial",
+                    "manual"
+                  ],
+                  "description": "Automática: as fontes públicas trazem as intimações; parcial ou manual: conferir no painel do tribunal."
+                },
+                "sigiloso": {
+                  "type": "boolean"
+                },
+                "periodicidade": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "proxima": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                  "description": "Data da próxima conferência (Brasília)."
+                },
+                "atrasada": {
+                  "type": "boolean"
+                },
+                "lembrarHoje": {
+                  "type": "boolean"
+                },
+                "ultimaConferencia": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "realizadaEm": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "resultado": {
+                          "type": "string",
+                          "enum": [
+                            "sem-novidade",
+                            "nova-intimacao"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "realizadaEm",
+                        "resultado"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "processoId",
+                "numeroCnj",
+                "tribunal",
+                "cobertura",
+                "sigiloso",
+                "periodicidade",
+                "proxima",
+                "atrasada",
+                "lembrarHoje",
+                "ultimaConferencia"
+              ],
+              "additionalProperties": false
             }
           }
         },
@@ -12009,6 +12304,19 @@
                 "type": "null"
               }
             ]
+          },
+          "conferenciaACadaDias": {
+            "description": "Conferência de painel a cada N dias corridos (HU36), abaixo dos 10 dias da ciência tácita (Lei 11.419, art. 5º, §3º). null: padrão (5); ausente: mantém.",
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -12052,6 +12360,27 @@
         "required": [
           "titulo",
           "dataHora"
+        ],
+        "additionalProperties": false
+      },
+      "PedidoDeConferencia": {
+        "type": "object",
+        "properties": {
+          "resultado": {
+            "type": "string",
+            "enum": [
+              "sem-novidade",
+              "nova-intimacao"
+            ],
+            "description": "\"nova-intimacao\": o portal leva ao cadastro assistido."
+          },
+          "observacao": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "resultado"
         ],
         "additionalProperties": false
       },
@@ -13488,6 +13817,12 @@
               "null"
             ]
           },
+          "conferenciaACadaDias": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Conferência de painel a cada N dias corridos (HU36), quando exigida."
+          },
           "clienteId": {
             "anyOf": [
               {
@@ -13511,6 +13846,7 @@
           "sigiloso",
           "cobertura",
           "motivoCobertura",
+          "conferenciaACadaDias",
           "clienteId"
         ],
         "additionalProperties": false

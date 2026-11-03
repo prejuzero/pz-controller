@@ -380,7 +380,12 @@
       "motivoAjuda": "Obrigatório fora da cobertura automática (ex.: processo físico, sistema sem publicação no DJEN).",
       "publicacoes": "Publicações",
       "prazos": "Prazos",
-      "emBreve": "Aparecem aqui quando a captura de publicações e o cálculo de prazos entrarem em operação."
+      "emBreve": "Aparecem aqui quando a captura de publicações e o cálculo de prazos entrarem em operação.",
+      "conferenciaACadaDias": "Conferir o painel a cada",
+      "conferenciaAjuda": "Lembrete por e-mail; fica abaixo dos 10 dias corridos da ciência tácita no portal.",
+      "dias": "{dias, plural, one {# dia} other {# dias}}",
+      "conferenciaResumo": "Conferência do painel a cada {dias, plural, one {# dia} other {# dias}}.",
+      "irConferencias": "Ver conferências"
     },
     "cancelar": "Cancelar"
   },
@@ -1116,5 +1121,43 @@
     "prontoDescricao": "Baixe em Relatórios (disponível por 24 horas).",
     "falhou": "Não foi possível gerar o relatório.",
     "falhouDescricao": "Os filtros foram recusados. Ajuste e peça de novo."
+  },
+  "conferencias": {
+    "titulo": "Conferências de painel",
+    "descricao": "Processos sigilosos ou fora da cobertura automática precisam de conferência periódica no painel do tribunal.",
+    "aviso": {
+      "titulo": "O que o PrejuZero monitora sozinho",
+      "automatico": "Intimações publicadas no DJEN chegam automaticamente para os processos com cobertura automática.",
+      "conferencia": "Processos sigilosos ou com intimações só no portal do tribunal não aparecem no DJEN: confira o painel na periodicidade escolhida. Intimação no portal vira ciência tácita após 10 dias corridos.",
+      "termos": "Entenda a cobertura"
+    },
+    "colunas": {
+      "processo": "Processo",
+      "tribunal": "Tribunal",
+      "motivo": "Por que conferir",
+      "situacao": "Situação",
+      "ultima": "Última conferência",
+      "acoes": "Registrar"
+    },
+    "sigiloso": "Sigiloso",
+    "coberturas": {
+      "automatica": "Cobertura automática",
+      "parcial": "Cobertura parcial",
+      "manual": "Cobertura manual"
+    },
+    "atrasadaDesde": "Atrasada desde {data}",
+    "proxima": "Próxima em {data}",
+    "nunca": "Nenhuma ainda",
+    "resultados": {
+      "sem-novidade": "sem novidade",
+      "nova-intimacao": "nova intimação"
+    },
+    "semNovidade": "Conferido, sem novidade",
+    "novaIntimacao": "Encontrei intimação",
+    "registrada": "Conferência registrada.",
+    "vazio": "Nenhum processo exige conferência.",
+    "vazioDescricao": "Todos os processos estão com cobertura automática e sem sigilo.",
+    "cardTitulo": "Conferências de painel atrasadas",
+    "cardDescricao": "Processos fora da cobertura automática sem conferência no prazo escolhido."
   }
 }
