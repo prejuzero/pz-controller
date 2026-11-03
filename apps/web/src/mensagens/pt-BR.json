@@ -1069,5 +1069,52 @@
     "aConfirmar": "a confirmar",
     "semExpediente": "Sem expediente: {motivo}",
     "itens": "{quantidade, plural, =0 {nenhum item} one {# item} other {# itens}}"
+  },
+  "relatorios": {
+    "titulo": "Relatórios",
+    "descricao": "Gere a agenda de prazos ou exporte qualquer busca em PDF ou Excel. O arquivo fica disponível por 24 horas.",
+    "agendaDescricao": "Prazos com vencimento no período, agrupados por dia, com a memória de cálculo resumida.",
+    "de": "De",
+    "ate": "Até",
+    "gerar": "Gerar relatório",
+    "recentes": "Gerados recentemente",
+    "vazio": "Nenhum relatório ainda.",
+    "vazioDescricao": "Use \"Exportar\" na busca, na lista de prazos ou no calendário, ou gere a agenda acima.",
+    "colunas": {
+      "relatorio": "Relatório",
+      "formato": "Formato",
+      "solicitadoEm": "Pedido em",
+      "situacao": "Situação",
+      "acao": "Arquivo"
+    },
+    "tipos": {
+      "agenda": "Agenda de prazos",
+      "busca-prazos": "Busca de prazos",
+      "busca-publicacoes": "Busca de publicações"
+    },
+    "formatos": {
+      "pdf": "PDF",
+      "xlsx": "Excel"
+    },
+    "situacoes": {
+      "pendente": "Gerando",
+      "concluido": "Pronto",
+      "falhou": "Falhou"
+    },
+    "linhas": "{quantidade, plural, one {# linha} other {# linhas}}",
+    "baixar": "Baixar",
+    "gerando": "Gerando…",
+    "gerarNovamente": "Gerar novamente",
+    "exportar": "Exportar",
+    "exportarComo": {
+      "pdf": "Exportar PDF",
+      "xlsx": "Exportar Excel"
+    },
+    "solicitado": "Relatório solicitado.",
+    "acompanhe": "Ele fica pronto em Relatórios; avisamos aqui quando terminar.",
+    "pronto": "Relatório pronto.",
+    "prontoDescricao": "Baixe em Relatórios (disponível por 24 horas).",
+    "falhou": "Não foi possível gerar o relatório.",
+    "falhouDescricao": "Os filtros foram recusados. Ajuste e peça de novo."
   }
 }

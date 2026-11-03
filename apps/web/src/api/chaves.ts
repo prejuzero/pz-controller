@@ -33,6 +33,10 @@ export const chaves = {
     tipos: () => [...chaves.tabelaPrazos.todas, 'tipos'] as const,
     versoes: () => [...chaves.tabelaPrazos.todas, 'versoes'] as const,
   },
+  relatorios: {
+    todas: ['relatorios'] as const,
+    lista: () => [...chaves.relatorios.todas, 'lista'] as const,
+  },
   privacidade: {
     todas: ['privacidade'] as const,
     vigentes: () => [...chaves.privacidade.todas, 'vigentes'] as const,

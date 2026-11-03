@@ -40,6 +40,7 @@
     "@pz/prazos": "workspace:*",
     "@pz/privacidade": "workspace:*",
     "@pz/publicacoes": "workspace:*",
+    "@pz/relatorios": "workspace:*",
     "@pz/saude": "workspace:*",
     "@pz/termos": "workspace:*",
     "bullmq": "6.3.11",

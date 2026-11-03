@@ -57,6 +57,9 @@ export const TIPOS_DE_AUDITORIA = [
   'notificacoes.destino-push-desativado',
   'notificacoes.preferencias-alteradas',
   'ciencia.ciencia-confirmada',
+  'relatorios.exportacao-solicitada',
+  'relatorios.exportacao-gerada',
+  'relatorios.exportacao-falhou',
 ] as const;
 export const TipoDeAuditoria = z.enum(TIPOS_DE_AUDITORIA);
 export type TipoDeAuditoria = z.infer<typeof TipoDeAuditoria>;

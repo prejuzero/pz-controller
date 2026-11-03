@@ -158,6 +158,7 @@ describe('@Consome e o despachante', () => {
         ['ProcessoMonitorado@1', ['ConsumidorDaCaptura.processoMonitorado']],
         ['SugestaoIaCorrigida@1', ['ConsumidorDeAuditoria.sugestaoIaCorrigida']],
         ['ExportacaoDeDadosSolicitada@1', ['ConsumidorDaPrivacidade.exportacaoSolicitada']],
+        ['RelatorioSolicitado@1', ['ConsumidorDosRelatorios.relatorioSolicitado']],
         ['CapturaConcluida@1', ['ConsumidorDasPublicacoes.capturaConcluida']],
         ['PublicacaoNova@1', ['ConsumidorDaClassificacao.publicacaoNova']],
         [
@@ -284,7 +285,10 @@ describe('servidor de saúde do worker', () => {
 
 describe('verificadores do ambiente', () => {
   it('sem substituição, monta banco, Redis e (se configurado) o armazenamento', async () => {
-    for (const extra of [{}, { S3_ENDPOINT: 'http://127.0.0.1:1' }]) {
+    for (const extra of [
+      {},
+      { S3_ENDPOINT: 'http://127.0.0.1:1', S3_ENDPOINT_PUBLICO: 'http://localhost:1' },
+    ]) {
       worker = await criarWorker({ ambiente: { ...ambiente, ...extra }, relogio, filas: false });
       await worker.init();
       const relatorio = await worker.get(ConsultarSituacao).executar();

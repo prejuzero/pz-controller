@@ -40,6 +40,7 @@ import { DispositivosPostgres, RenovacoesRedis } from './dispositivos.js';
 import { PerfisPostgres, UsuariosComPermissaoPostgres } from './perfis-postgres.js';
 import {
   EmailsDosUsuariosPostgres,
+  NomesDosUsuariosPostgres,
   noTenantDoBanco,
   PublicadorOutbox,
   RedefinicoesRedis,
@@ -351,6 +352,13 @@ describe('redefinição de senha com Redis e PostgreSQL (HU06)', () => {
     ).toBe('Bia@Exemplo.invalid');
     expect(
       await executarNoTenant(TENANT_A, () => banco.executar((tx) => emails.emailDe(tx, BIA))),
+    ).toBeUndefined();
+    const nomes = new NomesDosUsuariosPostgres();
+    expect(
+      await executarNoTenant(TENANT_B, () => banco.executar((tx) => nomes.nomeDe(tx, BIA))),
+    ).toEqual(expect.any(String));
+    expect(
+      await executarNoTenant(TENANT_A, () => banco.executar((tx) => nomes.nomeDe(tx, BIA))),
     ).toBeUndefined();
   });
 });

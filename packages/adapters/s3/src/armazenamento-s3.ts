@@ -41,6 +41,11 @@ export interface ConfiguracaoS3 {
   readonly regiao: string;
   /** Vazio na AWS; URL do RustFS local ou de outro S3-compatível. */
   readonly endpoint?: string;
+  /**
+   * Endpoint que o navegador alcança, usado só nas URLs assinadas (ex.: no compose, a api fala
+   * com `armazenamento:9000`, mas o navegador abre `localhost:9000`). Vazio: o mesmo `endpoint`.
+   */
+  readonly endpointPublico?: string;
   /** Vazio na AWS (papel IAM); chaves estáticas só no ambiente local. */
   readonly credenciais?: { readonly idChave: string; readonly segredo: string };
   readonly forcarPathStyle: boolean;
@@ -64,29 +69,34 @@ export interface ConfiguracaoS3 {
  */
 export class ArmazenamentoS3 implements ArmazenamentoArquivos {
   readonly #cliente: S3Client;
+  readonly #clienteDasUrls: S3Client;
 
   constructor(
     private readonly config: ConfiguracaoS3,
     private readonly relogio: Clock,
   ) {
-    this.#cliente = new S3Client({
-      region: config.regiao,
-      forcePathStyle: config.forcarPathStyle,
-      ...(config.endpoint === undefined ? {} : { endpoint: config.endpoint }),
-      ...(config.credenciais === undefined
-        ? {}
-        : {
-            credentials: {
-              accessKeyId: config.credenciais.idChave,
-              secretAccessKey: config.credenciais.segredo,
-            },
-          }),
-      // Retentativa e timeout ficam com a resiliência padrão do registro, não com o SDK.
-      maxAttempts: 1,
-      // Checksums novos só quando exigidos: compatível com S3-compatíveis além da AWS.
-      requestChecksumCalculation: 'WHEN_REQUIRED',
-      responseChecksumValidation: 'WHEN_REQUIRED',
-    });
+    const cliente = (endpoint: string | undefined) =>
+      new S3Client({
+        region: config.regiao,
+        forcePathStyle: config.forcarPathStyle,
+        ...(endpoint === undefined ? {} : { endpoint }),
+        ...(config.credenciais === undefined
+          ? {}
+          : {
+              credentials: {
+                accessKeyId: config.credenciais.idChave,
+                secretAccessKey: config.credenciais.segredo,
+              },
+            }),
+        // Retentativa e timeout ficam com a resiliência padrão do registro, não com o SDK.
+        maxAttempts: 1,
+        // Checksums novos só quando exigidos: compatível com S3-compatíveis além da AWS.
+        requestChecksumCalculation: 'WHEN_REQUIRED',
+        responseChecksumValidation: 'WHEN_REQUIRED',
+      });
+    this.#cliente = cliente(config.endpoint);
+    this.#clienteDasUrls =
+      config.endpointPublico === undefined ? this.#cliente : cliente(config.endpointPublico);
   }
 
   async #enviar<Saida>(operacao: () => Promise<Saida>): Promise<Saida> {
@@ -158,7 +168,7 @@ export class ArmazenamentoS3 implements ArmazenamentoArquivos {
     if (pedido.operacao === 'download') {
       return this.#enviar(() =>
         getSignedUrl(
-          this.#cliente,
+          this.#clienteDasUrls,
           new GetObjectCommand({ Bucket: this.config.bucket, Key: chave }),
           {
             expiresIn: pedido.expiraEmSegundos,
@@ -169,7 +179,7 @@ export class ArmazenamentoS3 implements ArmazenamentoArquivos {
     this.#validarArquivo(pedido.tipoMime, pedido.tamanhoBytes);
     return this.#enviar(() =>
       getSignedUrl(
-        this.#cliente,
+        this.#clienteDasUrls,
         new PutObjectCommand({
           Bucket: this.config.bucket,
           Key: chave,
@@ -229,5 +239,6 @@ export class ArmazenamentoS3 implements ArmazenamentoArquivos {
 
   encerrar(): void {
     this.#cliente.destroy();
+    if (this.#clienteDasUrls !== this.#cliente) this.#clienteDasUrls.destroy();
   }
 }

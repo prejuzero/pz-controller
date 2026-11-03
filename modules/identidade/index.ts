@@ -86,6 +86,7 @@ export type {
 } from './application/redefinicao.js';
 export {
   EmailsDosUsuariosPostgres,
+  NomesDosUsuariosPostgres,
   noTenantDoBanco,
   PublicadorOutbox,
   RedefinicoesRedis,

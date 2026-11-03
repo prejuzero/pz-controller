@@ -87,6 +87,17 @@ export {
 } from './prazos/compromissos.js';
 import { ROTAS_PRIVACIDADE } from './privacidade.js';
 import { ROTAS_PUBLICACOES } from './publicacoes.js';
+import { ROTAS_RELATORIOS } from './relatorios.js';
+export {
+  consultarRelatorio,
+  listarRelatorios,
+  PedidoDeRelatorio,
+  Relatorio,
+  RelatorioSolicitado,
+  Relatorios,
+  ROTAS_RELATORIOS,
+  solicitarRelatorio,
+} from './relatorios.js';
 import { ROTAS_SAUDE } from './saude/index.js';
 import { ROTAS_TERMOS } from './termos.js';
 import { ROTAS_WEBHOOKS } from './webhooks/index.js';
@@ -346,6 +357,7 @@ export const ROTAS = [
   ...ROTAS_CIENCIA,
   ...ROTAS_TERMOS,
   ...ROTAS_PRIVACIDADE,
+  ...ROTAS_RELATORIOS,
   ...ROTAS_PUBLICACOES,
   ...ROTAS_CAPTURA,
   ...ROTAS_NOTIFICACOES,

@@ -63,6 +63,17 @@ export class EmailsDosUsuariosPostgres implements EmailsDosUsuarios<Transacao> {
   }
 }
 
+/** Nome do usuário no tenant da transação (ex.: cabeçalho dos relatórios, HU29). */
+export class NomesDosUsuariosPostgres {
+  async nomeDe(transacao: Transacao, usuarioId: Uuid): Promise<string | undefined> {
+    const usuario = await transacao.usuario.findUnique({
+      where: { id: usuarioId },
+      select: { nome: true },
+    });
+    return usuario?.nome;
+  }
+}
+
 /** Liga o caso de uso ao contexto de tenant do banco (RLS). */
 export const noTenantDoBanco = <Resultado>(tenantId: Uuid, trabalho: () => Promise<Resultado>) =>
   executarNoTenant(tenantId, trabalho);

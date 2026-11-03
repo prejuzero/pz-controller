@@ -116,6 +116,12 @@ import {
   TeoresPostgres,
 } from '@pz/publicacoes';
 import {
+  GerarRelatorio,
+  RelatoriosPostgres,
+  RenderizadorPdf,
+  RenderizadorXlsx,
+} from '@pz/relatorios';
+import {
   ConsultarSituacao,
   HistoricoEmMemoria,
   RegistrarHistoricoDeSituacao,
@@ -166,6 +172,8 @@ import { ConsumidorDaPrivacidade } from './privacidade/consumidor.js';
 import { ConsumidorDasPublicacoes } from './publicacoes/consumidor.js';
 import { noTenantDoBanco, processoPeloCadastro } from './publicacoes/processos.js';
 import { RecursosDoBanco } from './recursos.js';
+import { ConsumidorDosRelatorios } from './relatorios/consumidor.js';
+import { fonteDosRelatorios } from './relatorios/fonte.js';
 import { ConsumidorDeSituacao } from './saude/consumidor.js';
 
 import type { AmbienteWorker } from './ambiente.js';
@@ -260,6 +268,9 @@ function wormDoAmbiente(ambiente: AmbienteWorker, relogio: Clock): DestinoWorm {
       bucket: ambiente.AUDITORIA_WORM_BUCKET,
       regiao: ambiente.S3_REGION,
       ...(ambiente.S3_ENDPOINT === undefined ? {} : { endpoint: ambiente.S3_ENDPOINT }),
+      ...(ambiente.S3_ENDPOINT_PUBLICO === undefined
+        ? {}
+        : { endpointPublico: ambiente.S3_ENDPOINT_PUBLICO }),
       ...(ambiente.S3_ACCESS_KEY_ID === undefined || ambiente.S3_SECRET_ACCESS_KEY === undefined
         ? {}
         : {
@@ -400,6 +411,9 @@ function arquivosDoAmbiente(ambiente: AmbienteWorker, relogio: Clock): Armazenam
       bucket: ambiente.ARQUIVOS_BUCKET,
       regiao: ambiente.S3_REGION,
       ...(ambiente.S3_ENDPOINT === undefined ? {} : { endpoint: ambiente.S3_ENDPOINT }),
+      ...(ambiente.S3_ENDPOINT_PUBLICO === undefined
+        ? {}
+        : { endpointPublico: ambiente.S3_ENDPOINT_PUBLICO }),
       ...(ambiente.S3_ACCESS_KEY_ID === undefined || ambiente.S3_SECRET_ACCESS_KEY === undefined
         ? {}
         : {
@@ -410,7 +424,13 @@ function arquivosDoAmbiente(ambiente: AmbienteWorker, relogio: Clock): Armazenam
           }),
       forcarPathStyle: ambiente.S3_FORCE_PATH_STYLE,
       criptografia: ambiente.S3_ENDPOINT === undefined ? 'AES256' : 'nenhuma',
-      tiposPermitidos: ['application/json', 'text/csv'],
+      // JSON e CSV: exportação de dados (HU38); PDF e XLSX: relatórios (HU29).
+      tiposPermitidos: [
+        'application/json',
+        'text/csv',
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ],
       tamanhoMaximoBytes: 100 * 1024 * 1024,
     },
     relogio,
@@ -578,6 +598,7 @@ export class WorkerModule {
       ConsumidorDosPrazos,
       ConsumidorDaCaptura,
       ConsumidorDaPrivacidade,
+      ConsumidorDosRelatorios,
       ConsumidorDasPublicacoes,
       ConsumidorDaClassificacao,
       {
@@ -662,6 +683,21 @@ export class WorkerModule {
               new ExportacaoDasNotificacoesPostgres(),
               new ExportacaoDasPublicacoesPostgres(),
             ],
+            opcoes.arquivos ?? arquivosDoAmbiente(ambiente, relogio),
+            relogio,
+          ),
+      },
+      {
+        // Relatórios (HU29): a busca da HU28, renderizadores PDF e XLSX e o armazenamento.
+        provide: GerarRelatorio,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new GerarRelatorio(
+            banco,
+            new RelatoriosPostgres(),
+            new TrilhaPostgres(),
+            fonteDosRelatorios(banco, relogio),
+            [new RenderizadorPdf(), new RenderizadorXlsx()],
             opcoes.arquivos ?? arquivosDoAmbiente(ambiente, relogio),
             relogio,
           ),

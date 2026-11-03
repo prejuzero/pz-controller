@@ -21,7 +21,7 @@ export const ITENS_MENU = [
     href: '/calendario',
     permissao: { algum: ['prazos:ler', 'calendario:ler', 'curadoria:calendario'] },
   },
-  { chave: 'relatorios', href: '/relatorios' },
+  { chave: 'relatorios', href: '/relatorios', permissao: 'relatorios:exportar' },
   // Administração da plataforma (HU39): só para o administrador PrejuZero.
   { chave: 'admin', href: '/admin', permissao: { algum: ['admin:tenants', 'admin:filas'] } },
   { chave: 'configuracoes', href: '/configuracoes' },
