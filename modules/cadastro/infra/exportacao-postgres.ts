@@ -1,3 +1,7 @@
+import { cpfDe } from './advogados-postgres.js';
+import { documentoDe } from './processos-postgres.js';
+
+import type { ProtecaoDeCampos } from '../application/portas.js';
 import type { Transacao } from '@pz/db';
 
 type Valor = string | number | boolean | null | readonly string[];
@@ -9,6 +13,8 @@ const iso = (data: Date | null) => data?.toISOString() ?? null;
 
 /** Dados do cadastro para a exportação (HU38, LGPD): advogado, OABs, clientes e processos. */
 export class ExportacaoDoCadastroPostgres {
+  constructor(private readonly protecao: ProtecaoDeCampos) {}
+
   async titular(tx: Transacao, usuarioId: string): Promise<Secao[]> {
     const advogados = await tx.advogado.findMany({ where: { usuarioId }, include: { oabs: true } });
     return [
@@ -17,7 +23,7 @@ export class ExportacaoDoCadastroPostgres {
         linhas: advogados.map((a) => ({
           id: a.id,
           nome: a.nome,
-          cpf: a.cpf,
+          cpf: cpfDe(a, this.protecao),
           celular: a.celular,
           emailsAdicionais: a.emailsAdicionais,
           criadoEm: iso(a.criadoEm),
@@ -52,7 +58,7 @@ export class ExportacaoDoCadastroPostgres {
           id: a.id,
           usuarioId: a.usuarioId,
           nome: a.nome,
-          cpf: a.cpf,
+          cpf: cpfDe(a, this.protecao),
           celular: a.celular,
         })),
       },
@@ -71,7 +77,7 @@ export class ExportacaoDoCadastroPostgres {
         linhas: clientes.map((c) => ({
           id: c.id,
           nome: c.nome,
-          documento: c.documento,
+          documento: documentoDe(c, this.protecao),
           criadoEm: iso(c.criadoEm),
         })),
       },

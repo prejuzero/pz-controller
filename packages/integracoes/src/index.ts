@@ -59,3 +59,5 @@ export type {
 } from './portas/provedor-ia.js';
 export type { ReceptorWebhook, RequisicaoWebhook } from './webhook.js';
 export type { ExtratorDeTexto, TextoExtraido } from './portas/extrator-texto.js';
+export type { ChaveDeDados, ProvedorChaves } from './portas/provedor-chaves.js';
+export { CifraVersionada, indiceCego, protecaoDeCampos, ProvedorChavesLocal } from './chaves.js';

@@ -80,3 +80,7 @@ export {
   ConferenciasPostgres,
   TenantsComConferenciaPostgres,
 } from './infra/conferencias-postgres.js';
+export { RecifrarCamposSensiveis } from './application/recifra.js';
+export type { CampoParaRecifrar, CamposSensiveis } from './application/recifra.js';
+export type { ProtecaoDeCampos } from './application/portas.js';
+export { CamposSensiveisPostgres } from './infra/campos-sensiveis-postgres.js';

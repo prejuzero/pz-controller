@@ -34,6 +34,11 @@ export const esquemaApi = esquemaBase
     /** Limite global de requisições por IP e por escritório, por minuto (HU37). */
     LIMITE_POR_IP_POR_MINUTO: z.coerce.number().int().min(1).default(600),
     LIMITE_POR_TENANT_POR_MINUTO: z.coerce.number().int().min(1).default(3_000),
+    /**
+     * Chaves de dados (ADR-021): "id:base64,id:base64", a primeira cifra e as demais só decifram
+     * (rotação). Vazio: uma chave derivada da CHAVE_CIFRAGEM (local).
+     */
+    CHAVES_DE_DADOS: z.string().optional(),
     /** Chave AES-256 (32 bytes em base64) que cifra segredos da aplicação, como o do 2FA. */
     CHAVE_CIFRAGEM: z
       .base64()

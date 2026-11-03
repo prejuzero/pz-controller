@@ -1,6 +1,9 @@
+import { randomBytes } from 'node:crypto';
+
 import { TrilhaPostgres } from '@pz/auditoria';
 import { Banco, BancoSistema, executarNoTenant, OutboxPostgres } from '@pz/db';
 import { subirBancoDeTeste } from '@pz/db/teste';
+import { protecaoDeCampos, ProvedorChavesLocal } from '@pz/integracoes';
 import { FixedClock, gerarUuidV7, Instant } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -22,6 +25,9 @@ import { ClientesPostgres, ProcessosPostgres } from './processos-postgres.js';
 import type { AutorNoTenant } from '../application/paginacao.js';
 import type { Transacao } from '@pz/db';
 import type { BancoDeTeste } from '@pz/db/teste';
+
+// Chaves de dados FICTÍCIAS (ADR-021): o banco do teste guarda CPF e documento cifrados.
+const protecao = protecaoDeCampos(new ProvedorChavesLocal(randomBytes(32).toString('base64')));
 
 // Dados FICTÍCIOS: números CNJ com dígito conferido, CPF gerado, nomes inventados.
 const NUMERO = '0000001-68.2026.8.26.0100';
@@ -54,7 +60,7 @@ beforeAll(async () => {
   ana = await autor('Escritório A');
   beto = await autor('Escritório B');
   const processos = new ProcessosPostgres(relogio);
-  const clientes = new ClientesPostgres();
+  const clientes = new ClientesPostgres(protecao);
   const trilha = new TrilhaPostgres();
   const outbox = new OutboxPostgres();
   cadastrar = new CadastrarProcesso(banco, processos, clientes, trilha, outbox, relogio);
@@ -136,14 +142,14 @@ describe('processos e clientes no PostgreSQL (HU12)', () => {
       ),
     ).rejects.toThrow();
     const lista = await noTenant(beto, () =>
-      new ListarClientes(banco, new ClientesPostgres()).executar({}),
+      new ListarClientes(banco, new ClientesPostgres(protecao)).executar({}),
     );
     expect(lista.ok && lista.valor.itens).toEqual([]);
   });
 
   it('sigilo, cobertura e remoção protegida do cliente, com trilha sem o CPF', async () => {
     const processos = new ProcessosPostgres(relogio);
-    const clientes = new ClientesPostgres();
+    const clientes = new ClientesPostgres(protecao);
     const trilha = new TrilhaPostgres();
     const cliente = await noTenant(ana, () =>
       cadastrarCliente.executar(ana, { nome: 'Outro Cliente', documento: '11.222.333/0001-81' }),

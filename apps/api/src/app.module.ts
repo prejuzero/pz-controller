@@ -72,7 +72,6 @@ import { Banco, executarNoTenant, OutboxPostgres, WebhooksPostgres } from '@pz/d
 import {
   AtivarSegundoFator,
   Autenticar,
-  CifraAesGcm,
   AcessosPostgres,
   DispositivosPostgres,
   ListarDispositivos,
@@ -117,6 +116,7 @@ import {
   ValidarSessao,
   VerificarSegundoFator,
 } from '@pz/identidade';
+import { CifraVersionada, protecaoDeCampos, ProvedorChavesLocal } from '@pz/integracoes';
 import { SystemClock } from '@pz/kernel';
 import {
   AlterarPreferencias,
@@ -1070,7 +1070,13 @@ export class AppModule {
     const segundoFator =
       opcoes.identidade?.segundoFator ?? new SegundoFatorPostgres(recursos.banco);
     const segredos = new SegredosTotp();
-    const cifra = new CifraAesGcm(opcoes.ambiente.CHAVE_CIFRAGEM);
+    // Chaves de dados (HU37, ADR-021): segredos do 2FA, CPF e documento do cliente cifrados.
+    const chaves = new ProvedorChavesLocal(
+      opcoes.ambiente.CHAVE_CIFRAGEM,
+      opcoes.ambiente.CHAVES_DE_DADOS,
+    );
+    const cifra = new CifraVersionada(chaves, opcoes.ambiente.CHAVE_CIFRAGEM);
+    const protecao = protecaoDeCampos(chaves, opcoes.ambiente.CHAVE_CIFRAGEM);
     const tokens = new GeradorDeTokensSeguro();
     const acessos = opcoes.identidade?.acessos ?? new AcessosPostgres(recursos.banco);
     const tentativas = opcoes.identidade?.tentativas ?? new TentativasRedis(recursos.redis);
@@ -1120,9 +1126,9 @@ export class AppModule {
               email: conta.email as Email,
             }),
         },
-        advogados: new AdvogadosPostgres(relogio),
+        advogados: new AdvogadosPostgres(relogio, protecao),
         processos: new ProcessosPostgres(relogio),
-        clientes: new ClientesPostgres(),
+        clientes: new ClientesPostgres(protecao),
         trilha: new TrilhaPostgres(),
         outbox: new OutboxPostgres(),
       }));
@@ -1131,7 +1137,7 @@ export class AppModule {
       ((relogio: Clock): DependenciasDeNotificacoes => {
         // Destinos pelas APIs públicas: e-mail da conta (identidade) e cópias (cadastro).
         const contas = new EmailsDosUsuariosPostgres();
-        const advogados = new AdvogadosPostgres(relogio);
+        const advogados = new AdvogadosPostgres(relogio, protecao);
         const destinos: DestinosDoUsuario<Transacao> = {
           emails: async (tx, usuarioId) => {
             const principal = await contas.emailDe(tx, usuarioId);

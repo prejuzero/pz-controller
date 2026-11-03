@@ -2,7 +2,7 @@ import { Instant } from '@pz/kernel';
 
 import { Advogado } from '../domain/advogado.js';
 
-import type { RepositorioDeAdvogados } from '../application/portas.js';
+import type { ProtecaoDeCampos, RepositorioDeAdvogados } from '../application/portas.js';
 import type { Oab } from '../domain/advogado.js';
 import type { Uf } from '../domain/valores.js';
 import type { Transacao } from '@pz/db';
@@ -18,12 +18,26 @@ const colunasDaOab = (tenantId: Uuid, advogadoId: Uuid, oab: Oab) => ({
   ativa: oab.ativa,
 });
 
+/** CPF da linha: o cifrado (atual) ou o legado em claro, até a recifra. */
+export function cpfDe(
+  linha: { cpf: string | null; cpfCifrado: string | null },
+  protecao: ProtecaoDeCampos,
+): string {
+  if (linha.cpfCifrado !== null) return protecao.decifrar(linha.cpfCifrado);
+  // CHECK advogado_cpf_presente: sem o cifrado, o legado existe.
+  if (linha.cpf === null) throw new Error('Advogado sem CPF');
+  return linha.cpf;
+}
+
 /**
  * Advogados e OABs no PostgreSQL (HU11), no tenant da transação (RLS). `skipDuplicates` vira
  * `ON CONFLICT DO NOTHING`: um CPF ou uma OAB ativa de outro tenant não aborta a transação.
  */
 export class AdvogadosPostgres implements RepositorioDeAdvogados<Transacao> {
-  constructor(private readonly relogio: Clock) {}
+  constructor(
+    private readonly relogio: Clock,
+    private readonly protecao: ProtecaoDeCampos,
+  ) {}
 
   async inserir(tx: Transacao, advogado: Advogado): Promise<'ok' | 'cpf-em-uso' | 'oab-em-uso'> {
     const e = advogado.estado;
@@ -34,7 +48,10 @@ export class AdvogadosPostgres implements RepositorioDeAdvogados<Transacao> {
           tenantId: e.tenantId,
           usuarioId: e.usuarioId,
           nome: e.nome,
-          cpf: e.cpf,
+          // CPF só cifrado e com índice cego (HU37, ADR-021): o índice mantém a unicidade.
+          cpf: null,
+          cpfCifrado: this.protecao.cifrar(e.cpf),
+          cpfIndice: this.protecao.indice(e.cpf),
           celular: e.celular,
           emailsAdicionais: [...e.emailsAdicionais],
         },
@@ -82,7 +99,7 @@ export class AdvogadosPostgres implements RepositorioDeAdvogados<Transacao> {
         tenantId: linha.tenantId as Uuid,
         usuarioId: linha.usuarioId as Uuid,
         nome: linha.nome,
-        cpf: linha.cpf,
+        cpf: cpfDe(linha, this.protecao),
         celular: linha.celular,
         emailsAdicionais: linha.emailsAdicionais,
         oabs: linha.oabs.map((oab) => ({
