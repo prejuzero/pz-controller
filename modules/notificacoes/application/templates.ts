@@ -337,6 +337,43 @@ export const TEMPLATES = {
       texto: `A captura do ${d.fonte} está com falhas. Confira o diário e o PrejuZero.`,
     }),
   }),
+  'conferencia-painel': definir({
+    versao: 1,
+    dados: z
+      .object({
+        /** Ausente em processo sigiloso: o e-mail não identifica o processo. */
+        numeroProcesso: NumeroDoProcesso.optional(),
+        desde: Data,
+        link: LinkDoPortal,
+      })
+      .strict(),
+    email: (d) => ({
+      assunto:
+        d.numeroProcesso === undefined
+          ? 'Confira o painel do tribunal de um processo sigiloso'
+          : `Confira o painel do tribunal: processo ${d.numeroProcesso}`,
+      titulo: 'Conferência de painel',
+      previa: 'Este processo não é monitorado automaticamente: confira o painel do tribunal.',
+      corpo: [
+        paragrafo(
+          d.numeroProcesso === undefined ? 'Um processo sigiloso' : 'O processo ',
+          ...(d.numeroProcesso === undefined ? [] : [destaque(d.numeroProcesso)]),
+          ' não é monitorado automaticamente e precisa de conferência no painel do tribunal desde ',
+          destaque(d.desde),
+          '.',
+        ),
+        paragrafo(
+          'Intimações no portal viram ciência tácita após 10 dias corridos. Registre a conferência no PrejuZero, com ou sem novidade.',
+        ),
+      ],
+      acoes: acoes(d.link),
+      link: d.link,
+    }),
+    minimo: () => ({
+      assunto: 'Conferência de painel',
+      texto: 'Há processo para conferir no painel do tribunal. Confira no PrejuZero.',
+    }),
+  }),
   'fonte-restabelecida': definir({
     versao: 1,
     dados: z.object({ fonte: NomeDaFonte, em: DataHora, link: LinkDoPortal }).strict(),

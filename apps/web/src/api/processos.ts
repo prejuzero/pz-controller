@@ -13,6 +13,7 @@ import type {
   AlteracaoDoProcesso,
   PedidoDeCliente,
   PedidoDeCobertura,
+  PedidoDeConferencia,
   PedidoDeProcesso,
 } from '@pz/contracts';
 
@@ -61,6 +62,11 @@ export const consultasProcessos = (api: ClienteApi) => ({
       queryFn: ({ signal }) =>
         exigir(api.GET('/v1/clientes', { params: { query: { limite: LIMITE_CLIENTES } }, signal })),
     }),
+  conferencias: () =>
+    queryOptions({
+      queryKey: chaves.processos.conferencias(),
+      queryFn: ({ signal }) => exigir(api.GET('/v1/conferencias', { signal })),
+    }),
 });
 
 export const mutacoesProcessos = (api: ClienteApi, cache: QueryClient) => {
@@ -84,6 +90,16 @@ export const mutacoesProcessos = (api: ClienteApi, cache: QueryClient) => {
       mutationFn: ({ id, ...pedido }: PedidoDeCobertura & { id: string }) =>
         exigir(
           api.PUT('/v1/processos/{id}/cobertura', { ...caminho(id), body: semIndefinidos(pedido) }),
+        ),
+      onSuccess: invalidarProcessos,
+    },
+    registrarConferencia: {
+      mutationFn: ({ id, ...pedido }: PedidoDeConferencia & { id: string }) =>
+        exigir(
+          api.POST('/v1/processos/{id}/conferencias', {
+            ...caminho(id),
+            body: semIndefinidos(pedido),
+          }),
         ),
       onSuccess: invalidarProcessos,
     },

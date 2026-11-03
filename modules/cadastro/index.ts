@@ -57,3 +57,26 @@ export { AdvogadosEmMemoria } from './infra/em-memoria.js';
 export { ClientesEmMemoria, ProcessosEmMemoria } from './infra/processos-em-memoria.js';
 export { ClientesPostgres, ProcessosPostgres } from './infra/processos-postgres.js';
 export { ExportacaoDoCadastroPostgres } from './infra/exportacao-postgres.js';
+export {
+  ConsultarConferencias,
+  EntradaDaConferencia,
+  RegistrarConferencia,
+} from './application/conferencias.js';
+export type {
+  ConferenciaPendente,
+  ConferenciaRegistrada,
+  ProcessoParaConferir,
+  RepositorioDeConferencias,
+  TenantsComConferencia,
+} from './application/conferencias.js';
+export {
+  exigeConferencia,
+  MAXIMO_DIAS_DA_CONFERENCIA,
+  PERIODICIDADE_PADRAO,
+  RESULTADOS_DA_CONFERENCIA,
+} from './domain/conferencia.js';
+export type { ResultadoDaConferencia } from './domain/conferencia.js';
+export {
+  ConferenciasPostgres,
+  TenantsComConferenciaPostgres,
+} from './infra/conferencias-postgres.js';

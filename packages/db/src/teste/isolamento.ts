@@ -127,6 +127,7 @@ const COLUNAS_FIXAS: Readonly<Record<string, Record<string, unknown>>> = {
     revogado_em: null,
   },
   ciencia_prazo: { confirmada_por: null, confirmada_em: null },
+  conferencia_painel: { resultado: 'sem-novidade', observacao: null },
   relatorio: {
     tipo: 'agenda',
     formato: 'pdf',
@@ -245,6 +246,7 @@ export const TABELAS_SO_INSERCAO: readonly string[] = [
   'feriado_local',
   'aceite_documento',
   'auditoria_dado_pessoal',
+  'conferencia_painel',
 ];
 
 /** Tabelas sem DELETE para a aplicação (o registro fica: remoção vira estado, LGPD e prova). */

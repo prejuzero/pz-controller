@@ -74,6 +74,7 @@ model Tenant {
   prazos                 Prazo[]
   compromissos           Compromisso[]
   relatorios             Relatorio[]
+  conferencias           ConferenciaPainel[]
   lembretes              LembreteAgendado[]
   tokenCiencias          TokenCiencia[]
   cienciaPrazos          CienciaPrazo[]
@@ -632,27 +633,30 @@ enum CoberturaProcesso {
 
 /// Processo monitorado (HU12, RF03 e RF91): único por número CNJ no tenant.
 model Processo {
-  id              String            @id @db.Uuid
-  tenantId        String            @map("tenant_id") @db.Uuid
+  id                   String            @id @db.Uuid
+  tenantId             String            @map("tenant_id") @db.Uuid
   /// Só os 20 dígitos.
-  numeroCnj       String            @map("numero_cnj") @db.Char(20)
+  numeroCnj            String            @map("numero_cnj") @db.Char(20)
   /// Sigla do tribunal deduzido do número (tabela em @pz/kernel/cnj).
-  tribunal        String?
-  ramo            String?
-  orgao           String?
-  comarca         String?
-  sigiloso        Boolean           @default(false)
-  cobertura       CoberturaProcesso @default(automatica)
-  motivoCobertura String?           @map("motivo_cobertura")
-  clienteId       String?           @map("cliente_id") @db.Uuid
-  criadoEm        DateTime          @default(now()) @map("criado_em") @db.Timestamptz(6)
-  atualizadoEm    DateTime          @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+  tribunal             String?
+  ramo                 String?
+  orgao                String?
+  comarca              String?
+  sigiloso             Boolean           @default(false)
+  cobertura            CoberturaProcesso @default(automatica)
+  motivoCobertura      String?           @map("motivo_cobertura")
+  /// Conferência de painel a cada N dias (HU36); nulo: o padrão (5). Abaixo dos 10 dias da ciência tácita.
+  conferenciaACadaDias Int?              @map("conferencia_a_cada_dias")
+  clienteId            String?           @map("cliente_id") @db.Uuid
+  criadoEm             DateTime          @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm         DateTime          @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
   tenant       Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   cliente      Cliente?                 @relation(fields: [tenantId, clienteId], references: [tenantId, id], onDelete: Restrict)
   publicacoes  PublicacaoDestinatario[]
   prazos       Prazo[]
   compromissos Compromisso[]
+  conferencias ConferenciaPainel[]
 
   @@unique([tenantId, numeroCnj])
   @@unique([tenantId, id])
@@ -1243,4 +1247,22 @@ model Relatorio {
 
   @@index([tenantId, usuarioId, solicitadoEm(sort: Desc)])
   @@map("relatorio")
+}
+
+/// Conferência do painel do tribunal (HU36): prova, só inserção (RLS).
+model ConferenciaPainel {
+  id          String   @id @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  processoId  String   @map("processo_id") @db.Uuid
+  usuarioId   String   @map("usuario_id") @db.Uuid
+  realizadaEm DateTime @map("realizada_em") @db.Timestamptz(6)
+  resultado   String
+  observacao  String?
+  criadoEm    DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  processo Processo @relation(fields: [tenantId, processoId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([tenantId, processoId, realizadaEm(sort: Desc)])
+  @@map("conferencia_painel")
 }

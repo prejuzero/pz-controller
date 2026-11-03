@@ -46,6 +46,8 @@ describe('processos (HU12)', () => {
     await mutacoes.cadastrarCliente.mutationFn({ nome: 'Cliente Fictício' });
     await mutacoes.atualizarCliente.mutationFn({ id: ID, nome: 'Outro Nome' });
     await mutacoes.removerCliente.mutationFn(ID);
+    await consultas.conferencias().queryFn?.(sinal as never);
+    await mutacoes.registrarConferencia.mutationFn({ id: ID, resultado: 'sem-novidade' });
     expect(requisicoes).toEqual([
       { rota: 'GET /v1/processos?numero=0000001&cursor=c1', corpo: '' },
       { rota: `GET /v1/processos/${ID}`, corpo: '' },
@@ -59,6 +61,8 @@ describe('processos (HU12)', () => {
       { rota: 'POST /v1/clientes', corpo: '{"nome":"Cliente Fictício"}' },
       { rota: `PATCH /v1/clientes/${ID}`, corpo: '{"nome":"Outro Nome"}' },
       { rota: `DELETE /v1/clientes/${ID}`, corpo: '' },
+      { rota: 'GET /v1/conferencias', corpo: '' },
+      { rota: `POST /v1/processos/${ID}/conferencias`, corpo: '{"resultado":"sem-novidade"}' },
     ]);
   });
 

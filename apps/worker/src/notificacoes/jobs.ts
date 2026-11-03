@@ -17,3 +17,11 @@ export const enviarResumosJob = definirJob({
   dados: z.object({}).strict(),
   global: true,
 });
+
+/** Lembretes de conferência de painel (HU36): global, uma vez por dia. */
+export const lembrarConferenciasJob = definirJob({
+  fila: 'notificacoes',
+  tipo: 'notificacoes.lembrar-conferencias',
+  dados: z.object({}).strict(),
+  global: true,
+});

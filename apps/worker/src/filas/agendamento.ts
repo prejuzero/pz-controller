@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-import { dispararLembretesJob, enviarResumosJob } from '../notificacoes/jobs.js';
+import {
+  dispararLembretesJob,
+  enviarResumosJob,
+  lembrarConferenciasJob,
+} from '../notificacoes/jobs.js';
 import { marcarVencidosJob } from '../prazos/jobs.js';
 
 import { definirJob } from './job.js';
@@ -90,5 +94,12 @@ export const AGENDAMENTOS: readonly Agendamento<unknown>[] = [
     cron: '*/15 * * * *', // a cada 15 min: o horário do resumo é escolhido pelo usuário (HU31)
     dados: {},
     motivo: 'resumos diários de quem tem o horário na janela',
+  }),
+  definirAgendamento({
+    id: 'notificacoes.lembrar-conferencias',
+    job: lembrarConferenciasJob,
+    cron: '0 8 * * *', // diário às 8h: conferência de painel antes do expediente (HU36)
+    dados: {},
+    motivo: 'lembretes de conferência de painel dos processos fora da cobertura',
   }),
 ] as readonly Agendamento<unknown>[];

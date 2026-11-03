@@ -27,6 +27,8 @@ export const chaves = {
     todas: ['processos'] as const,
     lista: (filtros: object) => [...chaves.processos.todas, 'lista', filtros] as const,
     detalhe: (id: string) => [...chaves.processos.todas, 'detalhe', id] as const,
+    /** Conferências de painel (HU36): invalidadas junto com os processos (mesmo prefixo). */
+    conferencias: () => [...chaves.processos.todas, 'conferencias'] as const,
   },
   tabelaPrazos: {
     todas: ['tabelaPrazos'] as const,

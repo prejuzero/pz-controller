@@ -106,3 +106,5 @@ export { ANTECEDENCIAS_PADRAO, planejarLembretes } from './domain/lembrete.js';
 export { HORARIO_PADRAO_DO_RESUMO, resumoDevido } from './domain/resumo.js';
 export { LembretesEmMemoria, PreferenciasEmMemoria } from './infra/em-memoria.js';
 export { LembretesPostgres } from './infra/lembretes-postgres.js';
+export { LembrarConferencias } from './application/conferencias.js';
+export type { ConferenciaDevida } from './application/conferencias.js';

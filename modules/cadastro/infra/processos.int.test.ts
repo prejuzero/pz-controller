@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { ProcessosParaBusca } from '../application/busca.js';
 import { CadastrarCliente, ListarClientes, RemoverCliente } from '../application/clientes.js';
+import { ConsultarConferencias, RegistrarConferencia } from '../application/conferencias.js';
 import {
   AlterarCobertura,
   AtualizarProcesso,
@@ -15,6 +16,7 @@ import {
   ObterOuCriarProcesso,
 } from '../application/processos.js';
 
+import { ConferenciasPostgres, TenantsComConferenciaPostgres } from './conferencias-postgres.js';
 import { ClientesPostgres, ProcessosPostgres } from './processos-postgres.js';
 
 import type { AutorNoTenant } from '../application/paginacao.js';
@@ -199,6 +201,70 @@ describe('processos e clientes no PostgreSQL (HU12)', () => {
     ).rejects.toThrow();
     await expect(
       noTenant(ana, () => banco.executar((tx) => tx.processo.deleteMany({}))),
+    ).rejects.toThrow();
+  });
+
+  it('conferência de painel: periodicidade, registro com trilha, tenants e só inserção (HU36)', async () => {
+    const processos = new ProcessosPostgres(relogio);
+    const trilha = new TrilhaPostgres();
+    const criado = await noTenant(beto, () =>
+      cadastrar.executar(beto, {
+        numeroCnj: '0000001-09.2030.8.09.0001',
+        cobertura: 'manual',
+        motivoCobertura: 'Só no painel do tribunal.',
+      }),
+    );
+    if (!criado.ok) throw criado.erro;
+    const id = criado.valor.id;
+    const alterada = await noTenant(beto, () =>
+      new AlterarCobertura(banco, processos, trilha, new OutboxPostgres()).executar(beto, id, {
+        cobertura: 'manual',
+        motivo: 'Só no painel do tribunal.',
+        conferenciaACadaDias: 3,
+      }),
+    );
+    expect(alterada.ok && alterada.valor.conferenciaACadaDias).toBe(3);
+    const fora = await noTenant(beto, () =>
+      new AlterarCobertura(banco, processos, trilha, new OutboxPostgres()).executar(beto, id, {
+        cobertura: 'manual',
+        motivo: 'x',
+        conferenciaACadaDias: 10,
+      }),
+    );
+    expect(fora.ok).toBe(false);
+
+    const conferencias = new ConferenciasPostgres();
+    const registrar = new RegistrarConferencia(banco, conferencias, trilha, relogio);
+    const r = await noTenant(beto, () =>
+      registrar.executar(beto, id, { resultado: 'nova-intimacao', observacao: 'achei no PJe' }),
+    );
+    if (!r.ok) throw r.erro;
+    const lista = await noTenant(beto, () =>
+      new ConsultarConferencias(banco, conferencias, relogio).executar(),
+    );
+    expect(lista.find((c) => c.processoId === id)).toMatchObject({
+      periodicidade: 3,
+      ultimaConferencia: { resultado: 'nova-intimacao' },
+      proxima: '2026-10-10',
+    });
+    // Outro escritório não vê nem registra no processo alheio.
+    expect(
+      (await noTenant(ana, () => registrar.executar(ana, id, { resultado: 'sem-novidade' }))).ok,
+    ).toBe(false);
+    const tenants = await sistema.executarComoSistema('conferir o teste', (tx) =>
+      new TenantsComConferenciaPostgres().listar(tx),
+    );
+    expect(tenants).toContain(beto.tenantId);
+    // Prova: a aplicação não altera nem apaga a conferência.
+    await expect(
+      noTenant(beto, () =>
+        banco.executar((tx) =>
+          tx.conferenciaPainel.updateMany({ data: { resultado: 'sem-novidade' } }),
+        ),
+      ),
+    ).rejects.toThrow();
+    await expect(
+      noTenant(beto, () => banco.executar((tx) => tx.conferenciaPainel.deleteMany({}))),
     ).rejects.toThrow();
   });
 });

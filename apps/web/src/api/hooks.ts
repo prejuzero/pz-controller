@@ -149,6 +149,9 @@ export const useClientes = () => useQuery(consultasProcessos(useApi()).clientes(
 export const useCadastrarProcesso = () => useMutation(useMutacoesProcessos().cadastrar);
 export const useAtualizarProcesso = () => useMutation(useMutacoesProcessos().atualizar);
 export const useAlterarCobertura = () => useMutation(useMutacoesProcessos().alterarCobertura);
+export const useConferencias = () => useQuery(consultasProcessos(useApi()).conferencias());
+export const useRegistrarConferencia = () =>
+  useMutation(useMutacoesProcessos().registrarConferencia);
 export const useCadastrarCliente = () => useMutation(useMutacoesProcessos().cadastrarCliente);
 export const useAtualizarCliente = () => useMutation(useMutacoesProcessos().atualizarCliente);
 export const useRemoverCliente = () => useMutation(useMutacoesProcessos().removerCliente);

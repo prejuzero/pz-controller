@@ -25,7 +25,9 @@ import {
   CadastrarCliente,
   CadastrarProcesso,
   ClientesPostgres,
+  ConferenciasPostgres,
   ConsultarCliente,
+  ConsultarConferencias,
   ConsultarPerfil,
   ConsultarProcesso,
   ListarClientes,
@@ -34,6 +36,7 @@ import {
   ProcessosParaBusca,
   ListarProcessos,
   ProcessosPostgres,
+  RegistrarConferencia,
   RemoverCliente,
   RemoverOab,
 } from '@pz/cadastro';
@@ -200,6 +203,7 @@ import { ContextoDoUsuario } from './auth/contexto-do-usuario.js';
 import { AgendaController } from './busca/agenda.controller.js';
 import { BuscaController } from './busca/busca.controller.js';
 import { CadastroController } from './cadastro/cadastro.controller.js';
+import { ConferenciasController } from './cadastro/conferencias.controller.js';
 import { ProcessosController } from './cadastro/processos.controller.js';
 import { CalendarioController } from './calendario/calendario.controller.js';
 import { CapturaController } from './captura/captura.controller.js';
@@ -246,6 +250,7 @@ import type {
   PreparadorDeVerificacao,
   RepositorioDeAdvogados,
   RepositorioDeClientes,
+  RepositorioDeConferencias,
   RepositorioDeProcessos,
   UnidadeNoTenant,
 } from '@pz/cadastro';
@@ -857,6 +862,8 @@ interface DependenciasDoCadastro {
   readonly clientes: RepositorioDeClientes<unknown>;
   readonly trilha: TrilhaDeAuditoria<unknown>;
   readonly outbox: Outbox<unknown>;
+  /** Conferência de painel (HU36); padrão: PostgreSQL. */
+  readonly conferencias?: RepositorioDeConferencias<unknown>;
 }
 
 /** Casos de uso do cadastro (HU11), ligados aos mesmos repositórios. */
@@ -904,6 +911,21 @@ function provedoresDoCadastro(criar: (relogio: Clock) => DependenciasDoCadastro)
       (d) => new AtualizarProcesso(d.unidade, d.processos, d.clientes, d.trilha),
     ),
     caso(AlterarCobertura, (d) => new AlterarCobertura(d.unidade, d.processos, d.trilha, d.outbox)),
+    caso(
+      RegistrarConferencia,
+      (d, r) =>
+        new RegistrarConferencia(
+          d.unidade,
+          d.conferencias ?? new ConferenciasPostgres(),
+          d.trilha,
+          r,
+        ),
+    ),
+    caso(
+      ConsultarConferencias,
+      (d, r) =>
+        new ConsultarConferencias(d.unidade, d.conferencias ?? new ConferenciasPostgres(), r),
+    ),
     caso(ListarClientes, (d) => new ListarClientes(d.unidade, d.clientes)),
     caso(ConsultarCliente, (d) => new ConsultarCliente(d.unidade, d.clientes)),
     caso(CadastrarCliente, (d, r) => new CadastrarCliente(d.unidade, d.clientes, d.trilha, r)),
@@ -1442,6 +1464,7 @@ export class AppModule {
         BuscaController,
         AgendaController,
         RelatoriosController,
+        ConferenciasController,
         CienciaController,
         AssistenteController,
         CuradoriaDaClassificacaoController,
