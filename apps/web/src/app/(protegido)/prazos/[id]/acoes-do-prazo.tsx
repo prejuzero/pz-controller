@@ -99,6 +99,7 @@ function Ajustar({ prazo }: { prazo: DetalheDoPrazo }) {
       titulo={t('ajustar')}
     >
       <form
+        method="post"
         noValidate
         className="grid gap-4"
         onSubmit={(evento) => {
@@ -181,6 +182,7 @@ function Cancelar({ prazo }: { prazo: DetalheDoPrazo }) {
       titulo={t('cancelar')}
     >
       <form
+        method="post"
         noValidate
         className="grid gap-4"
         onSubmit={(evento) => {

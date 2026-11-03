@@ -67,6 +67,7 @@ function Formulario({ inicial }: { inicial: PreferenciasDeNotificacao }) {
   };
   return (
     <form
+      method="post"
       noValidate
       className="grid gap-6"
       onSubmit={(evento) => {

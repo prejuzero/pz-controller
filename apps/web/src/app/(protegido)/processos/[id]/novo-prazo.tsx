@@ -102,6 +102,7 @@ function Formulario({ processoId, aoSalvar }: { processoId: string; aoSalvar: ()
 
   return (
     <form
+      method="post"
       noValidate
       className="grid gap-4"
       onSubmit={(evento) => {

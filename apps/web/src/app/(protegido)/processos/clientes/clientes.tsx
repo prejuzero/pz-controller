@@ -123,6 +123,7 @@ function FormularioCliente({ cliente }: { cliente?: ClienteDoTenant }) {
       titulo={titulo}
     >
       <form
+        method="post"
         noValidate
         className="grid gap-4"
         onSubmit={(evento) => {

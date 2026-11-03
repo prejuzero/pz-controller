@@ -62,7 +62,12 @@ export function FormularioRedefinirSenha() {
   const erroCampo = (tipo: string | undefined) => t(`validacao.${chaveValidacao(tipo)}`);
 
   return (
-    <form noValidate onSubmit={(evento) => void enviar(evento)} className="grid gap-4">
+    <form
+      method="post"
+      noValidate
+      onSubmit={(evento) => void enviar(evento)}
+      className="grid gap-4"
+    >
       <AlertaFormulario erro={redefinir.error} seNaoAutorizado="linkInvalido" />
       <Campo
         rotulo={t('redefinirSenha.novaSenha')}

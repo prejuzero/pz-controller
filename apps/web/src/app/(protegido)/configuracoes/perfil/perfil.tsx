@@ -74,7 +74,12 @@ function FormularioPerfil({ perfil }: { perfil: PerfilDoAdvogado }) {
     );
   });
   return (
-    <form noValidate onSubmit={(evento) => void enviar(evento)} className="grid gap-4">
+    <form
+      method="post"
+      noValidate
+      onSubmit={(evento) => void enviar(evento)}
+      className="grid gap-4"
+    >
       <AlertaFormulario erro={atualizar.error} seNaoAutorizado="credenciaisInvalidas" />
       <Campo rotulo={t('perfil.cpf')} value={perfil.cpf} readOnly />
       <Campo

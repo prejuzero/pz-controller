@@ -63,6 +63,7 @@ function NovaOab() {
   const [uf, setUf] = useState<string | undefined>(undefined);
   return (
     <form
+      method="post"
       noValidate
       className="grid gap-3 rounded-md border border-borda p-3"
       onSubmit={(evento) => {

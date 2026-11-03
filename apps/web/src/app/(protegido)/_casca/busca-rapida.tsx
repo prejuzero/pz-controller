@@ -89,6 +89,7 @@ export function BuscaRapida() {
 
   return (
     <form
+      method="post"
       role="search"
       className="relative hidden flex-1 sm:block"
       onSubmit={(evento) => {
