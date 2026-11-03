@@ -2,6 +2,8 @@ import { fileURLToPath } from 'node:url';
 
 import createNextIntlPlugin from 'next-intl/plugin';
 
+import { CABECALHOS_DE_SEGURANCA } from './src/seguranca';
+
 import type { NextConfig } from 'next';
 
 const config: NextConfig = {
@@ -16,6 +18,8 @@ const config: NextConfig = {
   // Os pacotes importam `./x.js` apontando para `./x.ts` (NodeNext). O Turbopack ainda não faz esse
   // mapeamento; por isso o portal usa o webpack (`--webpack` nos scripts).
   experimental: { extensionAlias: { '.js': ['.ts', '.tsx', '.js'] } },
+  // Cabeçalhos fixos de segurança (HU37); a CSP com nonce sai de src/proxy.ts.
+  headers: () => Promise.resolve([{ source: '/:caminho*', headers: [...CABECALHOS_DE_SEGURANCA] }]),
 };
 
 export default createNextIntlPlugin('./src/i18n/requisicao.ts')(config);

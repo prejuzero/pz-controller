@@ -2,6 +2,7 @@ import { COOKIE_SESSAO } from '@pz/contracts';
 import { NextResponse, type NextRequest } from 'next/server';
 
 import { ehRotaPublica, urlEntrar } from './rotas';
+import { gerarNonce, politicaDeConteudo } from './seguranca';
 
 const API_URL_PADRAO = 'http://localhost:3000';
 const CAMINHO_FILAS = '/admin/filas';
@@ -22,8 +23,26 @@ export function proxy(requisicao: NextRequest): NextResponse {
   ) {
     return NextResponse.rewrite(new URL(pathname + search, process.env.API_URL ?? API_URL_PADRAO));
   }
-  if (ehRotaPublica(pathname) || requisicao.cookies.has(COOKIE_SESSAO)) return NextResponse.next();
+  if (ehRotaPublica(pathname) || requisicao.cookies.has(COOKIE_SESSAO))
+    return comPolitica(requisicao);
   return NextResponse.redirect(new URL(urlEntrar(pathname + search), requisicao.url));
+}
+
+/**
+ * CSP com nonce por requisição (HU37): o cabeçalho vai na requisição (o Next.js lê o nonce e o
+ * aplica aos próprios scripts) e na resposta (o navegador aplica a política).
+ */
+function comPolitica(requisicao: NextRequest): NextResponse {
+  const politica = politicaDeConteudo({
+    nonce: gerarNonce(),
+    desenvolvimento: process.env.NODE_ENV === 'development',
+    sentryDsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  });
+  const cabecalhos = new Headers(requisicao.headers);
+  cabecalhos.set('content-security-policy', politica);
+  const resposta = NextResponse.next({ request: { headers: cabecalhos } });
+  resposta.headers.set('content-security-policy', politica);
+  return resposta;
 }
 
 // Fora da sessão: /health, os arquivos do Next.js e arquivos estáticos (com extensão).

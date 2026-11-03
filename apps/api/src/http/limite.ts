@@ -3,11 +3,14 @@ import { Reflector } from '@nestjs/core';
 import { gerarUuidV7 } from '@pz/kernel';
 import { criarLogger } from '@pz/observability';
 
-import { JANELA_DE_REQUISICOES } from '../fichas.js';
+import { AMBIENTE, JANELA_DE_REQUISICOES } from '../fichas.js';
 
-import type { CanActivate, ExecutionContext } from '@nestjs/common';
+import type { AmbienteApi } from '../ambiente.js';
+import type { RequisicaoAutenticada } from './acesso.js';
+import type { CallHandler, CanActivate, ExecutionContext, NestInterceptor } from '@nestjs/common';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Redis } from 'ioredis';
+import type { Observable } from 'rxjs';
 
 const CHAVE_LIMITE = 'pz:limite-por-ip';
 const logger = criarLogger('api.limite');
@@ -57,36 +60,80 @@ export class JanelaEmMemoria implements JanelaDeRequisicoes {
   }
 }
 
+const MINUTO_MS = 60_000;
+/** Sondas do balanceador e do orquestrador vêm de poucos IPs e não contam no limite global. */
+const SEM_LIMITE_GLOBAL = '/health';
+
+function demais(contexto: ExecutionContext, janelaMs: number, rota: string, dados: object): never {
+  logger.warn({ rota, ...dados }, 'limite de requisições excedido');
+  void contexto
+    .switchToHttp()
+    .getResponse<FastifyReply>()
+    .header('retry-after', String(Math.ceil(janelaMs / 1000)));
+  throw new HttpException(
+    'Muitas requisições. Tente de novo em instantes.',
+    HttpStatus.TOO_MANY_REQUESTS,
+  );
+}
+
 /**
- * Aplica o limite declarado com @LimitarPorIp antes da autenticação: além do limite, 429 com
- * Retry-After, sem tocar no caso de uso. Atrás do balanceador, o IP vem do X-Forwarded-For
- * (trustProxy).
+ * Limite por IP antes da autenticação: o declarado com @LimitarPorIp na rota ou, sem ele, o
+ * global (HU37, LIMITE_POR_IP_POR_MINUTO). Além do limite, 429 com Retry-After, sem tocar no
+ * caso de uso. Atrás do balanceador, o IP vem do X-Forwarded-For (trustProxy).
  */
 @Injectable()
 export class GuardaDeLimite implements CanActivate {
   constructor(
     @Inject(Reflector) private readonly refletor: Reflector,
     @Inject(JANELA_DE_REQUISICOES) private readonly janela: JanelaDeRequisicoes,
+    @Inject(AMBIENTE) private readonly ambiente: AmbienteApi,
   ) {}
 
   async canActivate(contexto: ExecutionContext): Promise<boolean> {
-    const limite = this.refletor.get<LimitePorIp | undefined>(CHAVE_LIMITE, contexto.getHandler());
-    if (limite === undefined) return true;
-    const http = contexto.switchToHttp();
-    const requisicao = http.getRequest<FastifyRequest>();
+    const requisicao = contexto.switchToHttp().getRequest<FastifyRequest>();
     const rota = requisicao.routeOptions.url ?? requisicao.url;
-    const total = await this.janela.registrar(
-      `pz:limite:${rota}:${requisicao.ip}`,
-      limite.janelaMs,
-    );
-    if (total <= limite.maximo) return true;
-    logger.warn({ rota, ip: requisicao.ip, total }, 'limite de requisições por IP excedido');
-    void http
-      .getResponse<FastifyReply>()
-      .header('retry-after', String(Math.ceil(limite.janelaMs / 1000)));
-    throw new HttpException(
-      'Muitas requisições. Tente de novo em instantes.',
-      HttpStatus.TOO_MANY_REQUESTS,
-    );
+    const limite = this.refletor.get<LimitePorIp | undefined>(CHAVE_LIMITE, contexto.getHandler());
+    if (limite !== undefined) {
+      const total = await this.janela.registrar(
+        `pz:limite:${rota}:${requisicao.ip}`,
+        limite.janelaMs,
+      );
+      if (total > limite.maximo)
+        demais(contexto, limite.janelaMs, rota, { ip: requisicao.ip, total });
+    }
+    if (rota.startsWith(SEM_LIMITE_GLOBAL)) return true;
+    const global = await this.janela.registrar(`pz:limite-ip:${requisicao.ip}`, MINUTO_MS);
+    if (global > this.ambiente.LIMITE_POR_IP_POR_MINUTO) {
+      demais(contexto, MINUTO_MS, rota, { ip: requisicao.ip, total: global, escopo: 'ip' });
+    }
+    return true;
+  }
+}
+
+/**
+ * Limite global por escritório (HU37, LIMITE_POR_TENANT_POR_MINUTO), depois da autenticação: um
+ * escritório (ou uma integração dele) não esgota a API dos outros.
+ */
+@Injectable()
+export class LimiteDoTenant implements NestInterceptor {
+  constructor(
+    @Inject(JANELA_DE_REQUISICOES) private readonly janela: JanelaDeRequisicoes,
+    @Inject(AMBIENTE) private readonly ambiente: AmbienteApi,
+  ) {}
+
+  async intercept(contexto: ExecutionContext, proximo: CallHandler): Promise<Observable<unknown>> {
+    const requisicao = contexto.switchToHttp().getRequest<RequisicaoAutenticada>();
+    const tenantId = requisicao.autenticacao?.sessao.tenantId;
+    if (tenantId !== undefined) {
+      const total = await this.janela.registrar(`pz:limite-tenant:${tenantId}`, MINUTO_MS);
+      if (total > this.ambiente.LIMITE_POR_TENANT_POR_MINUTO) {
+        demais(contexto, MINUTO_MS, requisicao.routeOptions.url ?? requisicao.url, {
+          tenantId,
+          total,
+          escopo: 'tenant',
+        });
+      }
+    }
+    return proximo.handle();
   }
 }

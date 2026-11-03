@@ -26,6 +26,14 @@ export const esquemaApi = esquemaBase
     CAPTURA_FONTE: z.enum(['djen']).default('djen'),
     /** Versão implantada (SHA do commit), gravada na imagem pelo build. */
     VERSAO: z.string().min(1).default('dev'),
+    /**
+     * Origens aceitas em chamadas de outro domínio (HU37), separadas por vírgula. Vazio: nenhuma
+     * (o portal usa a mesma origem).
+     */
+    CORS_ORIGENS: z.string().optional(),
+    /** Limite global de requisições por IP e por escritório, por minuto (HU37). */
+    LIMITE_POR_IP_POR_MINUTO: z.coerce.number().int().min(1).default(600),
+    LIMITE_POR_TENANT_POR_MINUTO: z.coerce.number().int().min(1).default(3_000),
     /** Chave AES-256 (32 bytes em base64) que cifra segredos da aplicação, como o do 2FA. */
     CHAVE_CIFRAGEM: z
       .base64()

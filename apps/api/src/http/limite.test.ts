@@ -14,14 +14,17 @@ import { esquemaApi } from '../ambiente.js';
 import { criarApi } from '../app.js';
 import { termosEmMemoria } from '../termos/termos-de-teste.js';
 
-import { JanelaEmMemoria } from './limite.js';
+import { JanelaEmMemoria, LimiteDoTenant } from './limite.js';
 
+import type { AmbienteApi } from '../ambiente.js';
+import type { CallHandler, ExecutionContext } from '@nestjs/common';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 
 let api: NestFastifyApplication;
+let restrita: NestFastifyApplication;
 
-beforeAll(async () => {
-  api = await criarApi({
+const montar = async (extra: Record<string, string> = {}) => {
+  const montada = await criarApi({
     termos: termosEmMemoria().dependencias,
     ambiente: carregarAmbiente(esquemaApi, {
       NODE_ENV: 'test',
@@ -29,6 +32,7 @@ beforeAll(async () => {
       REDIS_URL: 'redis://127.0.0.1:6379',
       S3_REGION: 'us-east-1',
       CHAVE_CIFRAGEM: randomBytes(32).toString('base64'),
+      ...extra,
     }),
     verificadores: [],
     identidade: {
@@ -40,12 +44,22 @@ beforeAll(async () => {
     },
     janelaDeRequisicoes: new JanelaEmMemoria(),
   });
-  await api.init();
-  await api.getHttpAdapter().getInstance().ready();
+  await montada.init();
+  await montada.getHttpAdapter().getInstance().ready();
+  return montada;
+};
+
+beforeAll(async () => {
+  api = await montar();
+  restrita = await montar({
+    LIMITE_POR_IP_POR_MINUTO: '3',
+    CORS_ORIGENS: 'https://portal.exemplo.invalid, https://app.exemplo.invalid',
+  });
 });
 
 afterAll(async () => {
   await api.close();
+  await restrita.close();
 });
 
 const entrar = (ip: string) =>
@@ -73,5 +87,92 @@ describe('limite por IP (HU06)', () => {
           .statusCode,
       ).toBe(200);
     }
+  });
+});
+
+describe('hardening da API (HU37)', () => {
+  it('limite global por IP; as sondas de saúde não contam', async () => {
+    const termos = (ip: string) =>
+      restrita.inject({ method: 'GET', url: '/v1/termos/vigentes', remoteAddress: ip });
+    for (let i = 0; i < 5; i++) {
+      expect(
+        (
+          await restrita.inject({
+            method: 'GET',
+            url: '/health/live',
+            remoteAddress: '198.51.100.9',
+          })
+        ).statusCode,
+      ).toBe(200);
+    }
+    for (let i = 0; i < 3; i++) expect((await termos('198.51.100.9')).statusCode).not.toBe(429);
+    const excedida = await termos('198.51.100.9');
+    expect(excedida.statusCode).toBe(429);
+    expect(excedida.headers['retry-after']).toBe('60');
+    expect((await termos('198.51.100.10')).statusCode).not.toBe(429);
+  });
+
+  it('cabeçalhos de segurança e no-store em toda resposta', async () => {
+    const r = await api.inject({ method: 'GET', url: '/health/live' });
+    expect(r.headers).toMatchObject({
+      'x-content-type-options': 'nosniff',
+      'x-frame-options': 'DENY',
+      'referrer-policy': 'no-referrer',
+      'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+      'cache-control': 'no-store',
+    });
+    // Fora de produção, sem HSTS (o ambiente local é http).
+    expect(r.headers['strict-transport-security']).toBeUndefined();
+  });
+
+  it('CORS: sem lista, nenhuma origem cruzada; com lista, só as configuradas', async () => {
+    const preflight = (app: NestFastifyApplication, origin: string) =>
+      app.inject({
+        method: 'OPTIONS',
+        url: '/v1/termos/vigentes',
+        headers: { origin, 'access-control-request-method': 'GET' },
+      });
+    expect(
+      (await preflight(api, 'https://portal.exemplo.invalid')).headers[
+        'access-control-allow-origin'
+      ],
+    ).toBeUndefined();
+    const aceita = await preflight(restrita, 'https://portal.exemplo.invalid');
+    expect(aceita.headers['access-control-allow-origin']).toBe('https://portal.exemplo.invalid');
+    expect(aceita.headers['access-control-allow-credentials']).toBe('true');
+    expect(
+      (await preflight(restrita, 'https://malicioso.exemplo.invalid')).headers[
+        'access-control-allow-origin'
+      ],
+    ).toBeUndefined();
+  });
+
+  it('limite por escritório depois da autenticação', async () => {
+    const limite = new LimiteDoTenant(new JanelaEmMemoria(), {
+      LIMITE_POR_TENANT_POR_MINUTO: 2,
+    } as AmbienteApi);
+    const cabecalhos: Record<string, string> = {};
+    const contexto = (tenantId?: string) =>
+      ({
+        switchToHttp: () => ({
+          getRequest: () => ({
+            url: '/v1/prazos',
+            routeOptions: { url: '/v1/prazos' },
+            ...(tenantId === undefined ? {} : { autenticacao: { sessao: { tenantId } } }),
+          }),
+          getResponse: () => ({
+            header: (k: string, v: string) => {
+              cabecalhos[k] = v;
+            },
+          }),
+        }),
+      }) as unknown as ExecutionContext;
+    const proximo = { handle: () => 'ok' } as unknown as CallHandler;
+    await limite.intercept(contexto('a'), proximo);
+    await limite.intercept(contexto('a'), proximo);
+    await expect(limite.intercept(contexto('a'), proximo)).rejects.toMatchObject({ status: 429 });
+    expect(cabecalhos['retry-after']).toBe('60');
+    await limite.intercept(contexto('b'), proximo);
+    for (let i = 0; i < 5; i++) await limite.intercept(contexto(), proximo);
   });
 });

@@ -24,6 +24,13 @@ describe('proxy de sessão', () => {
     expect(proxy(requisicao('/entrar')).headers.get('location')).toBeNull();
   });
 
+  it('página servida leva CSP com nonce novo a cada requisição (HU37)', () => {
+    const csp = (r: NextRequest) => proxy(r).headers.get('content-security-policy') ?? '';
+    const uma = csp(requisicao('/entrar'));
+    expect(uma).toMatch(/script-src 'self' 'nonce-[A-Za-z0-9+/=]+' 'strict-dynamic'/);
+    expect(uma).not.toBe(csp(requisicao('/entrar')));
+  });
+
   it('encaminha /v1 para a API_URL lida em execução, com a query', () => {
     const anterior = process.env.API_URL;
     process.env.API_URL = 'http://api:3000';
