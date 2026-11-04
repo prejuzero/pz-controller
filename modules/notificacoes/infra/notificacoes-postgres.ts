@@ -45,6 +45,12 @@ export class NotificacoesPostgres implements RepositorioDeNotificacoes<Transacao
     return count === 1;
   }
 
+  /** Notificações do prazo (histórico, HU35): os ids, para trazer os eventos delas na trilha. */
+  async idsDoPrazo(tx: Transacao, prazoId: Uuid): Promise<Uuid[]> {
+    const linhas = await tx.notificacao.findMany({ where: { prazoId }, select: { id: true } });
+    return linhas.map((l) => l.id as Uuid);
+  }
+
   /** Notificações de cada prazo (controle de ciência, HU34): enviadas, entregues e rejeitadas. */
   async resumoPorPrazo(
     tx: Transacao,

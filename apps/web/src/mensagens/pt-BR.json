@@ -905,7 +905,38 @@
       "vencidos": "Vencidos não cumpridos",
       "sem-ciencia": "Sem ciência confirmada"
     },
-    "limparRecorte": "Limpar filtro"
+    "limparRecorte": "Limpar filtro",
+    "historico": {
+      "titulo": "Histórico",
+      "exportar": "Exportar histórico (PDF verificável)",
+      "exportado": "Histórico solicitado.",
+      "exportadoDescricao": "O PDF fica pronto em Relatórios, com o código e o QR code de verificação.",
+      "vazio": "Nenhum evento registrado ainda.",
+      "sistema": "Sistema",
+      "usuario": "Usuário",
+      "dadoPessoal": "[dado pessoal]",
+      "mudou": "{antes} → {depois}",
+      "hash": "Hash: {hash}",
+      "canais": {
+        "portal": "Portal",
+        "app": "App",
+        "mcp": "Assistente (MCP)",
+        "integrador": "Integração",
+        "evento": "Automático",
+        "sistema": "Sistema"
+      },
+      "tipos": {
+        "prazos_prazo-sugerido": "Prazo sugerido",
+        "prazos_prazo-confirmado": "Prazo confirmado",
+        "prazos_prazo-ajustado": "Prazo ajustado",
+        "prazos_prazo-cumprido": "Prazo cumprido",
+        "prazos_prazo-cancelado": "Prazo cancelado",
+        "prazos_prazo-recalculado": "Prazo recalculado",
+        "prazos_prazo-vencido": "Prazo vencido",
+        "ciencia_ciencia-confirmada": "Ciência confirmada",
+        "notificacoes_notificacao-rejeitada": "E-mail não entregue"
+      }
+    }
   },
   "dashboard": {
     "titulo": "Dashboard",
@@ -1117,7 +1148,8 @@
       "agenda": "Agenda de prazos",
       "busca-prazos": "Busca de prazos",
       "busca-publicacoes": "Busca de publicações",
-      "controle-ciencia": "Controle de ciência"
+      "controle-ciencia": "Controle de ciência",
+      "historico-prazo": "Histórico do prazo"
     },
     "formatos": {
       "pdf": "PDF",
@@ -1205,5 +1237,13 @@
     "enviarMesmoAssim": "Confirmar e enviar",
     "enviado": "Envio solicitado",
     "enviadoDescricao": "O e-mail sai em instantes, com o arquivo em anexo."
+  },
+  "verificacao": {
+    "titulo": "Verificar histórico",
+    "descricao": "Confere o PDF do histórico do prazo com a trilha de auditoria do PrejuZero.",
+    "inexistente": "Código de verificação não encontrado. Confira se o endereço está completo; um PDF com código alterado não é verificado.",
+    "divergente": "A verificação falhou: {motivo}. Este histórico não confere com a trilha de auditoria.",
+    "valido": "Histórico verificado: emitido em {quando}, com {total, plural, one {# evento} other {# eventos}} íntegros na trilha.",
+    "compare": "Compare a sequência, a data e o hash de cada evento com o PDF. Qualquer diferença indica um PDF alterado."
   }
 }

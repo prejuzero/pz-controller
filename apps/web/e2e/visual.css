@@ -1,0 +1,4 @@
+/* Regressão visual: os avisos do topo dependem dos testes anteriores e mudam a altura da página. */
+[data-avisos] {
+  display: none !important;
+}

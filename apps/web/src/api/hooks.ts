@@ -11,6 +11,7 @@ import { consultasCadastro, mutacoesCadastro } from './cadastro';
 import { consultasCalendario, mutacoesCalendario } from './calendario';
 import { consultasCaptura } from './captura';
 import { mutacoesCiencia } from './ciencia';
+import { consultasHistorico } from './historico';
 import { consultasNotificacoes, mutacaoEnvioPorEmail, mutacoesNotificacoes } from './notificacoes';
 import {
   consultasPrazos,
@@ -200,6 +201,10 @@ export const useConfirmarCienciaEmLote = () => useMutation(useMutacoesCiencia().
 export const useResumoDoDashboard = (filtro?: FiltroDoDashboard) =>
   useQuery(consultasPrazos(useApi()).resumo(filtro));
 /** Contagem de prazos sem ciência para a faixa e o alerta do login (HU34); só com permissão. */
+export const useHistoricoDoPrazo = (id: string) =>
+  useQuery(consultasHistorico(useApi()).doPrazo(id));
+export const useVerificacaoDoHistorico = (codigo: string) =>
+  useQuery(consultasHistorico(useApi()).verificacao(codigo));
 export const useResumoDaCiencia = (ativa: boolean) =>
   useQuery({ ...consultasPrazos(useApi()).resumo(), enabled: ativa });
 export const useLinhaDoTempo = (filtro?: FiltroDoDashboard) =>

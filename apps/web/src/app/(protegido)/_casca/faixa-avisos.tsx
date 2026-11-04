@@ -56,7 +56,7 @@ export function FaixaAvisos() {
   };
 
   return (
-    <section aria-label={t('rotulo')} className="border-b border-borda">
+    <section aria-label={t('rotulo')} className="border-b border-borda" data-avisos>
       <ul>
         {avisos.map((aviso) => (
           <li

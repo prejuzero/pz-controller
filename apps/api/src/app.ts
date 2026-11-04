@@ -15,7 +15,12 @@ import type { RawServerDefault } from 'fastify';
 
 /** Monta a api com a mesma configuração em produção e nos testes. */
 export async function criarApi(opcoes: OpcoesApi): Promise<NestFastifyApplication> {
-  const adaptador = new FastifyAdapter({ trustProxy: true, bodyLimit: 1_048_576 });
+  const adaptador = new FastifyAdapter({
+    trustProxy: true,
+    bodyLimit: 1_048_576,
+    // O padrão do Fastify (100) corta o código de verificação do histórico (101 caracteres, HU35).
+    routerOptions: { maxParamLength: 200 },
+  });
   registrarContextoDeRequisicao(adaptador.getInstance());
   registrarCabecalhosDeSeguranca(adaptador.getInstance(), {
     producao: opcoes.ambiente.NODE_ENV === 'production',

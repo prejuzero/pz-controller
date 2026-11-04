@@ -9,3 +9,5 @@ export const RECEPTORES_DE_WEBHOOK = Symbol('RECEPTORES_DE_WEBHOOK');
 export const JANELA_DE_REQUISICOES = Symbol('JANELA_DE_REQUISICOES');
 /** Filas e DLQs que o painel (Bull Board) mostra (HU07). */
 export const FILAS_DO_PAINEL = Symbol('FILAS_DO_PAINEL');
+/** Histórico do prazo (HU35): composição auditoria + notificações + prazos + identidade. */
+export const HISTORICO_DO_PRAZO = Symbol('HISTORICO_DO_PRAZO');

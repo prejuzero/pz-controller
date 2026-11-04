@@ -89,46 +89,10 @@ export class TrilhaPostgres implements TrilhaDeAuditoria<Transacao> {
     limite = 10_000,
   ): Promise<RegistroEncadeado[]> {
     const linhas = await tx.$queryRaw<
-      {
-        id: string;
-        tenant_id: string;
-        sequencia: bigint;
-        tipo: string;
-        entidade: string;
-        entidade_id: string;
-        usuario_id: string | null;
-        usuario_real_id: string | null;
-        canal: string;
-        ip: string | null;
-        user_agent: string | null;
-        antes: unknown;
-        depois: unknown;
-        dados_pessoais: Record<string, string> | null;
-        criado_em: Date;
-        hash_anterior: string;
-        hash: string;
-      }[]
+      LinhaDaTrilha[]
     >`SELECT * FROM evento_auditoria WHERE tenant_id = ${tenantId}::uuid AND sequencia > ${BigInt(desdeSequencia)}
        ORDER BY sequencia LIMIT ${limite}`;
-    return linhas.map((l) => ({
-      id: l.id,
-      tenantId: l.tenant_id,
-      sequencia: Number(l.sequencia),
-      tipo: l.tipo,
-      entidade: l.entidade,
-      entidadeId: l.entidade_id,
-      usuarioId: l.usuario_id,
-      usuarioRealId: l.usuario_real_id,
-      canal: l.canal,
-      ip: l.ip,
-      userAgent: l.user_agent,
-      antes: l.antes,
-      depois: l.depois,
-      ...(l.dados_pessoais === null ? {} : { dadosPessoais: l.dados_pessoais }),
-      criadoEm: l.criado_em.toISOString(),
-      hashAnterior: l.hash_anterior,
-      hash: l.hash,
-    }));
+    return linhas.map(paraRegistro);
   }
 }
 
@@ -148,3 +112,44 @@ export class DadosPessoaisDaTrilhaPostgres {
              AND pseudonimizado_em IS NULL`;
   }
 }
+
+/** Linha de `evento_auditoria` como o PostgreSQL devolve. */
+export interface LinhaDaTrilha {
+  id: string;
+  tenant_id: string;
+  sequencia: bigint;
+  tipo: string;
+  entidade: string;
+  entidade_id: string;
+  usuario_id: string | null;
+  usuario_real_id: string | null;
+  canal: string;
+  ip: string | null;
+  user_agent: string | null;
+  antes: unknown;
+  depois: unknown;
+  dados_pessoais: Record<string, string> | null;
+  criado_em: Date;
+  hash_anterior: string;
+  hash: string;
+}
+
+export const paraRegistro = (l: LinhaDaTrilha): RegistroEncadeado => ({
+  id: l.id,
+  tenantId: l.tenant_id,
+  sequencia: Number(l.sequencia),
+  tipo: l.tipo,
+  entidade: l.entidade,
+  entidadeId: l.entidade_id,
+  usuarioId: l.usuario_id,
+  usuarioRealId: l.usuario_real_id,
+  canal: l.canal,
+  ip: l.ip,
+  userAgent: l.user_agent,
+  antes: l.antes,
+  depois: l.depois,
+  ...(l.dados_pessoais === null ? {} : { dadosPessoais: l.dados_pessoais }),
+  criadoEm: l.criado_em.toISOString(),
+  hashAnterior: l.hash_anterior,
+  hash: l.hash,
+});

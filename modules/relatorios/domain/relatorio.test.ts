@@ -8,6 +8,7 @@ import {
   linhasDaBuscaDePrazos,
   linhasDaBuscaDePublicacoes,
   linhasDoControleDeCiencia,
+  linhasDoHistorico,
 } from './relatorio.js';
 
 import type { PrazoDoRelatorio } from './relatorio.js';
@@ -191,5 +192,23 @@ describe('documento do relatório (HU29)', () => {
     );
     expect(dataCivil(null)).toBe('');
     expect(dataCivil('ontem')).toBe('ontem');
+  });
+});
+
+describe('histórico verificável (HU35)', () => {
+  it('evento legível; canal desconhecido aparece como veio; sem usuário, só o canal', () => {
+    const base = { sequencia: 1, quando: '02/11/2026, 10:00', hashAnterior: 'a', hash: 'b' };
+    const [comUsuario, semUsuario, semModulo] =
+      linhasDoHistorico([
+        { ...base, tipo: 'prazos.prazo-confirmado', usuario: 'Ana Fictícia', canal: 'portal' },
+        { ...base, tipo: 'prazos.prazo-vencido', usuario: '', canal: 'outro' },
+        { ...base, tipo: 'avulso', usuario: '', canal: 'sistema' },
+      ]).grupos[0]?.linhas ?? [];
+    expect(comUsuario).toMatchObject({
+      evento: 'prazo confirmado',
+      usuario: 'Ana Fictícia · Portal',
+    });
+    expect(semUsuario).toMatchObject({ evento: 'prazo vencido', usuario: 'outro' });
+    expect(semModulo).toMatchObject({ evento: 'avulso' });
   });
 });

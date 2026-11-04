@@ -50,6 +50,15 @@ export {
 import { ROTAS_CALENDARIO } from './calendario/index.js';
 import { ROTAS_CAPTURA } from './captura.js';
 import { ROTAS_CIENCIA } from './ciencia.js';
+import { ROTAS_HISTORICO } from './historico.js';
+export {
+  CodigoDeVerificacao,
+  consultarHistoricoDoPrazo,
+  HistoricoDoPrazo,
+  ROTAS_HISTORICO,
+  VerificacaoDoHistorico,
+  verificarHistorico,
+} from './historico.js';
 export {
   CienciaEmLote,
   CienciaRegistrada,
@@ -372,6 +381,7 @@ export const ROTAS = [
   ...ROTAS_TERMOS,
   ...ROTAS_PRIVACIDADE,
   ...ROTAS_RELATORIOS,
+  ...ROTAS_HISTORICO,
   ...ROTAS_PUBLICACOES,
   ...ROTAS_CAPTURA,
   ...ROTAS_NOTIFICACOES,

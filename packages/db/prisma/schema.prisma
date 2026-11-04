@@ -74,6 +74,7 @@ model Tenant {
   prazos                 Prazo[]
   compromissos           Compromisso[]
   relatorios             Relatorio[]
+  verificacoesHistorico  VerificacaoHistorico[]
   conferencias           ConferenciaPainel[]
   lembretes              LembreteAgendado[]
   tokenCiencias          TokenCiencia[]
@@ -1234,6 +1235,23 @@ model CienciaPrazo {
 
   @@index([tenantId, estado])
   @@map("ciencia_prazo")
+}
+
+/// Histórico verificável emitido (HU35): quais registros da trilha o PDF trouxe (RLS).
+model VerificacaoHistorico {
+  codigo       String   @id
+  tenantId     String   @map("tenant_id") @db.Uuid
+  entidade     String
+  entidadeId   String   @map("entidade_id")
+  sequencias   BigInt[]
+  emitidaEm    DateTime @default(now()) @map("emitida_em") @db.Timestamptz(6)
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, entidade, entidadeId])
+  @@map("verificacao_historico")
 }
 
 /// Relatório exportado (HU29): pedido por usuário, gerado no worker, arquivo por 24 h (RLS).

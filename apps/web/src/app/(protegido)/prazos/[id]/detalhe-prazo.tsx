@@ -10,6 +10,7 @@ import { formatarDataCivil, formatarInstante } from '../../../../i18n/formatar';
 import { EnviarPorEmail } from '../../_casca/enviar-por-email';
 
 import { AcoesDoPrazo } from './acoes-do-prazo';
+import { HistoricoDoPrazo } from './historico-do-prazo';
 
 import type { DetalheDoPrazo } from '@pz/contracts';
 
@@ -148,6 +149,8 @@ export function DetalhePrazo({ id }: { id: string }) {
           {t('detalhe.versoes', { motor: p.versaoMotor, tabela: String(p.versaoTabela ?? '—') })}
         </p>
       </section>
+
+      <HistoricoDoPrazo prazoId={p.id} />
     </div>
   );
 }

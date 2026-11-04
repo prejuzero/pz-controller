@@ -1290,6 +1290,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/prazos/{id}/historico": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Eventos da trilha de auditoria do prazo e das notificações dele, em ordem (somente leitura). */
+        get: operations["consultarHistoricoDoPrazo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/prazos/{id}/simular-ajuste": {
         parameters: {
             query?: never;
@@ -1660,6 +1677,23 @@ export interface paths {
         };
         /** Tipos de ato da taxonomia aprovada, para o cadastro de prazos. */
         get: operations["listarAtosDaTaxonomia"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/verificacoes/{codigo}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Confere o PDF do histórico contra a trilha (pública, com limite por IP). Não expõe o conteúdo. */
+        get: operations["verificarHistorico"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2223,6 +2257,29 @@ export interface components {
             /** @default 20 */
             limite: number;
         };
+        HistoricoDoPrazo: {
+            itens: {
+                sequencia: number;
+                /** @description Tipo do evento na trilha (ex.: prazos.prazo-confirmado). */
+                tipo: string;
+                entidade: string;
+                usuario: {
+                    /** Format: uuid */
+                    id: string;
+                    nome: string | null;
+                } | null;
+                canal: string;
+                /**
+                 * Format: date-time
+                 * @description Horário do banco.
+                 */
+                criadoEm: string;
+                antes: unknown;
+                depois: unknown;
+                hashAnterior: string;
+                hash: string;
+            }[];
+        };
         LinhaDoTempo: {
             /** @description Um item por dia a partir de hoje, inclusive os dias sem prazo. */
             itens: {
@@ -2781,6 +2838,15 @@ export interface components {
                  */
                 ordem?: "asc" | "desc";
             };
+        } | {
+            /** @constant */
+            tipo: "historico-prazo";
+            /** @constant */
+            formato: "pdf";
+            filtros: {
+                /** Format: uuid */
+                prazoId: string;
+            };
         };
         PedidoDeRenovacao: {
             tokenDeRenovacao: string;
@@ -3050,7 +3116,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            tipo: "agenda" | "busca-prazos" | "busca-publicacoes" | "controle-ciencia";
+            tipo: "agenda" | "busca-prazos" | "busca-publicacoes" | "controle-ciencia" | "historico-prazo";
             /** @enum {string} */
             formato: "pdf" | "xlsx";
             /** @description Filtros como foram pedidos. */
@@ -3251,6 +3317,27 @@ export interface components {
             tokenDeRenovacao: string;
             /** Format: date-time */
             renovacaoExpiraEm: string;
+        };
+        VerificacaoDoHistorico: {
+            /** @constant */
+            situacao: "valido";
+            /** Format: date-time */
+            emitidaEm: string;
+            /** @description Só o necessário para conferir o PDF; nada do conteúdo dos eventos. */
+            eventos: {
+                sequencia: number;
+                tipo: string;
+                /** Format: date-time */
+                criadoEm: string;
+                hash: string;
+            }[];
+        } | {
+            /** @constant */
+            situacao: "inexistente";
+        } | {
+            /** @constant */
+            situacao: "divergente";
+            motivo: string;
         };
         VersaoDaTabela: {
             /** Format: uuid */
@@ -9027,6 +9114,73 @@ export interface operations {
             };
         };
     };
+    consultarHistoricoDoPrazo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoricoDoPrazo"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
     simularAjustePrazo: {
         parameters: {
             query?: never;
@@ -10582,6 +10736,65 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AtosDaTaxonomia"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    verificarHistorico: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Impresso no PDF do histórico e no QR code. */
+                codigo: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificacaoDoHistorico"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
                 };
             };
             /** @description Não autenticado. */

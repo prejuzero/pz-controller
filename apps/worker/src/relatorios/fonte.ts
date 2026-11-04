@@ -1,3 +1,4 @@
+import { EmitirHistoricoVerificavel, HistoricoPostgres, sha256 } from '@pz/auditoria';
 import { Buscar } from '@pz/busca';
 import {
   AdvogadosPostgres,
@@ -7,7 +8,7 @@ import {
 } from '@pz/cadastro';
 import { CienciaPostgres } from '@pz/ciencia';
 import { NomesDosUsuariosPostgres } from '@pz/identidade';
-import { formatarNumeroCnj, lerNumeroCnj } from '@pz/kernel';
+import { formatarNumeroCnj, Instant, lerNumeroCnj } from '@pz/kernel';
 import { NotificacoesPostgres } from '@pz/notificacoes';
 import { BuscarPrazos, prazoDetalhado, PrazosPostgres } from '@pz/prazos';
 import { BuscarPublicacoes, LeituraPostgres } from '@pz/publicacoes';
@@ -25,7 +26,9 @@ export function fonteDosRelatorios(
   banco: Banco,
   relogio: Clock,
   protecao: ProtecaoDeCampos,
+  portal: string,
 ): FonteDosRelatorios {
+  const historico = new EmitirHistoricoVerificavel(banco, new HistoricoPostgres(), sha256);
   const publicacoes = new BuscarPublicacoes(banco, new LeituraPostgres());
   const processos = new ProcessosParaBusca(banco, new ProcessosPostgres(relogio));
   const oabs = new OabsParaBusca(banco, new AdvogadosPostgres(relogio, protecao));
@@ -81,6 +84,44 @@ export function fonteDosRelatorios(
           }),
         );
       }),
+    // Histórico verificável (HU35): o prazo e as notificações dele; a emissão fica gravada.
+    historicoDoPrazo: async (prazoId) => {
+      const alvo = await banco.executar(async (tx) => {
+        const prazo = await repositorioDePrazos.buscar(tx, prazoId as Uuid);
+        if (prazo === undefined) return undefined;
+        const ids = await notificacoesDoPrazo.idsDoPrazo(tx, prazoId as Uuid);
+        return { tenantId: prazo.estado.tenantId, ids };
+      });
+      if (alvo === undefined) return undefined;
+      const principal = { entidade: 'prazo', entidadeId: prazoId };
+      const { eventos, codigo } = await historico.executar(alvo.tenantId, principal, [
+        principal,
+        ...alvo.ids.map((id) => ({ entidade: 'notificacao', entidadeId: id })),
+      ]);
+      const nomesDe = await banco.executar(async (tx) => {
+        const ids = [
+          ...new Set(eventos.flatMap((e) => (e.usuarioId === null ? [] : [e.usuarioId]))),
+        ];
+        return new Map(
+          await Promise.all(
+            ids.map(async (id) => [id, (await nomes.nomeDe(tx, id as Uuid)) ?? ''] as const),
+          ),
+        );
+      });
+      return {
+        eventos: eventos.map((e) => ({
+          sequencia: e.sequencia,
+          criadoEm: Instant.deIso(e.criadoEm),
+          tipo: e.tipo,
+          usuario: e.usuarioId === null ? '' : (nomesDe.get(e.usuarioId) ?? ''),
+          canal: e.canal,
+          hashAnterior: e.hashAnterior,
+          hash: e.hash,
+        })),
+        codigo,
+        url: `${portal.replace(/\/$/, '')}/verificar/${codigo}`,
+      };
+    },
     nomeDoUsuario: async (usuarioId) =>
       (await banco.executar((tx) => nomes.nomeDe(tx, usuarioId))) ?? '',
   };

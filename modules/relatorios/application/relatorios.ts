@@ -7,6 +7,7 @@ import {
   linhasDaBuscaDePrazos,
   linhasDaBuscaDePublicacoes,
   linhasDoControleDeCiencia,
+  linhasDoHistorico,
   MAXIMO_DE_LINHAS,
   TITULOS,
 } from '../domain/relatorio.js';
@@ -211,6 +212,7 @@ async function montarDocumento(
   let linhas: number;
   let truncado: boolean;
   const f = filtros as Record<string, unknown>;
+  if (tipo === 'historico-prazo') return historicoVerificavel(fonte, relogio, f, usuarioId);
   if (tipo === 'busca-publicacoes') {
     const lidas = await todas((cursor) => fonte.publicacoes(comCursor(f, cursor)));
     if (!lidas.ok) return lidas;
@@ -258,6 +260,43 @@ async function montarDocumento(
       corpo,
       truncado,
     ),
+  });
+}
+
+/** Histórico verificável (HU35): eventos, hashes e o código impresso com o QR code. */
+async function historicoVerificavel(
+  fonte: FonteDosRelatorios,
+  relogio: Clock,
+  filtros: Record<string, unknown>,
+  usuarioId: Uuid,
+): Promise<Result<{ documento: Documento; linhas: number }, Validacao>> {
+  const prazoId = typeof filtros.prazoId === 'string' ? filtros.prazoId : '';
+  const historico = await fonte.historicoDoPrazo(prazoId);
+  if (historico === undefined) return err(invalido('filtros.prazoId', 'Prazo não encontrado.'));
+  const corpo = linhasDoHistorico(
+    historico.eventos.map((e) => ({ ...e, quando: dataHora(e.criadoEm) })),
+  );
+  const documento = await comCabecalho(
+    fonte,
+    relogio,
+    TITULOS['historico-prazo'],
+    {},
+    usuarioId,
+    corpo,
+  );
+  return ok({
+    linhas: historico.eventos.length,
+    documento: {
+      ...documento,
+      cabecalho: {
+        ...documento.cabecalho,
+        filtros: [
+          ['Código de verificação', historico.codigo],
+          ['Verifique em', historico.url],
+        ],
+      },
+      verificacao: { codigo: historico.codigo, url: historico.url },
+    },
   });
 }
 

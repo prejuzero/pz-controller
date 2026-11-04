@@ -6,6 +6,7 @@ export const TIPOS_DE_RELATORIO = [
   'busca-prazos',
   'busca-publicacoes',
   'controle-ciencia',
+  'historico-prazo',
 ] as const;
 export type TipoDeRelatorio = (typeof TIPOS_DE_RELATORIO)[number];
 
@@ -72,6 +73,8 @@ export interface Documento {
   /** Nome do agrupamento (ex.: "Vencimento"): vira a primeira coluna na planilha. */
   readonly rotuloDoGrupo: string | null;
   readonly grupos: readonly Grupo[];
+  /** Histórico verificável (HU35): código e endereço da verificação pública (QR code no PDF). */
+  readonly verificacao?: { readonly codigo: string; readonly url: string };
 }
 
 const STATUS: Readonly<Record<string, string>> = {
@@ -204,6 +207,42 @@ export function linhasDoControleDeCiencia(
   return { colunas, rotuloDoGrupo: null, grupos: [{ titulo: null, linhas }] };
 }
 
+/** Evento da trilha como o histórico verificável imprime (HU35). */
+export interface EventoDoRelatorio {
+  readonly sequencia: number;
+  /** "DD/MM/AAAA, HH:MM (horário de Brasília)". */
+  readonly quando: string;
+  readonly tipo: string;
+  readonly usuario: string;
+  readonly canal: string;
+  readonly hashAnterior: string;
+  readonly hash: string;
+}
+
+/**
+ * Histórico verificável (HU35, RF87): cada evento com o hash e o hash anterior, em ordem da
+ * cadeia. O tipo vira texto ("prazos.prazo-confirmado" → "prazo confirmado").
+ */
+export function linhasDoHistorico(eventos: readonly EventoDoRelatorio[]) {
+  const colunas: Coluna[] = [
+    { chave: 'sequencia', titulo: 'Seq.', largura: 0.5 },
+    { chave: 'quando', titulo: 'Data e hora', largura: 1.6 },
+    { chave: 'evento', titulo: 'Evento', largura: 1.8 },
+    { chave: 'usuario', titulo: 'Usuário e canal', largura: 1.5 },
+    { chave: 'hash', titulo: 'Hash', largura: 2.4 },
+    { chave: 'hashAnterior', titulo: 'Hash anterior', largura: 2.4 },
+  ];
+  const linhas = eventos.map((e) => ({
+    sequencia: String(e.sequencia),
+    quando: e.quando,
+    evento: e.tipo.slice(e.tipo.lastIndexOf('.') + 1).replaceAll('-', ' '),
+    usuario: [e.usuario, CANAIS[e.canal] ?? e.canal].filter((t) => t !== '').join(' · '),
+    hash: e.hash,
+    hashAnterior: e.hashAnterior,
+  }));
+  return { colunas, rotuloDoGrupo: null, grupos: [{ titulo: null, linhas }] };
+}
+
 /** Busca de publicações (RF57): as colunas da tela de busca. */
 export function linhasDaBuscaDePublicacoes(
   publicacoes: readonly PublicacaoDoRelatorio[],
@@ -232,6 +271,7 @@ export const TITULOS: Readonly<Record<TipoDeRelatorio | 'prazo' | 'publicacao', 
   'busca-prazos': 'Busca de prazos',
   'busca-publicacoes': 'Busca de publicações',
   'controle-ciencia': 'Controle de ciência',
+  'historico-prazo': 'Histórico do prazo (verificável)',
   // Envio manual (HU32): um prazo ou uma publicação.
   prazo: 'Prazo',
   publicacao: 'Publicação',

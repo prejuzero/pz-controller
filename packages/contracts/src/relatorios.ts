@@ -5,7 +5,13 @@ import { DataCivil, Instante, Uuid } from './comum.js';
 import { definirRota, nomear } from './rota.js';
 
 const Formato = z.enum(['pdf', 'xlsx']);
-const Tipo = z.enum(['agenda', 'busca-prazos', 'busca-publicacoes', 'controle-ciencia']);
+const Tipo = z.enum([
+  'agenda',
+  'busca-prazos',
+  'busca-publicacoes',
+  'controle-ciencia',
+  'historico-prazo',
+]);
 
 /** Filtros de uma busca (HU28) sem paginação: o relatório traz todo o resultado (até 5.000). */
 const FiltrosDaBusca = FiltrosBusca.esquema.omit({ cursor: true, limite: true });
@@ -33,6 +39,14 @@ export const PedidoDeRelatorio = nomear(
         tipo: z.enum(['busca-prazos', 'busca-publicacoes', 'controle-ciencia']),
         formato: Formato,
         filtros: FiltrosDaBusca,
+      })
+      .strict(),
+    // Histórico verificável do prazo (HU35): só PDF (hashes e QR code de verificação).
+    z
+      .object({
+        tipo: z.literal('historico-prazo'),
+        formato: z.literal('pdf'),
+        filtros: z.object({ prazoId: Uuid }).strict(),
       })
       .strict(),
   ]),
