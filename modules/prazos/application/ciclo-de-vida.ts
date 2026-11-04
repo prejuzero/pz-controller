@@ -652,19 +652,14 @@ export class LinkDoDocumento<Transacao> {
 /**
  * Marca a ciência no prazo (consumidor de CienciaConfirmada, HU33). A trilha e o evento já foram
  * gravados pelo módulo ciencia; aqui só o espelho que o dashboard, a busca e os lembretes leem.
- * Idempotente; edição concorrente tenta de novo.
+ * Idempotente. Gravação atômica e sem versão otimista: não disputa com a edição do advogado.
  */
 export class RegistrarCienciaNoPrazo<Transacao> {
   constructor(private readonly prazos: RepositorioDePrazos<Transacao>) {}
 
   async executar(transacao: Transacao, prazoId: Uuid): Promise<'registrada' | 'sem-mudanca'> {
-    for (let tentativa = 0; tentativa < 3; tentativa++) {
-      const prazo = await this.prazos.buscar(transacao, prazoId);
-      if (prazo === undefined) return 'sem-mudanca';
-      const versaoLida = prazo.estado.versaoOtimista;
-      if (!prazo.registrarCiencia()) return 'sem-mudanca';
-      if (await this.prazos.atualizar(transacao, prazo, versaoLida)) return 'registrada';
-    }
-    throw new Error(`ciência do prazo ${prazoId} não gravada: edição concorrente`);
+    const prazo = await this.prazos.buscar(transacao, prazoId);
+    if (prazo?.registrarCiencia() !== true) return 'sem-mudanca';
+    return (await this.prazos.registrarCiencia(transacao, prazoId)) ? 'registrada' : 'sem-mudanca';
   }
 }

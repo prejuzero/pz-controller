@@ -299,15 +299,12 @@ export class Prazo extends AggregateRoot {
 
   /**
    * Espelho da ciência confirmada no módulo ciencia (HU33), que audita e publica o evento. Só
-   * avança: `false` se já estava confirmada.
+   * avança: `false` se já estava confirmada. Não muda a versão otimista: não é edição do prazo,
+   * e a tela aberta antes da ciência continua podendo confirmar, ajustar ou cumprir.
    */
   registrarCiencia(): boolean {
     if (this.#estado.statusCiencia === 'confirmada') return false;
-    this.#estado = {
-      ...this.#estado,
-      statusCiencia: 'confirmada',
-      versaoOtimista: this.#estado.versaoOtimista + 1,
-    };
+    this.#estado = { ...this.#estado, statusCiencia: 'confirmada' };
     return true;
   }
 

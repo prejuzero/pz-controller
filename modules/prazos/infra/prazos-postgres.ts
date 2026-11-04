@@ -179,9 +179,16 @@ export class PrazosPostgres implements RepositorioDePrazos<Transacao> {
         parametros: paraJson(e.parametros),
         motivoAjuste: e.motivoAjuste,
         status: paraBanco(e.status),
-        statusCiencia: e.statusCiencia,
         versaoOtimista: e.versaoOtimista,
       },
+    });
+    return count === 1;
+  }
+
+  async registrarCiencia(transacao: Transacao, id: Uuid): Promise<boolean> {
+    const { count } = await transacao.prazo.updateMany({
+      where: { id, statusCiencia: { not: 'confirmada' } },
+      data: { statusCiencia: 'confirmada' },
     });
     return count === 1;
   }

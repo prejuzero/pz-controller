@@ -77,8 +77,14 @@ export interface AlcanceDaAlteracao {
 export interface RepositorioDePrazos<Transacao> {
   inserir(transacao: Transacao, prazo: Prazo): Promise<void>;
   buscar(transacao: Transacao, id: Uuid): Promise<Prazo | undefined>;
-  /** Grava se a versão otimista ainda é `versaoLida`; `false` se outro alterou antes. */
+  /**
+   * Grava se a versão otimista ainda é `versaoLida`; `false` se outro alterou antes. Não grava
+   * a ciência: ela tem caminho próprio (`registrarCiencia`) e não pode ser desfeita por uma
+   * edição lida antes dela.
+   */
   atualizar(transacao: Transacao, prazo: Prazo, versaoLida: number): Promise<boolean>;
+  /** Marca a ciência confirmada de uma vez, sem mudar a versão; `false` se já estava. */
+  registrarCiencia(transacao: Transacao, id: Uuid): Promise<boolean>;
   /**
    * Abertos e calculados pelo motor cuja jurisdição o evento alcança e cujo intervalo
    * (referência até vencimento) cruza o período, em ordem de id, a partir de `depoisDe`.

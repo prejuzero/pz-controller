@@ -17,7 +17,7 @@ CARGA_TENANTS=100 CARGA_VUS=50 CARGA_DURACAO=30s pnpm carga   # rodada curta
 - **Limites:** 5xx e falhas < 0,5%; leitura com p95 < 300 ms; busca com p95 < 500 ms.
 - **Saída:** resumo no terminal e em `infra/k6/.relatorio/resumo.json` (fora do git).
 
-A massa roda com o superusuário do ambiente local (`pz_dev`), porque grava em tabelas de vários módulos e escritórios. **Nunca rode `massa.sql` nem `carga.sh` fora do ambiente local.** Para limpar a massa, use `pnpm infra:reset`. O conteúdo de publicação é imutável (ADR-014) e não sai com `DELETE`.
+A massa roda com o superusuário do ambiente local (`pz_dev`), porque grava em tabelas de vários módulos e escritórios. **Nunca rode `massa.sql` nem `carga.sh` fora do ambiente local.** Para limpar a massa, use `pnpm infra:reset`. Limpe antes de rodar o `pnpm e2e`: os 1.000 escritórios da massa empurram os dados da semente para fora das listas paginadas (o E2E do painel do administrador falha). O conteúdo de publicação é imutável (ADR-014) e não sai com `DELETE`.
 
 ## Resultado de referência (04/11/2026)
 
