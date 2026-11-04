@@ -7,7 +7,11 @@ import { IORedisInstrumentation } from '@opentelemetry/instrumentation-ioredis';
 import { PgInstrumentation } from '@opentelemetry/instrumentation-pg';
 import { UndiciInstrumentation } from '@opentelemetry/instrumentation-undici';
 import { resourceFromAttributes } from '@opentelemetry/resources';
-import { MeterProvider, PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
+import {
+  AggregationType,
+  MeterProvider,
+  PeriodicExportingMetricReader,
+} from '@opentelemetry/sdk-metrics';
 import {
   BatchSpanProcessor,
   NodeTracerProvider,
@@ -74,6 +78,15 @@ function encaminharDiagnosticoParaLog(logger: Logger): void {
 }
 
 /**
+ * Buckets da latência HTTP (HU40, SLOs da página Padrões de engenharia): 0,3 s e 0,8 s são os
+ * limites de p95 da leitura e da escrita; os alertas de burn rate contam as requisições abaixo
+ * deles (`le="0.3"` e `le="0.8"`). Mudar estes valores exige mudar os alertas de SLO.
+ */
+export const LIMITES_LATENCIA_HTTP_SEGUNDOS = [
+  0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.3, 0.5, 0.8, 1, 2.5, 5, 10,
+] as const;
+
+/**
  * Liga traces e métricas OpenTelemetry com exportação OTLP (ADR-011). Chamar uma única vez,
  * antes de carregar o restante da app, para que as instrumentações se apliquem aos módulos.
  */
@@ -116,7 +129,19 @@ export function iniciarTelemetria(opcoes: OpcoesTelemetria): Telemetria {
   // Registra o gerenciador de contexto (AsyncLocalStorage) e o propagador W3C Trace Context.
   provedorDeTraces.register();
 
-  const provedorDeMetricas = new MeterProvider({ resource: recurso, readers: leitores });
+  const provedorDeMetricas = new MeterProvider({
+    resource: recurso,
+    readers: leitores,
+    views: [
+      {
+        instrumentName: 'http.server.request.duration',
+        aggregation: {
+          type: AggregationType.EXPLICIT_BUCKET_HISTOGRAM,
+          options: { boundaries: [...LIMITES_LATENCIA_HTTP_SEGUNDOS] },
+        },
+      },
+    ],
+  });
   metrics.setGlobalMeterProvider(provedorDeMetricas);
 
   const desregistrarInstrumentacoes = registerInstrumentations({

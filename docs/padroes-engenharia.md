@@ -75,3 +75,5 @@ local (Docker Compose) · staging (dados sintéticos) · produção (sa-east-1).
 - E-mail de nova publicação enviado em até 10 min após a classificação.
 - Busca: p95 < 500 ms com 1 milhão de publicações.
 - Backups: RPO 15 min, RTO 4 h.
+
+Os SLOs de disponibilidade e de latência da API são alertas de burn rate em `infra/docker/observabilidade/provisionamento/alertas.yaml` (grupo `prejuzero-slos`), com runbook em `docs/runbooks/alertas.md` (HU40). Os SLOs de publicação e de e-mail ainda dependem de uma métrica de ponta a ponta (pendência da HU40); até lá, o atraso aparece no alerta de fila parada.
