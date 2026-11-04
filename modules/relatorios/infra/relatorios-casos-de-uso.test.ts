@@ -128,6 +128,26 @@ function fonteCom(total: number, pedidos: Record<string, unknown>[] = []): Fonte
             ]),
         ),
       ),
+    historicoDoPrazo: (id) =>
+      Promise.resolve(
+        id === PRAZO
+          ? {
+              eventos: [
+                {
+                  sequencia: 7,
+                  criadoEm: Instant.deIso('2026-11-02T13:00:00Z'),
+                  tipo: 'prazos.prazo-confirmado',
+                  usuario: 'Ana Fictícia',
+                  canal: 'portal',
+                  hashAnterior: 'a'.repeat(64),
+                  hash: 'b'.repeat(64),
+                },
+              ],
+              codigo: `${TENANT}.${'c'.repeat(64)}`,
+              url: `https://app.exemplo.invalid/verificar/${TENANT}.${'c'.repeat(64)}`,
+            }
+          : undefined,
+      ),
     nomeDoUsuario: () => Promise.resolve('Ana Fictícia'),
   };
 }
@@ -493,5 +513,37 @@ describe('arquivo do envio manual (HU32)', () => {
       ],
       ['11/11/2026', 'Ato fictício 1', 'Pendente', '', '', '0 / 0 / 0'],
     ]);
+  });
+
+  it('histórico verificável (HU35): eventos com hashes, código e QR; prazo inexistente falha', async () => {
+    const id = await pedir({
+      tipo: 'historico-prazo',
+      formato: 'pdf',
+      filtros: { prazoId: PRAZO },
+    });
+    expect(await gerador(fonteCom(1)).executar(id)).toBe('gerado');
+    const arquivo = armazenamento.gravados.get(`relatorios/${id}/relatorio.pdf`);
+    const { texto } = await new ExtratorPdf().extrairDePdf(arquivo?.conteudo ?? new Uint8Array());
+    const t = texto.replace(/\s+/g, ' ');
+    expect(t).toContain('Histórico do prazo (verificável)');
+    expect(t).toContain(`Código de verificação: ${TENANT}.${'c'.repeat(64)}`);
+    expect(t).toContain('prazo confirmado');
+    // O hash quebra em linhas na coluna estreita: confere sem os espaços.
+    expect(texto.replace(/\s+/g, '')).toContain('b'.repeat(64));
+    expect(
+      (
+        await solicitar.executar(solicitante, {
+          tipo: 'historico-prazo',
+          formato: 'xlsx',
+          filtros: { prazoId: PRAZO },
+        })
+      ).ok,
+    ).toBe(false);
+    const outro = await pedir({
+      tipo: 'historico-prazo',
+      formato: 'pdf',
+      filtros: { prazoId: OUTRO },
+    });
+    expect(await gerador(fonteCom(1)).executar(outro)).toBe('filtros-invalidos');
   });
 });

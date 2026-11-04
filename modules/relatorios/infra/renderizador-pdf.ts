@@ -1,4 +1,5 @@
 import PDFDocument from 'pdfkit';
+import QRCode from 'qrcode';
 
 import type { Renderizador } from '../application/portas.js';
 import type { Coluna, Documento } from '../domain/relatorio.js';
@@ -46,8 +47,15 @@ export class RenderizadorPdf implements Renderizador {
         doc.cabecalho.filtros.length === 0
           ? 'Filtro: nenhum'
           : `Filtro: ${doc.cabecalho.filtros.map(([r, v]) => `${r}: ${v}`).join('; ')}`;
-      pdf.text(filtros, { width: largura });
+      // Histórico verificável (HU35): o QR code fica à direita do cabeçalho e leva à verificação.
+      const lado = 72;
+      if (doc.verificacao !== undefined) {
+        qrCode(pdf, doc.verificacao.url, pdf.page.width - MARGEM - lado, MARGEM, lado);
+      }
+      const larguraDoTexto = doc.verificacao === undefined ? largura : largura - lado - 12;
+      pdf.text(filtros, { width: larguraDoTexto });
       if (doc.cabecalho.aviso !== null) pdf.font('Helvetica-Bold').text(doc.cabecalho.aviso);
+      if (doc.verificacao !== undefined) pdf.y = Math.max(pdf.y, MARGEM + lado + 6);
       pdf.moveDown(0.5);
 
       const linha = (valores: readonly string[], negrito: boolean) => {
@@ -124,4 +132,20 @@ export class RenderizadorPdf implements Renderizador {
       pdf.end();
     });
   }
+}
+
+/** QR code desenhado em vetores (sem imagem): um quadrado por módulo, com a zona de silêncio. */
+function qrCode(pdf: PDFKit.PDFDocument, texto: string, x: number, y: number, lado: number) {
+  const { modules } = QRCode.create(texto, { errorCorrectionLevel: 'M' });
+  const borda = 4;
+  const passo = lado / (modules.size + 2 * borda);
+  pdf.save().fillColor('#000000');
+  for (let linha = 0; linha < modules.size; linha++) {
+    for (let coluna = 0; coluna < modules.size; coluna++) {
+      if (modules.get(linha, coluna)) {
+        pdf.rect(x + (coluna + borda) * passo, y + (linha + borda) * passo, passo, passo);
+      }
+    }
+  }
+  pdf.fill().restore();
 }

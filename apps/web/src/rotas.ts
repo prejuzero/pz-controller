@@ -13,6 +13,8 @@ export const ROTAS_LEGAIS = ['/termos', '/privacidade', '/cobertura'] as const;
 export const ROTA_ACEITAR_TERMOS = '/aceitar-termos';
 /** Link de ciência do e-mail (HU33): público; só mostra, a confirmação é um clique na página. */
 export const ROTA_CIENCIA = '/ciencia';
+/** Verificação do PDF do histórico (HU35): pública, pelo QR code; não expõe conteúdo. */
+export const ROTA_VERIFICAR = '/verificar';
 const ROTAS_PUBLICAS = [
   ROTA_ENTRAR,
   ROTA_RECUPERAR_SENHA,
@@ -20,6 +22,7 @@ const ROTAS_PUBLICAS = [
   ROTA_CADASTRO,
   ROTA_VERIFICAR_EMAIL,
   ROTA_CIENCIA,
+  ROTA_VERIFICAR,
   ...ROTAS_LEGAIS,
 ];
 

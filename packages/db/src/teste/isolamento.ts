@@ -132,6 +132,11 @@ const COLUNAS_FIXAS: Readonly<Record<string, Record<string, unknown>>> = {
   },
   ciencia_prazo: { confirmada_por: null, confirmada_em: null },
   conferencia_painel: { resultado: 'sem-novidade', observacao: null },
+  // Código = tenant + SHA-256 do trecho (HU35); o check só confere o formato.
+  verificacao_historico: {
+    codigo: () => `${randomUUID()}.${randomBytes(32).toString('hex')}`,
+    sequencias: [],
+  },
   relatorio: {
     tipo: 'agenda',
     formato: 'pdf',

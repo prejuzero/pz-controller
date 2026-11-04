@@ -99,6 +99,7 @@ describe('migrações', () => {
         'uso_ia',
         'usuario',
         'usuario_perfil',
+        'verificacao_historico',
         'webhook_recebido',
       ]);
 
@@ -156,6 +157,7 @@ describe('migrações', () => {
         'uso_ia',
         'usuario',
         'usuario_perfil',
+        'verificacao_historico',
         'webhook_recebido',
       ]);
     } finally {
@@ -217,6 +219,7 @@ describe('RLS (ADR-003)', () => {
         'token_ciencia',
         'usuario',
         'usuario_perfil',
+        'verificacao_historico',
       ]);
       for (const linha of rows) {
         expect(linha, linha.tabela).toMatchObject({ ativo: true, forcado: true });

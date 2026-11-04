@@ -43,6 +43,20 @@ export interface CienciaDoPrazoNoRelatorio {
   readonly rejeitadas: number;
 }
 
+export interface HistoricoVerificavel {
+  readonly eventos: readonly {
+    readonly sequencia: number;
+    readonly criadoEm: Instant;
+    readonly tipo: string;
+    readonly usuario: string;
+    readonly canal: string;
+    readonly hashAnterior: string;
+    readonly hash: string;
+  }[];
+  readonly codigo: string;
+  readonly url: string;
+}
+
 export interface Pagina<T> {
   readonly itens: readonly T[];
   readonly proximoCursor: string | null;
@@ -64,6 +78,11 @@ export interface FonteDosRelatorios {
   controleDeCiencia(
     prazoIds: readonly string[],
   ): Promise<ReadonlyMap<string, CienciaDoPrazoNoRelatorio>>;
+  /**
+   * Histórico verificável do prazo (HU35): eventos da trilha e o código da emissão, já gravada
+   * para a verificação pública; `undefined` se o prazo não existe no tenant.
+   */
+  historicoDoPrazo(prazoId: string): Promise<HistoricoVerificavel | undefined>;
   /** Nome de quem pediu, para o cabeçalho. */
   nomeDoUsuario(usuarioId: Uuid): Promise<string>;
 }

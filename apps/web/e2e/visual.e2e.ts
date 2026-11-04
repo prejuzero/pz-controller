@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import { expect, test } from '@playwright/test';
 
 // Regressão visual (PZ-167): desktop e 360 px, temas claro e escuro. As referências só são geradas
@@ -25,6 +27,9 @@ for (const tela of TELAS) {
         await expect(page).toHaveScreenshot(`dashboard-${tela.nome}-${tema.nome}.png`, {
           fullPage: true,
           mask: [page.locator('[data-dinamico]')],
+          // Os avisos do topo (ciência, captura, e-mail) dependem dos testes anteriores e mudam a
+          // altura da página: ficam fora da captura (o conteúdo deles é testado em cada fluxo).
+          stylePath: path.join(import.meta.dirname, 'visual.css'),
         });
       });
 

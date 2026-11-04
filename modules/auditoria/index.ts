@@ -24,3 +24,18 @@ export type {
   ResultadoDoTenant,
 } from './application/integridade.js';
 export { CadeiaPostgres } from './infra/cadeia-postgres.js';
+export {
+  ConsultarHistorico,
+  EmitirHistoricoVerificavel,
+  MAXIMO_DO_HISTORICO,
+  VerificarHistorico,
+} from './application/historico.js';
+export type {
+  AlvoDoHistorico,
+  EventoDoHistorico,
+  NoTenantDoHistorico,
+  RepositorioDoHistorico,
+  ResultadoDaVerificacaoPublica,
+} from './application/historico.js';
+export { codigoDeVerificacao, lerCodigo } from './domain/verificacao.js';
+export { HistoricoPostgres } from './infra/historico-postgres.js';

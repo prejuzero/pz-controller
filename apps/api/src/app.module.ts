@@ -12,7 +12,13 @@ import {
   ReprocessarJobMorto,
   UsoDeIaPostgres,
 } from '@pz/administracao';
-import { TrilhaPostgres } from '@pz/auditoria';
+import {
+  ConsultarHistorico,
+  HistoricoPostgres,
+  sha256,
+  TrilhaPostgres,
+  VerificarHistorico,
+} from '@pz/auditoria';
 import { Buscar, ConsultarAgenda } from '@pz/busca';
 import {
   AdicionarOab,
@@ -101,6 +107,7 @@ import {
   ElevarSessao,
   EmailsDoEscritorioPostgres,
   EmailsDosUsuariosPostgres,
+  NomesDosUsuariosPostgres,
   EncerrarSessao,
   ProtecaoDeAcesso,
   GeradorDeTokensSeguro,
@@ -200,6 +207,7 @@ import { Redis } from 'ioredis';
 
 import { AdminController } from './admin/admin.controller.js';
 import { CuradoriaDaClassificacaoController } from './admin/curadoria.controller.js';
+import { HistoricoController } from './auditoria/historico.controller.js';
 import { AuthController } from './auth/auth.controller.js';
 import { ContextoDoUsuario } from './auth/contexto-do-usuario.js';
 import { AgendaController } from './busca/agenda.controller.js';
@@ -212,6 +220,7 @@ import { CapturaController } from './captura/captura.controller.js';
 import { CienciaController } from './ciencia/ciencia.controller.js';
 import {
   AMBIENTE,
+  HISTORICO_DO_PRAZO,
   CAIXA_DE_WEBHOOKS,
   FILAS_DO_PAINEL,
   JANELA_DE_REQUISICOES,
@@ -228,6 +237,7 @@ import { recursoDoEnvioExiste } from './notificacoes/recurso-do-envio.js';
 import { OpenApiController } from './openapi.controller.js';
 import { AssistenteController, CompromissosController } from './prazos/compromissos.controller.js';
 import { DashboardController } from './prazos/dashboard.controller.js';
+import { historicoDoPrazo } from './prazos/historico.js';
 import { AtosDaTaxonomiaController, PrazosController } from './prazos/prazos.controller.js';
 import { processoNoCalendario } from './prazos/processo.js';
 import { TabelaPrazosController } from './prazos/tabela-prazos.controller.js';
@@ -240,6 +250,7 @@ import { WebhooksController } from './webhooks/webhooks.controller.js';
 
 import type { AmbienteApi } from './ambiente.js';
 import type { JanelaDeRequisicoes } from './http/limite.js';
+import type { FontesDoHistorico } from './prazos/historico.js';
 import type { CaixaDeWebhooks } from './webhooks/webhooks.controller.js';
 import type { DynamicModule, Provider, Type } from '@nestjs/common';
 import type {
@@ -248,7 +259,7 @@ import type {
   ConsultaDeUsoDeIa,
   DependenciasDoReprocessamento,
 } from '@pz/administracao';
-import type { TrilhaDeAuditoria } from '@pz/auditoria';
+import type { NoTenantDoHistorico, RepositorioDoHistorico, TrilhaDeAuditoria } from '@pz/auditoria';
 import type {
   CriadorDeConta,
   PreparadorDeVerificacao,
@@ -351,6 +362,8 @@ export interface OpcoesApi {
   readonly privacidade?: DependenciasDaPrivacidade;
   /** Relatórios (HU29); nos testes, repositório em memória. */
   readonly relatorios?: DependenciasDosRelatorios;
+  /** Histórico do prazo (HU35); nos testes, portas em memória. */
+  readonly historico?: DependenciasDoHistorico;
   /** Envio manual por e-mail (HU32); nos testes, portas em memória. */
   readonly envios?: DependenciasDosEnvios;
   /** Termos e aceite versionado (HU38); nos testes, repositórios em memória. */
@@ -510,6 +523,31 @@ function provedoresDosRelatorios(d: DependenciasDosRelatorios): Provider[] {
   ];
 }
 
+interface DependenciasDoHistorico {
+  readonly noTenant: NoTenantDoHistorico;
+  readonly unidade: UnidadeDeTrabalho<unknown>;
+  readonly repositorio: RepositorioDoHistorico<unknown>;
+  readonly fontes: Omit<FontesDoHistorico, 'eventos'>;
+}
+
+/** Histórico do prazo e verificação pública do PDF (HU35); leitura na API, PDF no worker. */
+function provedoresDoHistorico(d: DependenciasDoHistorico): Provider[] {
+  const consultar = new ConsultarHistorico(d.unidade, d.repositorio);
+  return [
+    {
+      provide: HISTORICO_DO_PRAZO,
+      useValue: historicoDoPrazo({
+        ...d.fontes,
+        eventos: (tenantId, alvos) => consultar.executar(tenantId, alvos),
+      }),
+    },
+    {
+      provide: VerificarHistorico,
+      useValue: new VerificarHistorico(d.noTenant, d.unidade, d.repositorio, sha256),
+    },
+  ];
+}
+
 interface DependenciasDosEnvios {
   readonly unidade: UnidadeDeTrabalho<unknown>;
   readonly emails: EmailsDoEscritorio<unknown>;
@@ -528,6 +566,30 @@ function provedoresDosEnvios(d: DependenciasDosEnvios): Provider[] {
         new SolicitarEnvioManual(d.unidade, d.emails, d.existe, d.trilha, d.outbox, r),
     },
   ];
+}
+
+/** Histórico no banco: cada leitura no tenant da sessão (RLS). */
+function historicoDoBanco(banco: Banco): DependenciasDoHistorico {
+  const prazos = new PrazosPostgres();
+  const notificacoes = new NotificacoesPostgres();
+  const nomes = new NomesDosUsuariosPostgres();
+  return {
+    noTenant: (tenantId, trabalho) => noTenantDoBanco(tenantId as Uuid, trabalho),
+    unidade: banco,
+    repositorio: new HistoricoPostgres(),
+    fontes: {
+      prazoExiste: async (id) =>
+        (await banco.executar((tx) => prazos.buscar(tx, id))) !== undefined,
+      notificacoesDoPrazo: (id) => banco.executar((tx) => notificacoes.idsDoPrazo(tx, id)),
+      nomes: (ids) =>
+        banco.executar(async (tx) => {
+          const pares = await Promise.all(
+            ids.map(async (id) => [id, await nomes.nomeDe(tx, id as Uuid)] as const),
+          );
+          return new Map(pares.flatMap(([id, nome]) => (nome === undefined ? [] : [[id, nome]])));
+        }),
+    },
+  };
 }
 
 /** Exportação de dados (HU38): pedido e consulta na API; a geração é do worker. */
@@ -1446,6 +1508,7 @@ export class AppModule {
           armazenamento: arquivosDoAmbiente(opcoes.ambiente),
         },
       ),
+      ...provedoresDoHistorico(opcoes.historico ?? historicoDoBanco(recursos.banco)),
       ...provedoresDosEnvios(
         opcoes.envios ?? {
           unidade: recursos.banco,
@@ -1512,6 +1575,7 @@ export class AppModule {
         BuscaController,
         AgendaController,
         RelatoriosController,
+        HistoricoController,
         EnviosController,
         ConferenciasController,
         CienciaController,

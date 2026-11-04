@@ -217,6 +217,19 @@ describe('api: erros em problem+json (RFC 9457)', () => {
   });
 });
 
+describe('api: parâmetros de rota longos', () => {
+  // Bug do E2E da HU35: o código de verificação (tenant + SHA-256) tem 101 caracteres e o Fastify
+  // corta parâmetro acima de 100 com 414. Código mal formado nem chega ao banco: "inexistente".
+  it('código de verificação de 101+ caracteres chega à rota pública', async () => {
+    const resposta = await (
+      await subir()
+    ).inject({ method: 'GET', url: `/v1/verificacoes/${'x'.repeat(101)}` });
+
+    expect(resposta.statusCode).toBe(200);
+    expect(resposta.json()).toEqual({ situacao: 'inexistente' });
+  });
+});
+
 describe('api: correlação', () => {
   it('gera x-request-id, o expõe na resposta e no contexto da requisição', async () => {
     const resposta = await (await subir()).inject({ method: 'GET', url: '/v1/teste/pagina' });

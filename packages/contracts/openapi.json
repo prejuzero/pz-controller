@@ -7180,6 +7180,89 @@
         }
       }
     },
+    "/v1/prazos/{id}/historico": {
+      "get": {
+        "operationId": "consultarHistoricoDoPrazo",
+        "summary": "Eventos da trilha de auditoria do prazo e das notificações dele, em ordem (somente leitura).",
+        "tags": [
+          "auditoria"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricoDoPrazo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/prazos/{id}/simular-ajuste": {
       "post": {
         "operationId": "simularAjustePrazo",
@@ -9166,6 +9249,80 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AtosDaTaxonomia"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/verificacoes/{codigo}": {
+      "get": {
+        "operationId": "verificarHistorico",
+        "summary": "Confere o PDF do histórico contra a trilha (pública, com limite por IP). Não expõe o conteúdo.",
+        "tags": [
+          "auditoria"
+        ],
+        "parameters": [
+          {
+            "name": "codigo",
+            "in": "path",
+            "required": true,
+            "description": "Impresso no PDF do histórico e no QR code.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f-]{36}\\.[0-9a-f]{64}$",
+              "description": "Impresso no PDF do histórico e no QR code."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificacaoDoHistorico"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
                 }
               }
             }
@@ -11609,6 +11766,95 @@
         ],
         "additionalProperties": false
       },
+      "HistoricoDoPrazo": {
+        "type": "object",
+        "properties": {
+          "itens": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sequencia": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "tipo": {
+                  "type": "string",
+                  "description": "Tipo do evento na trilha (ex.: prazos.prazo-confirmado)."
+                },
+                "entidade": {
+                  "type": "string"
+                },
+                "usuario": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "nome": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "nome"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "canal": {
+                  "type": "string"
+                },
+                "criadoEm": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                  "description": "Horário do banco."
+                },
+                "antes": {},
+                "depois": {},
+                "hashAnterior": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "hash": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "required": [
+                "sequencia",
+                "tipo",
+                "entidade",
+                "usuario",
+                "canal",
+                "criadoEm",
+                "antes",
+                "depois",
+                "hashAnterior",
+                "hash"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "itens"
+        ],
+        "additionalProperties": false
+      },
       "LinhaDoTempo": {
         "type": "object",
         "properties": {
@@ -13678,6 +13924,39 @@
               "filtros"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "tipo": {
+                "type": "string",
+                "const": "historico-prazo"
+              },
+              "formato": {
+                "type": "string",
+                "const": "pdf"
+              },
+              "filtros": {
+                "type": "object",
+                "properties": {
+                  "prazoId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                },
+                "required": [
+                  "prazoId"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "tipo",
+              "formato",
+              "filtros"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -14846,7 +15125,8 @@
               "agenda",
               "busca-prazos",
               "busca-publicacoes",
-              "controle-ciencia"
+              "controle-ciencia",
+              "historico-prazo"
             ]
           },
           "formato": {
@@ -15734,6 +16014,93 @@
           "renovacaoExpiraEm"
         ],
         "additionalProperties": false
+      },
+      "VerificacaoDoHistorico": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "situacao": {
+                "type": "string",
+                "const": "valido"
+              },
+              "emitidaEm": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              "eventos": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "sequencia": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "tipo": {
+                      "type": "string"
+                    },
+                    "criadoEm": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "hash": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  },
+                  "required": [
+                    "sequencia",
+                    "tipo",
+                    "criadoEm",
+                    "hash"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Só o necessário para conferir o PDF; nada do conteúdo dos eventos."
+              }
+            },
+            "required": [
+              "situacao",
+              "emitidaEm",
+              "eventos"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "situacao": {
+                "type": "string",
+                "const": "inexistente"
+              }
+            },
+            "required": [
+              "situacao"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "situacao": {
+                "type": "string",
+                "const": "divergente"
+              },
+              "motivo": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "situacao",
+              "motivo"
+            ],
+            "additionalProperties": false
+          }
+        ]
       },
       "VersaoDaTabela": {
         "type": "object",

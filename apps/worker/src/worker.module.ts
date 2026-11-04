@@ -715,7 +715,7 @@ export class WorkerModule {
             banco,
             new RelatoriosPostgres(),
             new TrilhaPostgres(),
-            fonteDosRelatorios(banco, relogio, protecao),
+            fonteDosRelatorios(banco, relogio, protecao, ambiente.PORTAL_URL),
             [new RenderizadorPdf(), new RenderizadorXlsx()],
             opcoes.arquivos ?? arquivosDoAmbiente(ambiente, relogio),
             relogio,
@@ -729,7 +729,7 @@ export class WorkerModule {
           const gerar = new GerarArquivo(
             banco,
             new RelatoriosPostgres(),
-            fonteDosRelatorios(banco, relogio, protecao),
+            fonteDosRelatorios(banco, relogio, protecao, ambiente.PORTAL_URL),
             [new RenderizadorPdf(), new RenderizadorXlsx()],
             relogio,
           );

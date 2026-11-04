@@ -105,11 +105,31 @@ test('cadastra, confirma, ajusta e cumpre um prazo', async ({ page }) => {
   await expect(ajuste.getByText(/Novo vencimento:/)).toBeVisible();
   await ajuste.getByRole('button', { name: 'Salvar ajuste' }).click();
   await expect(page.getByText('Prazo ajustado.')).toBeVisible();
-  await expect(page.getByText('o despacho fixou dez dias')).toBeVisible();
+  // O motivo aparece no detalhe e, desde a HU35, também no histórico (o que mudou).
+  await expect(page.getByText('o despacho fixou dez dias', { exact: true })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Marcar como cumprido' }).click();
-  await expect(page.getByText('Prazo marcado como cumprido.')).toBeVisible();
+  // A ciência é eventual (consumidor) e muda a versão do prazo: se der conflito, recarrega e repete
+  // (pendência do 409 intermitente após confirmar).
+  await expect(async () => {
+    await page.reload();
+    await page.getByRole('button', { name: 'Marcar como cumprido' }).click();
+    await expect(page.getByText('Prazo marcado como cumprido.')).toBeVisible({ timeout: 3_000 });
+  }).toPass({ timeout: 30_000 });
   await expect(page.getByText('Cumpridos', { exact: true })).toBeVisible();
+
+  // Histórico (HU35): todo o ciclo de vida, em ordem, e o PDF verificável pelo pipeline da HU29.
+  await page.reload();
+  const historico = page.getByRole('region', { name: 'Histórico' });
+  for (const evento of ['Prazo sugerido', 'Prazo confirmado', 'Prazo ajustado', 'Prazo cumprido'])
+    await expect(historico.getByText(evento, { exact: true }).first()).toBeVisible();
+  await semViolacoes(page);
+  await historico.getByRole('button', { name: 'Exportar histórico (PDF verificável)' }).click();
+  await expect(page.getByText('Histórico solicitado.')).toBeVisible();
+
+  // Código bem formado que não foi emitido: a verificação pública falha com mensagem clara.
+  await page.goto(`/verificar/01a10e00-0000-7000-8000-000000000000.${'0'.repeat(64)}`);
+  await expect(page.getByText(/^Código de verificação não encontrado/)).toBeVisible();
+  await semViolacoes(page);
 });
 
 test('agenda e cancela um compromisso', async ({ page }) => {
