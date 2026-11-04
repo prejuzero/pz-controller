@@ -96,6 +96,8 @@ services:
       # A aplicação conecta como pz_app (sem BYPASSRLS, ADR-003).
       DATABASE_URL: postgresql://pz_app:pz_app_local@postgres:5432/${POSTGRES_DB:-prejuzero}
       REDIS_URL: redis://redis:6379
+      # Limite global por IP da api (HU37); o teste de carga (pnpm carga) sai de um IP só e o sobe.
+      LIMITE_POR_IP_POR_MINUTO: ${LIMITE_POR_IP_POR_MINUTO:-600}
       S3_ENDPOINT: http://armazenamento:9000
       # Links assinados (downloads) abertos pelo navegador do host, não pela rede do compose.
       S3_ENDPOINT_PUBLICO: http://localhost:${S3_PORT:-9000}

@@ -57,3 +57,4 @@ apps/web/e2e/.resultados/
 # Relatório local da avaliação da IA (no CI vira artefato)
 eval/relatorio/
 infra/dast/.relatorio/
+infra/k6/.relatorio/
