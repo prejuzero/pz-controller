@@ -1,14 +1,14 @@
 import { createServer } from 'node:http';
 import { Writable } from 'node:stream';
 
-import { diag, trace } from '@opentelemetry/api';
+import { diag, metrics, trace } from '@opentelemetry/api';
 import { MetricReader } from '@opentelemetry/sdk-metrics';
 import { InMemorySpanExporter } from '@opentelemetry/sdk-trace-node';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { criarLogger } from './logger.js';
 import { registrarErroInesperado } from './metricas.js';
-import { iniciarTelemetria } from './telemetria.js';
+import { iniciarTelemetria, LIMITES_LATENCIA_HTTP_SEGUNDOS } from './telemetria.js';
 
 import type { Telemetria } from './telemetria.js';
 import type { AddressInfo } from 'node:net';
@@ -64,6 +64,21 @@ describe('iniciarTelemetria', () => {
       escopo.metrics.map((metrica) => metrica.descriptor.name),
     );
     expect(nomes).toContain('pz.erros');
+  });
+
+  it('latência HTTP com os buckets dos SLOs (0,3 s leitura, 0,8 s escrita)', async () => {
+    const leitor = new LeitorEmMemoria();
+    telemetria = iniciarTelemetria({ ...OPCOES, leitorDeMetricas: leitor });
+
+    metrics.getMeter('teste').createHistogram('http.server.request.duration').record(0.29);
+
+    const { resourceMetrics } = await leitor.collect();
+    const http = resourceMetrics.scopeMetrics
+      .flatMap((escopo) => escopo.metrics)
+      .find((m) => m.descriptor.name === 'http.server.request.duration');
+    const ponto = http?.dataPoints[0]?.value as { buckets: { boundaries: number[] } } | undefined;
+    expect(ponto?.buckets.boundaries).toEqual([...LIMITES_LATENCIA_HTTP_SEGUNDOS]);
+    expect(ponto?.buckets.boundaries).toEqual(expect.arrayContaining([0.3, 0.8]));
   });
 
   it('envia traces e métricas por OTLP/HTTP ao endpoint configurado', async () => {

@@ -332,3 +332,198 @@ groups:
         annotations:
           summary: 'Todos os modelos da tarefa {{ $labels.tarefa }} falharam (indisponível ou sem cota).'
           runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#ia-provedor-indisponivel'
+
+  # SLOs como código (HU40, PZ-232; SLOs da página Padrões de engenharia). Burn rate em duas
+  # janelas (longa e curta): alerta só quando o orçamento de erro do mês está sendo gasto rápido
+  # e o problema ainda acontece agora. Orçamento = 1 - objetivo (0,5% de 5xx; 5% acima do limite).
+  - orgId: 1
+    name: prejuzero-slos
+    folder: PrejuZero
+    interval: 1m
+    rules:
+      - uid: pz-slo-disponibilidade-rapido
+        title: 'SLO · Disponibilidade da API (99,5%): queima rápida'
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: 'sum(rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[1h])) / clamp_min(sum(rate(http_server_request_duration_seconds_count[1h])), 1e-9)'
+          - refId: B
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: B
+              instant: true
+              expr: 'sum(rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[5m])) / clamp_min(sum(rate(http_server_request_duration_seconds_count[5m])), 1e-9)'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: math
+              expression: '$A > 0.072 && $B > 0.072'
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels: { severidade: critica, slo: disponibilidade }
+        annotations:
+          summary: 'Fração de requisições com 5xx acima de 0.072 em 1h e 5m (14.4x o orçamento): consome 2% do orçamento mensal em 1 hora.'
+          runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#slo-disponibilidade'
+      - uid: pz-slo-disponibilidade-lento
+        title: 'SLO · Disponibilidade da API (99,5%): queima lenta'
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 21600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: 'sum(rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[6h])) / clamp_min(sum(rate(http_server_request_duration_seconds_count[6h])), 1e-9)'
+          - refId: B
+            relativeTimeRange: { from: 21600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: B
+              instant: true
+              expr: 'sum(rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[30m])) / clamp_min(sum(rate(http_server_request_duration_seconds_count[30m])), 1e-9)'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: math
+              expression: '$A > 0.03 && $B > 0.03'
+        for: 15m
+        noDataState: OK
+        execErrState: Error
+        labels: { severidade: alta, slo: disponibilidade }
+        annotations:
+          summary: 'Fração de requisições com 5xx acima de 0.03 em 6h e 30m (6x o orçamento): consome 5% do orçamento mensal em 6 horas.'
+          runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#slo-disponibilidade'
+      - uid: pz-slo-latencia-leitura-rapido
+        title: 'SLO · Latência de leitura da API (p95 < 300 ms): queima rápida'
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: '(sum(rate(http_server_request_duration_seconds_count{http_request_method=~"GET|HEAD"}[1h])) - sum(rate(http_server_request_duration_seconds_bucket{http_request_method=~"GET|HEAD",le="0.3"}[1h]))) / clamp_min(sum(rate(http_server_request_duration_seconds_count{http_request_method=~"GET|HEAD"}[1h])), 1e-9)'
+          - refId: B
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: B
+              instant: true
+              expr: '(sum(rate(http_server_request_duration_seconds_count{http_request_method=~"GET|HEAD"}[5m])) - sum(rate(http_server_request_duration_seconds_bucket{http_request_method=~"GET|HEAD",le="0.3"}[5m]))) / clamp_min(sum(rate(http_server_request_duration_seconds_count{http_request_method=~"GET|HEAD"}[5m])), 1e-9)'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: math
+              expression: '$A > 0.72 && $B > 0.72'
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels: { severidade: critica, slo: latencia-leitura }
+        annotations:
+          summary: 'Fração de leituras acima de 300 ms acima de 0.72 em 1h e 5m (14.4x o orçamento): consome 2% do orçamento mensal em 1 hora.'
+          runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#slo-latencia-leitura'
+      - uid: pz-slo-latencia-leitura-lento
+        title: 'SLO · Latência de leitura da API (p95 < 300 ms): queima lenta'
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 21600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: '(sum(rate(http_server_request_duration_seconds_count{http_request_method=~"GET|HEAD"}[6h])) - sum(rate(http_server_request_duration_seconds_bucket{http_request_method=~"GET|HEAD",le="0.3"}[6h]))) / clamp_min(sum(rate(http_server_request_duration_seconds_count{http_request_method=~"GET|HEAD"}[6h])), 1e-9)'
+          - refId: B
+            relativeTimeRange: { from: 21600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: B
+              instant: true
+              expr: '(sum(rate(http_server_request_duration_seconds_count{http_request_method=~"GET|HEAD"}[30m])) - sum(rate(http_server_request_duration_seconds_bucket{http_request_method=~"GET|HEAD",le="0.3"}[30m]))) / clamp_min(sum(rate(http_server_request_duration_seconds_count{http_request_method=~"GET|HEAD"}[30m])), 1e-9)'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: math
+              expression: '$A > 0.3 && $B > 0.3'
+        for: 15m
+        noDataState: OK
+        execErrState: Error
+        labels: { severidade: alta, slo: latencia-leitura }
+        annotations:
+          summary: 'Fração de leituras acima de 300 ms acima de 0.3 em 6h e 30m (6x o orçamento): consome 5% do orçamento mensal em 6 horas.'
+          runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#slo-latencia-leitura'
+      - uid: pz-slo-latencia-escrita-rapido
+        title: 'SLO · Latência de escrita da API (p95 < 800 ms): queima rápida'
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: '(sum(rate(http_server_request_duration_seconds_count{http_request_method=~"POST|PUT|PATCH|DELETE"}[1h])) - sum(rate(http_server_request_duration_seconds_bucket{http_request_method=~"POST|PUT|PATCH|DELETE",le="0.8"}[1h]))) / clamp_min(sum(rate(http_server_request_duration_seconds_count{http_request_method=~"POST|PUT|PATCH|DELETE"}[1h])), 1e-9)'
+          - refId: B
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: B
+              instant: true
+              expr: '(sum(rate(http_server_request_duration_seconds_count{http_request_method=~"POST|PUT|PATCH|DELETE"}[5m])) - sum(rate(http_server_request_duration_seconds_bucket{http_request_method=~"POST|PUT|PATCH|DELETE",le="0.8"}[5m]))) / clamp_min(sum(rate(http_server_request_duration_seconds_count{http_request_method=~"POST|PUT|PATCH|DELETE"}[5m])), 1e-9)'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: math
+              expression: '$A > 0.72 && $B > 0.72'
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels: { severidade: critica, slo: latencia-escrita }
+        annotations:
+          summary: 'Fração de escritas acima de 800 ms acima de 0.72 em 1h e 5m (14.4x o orçamento): consome 2% do orçamento mensal em 1 hora.'
+          runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#slo-latencia-escrita'
+      - uid: pz-slo-latencia-escrita-lento
+        title: 'SLO · Latência de escrita da API (p95 < 800 ms): queima lenta'
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 21600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: '(sum(rate(http_server_request_duration_seconds_count{http_request_method=~"POST|PUT|PATCH|DELETE"}[6h])) - sum(rate(http_server_request_duration_seconds_bucket{http_request_method=~"POST|PUT|PATCH|DELETE",le="0.8"}[6h]))) / clamp_min(sum(rate(http_server_request_duration_seconds_count{http_request_method=~"POST|PUT|PATCH|DELETE"}[6h])), 1e-9)'
+          - refId: B
+            relativeTimeRange: { from: 21600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: B
+              instant: true
+              expr: '(sum(rate(http_server_request_duration_seconds_count{http_request_method=~"POST|PUT|PATCH|DELETE"}[30m])) - sum(rate(http_server_request_duration_seconds_bucket{http_request_method=~"POST|PUT|PATCH|DELETE",le="0.8"}[30m]))) / clamp_min(sum(rate(http_server_request_duration_seconds_count{http_request_method=~"POST|PUT|PATCH|DELETE"}[30m])), 1e-9)'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: math
+              expression: '$A > 0.3 && $B > 0.3'
+        for: 15m
+        noDataState: OK
+        execErrState: Error
+        labels: { severidade: alta, slo: latencia-escrita }
+        annotations:
+          summary: 'Fração de escritas acima de 800 ms acima de 0.3 em 6h e 30m (6x o orçamento): consome 5% do orçamento mensal em 6 horas.'
+          runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#slo-latencia-escrita'

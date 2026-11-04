@@ -13,6 +13,13 @@ Alertas iniciais do PrejuZero (HU03, ADR-011), definidos como código em [infra/
 | Custo diário de IA acima do orçamento    | custo estimado do dia passou de `IA_ORCAMENTO_DIARIO_USD` | média      |
 | Salto em saídas inválidas da IA          | mais de 5% das respostas recusadas em 30 minutos          | alta       |
 | IA sem modelo disponível                 | todos os modelos de uma tarefa falharam                   | crítica    |
+| Trilha de auditoria divergente           | verificação diária achou registro alterado ou apagado     | crítica    |
+| Fonte de publicações degradada           | fonte falhando seguidamente (HU19)                        | crítica    |
+| Alvo de captura com falhas seguidas      | OAB ou processo atingiu o limite de falhas                | alta       |
+| SLO · queima rápida (3 SLOs da API)      | 14,4x o orçamento em 1 h e em 5 min                       | crítica    |
+| SLO · queima lenta (3 SLOs da API)       | 6x o orçamento em 6 h e em 30 min                         | alta       |
+
+Os runbooks sem alerta próprio ficam no fim: [banco-degradado](#banco-degradado) e [restauracao-de-backup](#restauracao-de-backup).
 
 Primeiro passo em todos: abrir o dashboard da área no Grafana (pasta **PrejuZero**) e o trace de um caso com erro no Tempo, filtrando pelo `requestId` ou `trace_id` dos logs.
 
@@ -60,6 +67,7 @@ Primeiro passo em todos: abrir o dashboard da área no Grafana (pasta **PrejuZer
 1. No dashboard **PrejuZero · E-mail**, veja o motivo (bounce ou reclamação).
 2. Bounce: confira o endereço do destinatário; reclamação: revise o conteúdo e a frequência.
 3. Notificação de prazo não entregue precisa de outro canal até o endereço ser corrigido.
+4. **Rejeição em massa** (vários escritórios ou dezenas de endereços em minutos): o problema é do envio, não dos destinatários. Confira a reputação e as cotas do provedor e a configuração do domínio remetente (SPF, DKIM, DMARC). Pause os envios em lote (relatórios e resumos) até achar a causa. Os avisos de prazo continuam e aparecem no portal (faixa de avisos). Avise os escritórios afetados e registre o incidente ([plano de resposta](plano-resposta-incidentes.md)).
 
 ## ia-orcamento
 
@@ -115,3 +123,46 @@ No ambiente local o e-mail vai para o Mailpit, não para a caixa real: a entrega
 1. Não altere nada no banco: preserve a evidência. O log `trilha de auditoria divergente` traz o tenant, a sequência e o motivo; o Sentry tem o erro.
 2. Compare com a cópia WORM do bucket `pz-auditoria-worm` (`<tenant>/auditoria/AAAA/MM/DD/<inicio>-<fim>.ndjson`), que não pode ser alterada: ela mostra o conteúdo original até a última exportação.
 3. Trate como incidente de segurança (acesso indevido ao banco com privilégio de dono ou superusuário) e comunique o responsável pela LGPD.
+
+## SLOs da API (HU40)
+
+Os SLOs da página Padrões de engenharia viram alertas de **burn rate** (`prejuzero-slos` em `alertas.yaml`). O orçamento de erro é o que o objetivo permite errar no mês: 0,5% de respostas 5xx (disponibilidade de 99,5%) e 5% de requisições acima do limite de latência (p95). A **queima rápida** (14,4x o orçamento, em 1 h e em 5 min) gasta 2% do orçamento do mês em uma hora: aja na hora. A **queima lenta** (6x, em 6 h e em 30 min) gasta 5% em seis horas: trate no mesmo dia. A janela curta faz o alerta se resolver assim que o problema para.
+
+Com pouco tráfego (madrugada, staging), poucas requisições ruins já passam da fração: confira o volume no dashboard **PrejuZero · API** antes de escalar.
+
+### slo-disponibilidade
+
+1. Mesmo diagnóstico do [api-5xx](#api-5xx): rotas com 5xx no dashboard **PrejuZero · API** e o `trace_id` no Loki.
+2. Começou depois de um deploy? Faça o rollback antes de investigar.
+3. 5xx vindo do banco ou do Redis: siga o [banco-degradado](#banco-degradado) ou a fila correspondente.
+
+### slo-latencia-leitura
+
+1. No dashboard **PrejuZero · API**, ache as rotas `GET` com p95 acima de 300 ms.
+2. No Tempo, abra um trace lento e veja onde o tempo foi gasto (consulta ao banco, integração, serialização).
+3. Consulta lenta: rode `EXPLAIN (ANALYZE, BUFFERS)` da query do span no banco de leitura e confira os índices. Busca e dashboard têm metas próprias (busca: p95 < 500 ms).
+
+### slo-latencia-escrita
+
+1. No dashboard **PrejuZero · API**, ache as rotas de escrita com p95 acima de 800 ms.
+2. Escrita lenta costuma ser disputa por trava (auditoria por tenant, `SELECT ... FOR UPDATE`) ou transação longa: veja `pg_stat_activity` (`wait_event`) e o trace.
+3. Não tire a auditoria da transação para ganhar tempo (CLAUDE.md, seção 3): ache e trate a causa da disputa.
+
+## banco-degradado
+
+Sintomas: 5xx com `PrismaClientKnownRequestError` ou timeout de conexão nos logs, latência alta em todas as rotas, filas acumulando.
+
+1. Conexões: `SELECT state, count(*) FROM pg_stat_activity GROUP BY 1;`. Pool esgotado ou muitas `idle in transaction`: ache a origem pelo `application_name` e pelo trace.
+2. Consultas longas: `SELECT pid, now() - query_start AS duracao, wait_event, left(query, 120) FROM pg_stat_activity WHERE state <> 'idle' ORDER BY 2 DESC;`. Cancele com `pg_cancel_backend(pid)` só depois de entender a consulta. Nunca cancele a migração em andamento.
+3. Disco, CPU e réplica de leitura: veja no painel do provedor (local: `docker stats`).
+4. Enquanto durar, os jobs fazem retentativa com recuo e nada se perde. Acompanhe as filas até zerar o atraso.
+
+## restauracao-de-backup
+
+Objetivo: RPO de 15 min e RTO de 4 h (Padrões de engenharia). Na AWS, a restauração ponto no tempo e o teste periódico ficam no PZ-221 (bloqueado até a infraestrutura AWS, ver [infraestrutura-aws.md](infraestrutura-aws.md)). Localmente, o procedimento é este:
+
+1. Declare o incidente e congele as escritas: pare a API e o worker (`docker compose stop api worker`). Decida o ponto de restauração.
+2. Restaure numa base nova, nunca por cima da atual: `createdb -U pz_dev prejuzero_restaurado` e `pg_restore -U pz_dev -d prejuzero_restaurado --no-owner <arquivo.dump>` (o dump vem de `pg_dump -Fc`).
+3. Rode as migrações pendentes e confira a trilha de auditoria de cada tenant (job `manutencao.verificar-auditoria`). A cópia WORM em `pz-auditoria-worm` mostra o que foi gravado depois do ponto restaurado.
+4. Aponte a aplicação para a base restaurada, suba API e worker e confira os fluxos críticos (entrar, prazos, ciência).
+5. Prazos e ciências registrados depois do ponto restaurado se perderam: liste-os pela cópia WORM da auditoria e avise os escritórios afetados (risco de prazo). Registre o incidente ([plano de resposta](plano-resposta-incidentes.md)).
