@@ -15,6 +15,7 @@ import {
   AtualizarPerfil,
   CadastrarAdvogado,
   ConsultarPerfil,
+  ListarAdvogadosDaEquipe,
   RemoverOab,
 } from '@pz/cadastro';
 import { PedidoDeVerificacaoDeEmail } from '@pz/contracts';
@@ -26,7 +27,7 @@ import { Publico, RequerPermissao } from '../http/acesso.js';
 import { LimitarPorIp } from '../http/limite.js';
 
 import type { RequisicaoAutenticada } from '../http/acesso.js';
-import type { AutorDoCadastro, PerfilListado } from '@pz/cadastro';
+import type { AdvogadoDaEquipe, AutorDoCadastro, PerfilListado } from '@pz/cadastro';
 import type { OabDoAdvogado } from '@pz/contracts';
 import type { Uuid } from '@pz/kernel';
 import type { FastifyRequest } from 'fastify';
@@ -51,6 +52,8 @@ export class CadastroController {
     @Inject(AdicionarOab) private readonly adicionar: AdicionarOab<unknown>,
     @Inject(RemoverOab) private readonly remover: RemoverOab<unknown>,
     @Inject(VerificarEmail) private readonly verificar: VerificarEmail<unknown>,
+    @Inject(ListarAdvogadosDaEquipe)
+    private readonly equipe: ListarAdvogadosDaEquipe<unknown>,
   ) {}
 
   @Post('cadastro')
@@ -83,6 +86,13 @@ export class CadastroController {
     const r = await this.consultar.executar(autorDe(requisicao).usuarioId);
     if (!r.ok) throw r.erro;
     return r.valor;
+  }
+
+  // Quem vê os prazos do escritório escolhe o responsável no filtro global (HU27).
+  @Get('advogados')
+  @RequerPermissao('prazos:ler')
+  async advogados(): Promise<{ itens: AdvogadoDaEquipe[] }> {
+    return { itens: await this.equipe.executar() };
   }
 
   @Patch('perfil')

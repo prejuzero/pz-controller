@@ -42,6 +42,14 @@ export class AdvogadosEmMemoria implements RepositorioDeAdvogados<TransacaoEmMem
     return Promise.resolve('ok');
   }
 
+  daEquipe(): Promise<{ usuarioId: Uuid; nome: string }[]> {
+    return Promise.resolve(
+      [...this.#advogados.values()]
+        .map((a) => ({ usuarioId: a.usuarioId, nome: a.nome }))
+        .sort((a, b) => a.nome.localeCompare(b.nome)),
+    );
+  }
+
   buscarPorUsuario(_tx: TransacaoEmMemoria, usuarioId: Uuid): Promise<Advogado | undefined> {
     const estado = this.#advogados.get(usuarioId);
     return Promise.resolve(

@@ -191,11 +191,13 @@ export {
 } from './auth/index.js';
 export {
   adicionarOab,
+  AdvogadosDaEquipe,
   AlteracaoDoPerfil,
   atualizarPerfil,
   CadastroRealizado,
   cadastrarAdvogado,
   consultarPerfil,
+  listarAdvogadosDaEquipe,
   OabDoAdvogado,
   PedidoDeCadastro,
   PedidoDeOab,

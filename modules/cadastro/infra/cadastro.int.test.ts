@@ -20,6 +20,7 @@ import {
   AdicionarOab,
   CadastrarAdvogado,
   ConsultarPerfil,
+  ListarAdvogadosDaEquipe,
   RemoverOab,
 } from '../application/cadastro.js';
 import { RecifrarCamposSensiveis } from '../application/recifra.js';
@@ -192,6 +193,12 @@ describe('cadastro no PostgreSQL (HU11)', () => {
       adicionar.executar(beto, { numero: '9876', uf: 'RJ' }),
     );
     expect(livre.ok).toBe(true);
+    // Equipe do filtro global: cada escritório só vê os próprios advogados (RLS).
+    const equipe = new ListarAdvogadosDaEquipe(banco, new AdvogadosPostgres(relogio, protecao));
+    const daAna = await executarNoTenant(ana.tenantId, () => equipe.executar());
+    expect(daAna.map((a) => a.usuarioId)).toEqual([ana.usuarioId]);
+    const doBeto = await executarNoTenant(b.valor.tenantId, () => equipe.executar());
+    expect(doBeto.map((a) => a.usuarioId)).toEqual([beto.usuarioId]);
   });
 
   it('pz_app só cria tenant autônomo e só com o id do contexto', async () => {

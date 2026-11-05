@@ -144,9 +144,27 @@ export const removerOab = definirRota({
   erros: [404, 422],
 });
 
+export const AdvogadosDaEquipe = nomear(
+  'AdvogadosDaEquipe',
+  z.object({
+    itens: z.array(z.object({ usuarioId: Uuid, nome: z.string() })),
+  }),
+);
+export type AdvogadosDaEquipe = z.infer<typeof AdvogadosDaEquipe.esquema>;
+
+export const listarAdvogadosDaEquipe = definirRota({
+  id: 'listarAdvogadosDaEquipe',
+  metodo: 'get',
+  caminho: '/v1/advogados',
+  resumo: 'Advogados do escritório, por nome, para o filtro por responsável.',
+  tag: 'cadastro',
+  resposta: { status: 200, corpo: AdvogadosDaEquipe },
+});
+
 export const ROTAS_CADASTRO = [
   cadastrarAdvogado,
   consultarPerfil,
+  listarAdvogadosDaEquipe,
   atualizarPerfil,
   adicionarOab,
   removerOab,

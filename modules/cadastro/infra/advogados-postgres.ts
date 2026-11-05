@@ -87,6 +87,14 @@ export class AdvogadosPostgres implements RepositorioDeAdvogados<Transacao> {
     return oab === null ? undefined : (oab.advogado.usuarioId as Uuid);
   }
 
+  async daEquipe(tx: Transacao): Promise<{ usuarioId: Uuid; nome: string }[]> {
+    const linhas = await tx.advogado.findMany({
+      select: { usuarioId: true, nome: true },
+      orderBy: [{ nome: 'asc' }, { usuarioId: 'asc' }],
+    });
+    return linhas.map((l) => ({ usuarioId: l.usuarioId as Uuid, nome: l.nome }));
+  }
+
   async buscarPorUsuario(tx: Transacao, usuarioId: Uuid): Promise<Advogado | undefined> {
     const linha = await tx.advogado.findUnique({
       where: { usuarioId },

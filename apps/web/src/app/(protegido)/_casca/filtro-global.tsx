@@ -4,7 +4,7 @@ import { Botao, Campo, SeletorData, Selecao } from '@pz/ui';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
-import { useClientes, useSessao } from '../../../api/hooks';
+import { useClientes, useEquipe, useSessao } from '../../../api/hooks';
 import {
   CAMPOS_DO_FILTRO_GLOBAL,
   comFiltroGlobal,
@@ -33,7 +33,7 @@ interface Props {
 
 /**
  * Barra do filtro global (HU27, RF43). O estado vive na URL: recarregar, voltar e compartilhar
- * o link mantêm o filtro. Advogado: todos ou só os do usuário (a lista da equipe é pendência).
+ * o link mantêm o filtro. Advogado: todos, os do usuário ou os de cada advogado da equipe.
  */
 export function BarraDeFiltroGlobal({ aplicados }: Props) {
   const t = useTranslations('filtroGlobal');
@@ -43,6 +43,7 @@ export function BarraDeFiltroGlobal({ aplicados }: Props) {
   const filtro = lerFiltroGlobal(busca);
   const usuarioId = useSessao().data?.usuarioId;
   const clientes = useClientes();
+  const equipe = useEquipe();
 
   const mudar = (parcial: FiltroGlobal) => {
     const query = comFiltroGlobal(busca, { ...filtro, ...parcial }).toString();
@@ -84,6 +85,9 @@ export function BarraDeFiltroGlobal({ aplicados }: Props) {
             opcoes={[
               { valor: '', rotulo: t('todos') },
               ...(usuarioId === undefined ? [] : [{ valor: usuarioId, rotulo: t('meus') }]),
+              ...(equipe.data?.itens ?? [])
+                .filter((a) => a.usuarioId !== usuarioId)
+                .map((a) => ({ valor: a.usuarioId, rotulo: a.nome })),
             ]}
             aoMudar={(responsavelId) => {
               mudar({ responsavelId });

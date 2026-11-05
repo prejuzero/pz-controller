@@ -149,6 +149,7 @@ export const useProcessos = (filtros: FiltrosProcessos) =>
   useInfiniteQuery(consultasProcessos(useApi()).lista(filtros));
 export const useProcesso = (id: string) => useQuery(consultasProcessos(useApi()).detalhe(id));
 export const useClientes = () => useQuery(consultasProcessos(useApi()).clientes());
+export const useEquipe = () => useQuery(consultasProcessos(useApi()).equipe());
 export const useCadastrarProcesso = () => useMutation(useMutacoesProcessos().cadastrar);
 export const useAtualizarProcesso = () => useMutation(useMutacoesProcessos().atualizar);
 export const useAlterarCobertura = () => useMutation(useMutacoesProcessos().alterarCobertura);

@@ -397,6 +397,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/advogados": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Advogados do escritório, por nome, para o filtro por responsável. */
+        get: operations["listarAdvogadosDaEquipe"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/agenda": {
         parameters: {
             query?: never;
@@ -1764,6 +1781,13 @@ export interface components {
                 userAgent: string;
                 /** Format: date-time */
                 ocorridoEm: string;
+            }[];
+        };
+        AdvogadosDaEquipe: {
+            itens: {
+                /** Format: uuid */
+                usuarioId: string;
+                nome: string;
             }[];
         };
         Agenda: {
@@ -5266,6 +5290,53 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarAdvogadosDaEquipe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdvogadosDaEquipe"];
                 };
             };
             /** @description Não autenticado. */
