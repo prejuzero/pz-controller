@@ -25,3 +25,11 @@ export const lembrarConferenciasJob = definirJob({
   dados: z.object({}).strict(),
   global: true,
 });
+
+/** Apaga os anexos antigos dos envios manuais, de todos os escritórios (PZ-362). */
+export const removerAnexosAntigosJob = definirJob({
+  fila: 'manutencao',
+  tipo: 'notificacoes.remover-anexos-antigos',
+  dados: z.object({}).strict(),
+  global: true,
+});

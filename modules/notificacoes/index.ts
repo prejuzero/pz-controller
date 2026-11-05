@@ -119,6 +119,8 @@ export {
   LIMITE_DE_ENVIOS_RECENTES,
   ListarEnviosRecentes,
   PrepararEnvioManual,
+  RemoverAnexosAntigos,
+  RETENCAO_DOS_ANEXOS_MS,
   SolicitarEnvioManual,
 } from './application/envio-manual.js';
 export type { RepositorioDeEnvios } from './application/portas.js';

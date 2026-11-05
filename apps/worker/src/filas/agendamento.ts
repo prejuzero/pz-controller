@@ -5,6 +5,7 @@ import {
   dispararLembretesJob,
   enviarResumosJob,
   lembrarConferenciasJob,
+  removerAnexosAntigosJob,
 } from '../notificacoes/jobs.js';
 import { marcarVencidosJob } from '../prazos/jobs.js';
 import { removerArquivosExpiradosJob } from '../relatorios/jobs.js';
@@ -117,5 +118,12 @@ export const AGENDAMENTOS: readonly Agendamento<unknown>[] = [
     cron: '15 3 * * *', // diário às 3h15: o link do relatório vale 24 h (HU29, PZ-353)
     dados: {},
     motivo: 'remoção dos arquivos de relatórios com o link vencido (minimização, LGPD)',
+  }),
+  definirAgendamento({
+    id: 'notificacoes.remover-anexos-antigos',
+    job: removerAnexosAntigosJob,
+    cron: '20 3 * * *', // diário às 3h20: anexos de envio manual com mais de 7 dias (PZ-362)
+    dados: {},
+    motivo: 'remoção dos anexos antigos dos envios por e-mail (minimização, LGPD)',
   }),
 ] as readonly Agendamento<unknown>[];

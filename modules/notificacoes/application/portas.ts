@@ -128,4 +128,21 @@ export interface RepositorioDeEnvios<Transacao> {
   recentes(transacao: Transacao, usuarioId: Uuid, limite: number): Promise<EnvioRecente[]>;
   /** Quantos envios de quem enviou falharam ou foram rejeitados desde `desde`. */
   comProblemaDesde(transacao: Transacao, usuarioId: Uuid, desde: Instant): Promise<number>;
+  /**
+   * Envios pedidos até `ate` com o anexo ainda guardado, de todos os escritórios (roda como
+   * sistema, PZ-362). `caminhoDoAnexo` vem da notificação; `null` se o envio falhou antes dela.
+   */
+  comAnexoAte(
+    transacao: Transacao,
+    ate: Instant,
+    limite: number,
+  ): Promise<
+    {
+      readonly id: Uuid;
+      readonly tenantId: Uuid;
+      readonly recurso: RecursoDoEnvio;
+      readonly caminhoDoAnexo: string | null;
+    }[]
+  >;
+  marcarAnexoRemovido(transacao: Transacao, envioId: Uuid, em: Instant): Promise<void>;
 }

@@ -268,12 +268,14 @@ export class EnviosEmMemoria implements RepositorioDeEnvios<TransacaoEmMemoria> 
     Uuid,
     {
       id: Uuid;
+      tenantId: Uuid;
       usuarioId: Uuid;
       recurso: RecursoDoEnvio;
       destinatarios: number;
       notificacaoId: Uuid | null;
       motivoFalha: string | null;
       criadoEm: Instant;
+      anexoRemovidoEm?: Instant;
     }
   >();
 
@@ -284,7 +286,13 @@ export class EnviosEmMemoria implements RepositorioDeEnvios<TransacaoEmMemoria> 
 
   registrar(
     tx: TransacaoEmMemoria,
-    e: { id: Uuid; usuarioId: Uuid; recurso: RecursoDoEnvio; destinatarios: number },
+    e: {
+      id: Uuid;
+      tenantId: Uuid;
+      usuarioId: Uuid;
+      recurso: RecursoDoEnvio;
+      destinatarios: number;
+    },
   ): Promise<void> {
     const agora = this.relogio.agora();
     tx.aoConfirmar(() =>
@@ -336,6 +344,35 @@ export class EnviosEmMemoria implements RepositorioDeEnvios<TransacaoEmMemoria> 
           };
         }),
     );
+  }
+
+  comAnexoAte(
+    _tx: TransacaoEmMemoria,
+    ate: Instant,
+    limite: number,
+  ): Promise<
+    { id: Uuid; tenantId: Uuid; recurso: RecursoDoEnvio; caminhoDoAnexo: string | null }[]
+  > {
+    return Promise.resolve(
+      [...this.envios.values()]
+        .filter((e) => e.anexoRemovidoEm === undefined && !e.criadoEm.ehDepoisDe(ate))
+        .slice(0, limite)
+        .map((e) => ({
+          id: e.id,
+          tenantId: e.tenantId,
+          recurso: e.recurso,
+          caminhoDoAnexo:
+            this.notificacoes.todas().find((n) => n.id === e.notificacaoId)?.anexo?.caminho ?? null,
+        })),
+    );
+  }
+
+  marcarAnexoRemovido(tx: TransacaoEmMemoria, envioId: Uuid, em: Instant): Promise<void> {
+    tx.aoConfirmar(() => {
+      const atual = this.envios.get(envioId);
+      if (atual !== undefined) this.envios.set(envioId, { ...atual, anexoRemovidoEm: em });
+    });
+    return Promise.resolve();
   }
 
   async comProblemaDesde(tx: TransacaoEmMemoria, usuarioId: Uuid, desde: Instant): Promise<number> {
