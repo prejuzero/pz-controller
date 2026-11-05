@@ -4,6 +4,7 @@ import { ATALHOS_DE_PERIODO } from '@pz/contracts';
 import {
   Botao,
   Campo,
+  cn,
   EstadoCarregando,
   EstadoVazio,
   EtiquetaRemovivel,
@@ -23,6 +24,7 @@ import {
   useBuscaDePrazos,
   useBuscaDePublicacoes,
   useClientes,
+  useEquipe,
 } from '../../../api/hooks';
 import { STATUS_DO_PRAZO } from '../../../api/prazos';
 import { formatarDataCivil } from '../../../i18n/formatar';
@@ -64,6 +66,7 @@ export function TelaDeBusca() {
   const { recurso, filtros } = estado;
   const atos = useAtosDaTaxonomia();
   const clientes = useClientes();
+  const equipe = useEquipe();
 
   // Texto digitado vai para a URL depois de uma pausa (sem uma busca por tecla).
   const [rascunho, setRascunho] = useState<Record<string, string>>({});
@@ -108,9 +111,15 @@ export function TelaDeBusca() {
 
   const texto = (campo: (typeof CAMPOS_DE_TEXTO)[number]) =>
     rascunho[campo] ?? filtros[campo] ?? '';
+  // Etiquetas mostram nomes, não ids nem códigos.
+  const nomes: Partial<Record<string, (valor: string) => string>> = {
+    clienteId: (id) => clientes.data?.itens.find((c) => c.id === id)?.nome ?? id,
+    responsavelId: (id) => equipe.data?.itens.find((a) => a.usuarioId === id)?.nome ?? id,
+    tiposAto: (codigo) => atos.data?.itens.find((a) => a.codigo === codigo)?.nome ?? codigo,
+  };
   const etiquetas = etiquetasDe(
     filtros,
-    (id) => clientes.data?.itens.find((c) => c.id === id)?.nome ?? t('campos.clienteId'),
+    (campo, valor) => nomes[campo]?.(valor) ?? valor,
     // As chaves vêm de campos e atalhos conhecidos (catálogo `busca`); o tipo do next-intl não as infere.
     (chave, valores) => t(chave as Parameters<typeof t>[0], valores),
   );
@@ -297,21 +306,35 @@ export function TelaDeBusca() {
                 }}
               />
               <Selecao
-                rotulo={t('campos.tiposAto')}
-                valor={filtros.tiposAto?.[0] ?? ''}
+                rotulo={t('campos.responsavelId')}
+                valor={filtros.responsavelId ?? ''}
                 opcoes={[
                   { valor: '', rotulo: t('todos') },
-                  ...(atos.data?.itens ?? []).map((a) => ({ valor: a.codigo, rotulo: a.nome })),
+                  ...(equipe.data?.itens ?? []).map((a) => ({
+                    valor: a.usuarioId,
+                    rotulo: a.nome,
+                  })),
                 ]}
-                aoMudar={(ato) => {
-                  mudar({ tiposAto: ato === '' ? undefined : [ato] });
+                aoMudar={(responsavelId) => {
+                  mudar({ responsavelId: responsavelId === '' ? undefined : responsavelId });
                 }}
               />
             </>
           ) : null}
         </div>
         {recurso === 'prazos' ? (
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Vários atos de uma vez (a API combina com OU dentro do campo). */}
+            <Opcoes
+              titulo={t('campos.tiposAto')}
+              valores={(atos.data?.itens ?? []).map((a) => a.codigo)}
+              marcados={filtros.tiposAto ?? []}
+              rotulo={(codigo) => nomes.tiposAto?.(codigo) ?? codigo}
+              aoAlternar={(v) => {
+                alternar('tiposAto', v);
+              }}
+              rolagem
+            />
             <Opcoes
               titulo={t('campos.statusPrazo')}
               valores={STATUS_DO_PRAZO}
@@ -437,15 +460,18 @@ function Opcoes<T extends string>({
   marcados,
   rotulo,
   aoAlternar,
+  rolagem = false,
 }: {
   titulo: string;
   valores: readonly T[];
   marcados: readonly string[];
   rotulo: (valor: T) => string;
   aoAlternar: (valor: T) => void;
+  /** Listas longas (catálogo de atos) rolam dentro do grupo. */
+  rolagem?: boolean;
 }) {
   return (
-    <fieldset className="space-y-2">
+    <fieldset className={cn('space-y-2', rolagem && 'max-h-48 overflow-y-auto pr-2')}>
       <legend className="text-sm font-medium">{titulo}</legend>
       {valores.map((v) => (
         <label key={v} className="flex items-center gap-2 text-sm">
@@ -473,7 +499,7 @@ interface Etiqueta {
 /** Uma etiqueta por filtro ativo (RF50); remover tira só aquele valor. */
 function etiquetasDe(
   filtros: FiltrosDaTela,
-  nomeDoCliente: (id: string) => string,
+  nome: (campo: string, valor: string) => string,
   t: (chave: string, valores?: Record<string, string>) => string,
 ): Etiqueta[] {
   const sem = (campo: string) => (f: FiltrosDaTela) => omitir(f, [campo]);
@@ -484,7 +510,7 @@ function etiquetasDe(
       for (const item of valor as string[]) {
         lista.push({
           chave: `${campo}-${item}`,
-          rotulo: `${t(`campos.${campo}`)}: ${item}`,
+          rotulo: `${t(`campos.${campo}`)}: ${nome(campo, item)}`,
           remover: (f) => {
             const resto = ((f as Record<string, unknown>)[campo] as string[]).filter(
               (v) => v !== item,
@@ -495,7 +521,7 @@ function etiquetasDe(
       }
     } else {
       const texto = typeof valor === 'string' ? valor : '';
-      const exibido = campo === 'clienteId' ? nomeDoCliente(texto) : texto;
+      const exibido = nome(campo, texto);
       lista.push({
         chave: campo,
         rotulo: `${t(`campos.${campo}`)}: ${exibido}`,

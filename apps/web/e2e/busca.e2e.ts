@@ -64,3 +64,16 @@ test('filtros viram etiquetas e remover uma atualiza o resultado', async ({ page
   await page.getByRole('button', { name: 'Limpar filtros' }).click();
   await expect(page).toHaveURL('/busca?recurso=publicacoes');
 });
+
+test('vários tipos de ato e o advogado responsável da equipe (PZ-343)', async ({ page }) => {
+  await page.goto('/busca?tiposAto=ato-ficticio-a,ato-ficticio-b');
+  // Os dois atos valem juntos (OU no campo); cada um vira uma etiqueta removível.
+  await expect(page.getByText('Tipo de ato: ato-ficticio-a')).toBeVisible();
+  await expect(page.getByText('Tipo de ato: ato-ficticio-b')).toBeVisible();
+  await page.getByRole('button', { name: 'Remover Tipo de ato: ato-ficticio-a' }).click();
+  await expect(page).toHaveURL('/busca?tiposAto=ato-ficticio-b');
+  const advogado = page.getByLabel('Advogado responsável');
+  await expect(advogado).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Tipo de ato' })).toBeVisible();
+  await semViolacoes(page);
+});
