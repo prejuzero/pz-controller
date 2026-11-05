@@ -277,16 +277,27 @@ describe('ciência no prazo (HU33)', () => {
     expect(await unidade.executar((tx) => registrar.executar(tx, p.id))).toBe('sem-mudanca');
     expect(await unidade.executar((tx) => registrar.executar(tx, ANA))).toBe('sem-mudanca');
     const lido = await unidade.executar((tx) => repo.buscar(tx, p.id));
-    expect(lido?.estado).toMatchObject({ statusCiencia: 'confirmada', versaoOtimista: 2 });
+    expect(lido?.estado.statusCiencia).toBe('confirmada');
   });
 
-  it('edição concorrente o tempo todo: falha alto (nada em silêncio)', async () => {
+  // Bug do 409 intermitente: a ciência chega pelo consumidor depois que o portal já leu o prazo.
+  // Ela é espelho de outro módulo, não edição: não muda a versão otimista, e a edição do
+  // advogado (lida antes) grava sem apagar a ciência.
+  it('não muda a versão do prazo nem é desfeita por uma edição lida antes', async () => {
     const { RegistrarCienciaNoPrazo } = await import('../application/ciclo-de-vida.js');
     const p = prazo('2026-11-04', 'pendente');
     const { unidade, repo } = await repositorio([p]);
-    repo.atualizar = () => Promise.resolve(false);
-    await expect(
-      unidade.executar((tx) => new RegistrarCienciaNoPrazo(repo).executar(tx, p.id)),
-    ).rejects.toThrow('edição concorrente');
+    const lidoPeloPortal = await unidade.executar((tx) => repo.buscar(tx, p.id));
+    if (lidoPeloPortal === undefined) throw new Error('prazo da massa sumiu');
+    const versaoLida = lidoPeloPortal.estado.versaoOtimista;
+
+    await unidade.executar((tx) => new RegistrarCienciaNoPrazo(repo).executar(tx, p.id));
+    expect(lidoPeloPortal.cumprir(ANA, relogio).ok).toBe(true);
+    expect(await unidade.executar((tx) => repo.atualizar(tx, lidoPeloPortal, versaoLida))).toBe(
+      true,
+    );
+
+    const depois = await unidade.executar((tx) => repo.buscar(tx, p.id));
+    expect(depois?.estado).toMatchObject({ status: 'cumprido', statusCiencia: 'confirmada' });
   });
 });

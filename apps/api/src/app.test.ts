@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { esquemaApi } from './ambiente.js';
 import { criarApi } from './app.js';
 import { Publico } from './http/acesso.js';
+import { JanelaEmMemoria } from './http/limite.js';
 import { termosEmMemoria } from './termos/termos-de-teste.js';
 
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
@@ -80,6 +81,8 @@ async function subir(
     relogio,
     verificadores,
     controllersExtras: [ControllerDeTeste],
+    // Sem Redis no teste unitário (CI): o limite por IP conta em memória.
+    janelaDeRequisicoes: new JanelaEmMemoria(),
   });
   await api.init();
   await api.getHttpAdapter().getInstance().ready();

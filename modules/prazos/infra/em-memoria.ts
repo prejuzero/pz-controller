@@ -122,7 +122,15 @@ export class PrazosEmMemoria implements RepositorioDePrazos<TransacaoEmMemoria> 
   atualizar(_transacao: TransacaoEmMemoria, prazo: Prazo, versaoLida: number): Promise<boolean> {
     const atual = this.#prazos.get(prazo.id);
     if (atual?.versaoOtimista !== versaoLida) return Promise.resolve(false);
-    this.#prazos.set(prazo.id, prazo.estado);
+    // Como no PostgreSQL: a ciência só muda por registrarCiencia.
+    this.#prazos.set(prazo.id, { ...prazo.estado, statusCiencia: atual.statusCiencia });
+    return Promise.resolve(true);
+  }
+
+  registrarCiencia(_transacao: TransacaoEmMemoria, id: Uuid): Promise<boolean> {
+    const atual = this.#prazos.get(id);
+    if (atual === undefined || atual.statusCiencia === 'confirmada') return Promise.resolve(false);
+    this.#prazos.set(id, { ...atual, statusCiencia: 'confirmada' });
     return Promise.resolve(true);
   }
 
