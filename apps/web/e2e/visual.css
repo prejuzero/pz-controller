@@ -1,4 +1,5 @@
-/* Regressão visual: os avisos do topo dependem dos testes anteriores e mudam a altura da página. */
+/* Regressão visual: avisos (faixa do topo, conferências atrasadas) dependem da data e dos testes
+   anteriores e mudam a altura da página. */
 [data-avisos] {
   display: none !important;
 }

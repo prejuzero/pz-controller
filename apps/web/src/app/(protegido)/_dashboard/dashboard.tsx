@@ -83,7 +83,8 @@ export function Dashboard() {
       </Link>
 
       {atrasadas > 0 ? (
-        <Link href="/conferencias" className={LINK_DO_CARD}>
+        // Aparece conforme a data e os processos sem conferência: fora da regressão visual.
+        <Link href="/conferencias" className={LINK_DO_CARD} data-avisos>
           <CardIndicador
             titulo={tc('cardTitulo')}
             valor={atrasadas}

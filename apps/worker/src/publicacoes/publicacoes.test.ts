@@ -1,5 +1,5 @@
 import { tenantAtual } from '@pz/db';
-import { err, gerarUuidV7, ok, Validacao } from '@pz/kernel';
+import { err, FixedClock, gerarUuidV7, Instant, ok, Validacao } from '@pz/kernel';
 import { describe, expect, it } from 'vitest';
 
 import { ConsumidorDaPrivacidade } from '../privacidade/consumidor.js';
@@ -12,7 +12,13 @@ import type { EventoDominio, Uuid } from '@pz/kernel';
 import type { GerarExportacao } from '@pz/privacidade';
 import type { IngerirCaptura } from '@pz/publicacoes';
 
-const evento = { tipo: 'CapturaConcluida', agregadoId: 'alvo' } as EventoDominio;
+const evento = {
+  tipo: 'CapturaConcluida',
+  agregadoId: 'alvo',
+  ocorridoEm: Instant.deIso('2026-11-05T12:00:00.000Z'),
+  payload: { fonte: 'djen' },
+} as EventoDominio;
+const relogio = new FixedClock(Instant.deIso('2026-11-05T12:02:00.000Z'));
 
 describe('publicações e privacidade no worker (HU18, HU38)', () => {
   it('consumidores repassam o evento ao caso de uso, na transação do consumo', async () => {
@@ -29,12 +35,16 @@ describe('publicações e privacidade no worker (HU18, HU38)', () => {
         return Promise.resolve();
       },
     } as unknown as GerarExportacao<unknown>;
-    await new ConsumidorDasPublicacoes(ingerir).capturaConcluida('tx', evento);
+    const consumidor = new ConsumidorDasPublicacoes(ingerir, relogio);
+    await consumidor.capturaConcluida('tx', evento);
+    // Sem fonte no payload, a métrica de SLO usa "desconhecida" (não quebra a ingestão).
+    await consumidor.capturaConcluida('tx', { ...evento, payload: {} });
     await new ConsumidorDaPrivacidade(gerar).exportacaoSolicitada('tx', {
       ...evento,
       tipo: 'ExportacaoDeDadosSolicitada',
     });
     expect(recebidos).toEqual([
+      'ingerir tx CapturaConcluida',
       'ingerir tx CapturaConcluida',
       'gerar tx ExportacaoDeDadosSolicitada',
     ]);

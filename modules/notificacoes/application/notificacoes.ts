@@ -148,10 +148,11 @@ export class EnviarNotificacao<Transacao> {
     private readonly arquivos?: Pick<ArmazenamentoArquivos, 'ler'>,
   ) {}
 
-  async executar(transacao: Transacao, notificacaoId: Uuid): Promise<void> {
+  /** `ja-enviada` na reentrega do evento (idempotente): nada sai de novo. */
+  async executar(transacao: Transacao, notificacaoId: Uuid): Promise<'enviada' | 'ja-enviada'> {
     const notificacao = await this.notificacoes.buscar(transacao, notificacaoId);
     if (notificacao === undefined) throw new Error(`Notificação ${notificacaoId} não encontrada`);
-    if (notificacao.enviada) return;
+    if (notificacao.enviada) return 'ja-enviada';
     const { canal, tipo, dados, chave, destinatarios, versaoTemplate } = notificacao.estado;
     // A notificação sai na versão em que foi pedida; versão retirada vai para a DLQ com o motivo.
     if (versaoTemplate !== TEMPLATES[tipo].versao)
@@ -173,6 +174,7 @@ export class EnviarNotificacao<Transacao> {
     });
     notificacao.registrarEnvio(resultado.idExterno, this.relogio.agora());
     await this.notificacoes.registrarEnvio(transacao, notificacao);
+    return 'enviada';
   }
 
   /** Anexo do envio manual (HU32), lido do armazenamento do tenant; sumido vai para a DLQ. */

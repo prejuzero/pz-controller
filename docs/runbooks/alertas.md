@@ -16,8 +16,8 @@ Alertas iniciais do PrejuZero (HU03, ADR-011), definidos como código em [infra/
 | Trilha de auditoria divergente           | verificação diária achou registro alterado ou apagado     | crítica    |
 | Fonte de publicações degradada           | fonte falhando seguidamente (HU19)                        | crítica    |
 | Alvo de captura com falhas seguidas      | OAB ou processo atingiu o limite de falhas                | alta       |
-| SLO · queima rápida (3 SLOs da API)      | 14,4x o orçamento em 1 h e em 5 min                       | crítica    |
-| SLO · queima lenta (3 SLOs da API)       | 6x o orçamento em 6 h e em 30 min                         | alta       |
+| SLO · queima rápida (API e pipeline)     | 14,4x o orçamento em 1 h e em 5 min                       | crítica    |
+| SLO · queima lenta (API e pipeline)      | 6x o orçamento em 6 h e em 30 min                         | alta       |
 
 Os runbooks sem alerta próprio ficam no fim: [banco-degradado](#banco-degradado) e [restauracao-de-backup](#restauracao-de-backup).
 
@@ -147,6 +147,22 @@ Com pouco tráfego (madrugada, staging), poucas requisições ruins já passam d
 1. No dashboard **PrejuZero · API**, ache as rotas de escrita com p95 acima de 800 ms.
 2. Escrita lenta costuma ser disputa por trava (auditoria por tenant, `SELECT ... FOR UPDATE`) ou transação longa: veja `pg_stat_activity` (`wait_event`) e o trace.
 3. Não tire a auditoria da transação para ganhar tempo (CLAUDE.md, seção 3): ache e trate a causa da disputa.
+
+### slo-publicacao
+
+Mede da captura (evento `CapturaConcluida`) até a publicação ficar visível no portal (ingestão concluída), objetivo proposto de 99% em até 30 min. Atraso aqui é risco direto de prazo: a intimação existe e o escritório ainda não a vê.
+
+1. No dashboard **PrejuZero · Filas**, veja `eventos` e `ingestao`: fila acumulada ou workers parados explicam quase todo atraso ([fila-parada](#fila-parada)).
+2. Jobs falhando e voltando com recuo também atrasam: veja a DLQ ([fila-dlq](#fila-dlq)) e o relay do outbox.
+3. Normalizado, acompanhe até a fração voltar a 0. Se o atraso passou de horas, avise os escritórios afetados (transparência de cobertura).
+
+### slo-email
+
+Mede do pedido do aviso de nova intimação (logo após a classificação gerar o prazo sugerido) até o envio do e-mail, objetivo proposto de 99% em até 10 min. O trecho classificação → pedido passa pelas filas `eventos` e `classificacao`, vigiadas pelo [fila-parada](#fila-parada).
+
+1. No dashboard **PrejuZero · E-mail**, veja a taxa de envio e erros do provedor; no **Filas**, a fila `notificacoes`.
+2. Provedor lento ou com cota: veja o circuito do adaptador ([integracao-degradada](#integracao-degradada)) e as [rejeições](#email-rejeicao).
+3. O aviso também aparece no portal. Se o atraso persistir, avise os escritórios de que o e-mail pode chegar tarde.
 
 ## banco-degradado
 

@@ -527,3 +527,127 @@ groups:
         annotations:
           summary: 'Fração de escritas acima de 800 ms acima de 0.3 em 6h e 30m (6x o orçamento): consome 5% do orçamento mensal em 6 horas.'
           runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#slo-latencia-escrita'
+      - uid: pz-slo-publicacao-rapido
+        title: 'SLO · Publicação visível em até 30 min: queima rápida'
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: '(sum(rate(pz_slo_publicacao_visivel_seconds_count[1h])) - sum(rate(pz_slo_publicacao_visivel_seconds_bucket{le="1800"}[1h]))) / clamp_min(sum(rate(pz_slo_publicacao_visivel_seconds_count[1h])), 1e-9)'
+          - refId: B
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: B
+              instant: true
+              expr: '(sum(rate(pz_slo_publicacao_visivel_seconds_count[5m])) - sum(rate(pz_slo_publicacao_visivel_seconds_bucket{le="1800"}[5m]))) / clamp_min(sum(rate(pz_slo_publicacao_visivel_seconds_count[5m])), 1e-9)'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: math
+              expression: '$A > 0.144 && $B > 0.144'
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels: { severidade: critica, slo: publicacao }
+        annotations:
+          summary: 'Fração de publicações visíveis depois de 30 min acima de 0.144 em 1h e 5m (14.4x o orçamento): consome 2% do orçamento mensal em 1 hora.'
+          runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#slo-publicacao'
+      - uid: pz-slo-publicacao-lento
+        title: 'SLO · Publicação visível em até 30 min: queima lenta'
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 21600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: '(sum(rate(pz_slo_publicacao_visivel_seconds_count[6h])) - sum(rate(pz_slo_publicacao_visivel_seconds_bucket{le="1800"}[6h]))) / clamp_min(sum(rate(pz_slo_publicacao_visivel_seconds_count[6h])), 1e-9)'
+          - refId: B
+            relativeTimeRange: { from: 21600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: B
+              instant: true
+              expr: '(sum(rate(pz_slo_publicacao_visivel_seconds_count[30m])) - sum(rate(pz_slo_publicacao_visivel_seconds_bucket{le="1800"}[30m]))) / clamp_min(sum(rate(pz_slo_publicacao_visivel_seconds_count[30m])), 1e-9)'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: math
+              expression: '$A > 0.06 && $B > 0.06'
+        for: 15m
+        noDataState: OK
+        execErrState: Error
+        labels: { severidade: alta, slo: publicacao }
+        annotations:
+          summary: 'Fração de publicações visíveis depois de 30 min acima de 0.06 em 6h e 30m (6x o orçamento): consome 5% do orçamento mensal em 6 horas.'
+          runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#slo-publicacao'
+      - uid: pz-slo-email-rapido
+        title: 'SLO · E-mail de nova intimação em até 10 min: queima rápida'
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: '(sum(rate(pz_slo_email_enviado_seconds_count[1h])) - sum(rate(pz_slo_email_enviado_seconds_bucket{le="600"}[1h]))) / clamp_min(sum(rate(pz_slo_email_enviado_seconds_count[1h])), 1e-9)'
+          - refId: B
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: B
+              instant: true
+              expr: '(sum(rate(pz_slo_email_enviado_seconds_count[5m])) - sum(rate(pz_slo_email_enviado_seconds_bucket{le="600"}[5m]))) / clamp_min(sum(rate(pz_slo_email_enviado_seconds_count[5m])), 1e-9)'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: math
+              expression: '$A > 0.144 && $B > 0.144'
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels: { severidade: critica, slo: email }
+        annotations:
+          summary: 'Fração de e-mails enviados depois de 10 min acima de 0.144 em 1h e 5m (14.4x o orçamento): consome 2% do orçamento mensal em 1 hora.'
+          runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#slo-email'
+      - uid: pz-slo-email-lento
+        title: 'SLO · E-mail de nova intimação em até 10 min: queima lenta'
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 21600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: '(sum(rate(pz_slo_email_enviado_seconds_count[6h])) - sum(rate(pz_slo_email_enviado_seconds_bucket{le="600"}[6h]))) / clamp_min(sum(rate(pz_slo_email_enviado_seconds_count[6h])), 1e-9)'
+          - refId: B
+            relativeTimeRange: { from: 21600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: B
+              instant: true
+              expr: '(sum(rate(pz_slo_email_enviado_seconds_count[30m])) - sum(rate(pz_slo_email_enviado_seconds_bucket{le="600"}[30m]))) / clamp_min(sum(rate(pz_slo_email_enviado_seconds_count[30m])), 1e-9)'
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: math
+              expression: '$A > 0.06 && $B > 0.06'
+        for: 15m
+        noDataState: OK
+        execErrState: Error
+        labels: { severidade: alta, slo: email }
+        annotations:
+          summary: 'Fração de e-mails enviados depois de 10 min acima de 0.06 em 6h e 30m (6x o orçamento): consome 5% do orçamento mensal em 6 horas.'
+          runbook_url: 'https://github.com/prejuzero/pz-controller/blob/main/docs/runbooks/alertas.md#slo-email'

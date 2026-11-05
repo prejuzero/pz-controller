@@ -1,11 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { AvisarSituacaoDaFonte, EnviarNotificacao } from '@pz/notificacoes';
-import { criarLogger } from '@pz/observability';
+import { criarLogger, registrarEmailEnviado } from '@pz/observability';
 
 import { Consome } from '../eventos/consome.js';
+import { RELOGIO } from '../fichas.js';
 
 import type { Transacao } from '@pz/db';
-import type { EventoDominio } from '@pz/kernel';
+import type { Clock, EventoDominio } from '@pz/kernel';
 import type { NotificacaoSolicitada } from '@pz/notificacoes';
 
 const logger = criarLogger('notificacoes');
@@ -18,11 +19,20 @@ export class ConsumidorDeNotificacoes {
   constructor(
     @Inject(EnviarNotificacao) private readonly enviar: EnviarNotificacao<Transacao>,
     @Inject(AvisarSituacaoDaFonte) private readonly fonte: AvisarSituacaoDaFonte<Transacao>,
+    @Inject(RELOGIO) private readonly relogio: Clock,
   ) {}
 
   @Consome('NotificacaoSolicitada', { versao: 1 })
-  solicitada(transacao: Transacao, evento: NotificacaoSolicitada): Promise<void> {
-    return this.enviar.executar(transacao, evento.payload.notificacaoId);
+  async solicitada(transacao: Transacao, evento: NotificacaoSolicitada): Promise<void> {
+    const resultado = await this.enviar.executar(transacao, evento.payload.notificacaoId);
+    // SLO (HU40): aviso de nova intimação, pedido logo após a classificação, até o envio.
+    const { tipo, canal } = evento.payload;
+    if (resultado === 'enviada' && canal === 'email' && tipo === 'nova-intimacao') {
+      registrarEmailEnviado(
+        tipo,
+        (this.relogio.agora().epochMs - evento.ocorridoEm.epochMs) / 1000,
+      );
+    }
   }
 
   @Consome('FonteDegradada', { versao: 1 })

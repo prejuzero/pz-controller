@@ -7,12 +7,15 @@ export { criarLogger } from './logger.js';
 export type { Logger, OpcoesLogger } from './logger.js';
 export {
   ESTADO_CIRCUITO,
+  LIMITES_SLO_PIPELINE_SEGUNDOS,
   NOMES_METRICAS,
   registrarAlvoFalhando,
   registrarChamadaIntegracao,
   registrarDivergenciaDeAuditoria,
+  registrarEmailEnviado,
   registrarEstadoCircuito,
   registrarJobProcessado,
+  registrarPublicacaoVisivel,
   registrarRejeicaoEmail,
   registrarSituacaoDaFonte,
   registrarSituacaoDasFilas,

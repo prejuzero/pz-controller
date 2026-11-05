@@ -20,7 +20,17 @@ export const NOMES_METRICAS = {
   capturaFonteDegradada: 'pz.captura.fonte.degradada',
   capturaAlvoFalhando: 'pz.captura.alvo.falhando',
   erros: 'pz.erros',
+  sloPublicacaoVisivel: 'pz.slo.publicacao_visivel',
+  sloEmailEnviado: 'pz.slo.email_enviado',
 } as const;
+
+/**
+ * Buckets das métricas de SLO do pipeline (HU40), em segundos: 600 s (10 min, e-mail) e 1800 s
+ * (30 min, publicação) são os limites dos alertas de burn rate (`le="600"`, `le="1800"`).
+ */
+export const LIMITES_SLO_PIPELINE_SEGUNDOS = [
+  30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 21600,
+] as const;
 
 export type ResultadoOperacao = 'sucesso' | 'falha';
 
@@ -38,6 +48,8 @@ interface Instrumentos {
   readonly capturaFonteDegradada: Gauge;
   readonly capturaAlvoFalhando: Counter;
   readonly erros: Counter;
+  readonly sloPublicacaoVisivel: Histogram;
+  readonly sloEmailEnviado: Histogram;
 }
 
 const NOME_MEDIDOR = '@pz/observability';
@@ -80,6 +92,17 @@ function instrumentos(): Instrumentos {
       }),
       erros: medidor.createCounter(NOMES_METRICAS.erros, {
         description: 'Erros inesperados registrados, por origem.',
+      }),
+      sloPublicacaoVisivel: medidor.createHistogram(NOMES_METRICAS.sloPublicacaoVisivel, {
+        description: 'Da captura até a publicação visível no portal (SLO: 30 min), por fonte.',
+        unit: 's',
+        advice: { explicitBucketBoundaries: [...LIMITES_SLO_PIPELINE_SEGUNDOS] },
+      }),
+      sloEmailEnviado: medidor.createHistogram(NOMES_METRICAS.sloEmailEnviado, {
+        description:
+          'Do pedido do aviso de nova intimação (logo após a classificação) até o envio (SLO: 10 min).',
+        unit: 's',
+        advice: { explicitBucketBoundaries: [...LIMITES_SLO_PIPELINE_SEGUNDOS] },
       }),
     };
     cache.set(medidor, existentes);
@@ -128,6 +151,16 @@ export function registrarSituacaoDaFonte(fonte: string, degradada: boolean): voi
 /** Alvo de captura com falhas seguidas acima do limite (HU19). */
 export function registrarAlvoFalhando(): void {
   instrumentos().capturaAlvoFalhando.add(1);
+}
+
+/** SLO de publicação (HU40): segundos da captura até a publicação visível no portal. */
+export function registrarPublicacaoVisivel(fonte: string, segundos: number): void {
+  instrumentos().sloPublicacaoVisivel.record(Math.max(0, segundos), { fonte });
+}
+
+/** SLO de e-mail (HU40): segundos do pedido do aviso de nova intimação até o envio. */
+export function registrarEmailEnviado(tipo: string, segundos: number): void {
+  instrumentos().sloEmailEnviado.record(Math.max(0, segundos), { tipo });
 }
 
 export function registrarErroInesperado(origem: string): void {
