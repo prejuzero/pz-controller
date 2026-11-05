@@ -555,8 +555,13 @@ export function lerAlteracaoDoCalendario(evento: unknown): AlteracaoDoCalendario
   };
 }
 
-/** Lote do recálculo (card PZ-142): pequeno o bastante para uma transação curta. */
-export const LOTE_DO_RECALCULO = 500;
+/**
+ * Lote do recálculo (PZ-142): pequeno o bastante para uma transação curta. Medido em PZ-333
+ * (infra/desempenho-recalculo.int.test.ts): com 500 e 10 escritórios em paralelo, a escrita
+ * (prazo, trilha e outbox de cada um) passava do limite de 5 s da transação; com 100, cada lote
+ * leva ~0,2 s e 100 mil prazos são recalculados em ~4 min.
+ */
+export const LOTE_DO_RECALCULO = 100;
 
 export interface ResultadoDoLote {
   readonly lidos: number;
