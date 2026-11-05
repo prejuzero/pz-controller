@@ -8,6 +8,7 @@ import {
   EnviarResumosDiarios,
   LembrarConferencias,
   PrepararEnvioManual,
+  RemoverAnexosAntigos,
 } from '@pz/notificacoes';
 import {
   criarLogger,
@@ -49,6 +50,7 @@ import {
   dispararLembretesJob,
   enviarResumosJob,
   lembrarConferenciasJob,
+  removerAnexosAntigosJob,
 } from '../notificacoes/jobs.js';
 import {
   chaveDoLote,
@@ -121,6 +123,7 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     @Inject(PrepararEnvioManual) private readonly envios: PrepararEnvioManual<unknown>,
     @Inject(RemoverArquivosExpirados)
     private readonly expirados: RemoverArquivosExpirados<unknown>,
+    @Inject(RemoverAnexosAntigos) private readonly anexos: RemoverAnexosAntigos<unknown>,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -218,6 +221,9 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     );
     this.filas.registrar(removerArquivosExpiradosJob, async () => {
       logger.info(await this.expirados.executar(), 'arquivos de relatórios expirados removidos');
+    });
+    this.filas.registrar(removerAnexosAntigosJob, async () => {
+      logger.info(await this.anexos.executar(), 'anexos antigos dos envios removidos');
     });
     // Envio manual (HU32): gera o anexo e pede a notificação; falha esperada fica na trilha.
     this.filas.registrar(prepararEnvioJob, async ({ tenantId, envio }) => {

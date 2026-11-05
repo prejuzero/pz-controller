@@ -84,6 +84,36 @@ export class EnviosPostgres implements RepositorioDeEnvios<Transacao> {
     return linhas.map(paraEnvio);
   }
 
+  async comAnexoAte(
+    tx: Transacao,
+    ate: Instant,
+    limite: number,
+  ): Promise<
+    { id: Uuid; tenantId: Uuid; recurso: RecursoDoEnvio; caminhoDoAnexo: string | null }[]
+  > {
+    const linhas = await tx.$queryRaw<
+      { id: string; tenant_id: string; recurso: string; caminho: string | null }[]
+    >`
+      SELECT e.id::text, e.tenant_id::text, e.recurso, n.anexo ->> 'caminho' AS caminho
+        FROM envio_manual e LEFT JOIN notificacao n ON n.id = e.notificacao_id
+       WHERE e.anexo_removido_em IS NULL AND e.criado_em <= ${new Date(ate.epochMs)}
+       ORDER BY e.criado_em
+       LIMIT ${limite}`;
+    return linhas.map((l) => ({
+      id: l.id as Uuid,
+      tenantId: l.tenant_id as Uuid,
+      recurso: l.recurso as RecursoDoEnvio,
+      caminhoDoAnexo: l.caminho,
+    }));
+  }
+
+  async marcarAnexoRemovido(tx: Transacao, envioId: Uuid, em: Instant): Promise<void> {
+    await tx.envioManual.updateMany({
+      where: { id: envioId, anexoRemovidoEm: null },
+      data: { anexoRemovidoEm: new Date(em.epochMs) },
+    });
+  }
+
   async comProblemaDesde(tx: Transacao, usuarioId: Uuid, desde: Instant): Promise<number> {
     const [linha] = await tx.$queryRaw<{ total: bigint }[]>`
       SELECT count(*) AS total

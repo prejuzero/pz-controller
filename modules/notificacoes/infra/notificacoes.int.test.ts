@@ -191,6 +191,25 @@ describe('notificações no PostgreSQL (HU30)', () => {
     ).toBe(1);
     // Outro escritório não vê nada (RLS).
     expect(await noTenant(OUTRO, (tx) => envios.recentes(tx, USUARIO, 10))).toEqual([]);
+
+    // Anexos antigos (PZ-362): o sistema lista de todos os escritórios, com o caminho quando há
+    // notificação; marcar tira da lista.
+    const futuro = relogio.agora().maisMs(30 * 24 * 3_600_000);
+    const comAnexo = await sistemaDosWebhooks.executarComoSistema('teste: anexos antigos', (tx) =>
+      envios.comAnexoAte(tx, futuro, 10),
+    );
+    expect(comAnexo.map((e) => e.id).sort()).toEqual([pendente, comNotificacao, falho].sort());
+    expect(comAnexo.every((e) => e.tenantId === TENANT && e.caminhoDoAnexo === null)).toBe(true);
+    await sistemaDosWebhooks.executarComoSistema('teste: marcar anexo', (tx) =>
+      envios.marcarAnexoRemovido(tx, falho, futuro),
+    );
+    expect(
+      (
+        await sistemaDosWebhooks.executarComoSistema('teste: anexos antigos', (tx) =>
+          envios.comAnexoAte(tx, futuro, 10),
+        )
+      ).map((e) => e.id),
+    ).not.toContain(falho);
   });
 
   it('controle de ciência: notificações enviadas por prazo, só no tenant (HU34)', async () => {

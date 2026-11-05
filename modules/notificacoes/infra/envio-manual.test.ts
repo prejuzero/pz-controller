@@ -12,6 +12,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   ListarEnviosRecentes,
   PrepararEnvioManual,
+  RemoverAnexosAntigos,
+  RETENCAO_DOS_ANEXOS_MS,
   SolicitarEnvioManual,
 } from '../application/envio-manual.js';
 import {
@@ -457,4 +459,55 @@ describe('envio manual: situação para quem enviou (PZ-361)', () => {
         envios,
       ).executar(USUARIO, false)
     ).enviosComProblema;
+});
+
+// Retenção dos anexos (PZ-362). Dados FICTÍCIOS.
+describe('envio manual: anexos antigos (PZ-362)', () => {
+  it('apaga o anexo de envios mais antigos que a retenção, uma vez; o recente fica', async () => {
+    const enviado = await solicitar().executar(remetente, pedidoDePrazo());
+    const falho = await solicitar().executar(remetente, pedidoDePrazo());
+    if (!enviado.ok || !falho.ok) throw new Error('pedido recusado');
+    const preparo = (envioId: Uuid, destinatarios: string[]) => ({
+      envioId,
+      tenantId: TENANT,
+      usuarioId: USUARIO,
+      anexo: { origem: 'prazo' as const, id: PRAZO, formato: 'pdf' as const },
+      destinatarios,
+    });
+    expect(await preparar().executar(preparo(enviado.valor.id, ['bia@escritorio.invalid']))).toBe(
+      'solicitado',
+    );
+    suprimidos.add('x@fora.invalid');
+    expect(await preparar().executar(preparo(falho.valor.id, ['x@fora.invalid']))).toBe('falhou');
+
+    const removidos: string[] = [];
+    const armazenamento = {
+      remover: (t: Uuid, c: string) => {
+        removidos.push(`${t}/${c}`);
+        return Promise.resolve();
+      },
+    };
+    const depois = (ms: number) => ({ agora: () => relogio.agora().maisMs(ms) });
+    // Dentro da retenção: nada sai.
+    expect(
+      await new RemoverAnexosAntigos(outbox, envios, armazenamento, depois(0)).executar(),
+    ).toEqual({ removidos: 0 });
+    const limpar = new RemoverAnexosAntigos(
+      outbox,
+      envios,
+      armazenamento,
+      depois(RETENCAO_DOS_ANEXOS_MS + 1),
+      1,
+    );
+    expect(await limpar.executar()).toEqual({ removidos: 2 });
+    expect(await limpar.executar()).toEqual({ removidos: 0 });
+    expect(removidos.sort()).toEqual(
+      [
+        `${TENANT}/envios/${enviado.valor.id}/prejuzero-prazo.pdf`,
+        // Sem notificação (falhou antes), o nome do anexo sai do recurso, nas duas extensões.
+        `${TENANT}/envios/${falho.valor.id}/prejuzero-prazo.pdf`,
+        `${TENANT}/envios/${falho.valor.id}/prejuzero-prazo.xlsx`,
+      ].sort(),
+    );
+  });
 });

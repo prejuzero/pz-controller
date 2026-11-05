@@ -272,3 +272,48 @@ export class ListarEnviosRecentes<Transacao> {
     );
   }
 }
+
+/**
+ * Retenção do anexo do envio manual (PZ-362): 7 dias depois do pedido. Cobre as retentativas da
+ * fila e o tempo de quem enviou ver a situação; o e-mail já levou o arquivo. A carência do
+ * encerramento de conta (30 dias) é maior, então nada sobra de conta encerrada.
+ */
+export const RETENCAO_DOS_ANEXOS_MS = 7 * 24 * 3600 * 1000;
+const LOTE_DOS_ANEXOS = 200;
+
+/**
+ * Apaga do armazenamento os anexos de envios mais antigos que a retenção (PZ-362, minimização,
+ * LGPD). Roda como sistema (job diário, atravessa escritórios); a linha do envio fica, com
+ * `anexoRemovidoEm`. Sem notificação (falhou antes de pedir o e-mail), o nome sai do recurso, nas
+ * duas extensões possíveis; remover o que não existe não é erro.
+ */
+export class RemoverAnexosAntigos<Transacao> {
+  constructor(
+    private readonly sistema: UnidadeDeTrabalho<Transacao>,
+    private readonly envios: RepositorioDeEnvios<Transacao>,
+    private readonly armazenamento: Pick<ArmazenamentoArquivos, 'remover'>,
+    private readonly relogio: Pick<Clock, 'agora'>,
+    private readonly lote = LOTE_DOS_ANEXOS,
+  ) {}
+
+  async executar(): Promise<{ removidos: number }> {
+    const agora = this.relogio.agora();
+    const ate = agora.maisMs(-RETENCAO_DOS_ANEXOS_MS);
+    let removidos = 0;
+    for (;;) {
+      const antigos = await this.sistema.executar((tx) =>
+        this.envios.comAnexoAte(tx, ate, this.lote),
+      );
+      for (const e of antigos) {
+        const caminhos =
+          e.caminhoDoAnexo === null
+            ? ['pdf', 'xlsx'].map((ext) => `envios/${e.id}/prejuzero-${NOMES[e.recurso]}.${ext}`)
+            : [e.caminhoDoAnexo];
+        for (const caminho of caminhos) await this.armazenamento.remover(e.tenantId, caminho);
+        await this.sistema.executar((tx) => this.envios.marcarAnexoRemovido(tx, e.id, agora));
+        removidos++;
+      }
+      if (antigos.length < this.lote) return { removidos };
+    }
+  }
+}

@@ -94,6 +94,7 @@ import {
   PrepararEnvioManual,
   ProgramarLembretes,
   RegistrarDesfechosDeEntrega,
+  RemoverAnexosAntigos,
   SupressaoPostgres,
 } from '@pz/notificacoes';
 import { criarLogger, registrarErro } from '@pz/observability';
@@ -719,6 +720,18 @@ export class WorkerModule {
             new TrilhaPostgres(),
             fonteDosRelatorios(banco, relogio, protecao, ambiente.PORTAL_URL),
             [new RenderizadorPdf(), new RenderizadorXlsx()],
+            opcoes.arquivos ?? arquivosDoAmbiente(ambiente, relogio),
+            relogio,
+          ),
+      },
+      {
+        // Anexos antigos dos envios manuais (PZ-362): lista e marca como sistema.
+        provide: RemoverAnexosAntigos,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new RemoverAnexosAntigos(
+            sistema.unidade('notificacoes: anexos antigos dos envios'),
+            new EnviosPostgres(),
             opcoes.arquivos ?? arquivosDoAmbiente(ambiente, relogio),
             relogio,
           ),
