@@ -30,6 +30,13 @@ export type DadosDoRecalculo = z.infer<typeof recalcularPrazosJob.dados>;
 export const chaveDoLote = (dados: DadosDoRecalculo) =>
   `${dados.evento.id}-${dados.tenantId}-${dados.depoisDe ?? 'inicio'}`;
 
+/** Recalcula os prazos abertos de um processo com a comarca corrigida (PZ-332); chave: o evento. */
+export const recalcularPrazosDoProcessoJob = definirJob({
+  fila: 'prazos',
+  tipo: 'prazos.recalcular-processo',
+  dados: z.object({ processoId: z.uuid(), eventoId: z.uuid(), tenantId: z.uuid() }).strict(),
+});
+
 /** Gera o prazo de uma publicação recebida pelo tenant (HU24); idempotente por publicação. */
 export const gerarPrazoJob = definirJob({
   fila: 'prazos',

@@ -1092,7 +1092,7 @@ function provedoresDoCadastro(criar: (relogio: Clock) => DependenciasDoCadastro)
     ),
     caso(
       AtualizarProcesso,
-      (d) => new AtualizarProcesso(d.unidade, d.processos, d.clientes, d.trilha),
+      (d) => new AtualizarProcesso(d.unidade, d.processos, d.clientes, d.trilha, d.outbox),
     ),
     caso(AlterarCobertura, (d) => new AlterarCobertura(d.unidade, d.processos, d.trilha, d.outbox)),
     caso(

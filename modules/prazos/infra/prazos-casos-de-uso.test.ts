@@ -17,6 +17,7 @@ import {
   CalcularPrazoParaProcesso,
   CriarPrazo,
   lerAlteracaoDoCalendario,
+  RecalcularPrazosDoProcesso,
   RecalcularPrazosPorCalendario,
   SugestaoDePrazo,
   TenantsAfetadosPeloCalendario,
@@ -83,10 +84,11 @@ let criar: CriarPrazo<TransacaoEmMemoria>;
 let recalcular: RecalcularPrazosPorCalendario<TransacaoEmMemoria>;
 
 let anosSemCalendario: number[] = [];
+let comarca = 'Comarca Fictícia';
 const processoNoCalendario = (ramoDoTribunal: string): ProcessoNoCalendario => ({
   ramoDoTribunal,
   anosSemCalendario: (anos) => Promise.resolve(anos.filter((a) => anosSemCalendario.includes(a))),
-  jurisdicao: { tribunal: 'TJXA', uf: 'XA', comarca: 'Comarca Fictícia' },
+  jurisdicao: { tribunal: 'TJXA', uf: 'XA', comarca },
   lacunas: ['municipio'],
   fuso,
   diasNaoUteis: (inicio, fim) => {
@@ -182,6 +184,7 @@ async function aprovar(parcial: Partial<ConteudoDaVersao> = {}) {
 
 beforeEach(async () => {
   dias = [];
+  comarca = 'Comarca Fictícia';
   consultas = [];
   fuso = { fuso: 'America/Sao_Paulo', outrosFusos: false };
   outbox = new OutboxEmMemoria();
@@ -379,6 +382,7 @@ describe('recálculo por mudança de calendário (HU16, PZ-142)', () => {
       vencimentoNovo: '2027-03-24',
       statusAnterior: 'pendente',
       eventoCalendarioId: EVENTO,
+      motivo: 'calendario-alterado',
     });
   });
 
@@ -1015,5 +1019,78 @@ describe('documento do prazo (HU25, PZ-173)', () => {
       },
     );
     expect(!invalido.ok && invalido.erro.codigo).toBe('validacao');
+  });
+});
+
+describe('recálculo quando a comarca do processo muda (PZ-332)', () => {
+  const ALTERACAO = '01a10e00-0000-7000-8000-00000000e0aa' as Uuid;
+  const recalcularDoProcesso = () =>
+    new RecalcularPrazosDoProcesso(outbox, prazos, localizar, trilha, outbox, relogio());
+
+  it('recalcula pelo calendário da nova comarca e grava a jurisdição nova, com trilha e evento', async () => {
+    const prazo = await criado();
+    // A comarca corrigida tem um feriado (FICTÍCIO) no meio do prazo.
+    comarca = 'Comarca Corrigida';
+    dias = [feriado('2027-03-10')];
+    const r = await recalcularDoProcesso().executar(PROCESSO, ALTERACAO);
+    expect(r).toEqual({ lidos: 1, alterados: 1, vencimentosAlterados: 1 });
+    const depois = await outbox.executar((tx) => prazos.buscar(tx, prazo.id));
+    expect(depois?.estado.jurisdicao.comarca).toBe('Comarca Corrigida');
+    expect(depois?.estado.calculo.vencimento?.paraIso()).toBe('2027-03-24');
+    const registro = trilha.registros.find((x) => x.tipo === 'prazos.prazo-recalculado');
+    expect(registro?.depois).toMatchObject({
+      motivo: 'comarca-alterada',
+      eventoOrigemId: ALTERACAO,
+      jurisdicao: { comarca: 'Comarca Corrigida' },
+    });
+    const eventos = await eventosNoOutbox();
+    expect(eventos.find((e) => e.tipo === 'PrazoRecalculado')?.payload).toEqual({
+      prazoId: prazo.id,
+      processoId: PROCESSO,
+      vencimentoAnterior: '2027-03-23',
+      vencimentoNovo: '2027-03-24',
+      statusAnterior: 'a-confirmar',
+      motivo: 'comarca-alterada',
+    });
+    // Repetir o evento não muda nada (idempotente).
+    expect(await recalcularDoProcesso().executar(PROCESSO, ALTERACAO)).toMatchObject({
+      alterados: 0,
+    });
+    // Agora o calendário da comarca nova alcança o prazo.
+    const daNova = await recalcular.executarLote(
+      alteracao({ abrangencia: 'comarca', tribunal: 'TJXA', comarca: 'Comarca Corrigida' }),
+      null,
+    );
+    expect(daNova).toMatchObject({ lidos: 1 });
+  });
+
+  it('mesma data com outra comarca: grava a jurisdição sem voltar a "a confirmar"', async () => {
+    const prazo = await criado();
+    comarca = 'Comarca Corrigida';
+    const r = await recalcularDoProcesso().executar(PROCESSO, ALTERACAO);
+    expect(r).toEqual({ lidos: 1, alterados: 1, vencimentosAlterados: 0 });
+    const depois = await outbox.executar((tx) => prazos.buscar(tx, prazo.id));
+    expect(depois?.estado.jurisdicao.comarca).toBe('Comarca Corrigida');
+    expect(depois?.estado.calculo.vencimento?.paraIso()).toBe('2027-03-23');
+    expect((await eventosNoOutbox()).some((e) => e.tipo === 'PrazoRecalculado')).toBe(false);
+  });
+
+  it('processo sumido lança (o job tenta de novo); sem prazos abertos, nada a fazer', async () => {
+    await criado();
+    const OUTRO = '01a10e00-0000-7000-8000-00000000c0ff' as Uuid;
+    expect(await recalcularDoProcesso().executar(OUTRO, ALTERACAO)).toEqual({
+      lidos: 0,
+      alterados: 0,
+      vencimentosAlterados: 0,
+    });
+    const semProcesso = new RecalcularPrazosDoProcesso(
+      outbox,
+      prazos,
+      () => Promise.resolve(undefined),
+      trilha,
+      outbox,
+      relogio(),
+    );
+    await expect(semProcesso.executar(PROCESSO, ALTERACAO)).rejects.toThrow('não encontrado');
   });
 });

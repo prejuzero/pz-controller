@@ -26,6 +26,7 @@ import {
   CalcularPrazoParaProcesso,
   CriarPrazo,
   lerAlteracaoDoCalendario,
+  RecalcularPrazosDoProcesso,
   RecalcularPrazosPorCalendario,
   TenantsAfetadosPeloCalendario,
 } from '../application/prazos.js';
@@ -56,6 +57,7 @@ const PROCESSO_OUTRO = '01a10e00-0000-7000-8000-0000000f0c02' as Uuid;
 const ana = { ...ANA, canal: 'portal' as const };
 const beto = { ...BETO, canal: 'portal' as const };
 
+let localizar: LocalizadorDoProcesso;
 let postgres: BancoDeTeste;
 let banco: Banco;
 let sistema: BancoSistema;
@@ -110,7 +112,7 @@ beforeAll(async () => {
   const globais = new EventosGlobaisPostgres();
   const dias = new ConsultarDiasNaoUteis(banco, globais, new FeriadosLocaisPostgres());
   // Mesma composição do worker (apps/worker/src/prazos/processo.ts), lendo o processo direto.
-  const localizar: LocalizadorDoProcesso = async (processoId) => {
+  localizar = async (processoId) => {
     const p = await banco.executar((tx) => tx.processo.findUnique({ where: { id: processoId } }));
     if (p === null) return undefined;
     const { jurisdicao, lacunas } = jurisdicaoDoProcesso(p);
@@ -305,6 +307,45 @@ describe('prazos no PostgreSQL (HU16)', () => {
       }),
     );
     expect(depois).toBe(1);
+  });
+
+  it('comarca corrigida: recalcula, grava a jurisdição nova no banco e a trilha (PZ-332)', async () => {
+    const prazo = await prazoNovo(ESCRITORIO, PROCESSO_GO);
+    const comarca = (valor: string) =>
+      sistema.executarComoSistema('teste: corrige a comarca', (tx) =>
+        tx.processo.update({ where: { id: PROCESSO_GO }, data: { comarca: valor } }),
+      );
+    await comarca('Comarca Corrigida');
+    try {
+      const doProcesso = new RecalcularPrazosDoProcesso(
+        banco,
+        new PrazosPostgres(),
+        localizar,
+        new TrilhaPostgres(),
+        new OutboxPostgres(),
+        relogio(),
+      );
+      const ALTERACAO = '01a10e00-0000-7000-8000-0000000f0e99' as Uuid;
+      const r = await executarNoTenant(ESCRITORIO, () =>
+        doProcesso.executar(PROCESSO_GO, ALTERACAO),
+      );
+      expect(r.alterados).toBeGreaterThanOrEqual(1);
+      const [linha, trilha] = await doTenant(ESCRITORIO, async (tx) => [
+        await tx.prazo.findUniqueOrThrow({ where: { id: prazo.id } }),
+        await tx.eventoAuditoria.findMany({
+          where: { entidadeId: prazo.id, tipo: 'prazos.prazo-recalculado' },
+        }),
+      ]);
+      expect(linha.jurisdicao).toMatchObject({ comarca: 'Comarca Corrigida' });
+      expect(trilha).toHaveLength(1);
+      // Repetir não muda nada.
+      const deNovo = await executarNoTenant(ESCRITORIO, () =>
+        doProcesso.executar(PROCESSO_GO, ALTERACAO),
+      );
+      expect(deNovo.alterados).toBe(0);
+    } finally {
+      await comarca('Comarca Fictícia');
+    }
   });
 
   it('feriado de outra UF não alcança nenhum prazo', async () => {

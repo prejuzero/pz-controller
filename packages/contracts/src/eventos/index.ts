@@ -115,6 +115,17 @@ export const CoberturaAlterada = definirEvento(
   }),
 );
 
+/** O advogado corrigiu a comarca do processo (PZ-332): os prazos abertos são recalculados. */
+export const ComarcaDoProcessoAlterada = definirEvento(
+  'ComarcaDoProcessoAlterada',
+  1,
+  z.object({
+    processoId: z.uuid(),
+    antes: z.string().nullable(),
+    depois: z.string().nullable(),
+  }),
+);
+
 /** Notificação pedida (HU30): o worker renderiza o template e envia pelo canal. */
 export const NotificacaoSolicitada = definirEvento(
   'NotificacaoSolicitada',
@@ -364,8 +375,9 @@ export const PrazoSugerido = definirEvento(
 );
 
 /**
- * O calendário mudou e o vencimento de um prazo aberto também (HU16): as notificações avisam o
- * responsável, e o prazo volta a "a confirmar".
+ * O calendário (HU16) ou a comarca do processo (PZ-332) mudou e o vencimento de um prazo aberto
+ * também: as notificações avisam o responsável, e o prazo volta a "a confirmar". Sem `motivo`
+ * (eventos antigos), foi o calendário.
  */
 export const PrazoRecalculado = definirEvento(
   'PrazoRecalculado',
@@ -376,7 +388,9 @@ export const PrazoRecalculado = definirEvento(
     vencimentoAnterior: DataIso.nullable(),
     vencimentoNovo: DataIso.nullable(),
     statusAnterior: z.enum(['a-confirmar', 'pendente']),
-    eventoCalendarioId: z.uuid(),
+    motivo: z.enum(['calendario-alterado', 'comarca-alterada']).optional(),
+    /** Presente quando o motivo é o calendário. */
+    eventoCalendarioId: z.uuid().optional(),
   }),
 );
 
@@ -455,6 +469,7 @@ export const EVENTOS = catalogoDeEventos(
   OabRemovida,
   ProcessoMonitorado,
   CoberturaAlterada,
+  ComarcaDoProcessoAlterada,
   VerificacaoDeEmailSolicitada,
   NotificacaoSolicitada,
   NotificacaoEntregue,

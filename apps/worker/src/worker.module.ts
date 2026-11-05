@@ -107,6 +107,7 @@ import {
   GerarPrazoDaPublicacao,
   MarcarPrazosVencidos,
   PrazosPostgres,
+  RecalcularPrazosDoProcesso,
   RecalcularPrazosPorCalendario,
   RegistrarCienciaNoPrazo,
   ResolverPrazoAplicavel,
@@ -826,6 +827,20 @@ export class WorkerModule {
         inject: [RELOGIO],
         useFactory: (relogio: Clock) =>
           new RecalcularPrazosPorCalendario(
+            banco,
+            new PrazosPostgres(),
+            localizadorDosPrazos(relogio),
+            new TrilhaPostgres(),
+            outboxPostgres,
+            relogio,
+          ),
+      },
+      {
+        // Comarca corrigida (PZ-332): mesmo localizador, sem o cache do calendário.
+        provide: RecalcularPrazosDoProcesso,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new RecalcularPrazosDoProcesso(
             banco,
             new PrazosPostgres(),
             localizadorDosPrazos(relogio),

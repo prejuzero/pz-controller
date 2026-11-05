@@ -65,6 +65,38 @@ describe('ConsumidorDosPrazos (HU16)', () => {
   });
 });
 
+describe('ConsumidorDosPrazos: comarca corrigida (PZ-332)', () => {
+  it('um job no tenant do processo, com o id do evento como chave', async () => {
+    const publicados: { dados: unknown; escopo: unknown; chave: string }[] = [];
+    const filas = {
+      publicar: (_d: unknown, dados: unknown, escopo: unknown, chave: string) => {
+        publicados.push({ dados, escopo, chave });
+        return Promise.resolve(chave);
+      },
+    } as unknown as Filas;
+    const consumidor = new ConsumidorDosPrazos(
+      {} as TenantsAfetadosPeloCalendario<unknown>,
+      filas,
+      () => Promise.resolve([]),
+    );
+    const processoId = '01a10e00-0000-7000-8000-0000000c0bbb';
+    await consumidor.comarcaAlterada('tx', {
+      id: EVENTO,
+      tipo: 'ComarcaDoProcessoAlterada',
+      versao: 1,
+      tenantId: TENANT_A,
+      payload: { processoId, antes: null, depois: 'Comarca Fictícia' },
+    } as unknown as EventoDominio);
+    expect(publicados).toEqual([
+      {
+        dados: { processoId, eventoId: EVENTO, tenantId: TENANT_A },
+        escopo: { tenantId: TENANT_A },
+        chave: EVENTO,
+      },
+    ]);
+  });
+});
+
 describe('ConsumidorDosPrazos: publicações (HU24)', () => {
   it('classificada: um job por tenant destinatário; recebida: um job no tenant do evento', async () => {
     const chaves: string[] = [];

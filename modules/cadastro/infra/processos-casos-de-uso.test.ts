@@ -118,17 +118,29 @@ describe('processos e clientes (HU12)', () => {
     const r = await cadastrar.executar(autor, { numeroCnj: NUMERO });
     if (!r.ok) throw r.erro;
     const id = r.valor.id;
-    const atualizar = new AtualizarProcesso(outbox, processos, clientes, trilha);
+    const atualizar = new AtualizarProcesso(outbox, processos, clientes, trilha, outbox);
     const cobertura = new AlterarCobertura(outbox, processos, trilha, outbox);
 
     expect(await atualizar.executar(autor, id, { sigiloso: true })).toMatchObject({
       ok: true,
       valor: { sigiloso: true },
     });
+    const antesDaComarca = outbox.pendentes().length;
     expect(await atualizar.executar(autor, id, { comarca: 'São Paulo' })).toMatchObject({
       ok: true,
       valor: { comarca: 'São Paulo', sigiloso: true },
     });
+    // Comarca corrigida: evento para recalcular os prazos (PZ-332); a mesma de novo, nada.
+    expect(
+      outbox
+        .pendentes()
+        .slice(antesDaComarca)
+        .map((e) => [e.tipo, e.payload]),
+    ).toEqual([
+      ['ComarcaDoProcessoAlterada', { processoId: id, antes: null, depois: 'São Paulo' }],
+    ]);
+    await atualizar.executar(autor, id, { comarca: 'São Paulo' });
+    expect(outbox.pendentes()).toHaveLength(antesDaComarca + 1);
     expect((await atualizar.executar(autor, NAO_EXISTE, {})).ok).toBe(false);
     expect((await atualizar.executar(autor, id, { clienteId: NAO_EXISTE })).ok).toBe(false);
     expect((await atualizar.executar(autor, id, { numeroCnj: OUTRO })).ok).toBe(false);
@@ -144,13 +156,18 @@ describe('processos e clientes (HU12)', () => {
       'cadastro.processo-cadastrado',
       'cadastro.sigilo-alterado',
       'cadastro.processo-atualizado',
+      'cadastro.processo-atualizado',
       'cadastro.cobertura-alterada',
     ]);
     expect(trilha.registros[1]?.entrada).toMatchObject({
       antes: { sigiloso: false },
       depois: { sigiloso: true },
     });
-    expect(eventos()).toEqual(['ProcessoMonitorado', 'CoberturaAlterada']);
+    expect(eventos()).toEqual([
+      'ProcessoMonitorado',
+      'ComarcaDoProcessoAlterada',
+      'CoberturaAlterada',
+    ]);
   });
 
   it('lista com filtros e cursor, do mais novo para o mais antigo', async () => {
@@ -252,7 +269,7 @@ describe('processos e clientes (HU12)', () => {
       ok: false,
       erro: { codigo: 'cliente-com-processos' },
     });
-    await new AtualizarProcesso(outbox, processos, clientes, trilha).executar(
+    await new AtualizarProcesso(outbox, processos, clientes, trilha, outbox).executar(
       autor,
       processo.valor.id,
       { clienteId: null },

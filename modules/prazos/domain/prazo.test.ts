@@ -10,6 +10,7 @@ import type { Uuid } from '@pz/kernel';
 const relogio = new FixedClock(Instant.deIso('2026-11-02T12:00:00.000Z'));
 const TENANT = '01a10e00-0000-7000-8000-00000000a001' as Uuid;
 const EVENTO = '01a10e00-0000-7000-8000-00000000e001' as Uuid;
+const PELO_CALENDARIO = { motivo: 'calendario-alterado', eventoCalendarioId: EVENTO } as const;
 
 const calculo = (vencimento: string | null, memoria: string): CalculoDoPrazo => ({
   situacao: vencimento === null ? 'a-confirmar' : 'calculado',
@@ -78,7 +79,7 @@ describe('Prazo (HU16)', () => {
       ...calculo('23', 'um'),
       memoria: { a: [1, { x: null, y: 2 }], b: 'um' },
     };
-    expect(prazo.recalcular(igual, EVENTO, relogio)).toBe('sem-mudanca');
+    expect(prazo.recalcular(igual, PELO_CALENDARIO, relogio)).toBe('sem-mudanca');
     expect(prazo.estado.versaoOtimista).toBe(1);
     expect(prazo.retirarEventos()).toEqual([]);
   });
@@ -88,7 +89,7 @@ describe('Prazo (HU16)', () => {
       ...Prazo.sugerir(novo(), TENANT, relogio).estado,
       status: 'pendente',
     });
-    expect(prazo.recalcular(calculo('23', 'dois'), EVENTO, relogio)).toBe('memoria');
+    expect(prazo.recalcular(calculo('23', 'dois'), PELO_CALENDARIO, relogio)).toBe('memoria');
     expect(prazo.estado).toMatchObject({ status: 'pendente', versaoOtimista: 2 });
     expect(prazo.retirarEventos()).toEqual([]);
   });
@@ -98,7 +99,7 @@ describe('Prazo (HU16)', () => {
       ...Prazo.sugerir(novo(), TENANT, relogio).estado,
       status: 'pendente',
     });
-    expect(prazo.recalcular(calculo('24', 'dois'), EVENTO, relogio)).toBe('vencimento');
+    expect(prazo.recalcular(calculo('24', 'dois'), PELO_CALENDARIO, relogio)).toBe('vencimento');
     expect(prazo.estado.status).toBe('a-confirmar');
     expect(prazo.retirarEventos()[0]?.payload).toMatchObject({
       vencimentoAnterior: '2027-03-23',
@@ -106,6 +107,28 @@ describe('Prazo (HU16)', () => {
       statusAnterior: 'pendente',
       eventoCalendarioId: EVENTO,
     });
+  });
+
+  it('comarca corrigida: grava a jurisdição nova mesmo com a mesma data, sem evento (PZ-332)', () => {
+    const prazo = Prazo.sugerir(novo(), TENANT, relogio);
+    prazo.retirarEventos();
+    const igual = prazo.estado.calculo;
+    const jurisdicao = { ...prazo.estado.jurisdicao, comarca: 'Comarca Corrigida' };
+    expect(prazo.recalcular(igual, { motivo: 'comarca-alterada', jurisdicao }, relogio)).toBe(
+      'memoria',
+    );
+    expect(prazo.estado.jurisdicao.comarca).toBe('Comarca Corrigida');
+    expect(prazo.retirarEventos()).toEqual([]);
+    // A mesma comarca de novo: nada muda.
+    expect(prazo.recalcular(igual, { motivo: 'comarca-alterada', jurisdicao }, relogio)).toBe(
+      'sem-mudanca',
+    );
+    expect(
+      prazo.recalcular(calculo('24', 'dois'), { motivo: 'comarca-alterada', jurisdicao }, relogio),
+    ).toBe('vencimento');
+    const [evento] = prazo.retirarEventos();
+    expect(evento?.payload).toMatchObject({ motivo: 'comarca-alterada' });
+    expect(evento?.payload).not.toHaveProperty('eventoCalendarioId');
   });
 
   it('não recalcula fechado, data manual ou sem entrada gravada', () => {
@@ -119,7 +142,7 @@ describe('Prazo (HU16)', () => {
     ]) {
       const prazo = Prazo.restaurar(estado);
       expect(prazo.recalculavel).toBe(false);
-      expect(prazo.recalcular(calculo('24', 'dois'), EVENTO, relogio)).toBe('sem-mudanca');
+      expect(prazo.recalcular(calculo('24', 'dois'), PELO_CALENDARIO, relogio)).toBe('sem-mudanca');
     }
   });
 });

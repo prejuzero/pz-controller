@@ -20,6 +20,7 @@ import {
   GerarPrazoDaPublicacao,
   lerAlteracaoDoCalendario,
   MarcarPrazosVencidos,
+  RecalcularPrazosDoProcesso,
   RecalcularPrazosPorCalendario,
 } from '@pz/prazos';
 import { AplicarRetencao, EfetivarEncerramentos } from '@pz/privacidade';
@@ -56,6 +57,7 @@ import {
   chaveDoLote,
   gerarPrazoJob,
   marcarVencidosJob,
+  recalcularPrazosDoProcessoJob,
   recalcularPrazosJob,
 } from '../prazos/jobs.js';
 import {
@@ -112,6 +114,8 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     @Inject(AplicarRetencao) private readonly retencao: AplicarRetencao<unknown>,
     @Inject(RecalcularPrazosPorCalendario)
     private readonly recalcularPrazos: RecalcularPrazosPorCalendario<unknown>,
+    @Inject(RecalcularPrazosDoProcesso)
+    private readonly recalcularDoProcesso: RecalcularPrazosDoProcesso<unknown>,
     @Inject(GerarPrazoDaPublicacao) private readonly gerarPrazo: GerarPrazoDaPublicacao<unknown>,
     @Inject(MarcarPrazosVencidos) private readonly vencidos: MarcarPrazosVencidos<unknown>,
     @Inject(DispararLembretes) private readonly lembretes: DispararLembretes<unknown>,
@@ -191,6 +195,11 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
         { tenantId: dados.tenantId },
         chaveDoLote(proximo),
       );
+    });
+    // Comarca corrigida (PZ-332): todos os prazos abertos do processo de uma vez (são poucos).
+    this.filas.registrar(recalcularPrazosDoProcessoJob, async ({ processoId, eventoId }) => {
+      const r = await this.recalcularDoProcesso.executar(processoId as Uuid, eventoId as Uuid);
+      logger.info({ processoId, eventoId, ...r }, 'recálculo dos prazos pela comarca');
     });
     // Geração de prazos das publicações (HU24) e marcação diária de vencidos.
     this.filas.registrar(gerarPrazoJob, async ({ conteudoId, tenantId }) => {
