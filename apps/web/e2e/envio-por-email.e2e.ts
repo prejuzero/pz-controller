@@ -50,4 +50,13 @@ test('envia a busca para fora do escritório só com a confirmação de sigilo',
     expect(completa.Text).toContain('Segue a busca.');
     expect(completa.Attachments.map((a) => a.FileName)).toEqual(['prejuzero-busca.pdf']);
   }).toPass({ timeout: 90_000 });
+
+  // Situação do envio no portal (PZ-361): quem enviou vê que chegou.
+  await page.goto('/envios');
+  await expect(page.getByRole('heading', { level: 1, name: 'Envios por e-mail' })).toBeVisible();
+  const linha = page.getByRole('row').filter({ hasText: 'Resultado da busca' }).first();
+  await expect(async () => {
+    await page.reload();
+    await expect(linha).toContainText('Enviado', { timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
 });

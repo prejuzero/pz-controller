@@ -9,7 +9,8 @@ export type Aviso =
   | { tipo: 'captura-atrasada'; fonte: string; desde: string | null }
   | { tipo: 'ciencia-pendente'; quantidade: number }
   | { tipo: 'email-rejeitado'; emails: readonly string[] }
-  | { tipo: 'equipe-com-rejeicao'; quantidade: number };
+  | { tipo: 'equipe-com-rejeicao'; quantidade: number }
+  | { tipo: 'envio-com-problema'; quantidade: number };
 
 export function avisosDaSessao(sessao: Pick<SessaoAtual, 'impersonacao'>): Aviso[] {
   const { impersonacao } = sessao;
@@ -28,6 +29,9 @@ export function avisosDeEntrega(avisos: AvisosDeEntrega): Aviso[] {
   const equipe = avisos.usuariosDaEquipeComRejeicao;
   if (equipe !== null && equipe > 0)
     resultado.push({ tipo: 'equipe-com-rejeicao', quantidade: equipe });
+  // Envio manual que falhou ou foi rejeitado (PZ-361): quem enviou fica sabendo.
+  if (avisos.enviosComProblema > 0)
+    resultado.push({ tipo: 'envio-com-problema', quantidade: avisos.enviosComProblema });
   return resultado;
 }
 

@@ -104,7 +104,9 @@
     "equipeComRejeicao": "{quantidade, plural, one {# pessoa da equipe teve} other {# pessoas da equipe tiveram}} e-mails rejeitados nos últimos 7 dias.",
     "capturaAtrasadaDesde": "Captura do {fonte} atrasada desde {desde}. Recuperaremos automaticamente; até lá, confira as intimações no diário.",
     "capturaAtrasadaAcao": "Ver a cobertura",
-    "cienciaPendenteAcao": "Ver prazos"
+    "cienciaPendenteAcao": "Ver prazos",
+    "envioComProblema": "{quantidade, plural, one {# envio por e-mail não chegou} other {# envios por e-mail não chegaram}} aos destinatários nos últimos 7 dias.",
+    "envioComProblemaAcao": "Ver envios"
   },
   "secao": {
     "emConstrucao": "Esta seção chega nas próximas entregas."
@@ -1267,5 +1269,37 @@
     "divergente": "A verificação falhou: {motivo}. Este histórico não confere com a trilha de auditoria.",
     "valido": "Histórico verificado: emitido em {quando}, com {total, plural, one {# evento} other {# eventos}} íntegros na trilha.",
     "compare": "Compare a sequência, a data e o hash de cada evento com o PDF. Qualquer diferença indica um PDF alterado."
+  },
+  "envios": {
+    "titulo": "Envios por e-mail",
+    "descricao": "Prazos, publicações, buscas e relatórios que você enviou por e-mail. O envio acontece em segundo plano: acompanhe aqui se chegou.",
+    "tabela": "Envios recentes",
+    "vazio": "Você ainda não enviou nada por e-mail.",
+    "colunas": {
+      "quando": "Quando",
+      "recurso": "O que foi enviado",
+      "destinatarios": "Destinatários",
+      "situacao": "Situação",
+      "motivo": "Detalhe"
+    },
+    "recursos": {
+      "prazo": "Prazo",
+      "publicacao": "Publicação",
+      "relatorio": "Relatório",
+      "busca": "Resultado da busca"
+    },
+    "situacoes": {
+      "pendente": "Enviando",
+      "enviado": "Enviado",
+      "rejeitado": "Rejeitado",
+      "falhou": "Não enviado"
+    },
+    "motivos": {
+      "bounce": "O endereço não existe ou recusou a mensagem.",
+      "spam": "O destinatário marcou como spam.",
+      "falha": "O provedor de e-mail falhou.",
+      "destinatarios-suprimidos": "Todos os destinatários estão bloqueados por rejeições anteriores.",
+      "outro": "O conteúdo não pôde ser gerado (pode ter sido removido). Tente enviar de novo."
+    }
   }
 }

@@ -5574,6 +5574,56 @@
             }
           }
         }
+      },
+      "get": {
+        "operationId": "listarEnviosRecentes",
+        "summary": "Envios por e-mail recentes de quem está na sessão, com a situação de cada um.",
+        "tags": [
+          "notificacoes"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnviosRecentes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/notificacoes/avisos": {
@@ -10009,11 +10059,18 @@
               }
             ],
             "description": "Usuários do escritório com notificação rejeitada nos últimos 7 dias; null para quem não administra a equipe (`usuarios:gerir`)."
+          },
+          "enviosComProblema": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Envios por e-mail do usuário que falharam ou foram rejeitados nos últimos 7 dias."
           }
         },
         "required": [
           "emailsRejeitados",
-          "usuariosDaEquipeComRejeicao"
+          "usuariosDaEquipeComRejeicao",
+          "enviosComProblema"
         ],
         "additionalProperties": false
       },
@@ -11295,6 +11352,74 @@
         "required": [
           "id",
           "externos"
+        ],
+        "additionalProperties": false
+      },
+      "EnviosRecentes": {
+        "type": "object",
+        "properties": {
+          "itens": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "recurso": {
+                  "type": "string",
+                  "enum": [
+                    "prazo",
+                    "publicacao",
+                    "relatorio",
+                    "busca"
+                  ]
+                },
+                "destinatarios": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991,
+                  "description": "Quantos destinatários o envio teve."
+                },
+                "situacao": {
+                  "type": "string",
+                  "enum": [
+                    "pendente",
+                    "enviado",
+                    "rejeitado",
+                    "falhou"
+                  ],
+                  "description": "falhou: o anexo não foi gerado ou todos os destinatários estavam suprimidos."
+                },
+                "motivo": {
+                  "description": "Por que falhou (código) ou a categoria da rejeição (bounce, spam, falha).",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "criadoEm": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                }
+              },
+              "required": [
+                "id",
+                "recurso",
+                "destinatarios",
+                "situacao",
+                "motivo",
+                "criadoEm"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "itens"
         ],
         "additionalProperties": false
       },

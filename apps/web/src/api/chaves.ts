@@ -17,6 +17,7 @@ export const chaves = {
     todas: ['notificacoes'] as const,
     avisos: () => [...chaves.notificacoes.todas, 'avisos'] as const,
     preferencias: () => [...chaves.notificacoes.todas, 'preferencias'] as const,
+    envios: () => [...chaves.notificacoes.todas, 'envios'] as const,
   },
   calendario: {
     todas: ['calendario'] as const,

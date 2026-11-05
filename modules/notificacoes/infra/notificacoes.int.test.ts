@@ -17,6 +17,7 @@ import {
 import { ListarSupressoes } from '../application/supressoes.js';
 
 import { ConsentimentosPostgres, DestinosPushPostgres } from './consentimentos-postgres.js';
+import { EnviosPostgres } from './envios-postgres.js';
 import {
   NotificacoesPostgres,
   PreferenciasPostgres,
@@ -144,6 +145,52 @@ describe('notificações no PostgreSQL (HU30)', () => {
     const id = r.valor.notificacaoId;
     const lida = await noTenant(TENANT, (tx) => new NotificacoesPostgres().buscar(tx, id));
     expect(lida?.estado).toMatchObject({ destinatarios: ['cliente@fora.invalid'], anexo });
+  });
+
+  it('envio manual no portal (PZ-361): situação pela notificação, falha e RLS', async () => {
+    const envios = new EnviosPostgres();
+    const [pendente, comNotificacao, falho] = [gerarUuidV7(), gerarUuidV7(), gerarUuidV7()];
+    await noTenant(TENANT, async (tx) => {
+      for (const id of [pendente, comNotificacao, falho])
+        await envios.registrar(tx, {
+          id,
+          tenantId: TENANT,
+          usuarioId: USUARIO,
+          recurso: 'prazo',
+          destinatarios: 2,
+        });
+    });
+    const r = await noTenant(TENANT, (tx) =>
+      notificar.executar(tx, {
+        tipo: 'envio-manual',
+        tenantId: TENANT,
+        usuarioId: USUARIO,
+        janela: 'envio-pz-361',
+        destinatarios: ['cliente@fora.invalid'],
+        dados: { recurso: 'prazo', remetente: 'Ana', link: 'https://app.exemplo.invalid/y' },
+      }),
+    );
+    if (!r.ok || !r.valor.solicitada) throw new Error('não solicitada');
+    const notificacaoId = r.valor.notificacaoId;
+    await noTenant(TENANT, async (tx) => {
+      await envios.vincularNotificacao(tx, comNotificacao, notificacaoId);
+      await envios.marcarFalha(tx, falho, 'prazo-inexistente', relogio.agora());
+    });
+    await noTenant(TENANT, (tx) => enviar.executar(tx, notificacaoId));
+
+    const lidos = await noTenant(TENANT, (tx) => envios.recentes(tx, USUARIO, 10));
+    expect(Object.fromEntries(lidos.map((e) => [e.id, [e.situacao, e.motivo]]))).toEqual({
+      [pendente]: ['pendente', null],
+      [comNotificacao]: ['enviado', null],
+      [falho]: ['falhou', 'prazo-inexistente'],
+    });
+    expect(
+      await noTenant(TENANT, (tx) =>
+        envios.comProblemaDesde(tx, USUARIO, relogio.agora().maisMs(-60_000)),
+      ),
+    ).toBe(1);
+    // Outro escritório não vê nada (RLS).
+    expect(await noTenant(OUTRO, (tx) => envios.recentes(tx, USUARIO, 10))).toEqual([]);
   });
 
   it('controle de ciência: notificações enviadas por prazo, só no tenant (HU34)', async () => {

@@ -52,6 +52,8 @@ export function FaixaAvisos() {
         return t('emailRejeitado', { emails: aviso.emails.join(', ') });
       case 'equipe-com-rejeicao':
         return t('equipeComRejeicao', { quantidade: aviso.quantidade });
+      case 'envio-com-problema':
+        return t('envioComProblema', { quantidade: aviso.quantidade });
     }
   };
 
@@ -80,6 +82,14 @@ export function FaixaAvisos() {
                   {' '}
                   <Link href="/prazos?recorte=sem-ciencia" className="font-medium underline">
                     {t('cienciaPendenteAcao')}
+                  </Link>
+                </>
+              )}
+              {aviso.tipo === 'envio-com-problema' && (
+                <>
+                  {' '}
+                  <Link href="/envios" className="font-medium underline">
+                    {t('envioComProblemaAcao')}
                   </Link>
                 </>
               )}

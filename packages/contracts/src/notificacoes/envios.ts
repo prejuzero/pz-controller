@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { FiltrosBusca } from '../busca.js';
-import { Uuid } from '../comum.js';
+import { Instante, Uuid } from '../comum.js';
 import { definirRota, nomear } from '../rota.js';
 
 /** Teto de destinatários por envio (HU32). */
@@ -73,4 +73,36 @@ export const enviarPorEmail = definirRota({
   corpo: PedidoDeEnvio,
   resposta: { status: 202, corpo: EnvioSolicitado },
   erros: [404, 422, 429],
+});
+
+/** Envio manual como o portal mostra a quem enviou (PZ-361). Sem os endereços (só na trilha). */
+export const EnvioRecente = nomear(
+  'EnvioRecente',
+  z.object({
+    id: Uuid,
+    recurso: z.enum(['prazo', 'publicacao', 'relatorio', 'busca']),
+    destinatarios: z.number().int().positive().describe('Quantos destinatários o envio teve.'),
+    situacao: z
+      .enum(['pendente', 'enviado', 'rejeitado', 'falhou'])
+      .describe('falhou: o anexo não foi gerado ou todos os destinatários estavam suprimidos.'),
+    motivo: z
+      .string()
+      .nullable()
+      .describe('Por que falhou (código) ou a categoria da rejeição (bounce, spam, falha).'),
+    criadoEm: Instante,
+  }),
+);
+export const EnviosRecentes = nomear(
+  'EnviosRecentes',
+  z.object({ itens: z.array(EnvioRecente.esquema) }),
+);
+export type EnviosRecentes = z.infer<typeof EnviosRecentes.esquema>;
+
+export const listarEnviosRecentes = definirRota({
+  id: 'listarEnviosRecentes',
+  metodo: 'get',
+  caminho: '/v1/envios',
+  resumo: 'Envios por e-mail recentes de quem está na sessão, com a situação de cada um.',
+  tag: 'notificacoes',
+  resposta: { status: 200, corpo: EnviosRecentes },
 });

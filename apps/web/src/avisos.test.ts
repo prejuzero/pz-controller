@@ -22,10 +22,20 @@ describe('avisosDaSessao', () => {
 
 describe('avisosDeEntrega (HU30)', () => {
   it('sem rejeição, nada; administrador sem colegas afetados, nada', () => {
-    expect(avisosDeEntrega({ emailsRejeitados: [], usuariosDaEquipeComRejeicao: null })).toEqual(
-      [],
-    );
-    expect(avisosDeEntrega({ emailsRejeitados: [], usuariosDaEquipeComRejeicao: 0 })).toEqual([]);
+    expect(
+      avisosDeEntrega({
+        emailsRejeitados: [],
+        usuariosDaEquipeComRejeicao: null,
+        enviosComProblema: 0,
+      }),
+    ).toEqual([]);
+    expect(
+      avisosDeEntrega({
+        emailsRejeitados: [],
+        usuariosDaEquipeComRejeicao: 0,
+        enviosComProblema: 0,
+      }),
+    ).toEqual([]);
   });
 
   it('avisa os e-mails rejeitados do usuário e a equipe afetada', () => {
@@ -33,10 +43,12 @@ describe('avisosDeEntrega (HU30)', () => {
       avisosDeEntrega({
         emailsRejeitados: ['ana@exemplo.invalid'],
         usuariosDaEquipeComRejeicao: 2,
+        enviosComProblema: 1,
       }),
     ).toEqual([
       { tipo: 'email-rejeitado', emails: ['ana@exemplo.invalid'] },
       { tipo: 'equipe-com-rejeicao', quantidade: 2 },
+      { tipo: 'envio-com-problema', quantidade: 1 },
     ]);
   });
 });

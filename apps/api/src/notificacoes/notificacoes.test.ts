@@ -126,6 +126,7 @@ describe('avisos de entrega pela API (HU30)', () => {
     expect(advogado.json()).toEqual({
       emailsRejeitados: ['ana@exemplo.invalid'],
       usuariosDaEquipeComRejeicao: null,
+      enviosComProblema: 0,
     });
     const admin = await consultar(await sessaoCom('admin_escritorio'));
     expect(admin.json()).toMatchObject({ usuariosDaEquipeComRejeicao: 0 });

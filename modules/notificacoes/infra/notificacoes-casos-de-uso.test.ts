@@ -262,6 +262,7 @@ describe('notificações (HU30)', () => {
       expect(await hoje.executar(USUARIO, true)).toEqual({
         emailsRejeitados: ['ana@exemplo.invalid'],
         usuariosDaEquipeComRejeicao: 1,
+        enviosComProblema: 0,
       });
       expect((await hoje.executar(USUARIO, false)).usuariosDaEquipeComRejeicao).toBeNull();
       const depois = await avisos('2026-10-15T12:05:01Z').executar(USUARIO, true);

@@ -1,4 +1,5 @@
 import { ConsentimentoCanal } from '../domain/consentimento.js';
+import { situacaoDoEnvio } from '../domain/envio.js';
 import { Notificacao } from '../domain/notificacao.js';
 
 import type {
@@ -11,6 +12,7 @@ import type {
   PreferenciasDeNotificacao,
   RepositorioDeConsentimentos,
   RepositorioDeDestinosPush,
+  RepositorioDeEnvios,
   RepositorioDeNotificacoes,
 } from '../application/portas.js';
 import type {
@@ -19,6 +21,7 @@ import type {
 } from '../application/preferencias.js';
 import type { ConsultaDeSupressoes, Supressao } from '../application/supressoes.js';
 import type { CanalComConsentimento, EstadoDoConsentimento } from '../domain/consentimento.js';
+import type { EnvioRecente, RecursoDoEnvio } from '../domain/envio.js';
 import type { EstadoDaNotificacao, TipoDeNotificacao } from '../domain/notificacao.js';
 import type { Instant, TransacaoEmMemoria, Uuid } from '@pz/kernel';
 
@@ -256,5 +259,90 @@ export class PreferenciasEmMemoria
   ): Promise<void> {
     this.#gravadas.set(usuarioId, p);
     return Promise.resolve();
+  }
+}
+
+/** Envios manuais em memória (PZ-361); a situação sai das notificações do repositório dado. */
+export class EnviosEmMemoria implements RepositorioDeEnvios<TransacaoEmMemoria> {
+  readonly envios = new Map<
+    Uuid,
+    {
+      id: Uuid;
+      usuarioId: Uuid;
+      recurso: RecursoDoEnvio;
+      destinatarios: number;
+      notificacaoId: Uuid | null;
+      motivoFalha: string | null;
+      criadoEm: Instant;
+    }
+  >();
+
+  constructor(
+    private readonly notificacoes: NotificacoesEmMemoria,
+    private readonly relogio: { agora(): Instant },
+  ) {}
+
+  registrar(
+    tx: TransacaoEmMemoria,
+    e: { id: Uuid; usuarioId: Uuid; recurso: RecursoDoEnvio; destinatarios: number },
+  ): Promise<void> {
+    const agora = this.relogio.agora();
+    tx.aoConfirmar(() =>
+      this.envios.set(e.id, { ...e, notificacaoId: null, motivoFalha: null, criadoEm: agora }),
+    );
+    return Promise.resolve();
+  }
+
+  vincularNotificacao(tx: TransacaoEmMemoria, envioId: Uuid, notificacaoId: Uuid): Promise<void> {
+    tx.aoConfirmar(() => {
+      const atual = this.envios.get(envioId);
+      if (atual !== undefined) this.envios.set(envioId, { ...atual, notificacaoId });
+    });
+    return Promise.resolve();
+  }
+
+  marcarFalha(tx: TransacaoEmMemoria, envioId: Uuid, motivo: string): Promise<void> {
+    tx.aoConfirmar(() => {
+      const atual = this.envios.get(envioId);
+      if (atual !== undefined) this.envios.set(envioId, { ...atual, motivoFalha: motivo });
+    });
+    return Promise.resolve();
+  }
+
+  recentes(_tx: TransacaoEmMemoria, usuarioId: Uuid, limite: number): Promise<EnvioRecente[]> {
+    return Promise.resolve(
+      [...this.envios.values()]
+        .filter((e) => e.usuarioId === usuarioId)
+        .sort((a, b) => b.criadoEm.epochMs - a.criadoEm.epochMs)
+        .slice(0, limite)
+        .map((e) => {
+          const n = this.notificacoes.todas().find((x) => x.id === e.notificacaoId);
+          return {
+            id: e.id,
+            recurso: e.recurso,
+            destinatarios: e.destinatarios,
+            criadoEm: e.criadoEm,
+            ...situacaoDoEnvio({
+              motivoFalha: e.motivoFalha,
+              notificacao:
+                n === undefined
+                  ? null
+                  : {
+                      enviadaEm: n.enviadaEm ?? null,
+                      rejeitadaEm: n.rejeitadaEm ?? null,
+                      motivoRejeicao: n.motivoRejeicao ?? null,
+                    },
+            }),
+          };
+        }),
+    );
+  }
+
+  async comProblemaDesde(tx: TransacaoEmMemoria, usuarioId: Uuid, desde: Instant): Promise<number> {
+    const todos = await this.recentes(tx, usuarioId, Number.MAX_SAFE_INTEGER);
+    return todos.filter(
+      (e) =>
+        !e.criadoEm.ehAntesDe(desde) && (e.situacao === 'falhou' || e.situacao === 'rejeitado'),
+    ).length;
   }
 }

@@ -1021,7 +1021,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Envios por e-mail recentes de quem está na sessão, com a situação de cada um. */
+        get: operations["listarEnviosRecentes"];
         put?: never;
         /** Envia prazo, publicação, busca ou relatório por e-mail com anexo; o arquivo é gerado e enviado em segundo plano. Destinatário de fora do escritório exige confirmacaoSigilo (422 "confirmacao-de-sigilo"). */
         post: operations["enviarPorEmail"];
@@ -1837,6 +1838,8 @@ export interface components {
             emailsRejeitados: string[];
             /** @description Usuários do escritório com notificação rejeitada nos últimos 7 dias; null para quem não administra a equipe (`usuarios:gerir`). */
             usuariosDaEquipeComRejeicao: number | null;
+            /** @description Envios por e-mail do usuário que falharam ou foram rejeitados nos últimos 7 dias. */
+            enviosComProblema: number;
         };
         CadastroRealizado: {
             /** Format: uuid */
@@ -2135,6 +2138,25 @@ export interface components {
             id: string;
             /** @description Destinatários de fora do escritório (enviados com a confirmação de sigilo). */
             externos: string[];
+        };
+        EnviosRecentes: {
+            itens: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                recurso: "prazo" | "publicacao" | "relatorio" | "busca";
+                /** @description Quantos destinatários o envio teve. */
+                destinatarios: number;
+                /**
+                 * @description falhou: o anexo não foi gerado ou todos os destinatários estavam suprimidos.
+                 * @enum {string}
+                 */
+                situacao: "pendente" | "enviado" | "rejeitado" | "falhou";
+                /** @description Por que falhou (código) ou a categoria da rejeição (bounce, spam, falha). */
+                motivo: string | null;
+                /** Format: date-time */
+                criadoEm: string;
+            }[];
         };
         EventoDoCalendario: {
             /** Format: uuid */
@@ -7745,6 +7767,53 @@ export interface operations {
             };
             /** @description Limite de requisições excedido. */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarEnviosRecentes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnviosRecentes"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
