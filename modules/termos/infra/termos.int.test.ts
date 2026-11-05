@@ -1,10 +1,14 @@
 import { TrilhaPostgres } from '@pz/auditoria';
 import { Banco, BancoSistema, executarNoTenant } from '@pz/db';
 import { subirBancoDeTeste } from '@pz/db/teste';
-import { FixedClock, gerarUuidV7, Instant } from '@pz/kernel';
+import { FixedClock, Instant } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { AceitarDocumento, ConsultarTermosPendentes } from '../application/termos.js';
+import {
+  AceitarDocumento,
+  ConsultarTermosPendentes,
+  PublicarDocumentoLegal,
+} from '../application/termos.js';
 
 import { AceitesPostgres, DocumentosPostgres } from './termos-postgres.js';
 
@@ -85,7 +89,7 @@ describe('termos no PostgreSQL (HU38)', () => {
     expect(trilha.map((t) => t.tenantId)).toEqual([ESCRITORIO]);
   });
 
-  it('a aplicação não altera nem apaga aceite, nem cria documento', async () => {
+  it('a aplicação não altera nem apaga aceite nem documento publicado (imutáveis)', async () => {
     await expect(
       noTenant.executar(ESCRITORIO, (tx) => tx.aceiteDocumento.deleteMany({})),
     ).rejects.toThrow(/permission denied/);
@@ -94,16 +98,35 @@ describe('termos no PostgreSQL (HU38)', () => {
     ).rejects.toThrow(/permission denied/);
     await expect(
       noTenant.executar(ESCRITORIO, (tx) =>
-        tx.documentoLegal.create({
-          data: {
-            id: gerarUuidV7(),
-            tipo: 'termos',
-            versao: '9.0',
-            conteudo: 'x',
-            publicadoEm: new Date(),
-          },
-        }),
+        tx.documentoLegal.updateMany({ data: { conteudo: 'alterado' } }),
       ),
     ).rejects.toThrow(/permission denied/);
+    await expect(
+      noTenant.executar(ESCRITORIO, (tx) => tx.documentoLegal.deleteMany({})),
+    ).rejects.toThrow(/permission denied/);
+  });
+
+  it('publicação (PZ-303): versão nova gravada com trilha na mesma transação; repetida não', async () => {
+    const publicar = new PublicarDocumentoLegal(
+      noTenant,
+      new DocumentosPostgres(),
+      new TrilhaPostgres(),
+      relogio,
+    );
+    const publicador = { tenantId: ESCRITORIO, usuarioId: USUARIO, canal: 'portal' as const };
+    const pedido = { tipo: 'termos' as const, versao: '1.1', conteudo: 'Texto FICTÍCIO 1.1' };
+    const r = await publicar.executar(publicador, pedido);
+    if (!r.ok) throw new Error('deveria publicar');
+    expect((await publicar.executar(publicador, pedido)).ok).toBe(false);
+    const trilha = await noTenant.executar(ESCRITORIO, (tx) =>
+      tx.eventoAuditoria.findMany({ where: { tipo: 'termos.documento-publicado' } }),
+    );
+    expect(trilha.map((e) => e.entidadeId)).toEqual([r.valor.id]);
+    // A versão nova passa a ser exigida de quem iniciar sessão depois dela.
+    const pendentes = await consultar.executar({
+      ...sessao(OUTRO),
+      sessaoIniciadaEm: relogio.agora(),
+    });
+    expect(pendentes.map((d) => d.versao)).toEqual(['1.1']);
   });
 });

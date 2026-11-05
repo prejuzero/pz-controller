@@ -37,7 +37,7 @@ describe('navegacao', () => {
     expect(secaoDoSegmento('inexistente')).toBeUndefined();
     // Administração da plataforma (HU39): oculta para qualquer outro perfil.
     expect(secaoDoSegmento('admin')).toMatchObject({
-      permissao: { algum: ['admin:tenants', 'admin:filas'] },
+      permissao: { algum: ['admin:tenants', 'admin:filas', 'admin:documentos-legais'] },
     });
   });
 

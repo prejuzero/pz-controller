@@ -311,6 +311,9 @@ export {
   listarAceites,
   listarDocumentosVigentes,
   listarTermosPendentes,
+  listarVersoesDocumentosLegais,
+  PedidoDePublicacaoDeDocumento,
+  publicarDocumentoLegal,
   ROTAS_TERMOS,
 } from './termos.js';
 export type { PartesDoNumeroCnj, Tribunal } from './cnj.js';

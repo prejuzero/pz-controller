@@ -1,9 +1,12 @@
-import { Controller, Get, HttpCode, Inject, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Inject, Param, Post, Req } from '@nestjs/common';
+import { PedidoDePublicacaoDeDocumento } from '@pz/contracts';
 import {
   AceitarDocumento,
   ConsultarDocumentosVigentes,
   ConsultarTermosPendentes,
   ListarAceites,
+  ListarVersoesDosDocumentos,
+  PublicarDocumentoLegal,
 } from '@pz/termos';
 import { z } from 'zod';
 
@@ -83,5 +86,51 @@ export class TermosController {
     const { sessao } = autenticacao(requisicao);
     const aceites = await this.listar.executar(sessao);
     return { itens: aceites.map((a) => ({ ...a, aceitoEm: a.aceitoEm.paraIso() })) };
+  }
+}
+
+/**
+ * Publicação de documentos legais pelo administrador da plataforma (PZ-303). A regra (versão,
+ * texto, trilha) fica no módulo termos; aqui só a ligação HTTP.
+ */
+@Controller('v1/admin/documentos-legais')
+export class DocumentosLegaisController {
+  constructor(
+    @Inject(PublicarDocumentoLegal) private readonly publicar: PublicarDocumentoLegal<unknown>,
+    @Inject(ListarVersoesDosDocumentos)
+    private readonly versoes: ListarVersoesDosDocumentos<unknown>,
+  ) {}
+
+  @Get()
+  @RequerPermissao('admin:documentos-legais')
+  async listarVersoesDocumentosLegais(
+    @Req() requisicao: RequisicaoAutenticada,
+  ): Promise<DocumentosPendentes> {
+    const { sessao } = autenticacao(requisicao);
+    return { itens: (await this.versoes.executar(sessao.tenantId)).map(documentoListado) };
+  }
+
+  @Post()
+  @HttpCode(201)
+  @RequerPermissao('admin:documentos-legais')
+  async publicarDocumentoLegal(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Body() corpo: unknown,
+  ): Promise<DocumentosPendentes['itens'][number]> {
+    const { sessao } = autenticacao(requisicao);
+    const pedido = validar(PedidoDePublicacaoDeDocumento.esquema, corpo);
+    const r = await this.publicar.executar(
+      { tenantId: sessao.tenantId, usuarioId: sessao.usuarioId, canal: 'portal' },
+      {
+        tipo: pedido.tipo,
+        versao: pedido.versao,
+        conteudo: pedido.conteudo,
+        ...(pedido.resumoAlteracoes === undefined
+          ? {}
+          : { resumoAlteracoes: pedido.resumoAlteracoes }),
+      },
+    );
+    if (!r.ok) throw r.erro;
+    return documentoListado(r.valor);
   }
 }

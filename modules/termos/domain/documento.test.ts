@@ -1,7 +1,7 @@
 import { Instant } from '@pz/kernel';
 import { describe, expect, it } from 'vitest';
 
-import { pendentes } from './documento.js';
+import { compararVersoes, pendentes } from './documento.js';
 
 import type { DocumentoLegal } from './documento.js';
 import type { Uuid } from '@pz/kernel';
@@ -30,5 +30,14 @@ describe('documentos pendentes (HU38)', () => {
   it('versão publicada depois do início da sessão só vale no próximo login', () => {
     const inicioDaSessao = Instant.deIso('2026-10-01T12:00:00Z');
     expect(pendentes(todos, new Set(['t1', 'p1'] as Uuid[]), inicioDaSessao)).toEqual([]);
+  });
+});
+
+describe('comparação de versões (PZ-303)', () => {
+  it('compara número a número, com tamanhos diferentes', () => {
+    expect(compararVersoes('1.10', '1.9')).toBeGreaterThan(0);
+    expect(compararVersoes('1.0', '1.0.0')).toBe(0);
+    expect(compararVersoes('1.0.1', '1.0')).toBeGreaterThan(0);
+    expect(compararVersoes('1.0', '2.0.1')).toBeLessThan(0);
   });
 });

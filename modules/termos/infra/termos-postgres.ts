@@ -21,7 +21,7 @@ const documento = (l: LinhaDocumento): DocumentoLegal => ({
   publicadoEm: paraInstante(l.publicadoEm),
 });
 
-/** Documentos legais (tabela global, só leitura para a aplicação). */
+/** Documentos legais (tabela global; a aplicação lê e só insere versão nova, PZ-303). */
 export class DocumentosPostgres implements RepositorioDeDocumentos<Transacao> {
   async publicadosAte(tx: Transacao, ate: Instant): Promise<DocumentoLegal[]> {
     const linhas = await tx.documentoLegal.findMany({
@@ -34,6 +34,20 @@ export class DocumentosPostgres implements RepositorioDeDocumentos<Transacao> {
   async buscar(tx: Transacao, id: Uuid): Promise<DocumentoLegal | undefined> {
     const linha = await tx.documentoLegal.findUnique({ where: { id } });
     return linha === null ? undefined : documento(linha);
+  }
+
+  async todos(tx: Transacao): Promise<DocumentoLegal[]> {
+    return (await tx.documentoLegal.findMany({ orderBy: { publicadoEm: 'asc' } })).map(documento);
+  }
+
+  async inserir(tx: Transacao, d: DocumentoLegal): Promise<boolean> {
+    // ON CONFLICT: duas publicações da mesma versão ao mesmo tempo não viram erro 500.
+    const inseridas = await tx.$executeRaw`
+      INSERT INTO documento_legal (id, tipo, versao, conteudo, resumo_alteracoes, publicado_em)
+      VALUES (${d.id}::uuid, ${d.tipo}::tipo_documento_legal, ${d.versao}, ${d.conteudo},
+        ${d.resumoAlteracoes ?? null}, ${new Date(d.publicadoEm.epochMs)})
+      ON CONFLICT (tipo, versao) DO NOTHING`;
+    return inseridas === 1;
   }
 }
 

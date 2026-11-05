@@ -202,6 +202,8 @@ import {
   ConsultarTermosPendentes,
   DocumentosPostgres,
   ListarAceites,
+  ListarVersoesDosDocumentos,
+  PublicarDocumentoLegal,
 } from '@pz/termos';
 import { Redis } from 'ioredis';
 
@@ -245,7 +247,7 @@ import { PrivacidadeController } from './privacidade/privacidade.controller.js';
 import { PublicacoesController } from './publicacoes/publicacoes.controller.js';
 import { RelatoriosController } from './relatorios/relatorios.controller.js';
 import { SaudeController, SondasController } from './saude/saude.controller.js';
-import { TermosController } from './termos/termos.controller.js';
+import { DocumentosLegaisController, TermosController } from './termos/termos.controller.js';
 import { WebhooksController } from './webhooks/webhooks.controller.js';
 
 import type { AmbienteApi } from './ambiente.js';
@@ -685,6 +687,16 @@ function provedoresDosTermos(d: DependenciasDosTermos): Provider[] {
       inject: [RELOGIO],
       useFactory: (r: Clock) =>
         new AceitarDocumento(d.noTenant, d.documentos, d.aceites, d.trilha, r),
+    },
+    {
+      provide: PublicarDocumentoLegal,
+      inject: [RELOGIO],
+      useFactory: (r: Clock) => new PublicarDocumentoLegal(d.noTenant, d.documentos, d.trilha, r),
+    },
+    {
+      provide: ListarVersoesDosDocumentos,
+      inject: [RELOGIO],
+      useFactory: (r: Clock) => new ListarVersoesDosDocumentos(d.noTenant, d.documentos, r),
     },
   ];
 }
@@ -1582,6 +1594,7 @@ export class AppModule {
         AssistenteController,
         CuradoriaDaClassificacaoController,
         TermosController,
+        DocumentosLegaisController,
         PrivacidadeController,
         PublicacoesController,
         CapturaController,

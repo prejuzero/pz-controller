@@ -137,6 +137,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/documentos-legais": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Todas as versões publicadas dos documentos legais, da mais recente para a mais antiga. */
+        get: operations["listarVersoesDocumentosLegais"];
+        put?: never;
+        /** Publica nova versão de um documento legal; todos os usuários aceitam de novo no próximo login. */
+        post: operations["publicarDocumentoLegal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/filas": {
         parameters: {
             query?: never;
@@ -2088,19 +2106,20 @@ export interface components {
             paginas: number;
             analise: components["schemas"]["AnaliseDoTexto"];
         };
+        DocumentoLegal: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            tipo: "termos" | "privacidade" | "cobertura";
+            versao: string;
+            conteudo: string;
+            /** @description O que mudou em relação à versão anterior. */
+            resumoAlteracoes: string | null;
+            /** Format: date-time */
+            publicadoEm: string;
+        };
         DocumentosPendentes: {
-            itens: {
-                /** Format: uuid */
-                id: string;
-                /** @enum {string} */
-                tipo: "termos" | "privacidade" | "cobertura";
-                versao: string;
-                conteudo: string;
-                /** @description O que mudou em relação à versão anterior. */
-                resumoAlteracoes: string | null;
-                /** Format: date-time */
-                publicadoEm: string;
-            }[];
+            itens: components["schemas"]["DocumentoLegal"][];
         };
         EncerramentoDaConta: {
             /**
@@ -2764,6 +2783,16 @@ export interface components {
             /** @description Obrigatório quando a cobertura não é automática. */
             motivoCobertura?: string | null;
             clienteId?: string | null;
+        };
+        PedidoDePublicacaoDeDocumento: {
+            /** @enum {string} */
+            tipo: "termos" | "privacidade" | "cobertura";
+            /** @description Maior que todas as já publicadas deste documento (ex.: 1.1 ou 2.0.1). */
+            versao: string;
+            /** @description Texto aprovado pelo jurídico. */
+            conteudo: string;
+            /** @description O que mudou, mostrado na tela de novo aceite. */
+            resumoAlteracoes?: string;
         };
         PedidoDeRedefinicaoDeSenha: {
             email: string;
@@ -3947,6 +3976,113 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginaDaRevisaoManual"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarVersoesDocumentosLegais: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentosPendentes"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    publicarDocumentoLegal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDePublicacaoDeDocumento"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentoLegal"];
                 };
             };
             /** @description Entrada inválida. */

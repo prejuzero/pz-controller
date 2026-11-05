@@ -17,7 +17,7 @@ export default async function LayoutAdmin({ children }: { children: ReactNode })
   const t = await getTranslations('admin');
   return (
     <SePermitido
-      permissao={{ algum: ['admin:tenants', 'admin:filas'] }}
+      permissao={{ algum: ['admin:tenants', 'admin:filas', 'admin:documentos-legais'] }}
       alternativa={<AcessoNegado />}
     >
       <div className="space-y-6">

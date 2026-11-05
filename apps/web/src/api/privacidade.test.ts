@@ -83,3 +83,26 @@ describe('privacidade no portal (HU38)', () => {
     expect(rotas(cancelar.requisicoes)).toEqual(['POST /v1/privacidade/encerramento/cancelar']);
   });
 });
+
+describe('documentos legais no admin (PZ-303)', () => {
+  it('lista as versões e publica com ou sem o resumo das alterações', async () => {
+    const { api, cache, requisicoes } = montar({ itens: [] }, 200);
+    await cache.query(consultasPrivacidade(api).versoes());
+    const publicar = mutacoesPrivacidade(api, cache).publicar;
+    await publicar.mutationFn({ tipo: 'termos', versao: '1.1', conteudo: 'FICTÍCIO' });
+    await publicar.mutationFn({
+      tipo: 'termos',
+      versao: '1.2',
+      conteudo: 'FICTÍCIO',
+      resumoAlteracoes: 'Ajuste FICTÍCIO.',
+    });
+    expect(rotas(requisicoes)).toEqual([
+      'GET /v1/admin/documentos-legais',
+      'POST /v1/admin/documentos-legais',
+      'POST /v1/admin/documentos-legais',
+    ]);
+    const corpos = await Promise.all(requisicoes.slice(1).map((r) => r.json() as Promise<object>));
+    expect(corpos[0]).not.toHaveProperty('resumoAlteracoes');
+    expect(corpos[1]).toMatchObject({ resumoAlteracoes: 'Ajuste FICTÍCIO.' });
+  });
+});

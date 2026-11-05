@@ -772,6 +772,128 @@
         }
       }
     },
+    "/v1/admin/documentos-legais": {
+      "post": {
+        "operationId": "publicarDocumentoLegal",
+        "summary": "Publica nova versão de um documento legal; todos os usuários aceitam de novo no próximo login.",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDePublicacaoDeDocumento"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentoLegal"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listarVersoesDocumentosLegais",
+        "summary": "Todas as versões publicadas dos documentos legais, da mais recente para a mais antiga.",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentosPendentes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/admin/filas": {
       "get": {
         "operationId": "resumirFilas",
@@ -11048,55 +11170,58 @@
         ],
         "additionalProperties": false
       },
+      "DocumentoLegal": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "termos",
+              "privacidade",
+              "cobertura"
+            ]
+          },
+          "versao": {
+            "type": "string"
+          },
+          "conteudo": {
+            "type": "string"
+          },
+          "resumoAlteracoes": {
+            "description": "O que mudou em relação à versão anterior.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "publicadoEm": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          }
+        },
+        "required": [
+          "id",
+          "tipo",
+          "versao",
+          "conteudo",
+          "resumoAlteracoes",
+          "publicadoEm"
+        ],
+        "additionalProperties": false
+      },
       "DocumentosPendentes": {
         "type": "object",
         "properties": {
           "itens": {
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string",
-                  "format": "uuid",
-                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                },
-                "tipo": {
-                  "type": "string",
-                  "enum": [
-                    "termos",
-                    "privacidade",
-                    "cobertura"
-                  ]
-                },
-                "versao": {
-                  "type": "string"
-                },
-                "conteudo": {
-                  "type": "string"
-                },
-                "resumoAlteracoes": {
-                  "description": "O que mudou em relação à versão anterior.",
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "publicadoEm": {
-                  "type": "string",
-                  "format": "date-time",
-                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                }
-              },
-              "required": [
-                "id",
-                "tipo",
-                "versao",
-                "conteudo",
-                "resumoAlteracoes",
-                "publicadoEm"
-              ],
-              "additionalProperties": false
+              "$ref": "#/components/schemas/DocumentoLegal"
             }
           }
         },
@@ -13668,6 +13793,41 @@
         },
         "required": [
           "numeroCnj"
+        ],
+        "additionalProperties": false
+      },
+      "PedidoDePublicacaoDeDocumento": {
+        "type": "object",
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "termos",
+              "privacidade",
+              "cobertura"
+            ]
+          },
+          "versao": {
+            "type": "string",
+            "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$",
+            "description": "Maior que todas as já publicadas deste documento (ex.: 1.1 ou 2.0.1)."
+          },
+          "conteudo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200000,
+            "description": "Texto aprovado pelo jurídico."
+          },
+          "resumoAlteracoes": {
+            "description": "O que mudou, mostrado na tela de novo aceite.",
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "tipo",
+          "versao",
+          "conteudo"
         ],
         "additionalProperties": false
       },

@@ -44,3 +44,48 @@ export function pendentes(
     .filter((documento) => !aceitos.has(documento.id))
     .sort((a, b) => a.tipo.localeCompare(b.tipo));
 }
+
+/** Mesmo formato do banco (`documento_legal_versao`): 1.0 ou 1.0.1. */
+const FORMATO_DA_VERSAO = /^[0-9]+\.[0-9]+(\.[0-9]+)?$/;
+
+/** Compara versões número a número (1.10 é maior que 1.9; 1.0 e 1.0.0 são iguais). */
+export function compararVersoes(a: string, b: string): number {
+  const pa = a.split('.').map(Number);
+  const pb = b.split('.').map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const diferenca = (pa[i] ?? 0) - (pb[i] ?? 0);
+    if (diferenca !== 0) return diferenca;
+  }
+  return 0;
+}
+
+export interface NovaVersao {
+  readonly tipo: TipoDeDocumento;
+  readonly versao: string;
+  readonly conteudo: string;
+  readonly resumoAlteracoes?: string;
+}
+
+/**
+ * Regras da publicação (PZ-303): versão no formato do banco e maior que todas as já gravadas do
+ * mesmo tipo (sem reaproveitar número), texto não vazio. Devolve os problemas por campo.
+ */
+export function problemasDaNovaVersao(
+  nova: NovaVersao,
+  existentes: readonly DocumentoLegal[],
+): { campo: string; mensagem: string }[] {
+  const problemas: { campo: string; mensagem: string }[] = [];
+  if (!FORMATO_DA_VERSAO.test(nova.versao)) {
+    problemas.push({ campo: 'versao', mensagem: 'Use o formato 1.0 ou 1.0.1.' });
+  } else if (
+    existentes.some((d) => d.tipo === nova.tipo && compararVersoes(nova.versao, d.versao) <= 0)
+  ) {
+    problemas.push({
+      campo: 'versao',
+      mensagem: 'A versão precisa ser maior que todas as já publicadas deste documento.',
+    });
+  }
+  if (nova.conteudo.trim().length === 0)
+    problemas.push({ campo: 'conteudo', mensagem: 'Informe o texto do documento.' });
+  return problemas;
+}

@@ -46,6 +46,7 @@ export const TIPOS_DE_AUDITORIA = [
   'ia.sugestao-corrigida',
   'classificacao.caso-candidato-decidido',
   'termos.documento-aceito',
+  'termos.documento-publicado',
   'privacidade.exportacao-solicitada',
   'privacidade.encerramento-solicitado',
   'privacidade.encerramento-cancelado',

@@ -661,7 +661,8 @@
       "integracoes": "Integrações e filas",
       "rejeicoes": "E-mails rejeitados",
       "calendario": "Calendário forense",
-      "tabelaPrazos": "Tabela de prazos"
+      "tabelaPrazos": "Tabela de prazos",
+      "documentos": "Documentos legais"
     },
     "tenants": {
       "titulo": "Escritórios",
@@ -756,6 +757,27 @@
         "email": "E-mail",
         "motivo": "Motivo",
         "criadaEm": "Desde"
+      }
+    },
+    "documentos": {
+      "descricao": "Publique a nova versão dos termos de uso, da política de privacidade ou do aviso de cobertura. O texto vem do jurídico: confira a prévia antes de publicar.",
+      "publicar": "Publicar nova versão",
+      "tipo": "Documento",
+      "versao": "Versão",
+      "versaoAjuda": "Maior que a última publicada deste documento, por exemplo 1.1 ou 2.0.",
+      "resumo": "O que mudou (aparece na tela de novo aceite)",
+      "conteudo": "Texto do documento",
+      "previa": "Prévia",
+      "previaVazia": "Escreva o texto para ver a prévia.",
+      "confirmo": "Confirmo que este texto foi aprovado pelo jurídico. Ao publicar, ele vale a partir de agora e todos os usuários precisarão aceitá-lo de novo no próximo acesso.",
+      "publicado": "Versão {versao} publicada.",
+      "historico": "Versões publicadas",
+      "vazio": "Nenhuma versão publicada ainda.",
+      "colunas": {
+        "tipo": "Documento",
+        "versao": "Versão",
+        "publicadoEm": "Publicado em",
+        "resumo": "O que mudou"
       }
     }
   },

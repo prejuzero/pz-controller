@@ -46,6 +46,7 @@ export const chaves = {
     aceites: () => [...chaves.privacidade.todas, 'aceites'] as const,
     exportacao: (id: string) => [...chaves.privacidade.todas, 'exportacao', id] as const,
     encerramento: () => [...chaves.privacidade.todas, 'encerramento'] as const,
+    versoes: () => [...chaves.privacidade.todas, 'versoes'] as const,
   },
   admin: {
     todas: ['admin'] as const,
