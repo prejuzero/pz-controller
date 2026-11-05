@@ -5,6 +5,7 @@ export {
   ExecutarCaptura,
   ManterAssinaturas,
   PlanejarCaptura,
+  PUBLICACOES_POR_EVENTO,
 } from './application/captura.js';
 export type {
   CapturaPlanejada,

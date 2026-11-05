@@ -36,16 +36,18 @@ Leitura: com essa massa, um processo da api atende 500 usuários com folga. O va
 
 Rodam com `PZ_DESEMPENHO=1`, fora do CI comum, em PostgreSQL de teste (Testcontainers):
 
-| Medida                                                                              | Comando                                             | Resultado (05/11/2026) | Meta     |
-| ----------------------------------------------------------------------------------- | --------------------------------------------------- | ---------------------- | -------- |
-| Histórico do prazo: 500 eventos + 100 de notificações, em 300 mil eventos da trilha | `pnpm --filter @pz/auditoria test:int:desempenho`   | p95 11 ms              | < 300 ms |
-| Busca de publicações com 1 milhão                                                   | `pnpm --filter @pz/publicacoes test:int:desempenho` | ver HU28               | < 500 ms |
+| Medida                                                                                                 | Comando                                             | Resultado (05/11/2026) | Meta                     |
+| ------------------------------------------------------------------------------------------------------ | --------------------------------------------------- | ---------------------- | ------------------------ |
+| Histórico do prazo: 500 eventos + 100 de notificações, em 300 mil eventos da trilha                    | `pnpm --filter @pz/auditoria test:int:desempenho`   | p95 11 ms              | < 300 ms                 |
+| Ingestão: 10 mil publicações em lotes de 50, concorrência 20 (primeira captura, 2 mil processos novos) | `pnpm --filter @pz/publicacoes test:int:desempenho` | 49 mil/min             | > 10 mil/min por réplica |
+| Ingestão em regime normal (processos já cadastrados)                                                   | idem                                                | 69 mil/min             | > 10 mil/min por réplica |
+| Busca de publicações com 1 milhão                                                                      | `pnpm --filter @pz/publicacoes test:int:desempenho` | ver HU28               | < 500 ms                 |
 
 ## O que este teste ainda não cobre
 
 Ficaram como pendências da HU40 no Notion:
 
-- **Ingestão de 75 mil publicações por dia e picos de captura simultânea:** passam pelo pipeline captura → ingestão → classificação no worker, não pela API. Ver a pendência já aberta de desempenho da ingestão.
+- **Picos de captura simultânea de vários escritórios** e a classificação depois da ingestão: medir em staging (a ingestão sozinha está na tabela acima).
 - **Recálculo em massa por portaria nacional:** ver a pendência "medir 100 mil em 10 min" (HU16).
 - **Custo de infraestrutura por escritório:** depende da AWS (staging com a mesma topologia de produção).
 - **Busca com 1 milhão de publicações:** coberta pelo `pnpm test:int:desempenho` de publicações (HU28), não pelo k6.

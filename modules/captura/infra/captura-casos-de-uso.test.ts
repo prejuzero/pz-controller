@@ -7,6 +7,7 @@ import {
   ExecutarCaptura,
   ManterAssinaturas,
   PlanejarCaptura,
+  PUBLICACOES_POR_EVENTO,
 } from '../application/captura.js';
 import { FALHAS_PARA_ALERTAR_ALVO, FALHAS_PARA_DEGRADAR } from '../domain/fonte.js';
 
@@ -37,12 +38,19 @@ const publicacao: PublicacaoCapturada = {
 
 class FonteFalsa implements FontePublicacoes {
   readonly chamadas: string[] = [];
+  /** Quantas publicações a busca por OAB devolve (padrão: 1). */
+  quantidade = 1;
   falhar: false | 'fora-do-ar' | 'cota' | true = false;
   buscarPorOab(o: { numero: string; uf: string }, j: { inicio: LocalDate; fim: LocalDate }) {
     this.chamadas.push(`oab ${o.numero}/${o.uf} ${j.inicio.paraIso()}..${j.fim.paraIso()}`);
     if (this.falhar === 'cota') return Promise.reject(new ErroLimiteExcedido('429', 'falsa'));
     if (this.falhar !== false) return Promise.reject(new ErroTransitorio('fora do ar', 'falsa'));
-    return Promise.resolve([publicacao]);
+    return Promise.resolve(
+      Array.from({ length: this.quantidade }, (_, i) => ({
+        ...publicacao,
+        idExterno: String(i + 1),
+      })),
+    );
   }
   buscarPorProcesso(numero: string) {
     this.chamadas.push(`processo ${numero}`);
@@ -118,6 +126,24 @@ describe('assinaturas (HU17)', () => {
 });
 
 describe('planejamento e execução (HU17)', () => {
+  it('muitas publicações viram lotes de CapturaConcluida (transação curta na ingestão, PZ-309)', async () => {
+    await emTx((tx) => manter.oabAdicionada(tx, oab(TENANT_A)));
+    fonte.quantidade = PUBLICACOES_POR_EVENTO * 2 + 1;
+    const [plano] = await planejar.executar();
+    if (plano === undefined) throw new Error('sem plano');
+    expect(await executar.executar(plano)).toMatchObject({
+      situacao: 'entregue',
+      publicacoes: PUBLICACOES_POR_EVENTO * 2 + 1,
+    });
+    const lotes = (await eventos()).map(
+      (e) => (e.payload as { publicacoes: { idExterno: string }[] }).publicacoes,
+    );
+    expect(lotes.map((l) => l.length)).toEqual([PUBLICACOES_POR_EVENTO, PUBLICACOES_POR_EVENTO, 1]);
+    expect(lotes.flat().map((p) => p.idExterno)).toEqual(
+      Array.from({ length: PUBLICACOES_POR_EVENTO * 2 + 1 }, (_, i) => String(i + 1)),
+    );
+  });
+
   it('uma consulta por alvo, um CapturaConcluida por tenant e checkpoint da janela', async () => {
     await emTx((tx) => manter.oabAdicionada(tx, oab(TENANT_A)));
     await emTx((tx) => manter.oabAdicionada(tx, oab(TENANT_B)));
