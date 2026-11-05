@@ -241,6 +241,24 @@ export class ConsultarPerfil<Transacao> {
   }
 }
 
+/** Advogado no filtro global: só o necessário para escolher o responsável (sem CPF ou contato). */
+export interface AdvogadoDaEquipe {
+  readonly usuarioId: Uuid;
+  readonly nome: string;
+}
+
+/** GET /v1/advogados: a equipe do escritório para o filtro por responsável (HU27). */
+export class ListarAdvogadosDaEquipe<Transacao> {
+  constructor(
+    private readonly unidade: UnidadeDeTrabalho<Transacao>,
+    private readonly advogados: RepositorioDeAdvogados<Transacao>,
+  ) {}
+
+  executar(): Promise<AdvogadoDaEquipe[]> {
+    return this.unidade.executar((transacao) => this.advogados.daEquipe(transacao));
+  }
+}
+
 /** Nome, celular e e-mails em cópia (PATCH /v1/perfil), com antes e depois na trilha. */
 export class AtualizarPerfil<Transacao> {
   constructor(

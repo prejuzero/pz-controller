@@ -40,6 +40,7 @@ describe('processos (HU12)', () => {
     expect(lista.getNextPageParam(pagina as never, [], undefined, [])).toBe('c2');
     await consultas.detalhe(ID).queryFn?.(sinal as never);
     await consultas.clientes().queryFn?.(sinal as never);
+    await consultas.equipe().queryFn?.(sinal as never);
     await mutacoes.cadastrar.mutationFn({ numeroCnj: '00000016820268260100', orgao: undefined });
     await mutacoes.atualizar.mutationFn({ id: ID, sigiloso: true });
     await mutacoes.alterarCobertura.mutationFn({ id: ID, cobertura: 'manual', motivo: 'Físico' });
@@ -52,6 +53,7 @@ describe('processos (HU12)', () => {
       { rota: 'GET /v1/processos?numero=0000001&cursor=c1', corpo: '' },
       { rota: `GET /v1/processos/${ID}`, corpo: '' },
       { rota: 'GET /v1/clientes?limite=100', corpo: '' },
+      { rota: 'GET /v1/advogados', corpo: '' },
       { rota: 'POST /v1/processos', corpo: '{"numeroCnj":"00000016820268260100"}' },
       { rota: `PATCH /v1/processos/${ID}`, corpo: '{"sigiloso":true}' },
       {

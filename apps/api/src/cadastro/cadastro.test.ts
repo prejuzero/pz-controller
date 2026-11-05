@@ -161,6 +161,9 @@ describe('cadastro pela API (HU11)', () => {
 
   it('perfil e OABs da sessão', async () => {
     expect((await pedir('GET', '/v1/perfil')).statusCode).toBe(200);
+    const equipe = await pedir('GET', '/v1/advogados');
+    expect(equipe.statusCode).toBe(200);
+    expect(equipe.json<{ itens: { nome: string }[] }>().itens).toHaveLength(1);
     const alterado = await pedir('PATCH', '/v1/perfil', { celular: '21998765432' });
     expect(alterado.json<{ celular: string }>().celular).toBe('21998765432');
     const oab = await pedir('POST', '/v1/oabs', { numero: '555', uf: 'MG' });

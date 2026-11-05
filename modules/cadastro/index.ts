@@ -6,9 +6,15 @@ export {
   ConsultarPerfil,
   EntradaDoCadastro,
   EntradaDoPerfil,
+  ListarAdvogadosDaEquipe,
   RemoverOab,
 } from './application/cadastro.js';
-export type { AutorDoCadastro, OabListada, PerfilListado } from './application/cadastro.js';
+export type {
+  AdvogadoDaEquipe,
+  AutorDoCadastro,
+  OabListada,
+  PerfilListado,
+} from './application/cadastro.js';
 export {
   AtualizarCliente,
   CadastrarCliente,

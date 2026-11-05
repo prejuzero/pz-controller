@@ -24,6 +24,8 @@ export interface RepositorioDeAdvogados<Transacao> {
    */
   inserir(transacao: Transacao, advogado: Advogado): Promise<'ok' | 'cpf-em-uso' | 'oab-em-uso'>;
   buscarPorUsuario(transacao: Transacao, usuarioId: Uuid): Promise<Advogado | undefined>;
+  /** Advogados do tenant da transação, por nome (filtro por responsável). */
+  daEquipe(transacao: Transacao): Promise<{ usuarioId: Uuid; nome: string }[]>;
   salvarPerfil(transacao: Transacao, advogado: Advogado): Promise<void>;
   /** `false` se a OAB já está ativa para outro advogado (em qualquer tenant). */
   inserirOab(transacao: Transacao, advogado: Advogado, oab: Oab): Promise<boolean>;

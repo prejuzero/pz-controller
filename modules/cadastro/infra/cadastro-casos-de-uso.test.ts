@@ -6,6 +6,7 @@ import {
   AtualizarPerfil,
   CadastrarAdvogado,
   ConsultarPerfil,
+  ListarAdvogadosDaEquipe,
   RemoverOab,
 } from '../application/cadastro.js';
 
@@ -178,6 +179,10 @@ describe('cadastro do advogado (HU11)', () => {
     const consultar = new ConsultarPerfil(outbox, advogados);
     const atualizar = new AtualizarPerfil(outbox, advogados, trilha);
     expect((await consultar.executar(autor.usuarioId)).ok).toBe(true);
+    // Equipe do filtro global: usuário e nome, sem CPF nem contato.
+    expect(await new ListarAdvogadosDaEquipe(outbox, advogados).executar()).toEqual([
+      { usuarioId: autor.usuarioId, nome: entrada().nome },
+    ]);
     const r = await atualizar.executar(autor, {
       celular: '21998765432',
       emailsAdicionais: ['Copia@Exemplo.com'],

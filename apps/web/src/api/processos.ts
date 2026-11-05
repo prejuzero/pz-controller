@@ -62,6 +62,13 @@ export const consultasProcessos = (api: ClienteApi) => ({
       queryFn: ({ signal }) =>
         exigir(api.GET('/v1/clientes', { params: { query: { limite: LIMITE_CLIENTES } }, signal })),
     }),
+  /** Advogados do escritório para o filtro por responsável (HU27). */
+  equipe: () =>
+    queryOptions({
+      queryKey: chaves.equipe,
+      queryFn: ({ signal }) => exigir(api.GET('/v1/advogados', { signal })),
+      staleTime: 5 * 60_000,
+    }),
   conferencias: () =>
     queryOptions({
       queryKey: chaves.processos.conferencias(),
