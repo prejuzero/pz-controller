@@ -118,6 +118,7 @@ export type {
   DiaDoCalendario,
   FontesDaGeracao,
   LocalizadorDoProcesso,
+  ProcessosDoCliente,
   ProcessoNoCalendario,
   RepositorioDePrazos,
   TipoDeDia,

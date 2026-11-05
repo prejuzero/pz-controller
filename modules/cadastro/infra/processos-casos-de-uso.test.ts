@@ -163,6 +163,9 @@ describe('processos e clientes (HU12)', () => {
     const contar = new ContarProcessos(outbox, processos);
     expect(await contar.executar({})).toBe(2);
     expect(await contar.executar({ tribunal: 'TRIBUNAL-INEXISTENTE' })).toBe(0);
+    expect(
+      await contar.executar({ clienteId: '01a10e00-0000-7000-8000-00000000c1e0' as Uuid }),
+    ).toBe(0);
 
     const primeira = await listar.executar({ limite: '1' });
     if (!primeira.ok) throw primeira.erro;

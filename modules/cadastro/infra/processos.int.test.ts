@@ -25,6 +25,7 @@ import { ClientesPostgres, ProcessosPostgres } from './processos-postgres.js';
 import type { AutorNoTenant } from '../application/paginacao.js';
 import type { Transacao } from '@pz/db';
 import type { BancoDeTeste } from '@pz/db/teste';
+import type { Uuid } from '@pz/kernel';
 
 // Chaves de dados FICTÍCIAS (ADR-021): o banco do teste guarda CPF e documento cifrados.
 const protecao = protecaoDeCampos(new ProvedorChavesLocal(randomBytes(32).toString('base64')));
@@ -113,6 +114,8 @@ describe('processos e clientes no PostgreSQL (HU12)', () => {
     const contar = new ContarProcessos(banco, new ProcessosPostgres(relogio));
     expect(await noTenant(beto, () => contar.executar({}))).toBeGreaterThanOrEqual(1);
     expect(await noTenant(beto, () => contar.executar({ tribunal: 'NENHUM' }))).toBe(0);
+    const semCliente = '01a10e00-0000-7000-8000-00000000c1e0' as Uuid;
+    expect(await noTenant(beto, () => contar.executar({ clienteId: semCliente }))).toBe(0);
     // Busca (HU28): número parcial, tribunal e órgão; isolado por tenant.
     const paraBusca = new ProcessosParaBusca(banco, new ProcessosPostgres(relogio));
     const ids = await noTenant(beto, () => paraBusca.executar({ numeroCnj: '000000168' }));

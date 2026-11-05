@@ -1,6 +1,6 @@
 import type { JurisdicaoDoPrazo, Prazo, StatusDoPrazo } from '../domain/prazo.js';
 import type { Ramo, VersaoDaTabela } from '../domain/tabela.js';
-import type { LocalDate, Uuid } from '@pz/kernel';
+import type { LocalDate, Result, Uuid, Validacao } from '@pz/kernel';
 
 /** Tipo de ato da taxonomia única (HU15): regras rápidas, IA e portal usam o mesmo código. */
 export interface TipoDeAto {
@@ -161,7 +161,15 @@ export interface RecorteDoPainel {
   readonly responsavelId?: Uuid;
   /** Sigla do tribunal gravada na jurisdição do prazo. */
   readonly tribunal?: string;
+  /** Processos do cliente do filtro global; lista vazia não encontra nada. */
+  readonly processoIds?: readonly Uuid[];
 }
+
+/**
+ * Processos de um cliente do escritório (cadastro, pela API pública dele). Recusa quando são
+ * processos demais para filtrar.
+ */
+export type ProcessosDoCliente = (clienteId: Uuid) => Promise<Result<readonly Uuid[], Validacao>>;
 
 /** Prazo aberto: "a confirmar" ou pendente. */
 export interface ContagemDoPainel {
@@ -181,6 +189,8 @@ export interface FiltroDePrazos {
   readonly responsavelId?: Uuid;
   /** Sigla do tribunal na jurisdição do prazo (filtro global, como no dashboard). */
   readonly tribunal?: string;
+  /** Processos do cliente do filtro global; lista vazia não encontra nada. */
+  readonly processoIds?: readonly Uuid[];
   readonly depoisDe?: { readonly vencimento: LocalDate | null; readonly id: Uuid };
   /** Card do dashboard aberto na lista (HU26), com o mesmo critério da contagem. */
   readonly recorte?: {

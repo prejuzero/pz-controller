@@ -30,12 +30,14 @@ export const RECORTES_DA_LISTA: readonly RecorteDaLista[] = [
 export type FiltroDaLista = ({ status: StatusDoPrazo } | { recorte: RecorteDaLista }) & {
   responsavelId?: string;
   tribunal?: string;
+  clienteId?: string;
 };
 
 /** Campos do filtro global (HU27) que o dashboard aceita. */
 export interface FiltroDoDashboard {
   responsavelId?: string;
   tribunal?: string;
+  clienteId?: string;
 }
 
 /** Consulta da agenda do calendário (HU27): período e filtros globais. */

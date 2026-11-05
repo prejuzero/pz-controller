@@ -8,6 +8,7 @@ import { validar } from '../auth/auth.controller.js';
 import { RequerPermissao } from '../http/acesso.js';
 
 import type { LinhaDoTempo, ProximosPrazos, ResumoDoDashboard } from '@pz/contracts';
+import type { Uuid } from '@pz/kernel';
 
 /**
  * Dashboard do escritório (HU26). Só compõe os contadores de cada módulo (prazos, publicações e
@@ -28,7 +29,10 @@ export class DashboardController {
     const [prazos, novasPublicacoes, processosMonitorados] = await Promise.all([
       this.painel.resumo(filtro),
       this.publicacoes.executar(),
-      this.processos.executar(filtro.tribunal === undefined ? {} : { tribunal: filtro.tribunal }),
+      this.processos.executar({
+        ...(filtro.tribunal === undefined ? {} : { tribunal: filtro.tribunal }),
+        ...(filtro.clienteId === undefined ? {} : { clienteId: filtro.clienteId as Uuid }),
+      }),
     ]);
     if (!prazos.ok) throw prazos.erro;
     return { ...prazos.valor, novasPublicacoes, processosMonitorados };

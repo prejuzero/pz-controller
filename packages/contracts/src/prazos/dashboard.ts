@@ -12,6 +12,7 @@ import { PrazoDaLista } from './prazos.js';
 export const FiltroDoDashboard = z.object({
   responsavelId: Uuid.optional().describe('Advogado responsável pelo prazo.'),
   tribunal: z.string().trim().min(1).max(20).optional().describe('Sigla do tribunal.'),
+  clienteId: Uuid.optional().describe('Só os processos do cliente.'),
 });
 
 export const ResumoDoDashboard = nomear(

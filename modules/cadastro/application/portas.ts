@@ -116,7 +116,10 @@ export interface RepositorioDeProcessos<Transacao> {
     pagina: Paginacao,
   ): Promise<EstadoDoProcesso[]>;
   /** Processos do tenant no filtro (card "processos monitorados" do dashboard, HU26). */
-  contar(transacao: Transacao, filtro: Pick<FiltroDeProcessos, 'tribunal'>): Promise<number>;
+  contar(
+    transacao: Transacao,
+    filtro: Pick<FiltroDeProcessos, 'tribunal' | 'clienteId'>,
+  ): Promise<number>;
   /** Ids dos processos do tenant no filtro da busca (HU28), até `limite`. */
   idsNoFiltro(
     transacao: Transacao,

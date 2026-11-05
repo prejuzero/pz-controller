@@ -10,7 +10,7 @@ import {
 } from '@pz/calendario';
 import { Banco, BancoSistema, executarNoTenant, OutboxPostgres } from '@pz/db';
 import { subirBancoDeTeste } from '@pz/db/teste';
-import { FixedClock, gerarUuidV7, Instant, LocalDate } from '@pz/kernel';
+import { FixedClock, gerarUuidV7, Instant, LocalDate, ok } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { BuscarPrazos } from '../application/busca.js';
@@ -390,6 +390,17 @@ describe('ciclo de vida no PostgreSQL (HU24, PZ-171)', () => {
     expect(doTribunal.ok && doTribunal.valor.itens.map((i) => i.id)).toContain(prazo.id);
     const deOutro = await listar('TRF9');
     expect(deOutro.ok && deOutro.valor.itens).toEqual([]);
+    // Cliente (PZ-338): processos resolvidos pelo cadastro viram uuid[] no SQL.
+    const doCliente = (ids: Uuid[]) =>
+      noEscritorio(() =>
+        new ListarPrazos(banco, new PrazosPostgres(), relogio(), undefined, () =>
+          Promise.resolve(ok(ids)),
+        ).executar({ status: 'cumprido', clienteId: PROCESSO_OUTRO }),
+      );
+    const comProcesso = await doCliente([PROCESSO_GO]);
+    expect(comProcesso.ok && comProcesso.valor.itens.map((i) => i.id)).toContain(prazo.id);
+    const semProcessos = await doCliente([]);
+    expect(semProcessos.ok && semProcessos.valor.itens).toEqual([]);
   });
 
   it('um prazo por publicação no tenant (índice único) e job de vencidos', async () => {
@@ -508,6 +519,25 @@ describe('dashboard no PostgreSQL (HU26, PZ-176)', () => {
     ]);
     const doOutro = await executarNoTenant(OUTRO, () => painel.proximos({ limite: 50 }));
     expect(doOutro.ok && doOutro.valor.every((p) => p.processoId !== PROCESSO_PAINEL)).toBe(true);
+    // Cliente (PZ-338): os três SQL do painel filtram pelos processos dele.
+    const CLIENTE = '01a10e00-0000-7000-8000-0000000f0c99';
+    const comCliente = (ids: Uuid[]) =>
+      new PainelDosPrazos(banco, new PrazosPostgres(), hoje, semCalendario, () =>
+        Promise.resolve(ok(ids)),
+      );
+    const doCliente = await executarNoTenant(PAINEL, () =>
+      comCliente([PROCESSO_PAINEL]).resumo({ clienteId: CLIENTE }),
+    );
+    expect(doCliente.ok && doCliente.valor.vencemHoje).toBe(2);
+    const semProcessos = comCliente([]);
+    const vazio = await executarNoTenant(PAINEL, async () => ({
+      resumo: await semProcessos.resumo({ clienteId: CLIENTE }),
+      linha: await semProcessos.linhaDoTempo({ clienteId: CLIENTE, dias: 2 }),
+      proximos: await semProcessos.proximos({ clienteId: CLIENTE }),
+    }));
+    expect(vazio.resumo.ok && vazio.resumo.valor.vencemHoje).toBe(0);
+    expect(vazio.linha.ok && vazio.linha.valor.map((d) => d.quantidade)).toEqual([0, 0]);
+    expect(vazio.proximos.ok && vazio.proximos.valor).toEqual([]);
   });
 
   it('resumo com 5.000 prazos responde em p95 abaixo de 300 ms', async () => {

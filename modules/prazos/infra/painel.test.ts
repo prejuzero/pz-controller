@@ -1,4 +1,4 @@
-import { FixedClock, Instant, LocalDate, OutboxEmMemoria } from '@pz/kernel';
+import { err, FixedClock, Instant, LocalDate, ok, OutboxEmMemoria, Validacao } from '@pz/kernel';
 import { describe, expect, it } from 'vitest';
 
 import { BuscarPrazos } from '../application/busca.js';
@@ -8,7 +8,11 @@ import { Prazo } from '../domain/prazo.js';
 
 import { PrazosEmMemoria } from './em-memoria.js';
 
-import type { LocalizadorDoProcesso, ProcessoNoCalendario } from '../application/portas.js';
+import type {
+  LocalizadorDoProcesso,
+  ProcessoNoCalendario,
+  ProcessosDoCliente,
+} from '../application/portas.js';
 import type { EstadoDoPrazo, StatusDoPrazo } from '../domain/prazo.js';
 import type { TransacaoEmMemoria, Uuid } from '@pz/kernel';
 
@@ -205,6 +209,42 @@ describe('painel dos prazos (HU26)', () => {
       null,
       null,
     ]);
+  });
+
+  it('filtro por cliente: cards, linha do tempo, próximos e lista pelos processos dele (PZ-338)', async () => {
+    const OUTRO = '01a10e00-0000-7000-8000-0000000b0009' as Uuid;
+    const CLIENTE = '01a10e00-0000-7000-8000-0000000b000a' as Uuid;
+    const { unidade, repo } = await repositorio([
+      prazo('2026-10-30', 'pendente'),
+      prazo('2026-10-30', 'pendente', { processoId: OUTRO }),
+      prazo('2026-11-04', 'a-confirmar', { processoId: OUTRO }),
+    ]);
+    const doCliente: ProcessosDoCliente = (id) =>
+      Promise.resolve(ok(id === CLIENTE ? [OUTRO] : []));
+    const localizar: LocalizadorDoProcesso = () => Promise.resolve(processo);
+    const painel = new PainelDosPrazos(unidade, repo, relogio, localizar, doCliente);
+    const resumo = await painel.resumo({ clienteId: CLIENTE });
+    expect(resumo.ok && resumo.valor).toMatchObject({ vencemHoje: 1, proximos7Dias: 1 });
+    const linha = await painel.linhaDoTempo({ clienteId: CLIENTE, dias: '1' });
+    expect(linha.ok && linha.valor[0]?.quantidade).toBe(1);
+    const proximos = await painel.proximos({ clienteId: CLIENTE });
+    expect(proximos.ok && proximos.valor.map((p) => p.processoId)).toEqual([OUTRO, OUTRO]);
+    // Cliente sem processos: nada, sem cair para "todos".
+    const vazio = await painel.resumo({ clienteId: '01a10e00-0000-7000-8000-0000000b000b' });
+    expect(vazio.ok && vazio.valor.vencemHoje).toBe(0);
+    // O card abre a lista com o mesmo critério.
+    const listar = new ListarPrazos(unidade, repo, relogio, localizar, doCliente);
+    const lista = await listar.executar({ recorte: 'vence-hoje', clienteId: CLIENTE });
+    expect(lista.ok && lista.valor.itens.map((p) => p.processoId)).toEqual([OUTRO]);
+    // Sem a porta, o filtro por cliente é recusado (não ignora em silêncio).
+    const semPorta = await new PainelDosPrazos(unidade, repo, relogio, localizar).resumo({
+      clienteId: CLIENTE,
+    });
+    expect(!semPorta.ok && semPorta.erro.codigo).toBe('validacao');
+    const erro = await new PainelDosPrazos(unidade, repo, relogio, localizar, () =>
+      Promise.resolve(err(new Validacao([{ campo: 'clienteId', mensagem: 'demais' }]))),
+    ).proximos({ clienteId: CLIENTE });
+    expect(!erro.ok && erro.erro.codigo).toBe('validacao');
   });
 
   it('sem o processo no calendário, não inventa: dias úteis ficam nulos', async () => {
