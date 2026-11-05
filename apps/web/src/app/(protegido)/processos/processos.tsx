@@ -9,7 +9,7 @@ import {
   TabelaDados,
   type ColunaTabela,
 } from '@pz/ui';
-import { Users } from 'lucide-react';
+import { ClipboardCheck, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useDeferredValue, useState } from 'react';
@@ -110,6 +110,13 @@ export function Processos() {
           }}
         />
         <div className="ms-auto flex flex-wrap gap-3">
+          <Link
+            href="/conferencias"
+            className="inline-flex items-center gap-2 text-sm underline underline-offset-4"
+          >
+            <ClipboardCheck className="size-4" aria-hidden />
+            {t('irConferencias')}
+          </Link>
           <Link
             href="/processos/clientes"
             className="inline-flex items-center gap-2 text-sm underline underline-offset-4"
