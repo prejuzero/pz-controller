@@ -41,6 +41,7 @@ Rodam com `PZ_DESEMPENHO=1`, fora do CI comum, em PostgreSQL de teste (Testconta
 | Histórico do prazo: 500 eventos + 100 de notificações, em 300 mil eventos da trilha                    | `pnpm --filter @pz/auditoria test:int:desempenho`   | p95 11 ms              | < 300 ms                 |
 | Ingestão: 10 mil publicações em lotes de 50, concorrência 20 (primeira captura, 2 mil processos novos) | `pnpm --filter @pz/publicacoes test:int:desempenho` | 49 mil/min             | > 10 mil/min por réplica |
 | Ingestão em regime normal (processos já cadastrados)                                                   | idem                                                | 69 mil/min             | > 10 mil/min por réplica |
+| Recálculo por feriado novo: 100 mil prazos (10 escritórios × 10 mil), lotes de 100, 10 em paralelo     | `pnpm --filter @pz/prazos test:int:desempenho`      | 3,7 min                | < 10 min                 |
 | Busca de publicações com 1 milhão                                                                      | `pnpm --filter @pz/publicacoes test:int:desempenho` | ver HU28               | < 500 ms                 |
 
 ## O que este teste ainda não cobre
@@ -48,7 +49,6 @@ Rodam com `PZ_DESEMPENHO=1`, fora do CI comum, em PostgreSQL de teste (Testconta
 Ficaram como pendências da HU40 no Notion:
 
 - **Picos de captura simultânea de vários escritórios** e a classificação depois da ingestão: medir em staging (a ingestão sozinha está na tabela acima).
-- **Recálculo em massa por portaria nacional:** ver a pendência "medir 100 mil em 10 min" (HU16).
 - **Custo de infraestrutura por escritório:** depende da AWS (staging com a mesma topologia de produção).
 - **Busca com 1 milhão de publicações:** coberta pelo `pnpm test:int:desempenho` de publicações (HU28), não pelo k6.
 - **Repetir em staging na AWS**, com várias instâncias e banco gerenciado, antes do go-live.
