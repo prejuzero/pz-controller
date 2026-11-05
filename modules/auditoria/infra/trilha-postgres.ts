@@ -4,7 +4,7 @@ import { gerarUuidV7 } from '@pz/kernel';
 
 import { EntradaDeAuditoria } from '../application/portas.js';
 import { calcularHash, HASH_GENESE } from '../domain/cadeia.js';
-import { substituirDadosPessoais } from '../domain/dados-pessoais.js';
+import { marcarDadosPessoais, substituirDadosPessoais } from '../domain/dados-pessoais.js';
 
 import type { OrigemDaAuditoria, TrilhaDeAuditoria } from '../application/portas.js';
 import type { RegistroDeAuditoria, RegistroEncadeado } from '../domain/cadeia.js';
@@ -56,8 +56,16 @@ export class TrilhaPostgres implements TrilhaDeAuditoria<Transacao> {
       canal: origem.canal,
       ip: null,
       userAgent: null,
-      antes: substituirDadosPessoais(valida.antes ?? null, (v) => guardar('antes', v)),
-      depois: substituirDadosPessoais(valida.depois ?? null, (v) => guardar('depois', v)),
+      // Rede de proteção (PZ-305): o que tem cara de dado pessoal é marcado mesmo se o emissor
+      // esqueceu, e sai do hash para a tabela auditoria_dado_pessoal (ADR-018).
+      antes: substituirDadosPessoais(
+        marcarDadosPessoais(valida.antes ?? null, valida.entidade),
+        (v) => guardar('antes', v),
+      ),
+      depois: substituirDadosPessoais(
+        marcarDadosPessoais(valida.depois ?? null, valida.entidade),
+        (v) => guardar('depois', v),
+      ),
       ...(Object.keys(referencias).length === 0 ? {} : { dadosPessoais: referencias }),
       criadoEm: (contexto?.agora ?? new Date(Number.NaN)).toISOString(),
     };

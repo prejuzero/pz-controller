@@ -227,6 +227,38 @@ describe('dados pessoais fora do hash (ADR-018, HU38)', () => {
   const TENANT_D = '01a10e00-0000-7000-8000-0000000a0d04' as Uuid;
   const USUARIO = '01a10e00-0000-7000-8000-0000000a0d05' as Uuid;
 
+  it('emissor que esquece de marcar (PZ-305): e-mail e CPF saem do hash do mesmo jeito', async () => {
+    const TENANT_E = '01a10e00-0000-7000-8000-0000000a0d06' as Uuid;
+    await sistema.executarComoSistema('preparar', (tx) =>
+      tx.tenant.create({ data: { id: TENANT_E, nome: 'E', tipo: 'escritorio' } }),
+    );
+    await executarNoTenant(TENANT_E, () =>
+      banco.executar((tx) =>
+        trilha.registrar(
+          tx,
+          {
+            tipo: 'identidade.conta-bloqueada',
+            entidade: 'usuario',
+            entidadeId: 'u-esquecido',
+            depois: { email: 'fulana@exemplo.invalid', motivo: 'CPF 123.456.789-09', n: 1 },
+          },
+          { canal: 'sistema' },
+        ),
+      ),
+    );
+    const cadeia = await ler(TENANT_E);
+    expect(JSON.stringify(cadeia)).not.toMatch(/fulana@exemplo\.invalid|123\.456\.789-09/);
+    expect(cadeia[0]?.depois).toMatchObject({ n: 1 });
+    expect(verificarCadeia(cadeia, sha256)).toMatchObject({ valida: true });
+    const guardados = await sistema.executarComoSistema('teste da marcação', (tx) =>
+      tx.auditoriaDadoPessoal.findMany({ where: { tenantId: TENANT_E } }),
+    );
+    expect(guardados.map((d) => d.valor).sort()).toEqual([
+      'CPF 123.456.789-09',
+      'fulana@exemplo.invalid',
+    ]);
+  });
+
   it('grava à parte, pseudonimiza e a cadeia continua válida', async () => {
     await sistema.executarComoSistema('preparar', (tx) =>
       tx.tenant.create({ data: { id: TENANT_D, nome: 'D', tipo: 'escritorio' } }),
