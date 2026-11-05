@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { VerificarIntegridade } from '@pz/auditoria';
 import { RecifrarCamposSensiveis } from '@pz/cadastro';
 import { ExecutarCaptura, PlanejarCaptura } from '@pz/captura';
+import { RecifrarSegredosDoSegundoFator } from '@pz/identidade';
 import { limparOutbox } from '@pz/kernel';
 import {
   DispararLembretes,
@@ -124,6 +125,8 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     @Inject(LembrarConferencias) private readonly conferencias: LembrarConferencias<unknown>,
     @Inject(RecifrarCamposSensiveis)
     private readonly recifrar: RecifrarCamposSensiveis<unknown>,
+    @Inject(RecifrarSegredosDoSegundoFator)
+    private readonly recifrar2fa: RecifrarSegredosDoSegundoFator<unknown>,
     @Inject(PrepararEnvioManual) private readonly envios: PrepararEnvioManual<unknown>,
     @Inject(RemoverArquivosExpirados)
     private readonly expirados: RemoverArquivosExpirados<unknown>,
@@ -248,6 +251,7 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     });
     this.filas.registrar(recifrarCamposJob, async () => {
       logger.info(await this.recifrar.executar(), 'recifra dos campos sensíveis');
+      logger.info(await this.recifrar2fa.executar(), 'recifra dos segredos do 2FA');
     });
     this.filas.registrar(lembrarConferenciasJob, async () => {
       logger.info(await this.conferencias.executar(), 'lembretes de conferência de painel');
