@@ -51,6 +51,7 @@ import {
   AprovarEventoDoCalendario,
   CacheDeDiasNaoUteisRedis,
   CadastrarFeriadoLocal,
+  ConsultarAnosSemCalendario,
   ConsultarCalendario,
   ConsultarDiasNaoUteis,
   ConsultarDiasNaoUteisDoProcesso,
@@ -874,12 +875,13 @@ function provedoresDosPrazos(
     },
     {
       provide: PainelDosPrazos,
-      inject: [RELOGIO, ConsultarProcesso, ConsultarDiasNaoUteis],
+      inject: [RELOGIO, ConsultarProcesso, ConsultarDiasNaoUteis, ConsultarAnosSemCalendario],
       useFactory: (
         r: Clock,
         processos: ConsultarProcesso<unknown>,
         dias: ConsultarDiasNaoUteis<unknown>,
-      ) => new PainelDosPrazos(d.unidade, prazos, r, processoNoCalendario(processos, dias)),
+        anos: ConsultarAnosSemCalendario<unknown>,
+      ) => new PainelDosPrazos(d.unidade, prazos, r, processoNoCalendario(processos, dias, anos)),
     },
     { provide: ConsultarPrazo, useValue: new ConsultarPrazo(d.unidade, prazos) },
     comRelogio(ConfirmarPrazo, (r) => new ConfirmarPrazo(deps(r))),
@@ -887,15 +889,16 @@ function provedoresDosPrazos(
     comRelogio(CancelarPrazo, (r) => new CancelarPrazo(deps(r))),
     {
       provide: CadastrarPrazoManual,
-      inject: [RELOGIO, ConsultarProcesso, ConsultarDiasNaoUteis],
+      inject: [RELOGIO, ConsultarProcesso, ConsultarDiasNaoUteis, ConsultarAnosSemCalendario],
       useFactory: (
         r: Clock,
         processos: ConsultarProcesso<unknown>,
         dias: ConsultarDiasNaoUteis<unknown>,
+        anos: ConsultarAnosSemCalendario<unknown>,
       ) =>
         new CadastrarPrazoManual(
           new CalcularPrazoParaProcesso(
-            processoNoCalendario(processos, dias),
+            processoNoCalendario(processos, dias, anos),
             new ResolverPrazoAplicavel(d.unidade, d.tabela),
           ),
           new CriarPrazo(d.unidade, prazos, d.trilha, d.outbox, r),
@@ -904,16 +907,17 @@ function provedoresDosPrazos(
     },
     {
       provide: AjustarPrazo,
-      inject: [RELOGIO, ConsultarProcesso, ConsultarDiasNaoUteis],
+      inject: [RELOGIO, ConsultarProcesso, ConsultarDiasNaoUteis, ConsultarAnosSemCalendario],
       useFactory: (
         r: Clock,
         processos: ConsultarProcesso<unknown>,
         dias: ConsultarDiasNaoUteis<unknown>,
+        anos: ConsultarAnosSemCalendario<unknown>,
       ) =>
         new AjustarPrazo(
           deps(r),
           new CalcularPrazoParaProcesso(
-            processoNoCalendario(processos, dias),
+            processoNoCalendario(processos, dias, anos),
             new ResolverPrazoAplicavel(d.unidade, d.tabela),
           ),
         ),
@@ -960,6 +964,11 @@ function provedoresDoCalendario(d: DependenciasDoCalendario): Provider[] {
     {
       provide: ConsultarDiasNaoUteis,
       useValue: new ConsultarDiasNaoUteis(d.unidade, d.globais, d.locais, d.cache),
+    },
+    // Anos sem calendário carregado: aviso no cálculo do prazo (PZ-330).
+    {
+      provide: ConsultarAnosSemCalendario,
+      useValue: new ConsultarAnosSemCalendario(d.unidade, d.globais),
     },
     {
       // O calendário lê o processo só pela API pública do cadastro (CLAUDE.md, seção 6).

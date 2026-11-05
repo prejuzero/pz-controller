@@ -55,6 +55,8 @@ export interface ProcessoNoCalendario {
   readonly fuso: { readonly fuso: string; readonly outrosFusos: boolean };
   /** Dias cadastrados sem contagem no período (inclusivo), na jurisdição do processo. */
   diasNaoUteis(inicio: LocalDate, fim: LocalDate): Promise<readonly DiaDoCalendario[]>;
+  /** Dos anos dados, os sem calendário forense carregado (PZ-330); sem a porta, nenhum aviso. */
+  anosSemCalendario?(anos: readonly number[]): Promise<readonly number[]>;
 }
 
 /**

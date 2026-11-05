@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   AprovarEventoDoCalendario,
   CadastrarFeriadoLocal,
+  ConsultarAnosSemCalendario,
   ConsultarCalendario,
   ConsultarDiasNaoUteis,
   ConsultarDiasNaoUteisDoProcesso,
@@ -376,5 +377,29 @@ describe('diasNaoUteis pelo processo (HU13)', () => {
       fim: '2030-03-01',
     });
     expect(!invertido.ok && invertido.erro).toBeInstanceOf(Validacao);
+  });
+});
+
+// Cobertura por ano (PZ-330): sem evento nacional aprovado no ano, o calendário do ano não foi
+// carregado e o prazo calculado avisa. Datas FICTÍCIAS.
+describe('anos sem calendário carregado (PZ-330)', () => {
+  it('ano com evento nacional aprovado está carregado; os demais não', async () => {
+    await aprovado(); // 2030
+    await aprovado({ ...comarca, inicio: '2031-05-05', fim: '2031-05-05' }); // só comarca
+    const proposto = await propor.executar(
+      ana,
+      entrada({ inicio: '2032-01-02', fim: '2032-01-02' }),
+    );
+    if (!proposto.ok) throw proposto.erro; // rascunho não conta
+    const anos = new ConsultarAnosSemCalendario(outbox, globais);
+    expect(await anos.executar([2030, 2031, 2032])).toEqual([2031, 2032]);
+    expect(await anos.executar([])).toEqual([]);
+  });
+
+  it('evento revogado não conta como carregado', async () => {
+    const evento = await aprovado({ inicio: '2033-04-21', fim: '2033-04-21' });
+    const r = await revogar.executar(ana, evento.id, { motivo: 'FICTÍCIO: revogado no teste' });
+    if (!r.ok) throw r.erro;
+    expect(await new ConsultarAnosSemCalendario(outbox, globais).executar([2033])).toEqual([2033]);
   });
 });
