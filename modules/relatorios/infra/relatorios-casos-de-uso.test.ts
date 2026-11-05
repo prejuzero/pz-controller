@@ -29,6 +29,7 @@ const USUARIO = gerarUuidV7();
 const OUTRO = gerarUuidV7();
 const PRAZO = gerarUuidV7();
 const PUBLICACAO = gerarUuidV7();
+const CLIENTE = gerarUuidV7();
 const solicitante = { tenantId: TENANT, usuarioId: USUARIO, canal: 'portal' as const };
 
 class ArmazenamentoFalso implements ArmazenamentoArquivos {
@@ -151,7 +152,8 @@ function fonteCom(total: number, pedidos: Record<string, unknown>[] = []): Fonte
             }
           : undefined,
       ),
-    nomeDoUsuario: () => Promise.resolve('Ana Fictícia'),
+    nomeDoUsuario: (id) => Promise.resolve(id === OUTRO ? 'Beto Fictício' : 'Ana Fictícia'),
+    nomeDoCliente: (id) => Promise.resolve(id === CLIENTE ? 'Cliente Fictício Ltda.' : undefined),
   };
 }
 
@@ -240,6 +242,33 @@ describe('relatórios (HU29)', () => {
       expect((await solicitar.executar(solicitante, corpo)).ok, JSON.stringify(corpo)).toBe(false);
     }
     expect(repo.itens.size).toBe(0);
+  });
+
+  it('filtro impresso mostra o nome do cliente e do advogado, não o id (PZ-352)', async () => {
+    const desconhecido = gerarUuidV7();
+    const id = await pedir({
+      tipo: 'busca-prazos',
+      formato: 'xlsx',
+      filtros: { clienteId: CLIENTE, responsavelId: OUTRO, tribunal: 'TJGO' },
+    });
+    expect(await gerador(fonteCom(1)).executar(id)).toBe('gerado');
+    const filtrosImpressos = (await planilha(id)).slice(2, 5).map((l) => l[0]);
+    expect(filtrosImpressos).toEqual(
+      expect.arrayContaining([
+        'Cliente: Cliente Fictício Ltda.',
+        'Advogado: Beto Fictício',
+        'Tribunal: TJGO',
+      ]),
+    );
+    expect(filtrosImpressos.join(' ')).not.toContain(CLIENTE);
+    // Cliente que não existe mais (ou de outro escritório): fica sem nome, não vaza o id.
+    const outro = await pedir({
+      tipo: 'busca-prazos',
+      formato: 'xlsx',
+      filtros: { clienteId: desconhecido },
+    });
+    expect(await gerador(fonteCom(1)).executar(outro)).toBe('gerado');
+    expect((await planilha(outro))[2]).toEqual(['Cliente: (não encontrado)']);
   });
 
   it('Excel bate com a busca de origem, com cabeçalho de data, hora, usuário e filtro', async () => {

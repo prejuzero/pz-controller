@@ -321,6 +321,27 @@ async function historicoVerificavel(
   });
 }
 
+/**
+ * O filtro impresso mostra quem é, não o id (PZ-352): cliente pelo cadastro e advogado
+ * responsável pela identidade. Id que não existe no escritório sai como "(não encontrado)".
+ */
+async function comNomes(
+  fonte: FonteDosRelatorios,
+  filtros: Readonly<Record<string, unknown>>,
+): Promise<Record<string, unknown>> {
+  const { clienteId, responsavelId } = filtros;
+  const naoEncontrado = '(não encontrado)';
+  return {
+    ...filtros,
+    ...(typeof clienteId === 'string'
+      ? { clienteId: (await fonte.nomeDoCliente(clienteId as Uuid)) ?? naoEncontrado }
+      : {}),
+    ...(typeof responsavelId === 'string'
+      ? { responsavelId: (await fonte.nomeDoUsuario(responsavelId as Uuid)) || naoEncontrado }
+      : {}),
+  };
+}
+
 async function comCabecalho(
   fonte: FonteDosRelatorios,
   relogio: Clock,
@@ -335,7 +356,7 @@ async function comCabecalho(
     cabecalho: {
       geradoEm: dataHora(relogio.agora()),
       usuario: await fonte.nomeDoUsuario(usuarioId),
-      filtros: descreverFiltros(filtros),
+      filtros: descreverFiltros(await comNomes(fonte, filtros)),
       aviso: truncado
         ? `Limitado às primeiras ${MAXIMO_DE_LINHAS.toLocaleString('pt-BR')} linhas: refine os filtros.`
         : null,

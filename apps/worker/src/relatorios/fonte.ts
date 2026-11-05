@@ -2,6 +2,8 @@ import { EmitirHistoricoVerificavel, HistoricoPostgres, sha256 } from '@pz/audit
 import { Buscar } from '@pz/busca';
 import {
   AdvogadosPostgres,
+  ClientesPostgres,
+  ConsultarCliente,
   OabsParaBusca,
   ProcessosParaBusca,
   ProcessosPostgres,
@@ -34,6 +36,7 @@ export function fonteDosRelatorios(
   const oabs = new OabsParaBusca(banco, new AdvogadosPostgres(relogio, protecao));
   const prazos = new BuscarPrazos(banco, new PrazosPostgres());
   const nomes = new NomesDosUsuariosPostgres();
+  const clientes = new ConsultarCliente(banco, new ClientesPostgres(protecao));
   const repositorioDePrazos = new PrazosPostgres();
   const repositorioDeProcessos = new ProcessosPostgres(relogio);
   const leitura = new LeituraPostgres();
@@ -124,5 +127,10 @@ export function fonteDosRelatorios(
     },
     nomeDoUsuario: async (usuarioId) =>
       (await banco.executar((tx) => nomes.nomeDe(tx, usuarioId))) ?? '',
+    // Filtro impresso com o nome do cliente (PZ-352), pela API pública do cadastro.
+    nomeDoCliente: async (clienteId) => {
+      const r = await clientes.executar(clienteId);
+      return r.ok ? r.valor.nome : undefined;
+    },
   };
 }

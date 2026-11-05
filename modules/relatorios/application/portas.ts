@@ -98,6 +98,8 @@ export interface FonteDosRelatorios {
   historicoDoPrazo(prazoId: string): Promise<HistoricoVerificavel | undefined>;
   /** Nome de quem pediu, para o cabeçalho. */
   nomeDoUsuario(usuarioId: Uuid): Promise<string>;
+  /** Nome do cliente do escritório (cadastro); `undefined` se não existe no tenant (PZ-352). */
+  nomeDoCliente(clienteId: Uuid): Promise<string | undefined>;
 }
 
 /** Renderizador plugável (ADR-005 no espírito): um por formato. */
