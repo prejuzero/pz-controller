@@ -1,16 +1,21 @@
-import { ok } from '@pz/kernel';
+import { hoje, ok } from '@pz/kernel';
 
+import { contadorDeDiasUteis } from './dias-uteis.js';
 import { prazoListado } from './prazos.js';
 
-import type { FiltroDaBuscaDePrazos, RepositorioDePrazos } from './portas.js';
-import type { PrazoListado } from './prazos.js';
-import type { Result, UnidadeDeTrabalho, Validacao } from '@pz/kernel';
+import type { PrazoComDiasUteis } from './ciclo-de-vida.js';
+import type {
+  FiltroDaBuscaDePrazos,
+  LocalizadorDoProcesso,
+  RepositorioDePrazos,
+} from './portas.js';
+import type { Clock, Result, UnidadeDeTrabalho, Validacao } from '@pz/kernel';
 
 /** Teto da contagem: acima dele a tela mostra "mais de N" (contagem exata custa caro). */
 export const TETO_DA_CONTAGEM = 1000;
 
 export interface PaginaDaBuscaDePrazos {
-  readonly itens: PrazoListado[];
+  readonly itens: PrazoComDiasUteis[];
   /** Último da página (data alvo e id), para a próxima. */
   readonly ultimo: { readonly data: string | null; readonly id: string } | null;
   readonly totalAproximado: number;
@@ -25,6 +30,8 @@ export class BuscarPrazos<Transacao> {
   constructor(
     private readonly unidade: UnidadeDeTrabalho<Transacao>,
     private readonly prazos: RepositorioDePrazos<Transacao>,
+    /** Calendário do processo para os dias úteis restantes (portal); sem ele, ficam nulos. */
+    private readonly diasUteis?: { localizar: LocalizadorDoProcesso; relogio: Clock },
   ) {}
 
   async executar(filtro: FiltroDaBuscaDePrazos): Promise<Result<PaginaDaBuscaDePrazos, Validacao>> {
@@ -39,8 +46,17 @@ export class BuscarPrazos<Transacao> {
         ? p.estado.calculo.inicio
         : p.estado.calculo.vencimento
       )?.paraIso() ?? null;
+    const contar =
+      this.diasUteis === undefined
+        ? undefined
+        : contadorDeDiasUteis(this.diasUteis.localizar, hoje(this.diasUteis.relogio));
     return ok({
-      itens: itens.map((p) => prazoListado(p.estado)),
+      itens: await Promise.all(
+        itens.map(async (p) => ({
+          ...prazoListado(p.estado),
+          diasUteisRestantes: contar === undefined ? null : await contar(p),
+        })),
+      ),
       ultimo: ultimo === undefined ? null : { data: data(ultimo), id: ultimo.id },
       totalAproximado: Math.min(total, TETO_DA_CONTAGEM),
       totalLimitado: total > TETO_DA_CONTAGEM,

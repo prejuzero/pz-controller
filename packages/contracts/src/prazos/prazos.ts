@@ -59,7 +59,22 @@ export const DetalheDoPrazo = nomear(
 );
 export type DetalheDoPrazo = z.infer<typeof DetalheDoPrazo.esquema>;
 
-export const PaginaDePrazos = nomear('PaginaDePrazos', pagina(Prazo.esquema));
+export const PrazoDaLista = nomear(
+  'PrazoDaLista',
+  Prazo.esquema.extend({
+    diasUteisRestantes: z
+      .number()
+      .int()
+      .nonnegative()
+      .nullable()
+      .describe(
+        'Do motor, pelo calendário do processo, até o vencimento (0: vence hoje); null se encerrado, sem data, já vencido ou sem calendário para contar.',
+      ),
+  }),
+);
+export type PrazoDaLista = z.infer<typeof PrazoDaLista.esquema>;
+
+export const PaginaDePrazos = nomear('PaginaDePrazos', pagina(PrazoDaLista.esquema));
 export type PaginaDePrazos = z.infer<typeof PaginaDePrazos.esquema>;
 
 export const PedidoComVersao = nomear('PedidoComVersao', z.object({ versao: Versao }).strict());

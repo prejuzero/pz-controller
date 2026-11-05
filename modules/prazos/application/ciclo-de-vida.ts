@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { Prazo, STATUS_DO_PRAZO } from '../domain/prazo.js';
 import { RAMOS, UNIDADES } from '../domain/tabela.js';
 
+import { contadorDeDiasUteis } from './dias-uteis.js';
 import { PROXIMOS_DIAS } from './painel.js';
 import { RECORTES_DA_LISTA } from './portas.js';
 import { prazoDetalhado, prazoListado, SugestaoDePrazo } from './prazos.js';
@@ -11,6 +12,7 @@ import { prazoDetalhado, prazoListado, SugestaoDePrazo } from './prazos.js';
 import type {
   FiltroDePrazos,
   FontesDaGeracao,
+  LocalizadorDoProcesso,
   RecorteDaLista,
   RepositorioDePrazos,
 } from './portas.js';
@@ -269,17 +271,22 @@ const Consulta = z.object({
 });
 const Cursor = z.object({ v: z.iso.date().nullable(), id: z.uuid() });
 
+/** Item de lista com os dias úteis até o vencimento (do motor; `null` se não se aplica). */
+export type PrazoComDiasUteis = PrazoListado & { readonly diasUteisRestantes: number | null };
+
 /** GET /v1/prazos (HU24): por vencimento, mais próximo primeiro; sem data por último. */
 export class ListarPrazos<Transacao> {
   constructor(
     private readonly unidade: UnidadeDeTrabalho<Transacao>,
     private readonly prazos: RepositorioDePrazos<Transacao>,
     private readonly relogio: Clock,
+    /** Calendário do processo para os dias úteis restantes; sem ele, ficam nulos. */
+    private readonly localizar?: LocalizadorDoProcesso,
   ) {}
 
   async executar(
     consulta: unknown,
-  ): Promise<Result<{ itens: PrazoListado[]; proximoCursor: string | null }, Validacao>> {
+  ): Promise<Result<{ itens: PrazoComDiasUteis[]; proximoCursor: string | null }, Validacao>> {
     const dados = Consulta.safeParse(consulta);
     if (!dados.success) return err(validacao(dados.error));
     const { cursor, limite, status, processoId, responsavelId, tribunal, recorte } = dados.data;
@@ -311,8 +318,17 @@ export class ListarPrazos<Transacao> {
     );
     const itens = linhas.slice(0, limite);
     const ultimo = itens.at(-1);
+    const contar =
+      this.localizar === undefined
+        ? undefined
+        : contadorDeDiasUteis(this.localizar, hoje(this.relogio));
     return ok({
-      itens: itens.map((p) => prazoListado(p.estado)),
+      itens: await Promise.all(
+        itens.map(async (p) => ({
+          ...prazoListado(p.estado),
+          diasUteisRestantes: contar === undefined ? null : await contar(p),
+        })),
+      ),
       proximoCursor:
         linhas.length > limite && ultimo !== undefined
           ? Buffer.from(

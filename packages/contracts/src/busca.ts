@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { DiasNaoUteis } from './calendario/index.js';
 import { DataCivil, Uuid } from './comum.js';
 import { Compromisso } from './prazos/compromissos.js';
-import { Prazo } from './prazos/prazos.js';
+import { Prazo, PrazoDaLista } from './prazos/prazos.js';
 import { PublicacaoDoTenant } from './publicacoes.js';
 import { definirRota, nomear } from './rota.js';
 
@@ -88,7 +88,7 @@ const Total = {
 export const ResultadoDaBuscaDePrazos = nomear(
   'ResultadoDaBuscaDePrazos',
   z.object({
-    itens: z.array(Prazo.esquema),
+    itens: z.array(PrazoDaLista.esquema),
     proximoCursor: z.string().nullable(),
     ...Total,
   }),

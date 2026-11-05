@@ -18,7 +18,7 @@ const selecionavel = (p: Prazo) => p.statusCiencia === 'pendente' && p.status !=
  * barra mostra quantos estão marcados. Só prazos sem ciência e não cancelados podem ser marcados.
  * Só com a permissão de confirmar prazos.
  */
-export function useCienciaEmLote(prazos: readonly Prazo[]) {
+export function useCienciaEmLote<P extends Prazo>(prazos: readonly P[]) {
   const t = useTranslations('ciencia.lote');
   const permitido = usePermissao('prazos:confirmar') === true;
   const [marcados, setMarcados] = useState<ReadonlySet<string>>(new Set());
@@ -36,7 +36,7 @@ export function useCienciaEmLote(prazos: readonly Prazo[]) {
     });
   };
 
-  const coluna: ColunaTabela<Prazo> = {
+  const coluna: ColunaTabela<P> = {
     id: 'selecao',
     header: () => (
       <input

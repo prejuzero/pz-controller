@@ -42,7 +42,7 @@ import {
 } from './filtros-da-url';
 
 import type { FiltrosDaTela } from '../../../api/busca';
-import type { Prazo, PublicacaoDoTenant } from '@pz/contracts';
+import type { PrazoDaLista, PublicacaoDoTenant } from '@pz/contracts';
 
 const ESPERA_MS = 400;
 const RAMOS = ['civel', 'juizados', 'trabalhista', 'penal', 'juizado-criminal'] as const;
@@ -115,9 +115,9 @@ export function TelaDeBusca() {
     (chave, valores) => t(chave as Parameters<typeof t>[0], valores),
   );
 
-  const linhasDePrazos = prazos.data?.pages.flatMap((p) => p.itens) ?? [];
+  const linhasDePrazos: PrazoDaLista[] = prazos.data?.pages.flatMap((p) => p.itens) ?? [];
   const lote = useCienciaEmLote(linhasDePrazos);
-  const colunasPrazos: ColunaTabela<Prazo>[] = [
+  const colunasPrazos: ColunaTabela<PrazoDaLista>[] = [
     ...(lote.coluna === undefined ? [] : [lote.coluna]),
     {
       accessorKey: 'vencimento',

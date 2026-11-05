@@ -169,6 +169,44 @@ describe('painel dos prazos (HU26)', () => {
     ]);
   });
 
+  it('lista e busca trazem os dias úteis restantes dos abertos (PZ-334)', async () => {
+    const { unidade, repo } = await repositorio([
+      prazo('2026-11-04', 'pendente'),
+      prazo('2026-10-29', 'a-confirmar'),
+      prazo('2026-11-04', 'cumprido'),
+      prazo(null, 'a-confirmar'),
+    ]);
+    const localizar: LocalizadorDoProcesso = () => Promise.resolve(processo);
+    const dias = (
+      itens: { vencimento: string | null; status: string; diasUteisRestantes: number | null }[],
+    ) => itens.map((p) => [p.vencimento, p.status, p.diasUteisRestantes]);
+    // 04/11: sáb, dom e o feriado de 02/11 fora → 03 e 04. Já passou, encerrado ou sem data: null.
+    const esperado = [
+      ['2026-10-29', 'a-confirmar', null],
+      ['2026-11-04', 'pendente', 2],
+      ['2026-11-04', 'cumprido', null],
+      [null, 'a-confirmar', null],
+    ];
+    const lista = await new ListarPrazos(unidade, repo, relogio, localizar).executar({});
+    if (!lista.ok) throw lista.erro;
+    expect(dias(lista.valor.itens)).toEqual(esperado);
+    const busca = await new BuscarPrazos(unidade, repo, { localizar, relogio }).executar({
+      campoData: 'vencimento',
+      ordem: 'asc',
+      limite: 10,
+    });
+    if (!busca.ok) throw busca.erro;
+    expect(dias(busca.valor.itens)).toEqual(esperado);
+    // Sem o calendário do processo (ex.: relatório no worker), não conta.
+    const semCalendario = await new ListarPrazos(unidade, repo, relogio).executar({});
+    expect(semCalendario.ok && semCalendario.valor.itens.map((p) => p.diasUteisRestantes)).toEqual([
+      null,
+      null,
+      null,
+      null,
+    ]);
+  });
+
   it('sem o processo no calendário, não inventa: dias úteis ficam nulos', async () => {
     const painel = await montar([prazo('2026-11-04', 'pendente')], () =>
       Promise.resolve(undefined),

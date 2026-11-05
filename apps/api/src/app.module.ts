@@ -805,8 +805,31 @@ function provedoresDosPrazos(
       (r) => new AnalisarDocumento(analisarTexto, new ExtratorPdf(), arquivos, r),
     ),
     { provide: LinkDoDocumento, useValue: new LinkDoDocumento(d.unidade, prazos, arquivos) },
-    comRelogio(ListarPrazos, (r) => new ListarPrazos(d.unidade, prazos, r)),
-    { provide: BuscarPrazos, useValue: new BuscarPrazos(d.unidade, prazos) },
+    // Lista e busca levam os dias úteis restantes, do motor com o calendário do processo.
+    {
+      provide: ListarPrazos,
+      inject: [RELOGIO, ConsultarProcesso, ConsultarDiasNaoUteis, ConsultarAnosSemCalendario],
+      useFactory: (
+        r: Clock,
+        processos: ConsultarProcesso<unknown>,
+        dias: ConsultarDiasNaoUteis<unknown>,
+        anos: ConsultarAnosSemCalendario<unknown>,
+      ) => new ListarPrazos(d.unidade, prazos, r, processoNoCalendario(processos, dias, anos)),
+    },
+    {
+      provide: BuscarPrazos,
+      inject: [RELOGIO, ConsultarProcesso, ConsultarDiasNaoUteis, ConsultarAnosSemCalendario],
+      useFactory: (
+        r: Clock,
+        processos: ConsultarProcesso<unknown>,
+        dias: ConsultarDiasNaoUteis<unknown>,
+        anos: ConsultarAnosSemCalendario<unknown>,
+      ) =>
+        new BuscarPrazos(d.unidade, prazos, {
+          localizar: processoNoCalendario(processos, dias, anos),
+          relogio: r,
+        }),
+    },
     {
       // Busca (HU28): o módulo busca compõe cadastro, prazos e publicações pelas APIs públicas.
       provide: Buscar,

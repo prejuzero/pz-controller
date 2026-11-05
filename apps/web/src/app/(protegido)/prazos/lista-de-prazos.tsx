@@ -24,7 +24,7 @@ import { Compromissos } from './compromissos';
 
 import type { FiltrosDaTela } from '../../../api/busca';
 import type { RecorteDaLista, StatusDoPrazo } from '../../../api/prazos';
-import type { Prazo } from '@pz/contracts';
+import type { PrazoDaLista } from '@pz/contracts';
 
 const ABAS = STATUS_DO_PRAZO;
 /** O recorte do dashboard usa os mesmos campos da contagem dos cards (HU26). */
@@ -72,11 +72,11 @@ export function ListaDePrazos({ status: inicial, recorte: doCard }: Props) {
   const busca = useBuscaDePrazos(daBusca, pelaBusca);
   const prazos = pelaBusca ? busca : lista;
 
-  const linhas: Prazo[] = pelaBusca
+  const linhas: PrazoDaLista[] = pelaBusca
     ? (busca.data?.pages.flatMap((pagina) => pagina.itens) ?? [])
     : (lista.data?.pages.flatMap((pagina) => pagina.itens) ?? []);
   const lote = useCienciaEmLote(linhas);
-  const colunas: ColunaTabela<Prazo>[] = [
+  const colunas: ColunaTabela<PrazoDaLista>[] = [
     ...(lote.coluna === undefined ? [] : [lote.coluna]),
     {
       accessorKey: 'vencimento',
@@ -88,6 +88,15 @@ export function ListaDePrazos({ status: inicial, recorte: doCard }: Props) {
             : formatarDataCivil(row.original.vencimento)}
         </Link>
       ),
+    },
+    {
+      // Do motor, pelo calendário do processo (PZ-334); nunca contado no navegador.
+      id: 'diasUteis',
+      header: t('colunas.diasUteis'),
+      cell: ({ row }) =>
+        row.original.diasUteisRestantes === null
+          ? t('semDiasUteis')
+          : t('diasUteis', { dias: row.original.diasUteisRestantes }),
     },
     {
       id: 'situacao',
