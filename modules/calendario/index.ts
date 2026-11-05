@@ -2,6 +2,7 @@
 export {
   AprovarEventoDoCalendario,
   CadastrarFeriadoLocal,
+  ConsultarAnosSemCalendario,
   ConsultarCalendario,
   ConsultarDiasNaoUteis,
   ConsultarDiasNaoUteisDoProcesso,

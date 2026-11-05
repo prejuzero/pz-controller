@@ -482,6 +482,30 @@ export interface DiasNaoUteisDoProcesso extends JurisdicaoResolvida {
 }
 
 /**
+ * Anos sem calendário forense carregado (PZ-330): sem nenhum evento nacional aprovado e vigente
+ * no ano, o calendário daquele ano não foi carregado (a carga anual traz os feriados nacionais).
+ * O cálculo do prazo avisa o advogado em vez de contar o ano como se não houvesse feriado
+ * (CLAUDE.md, seções 2.6 e 4.4). Não diz nada sobre feriados estaduais e locais.
+ */
+export class ConsultarAnosSemCalendario<Transacao> {
+  constructor(
+    private readonly unidade: UnidadeDeTrabalho<Transacao>,
+    private readonly globais: RepositorioDeEventosGlobais<Transacao>,
+  ) {}
+
+  async executar(anos: readonly number[]): Promise<number[]> {
+    const sem: number[] = [];
+    for (const ano of [...new Set(anos)].sort((a, b) => a - b)) {
+      const eventos = await this.unidade.executar((tx) =>
+        this.globais.vigentesNoPeriodo(tx, LocalDate.de(ano, 1, 1), LocalDate.de(ano, 12, 31)),
+      );
+      if (!eventos.some((e) => e.estado.abrangencia === 'nacional')) sem.push(ano);
+    }
+    return sem;
+  }
+}
+
+/**
  * diasNaoUteis com a jurisdição resolvida a partir do processo (HU13): o motor e as telas pedem
  * pelo processo, sem repetir tribunal e comarca. As lacunas seguem junto para virar aviso.
  */

@@ -31,6 +31,7 @@ import {
 } from '@pz/cadastro';
 import {
   CacheDeDiasNaoUteisRedis,
+  ConsultarAnosSemCalendario,
   ConsultarDiasNaoUteis,
   EventosGlobaisPostgres,
   FeriadosLocaisPostgres,
@@ -510,6 +511,7 @@ function localizadorDosPrazosNoBanco(banco: Banco, relogio: Clock) {
   return processoNoCalendario(
     new ConsultarProcesso(banco, new ProcessosPostgres(relogio)),
     new ConsultarDiasNaoUteis(banco, new EventosGlobaisPostgres(), new FeriadosLocaisPostgres()),
+    new ConsultarAnosSemCalendario(banco, new EventosGlobaisPostgres()),
   );
 }
 

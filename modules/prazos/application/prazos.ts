@@ -91,6 +91,10 @@ export const EFEITO_DO_DIA: Readonly<Record<TipoDeDia, Efeito>> = {
 /** Primeira janela de calendário lida; dobra até cobrir a data mais tardia do cálculo. */
 const JANELA_INICIAL_DIAS = 120;
 
+/** Transparência de cobertura (CLAUDE.md, seção 2.6): o motor contou o ano sem feriados. */
+const avisoDeAnoSemCalendario = (ano: number) =>
+  `Calendário forense de ${String(ano)} não carregado: feriados e suspensões desse ano não foram considerados. Confira o calendário do tribunal antes de confirmar o prazo.`;
+
 const avisoDeOutrosFusos = (fuso: string) =>
   `O tribunal tem unidades em mais de um fuso: o prazo foi calculado no de fim mais cedo (${fuso}). Confira o fuso da unidade onde o ato será praticado.`;
 
@@ -204,7 +208,11 @@ async function calcularComCalendario(
       janela *= 2;
       continue;
     }
-    return paraCalculo(resultado, entrada, processo);
+    // Anos do período contado (referência até a data mais tardia) sem calendário carregado.
+    const anos: number[] = [];
+    for (let ano = referencia.ano; ano <= (ultima ?? referencia).ano; ano++) anos.push(ano);
+    const semCalendario = (await processo.anosSemCalendario?.(anos)) ?? [];
+    return paraCalculo(resultado, entrada, processo, semCalendario);
   }
 }
 
@@ -212,10 +220,15 @@ function paraCalculo(
   resultado: ResultadoDoCalculo,
   entrada: EntradaGravada,
   processo: ProcessoNoCalendario,
+  anosSemCalendario: readonly number[] = [],
 ): CalculoDoPrazo {
+  const extras = [
+    ...(processo.fuso.outrosFusos ? [avisoDeOutrosFusos(processo.fuso.fuso)] : []),
+    ...anosSemCalendario.map(avisoDeAnoSemCalendario),
+  ];
   const comAvisos: ResultadoDoCalculo =
-    resultado.situacao === 'calculado' && processo.fuso.outrosFusos
-      ? { ...resultado, avisos: [...resultado.avisos, avisoDeOutrosFusos(processo.fuso.fuso)] }
+    resultado.situacao === 'calculado' && extras.length > 0
+      ? { ...resultado, avisos: [...resultado.avisos, ...extras] }
       : resultado;
   const memoria = JSON.parse(serializarResultado(comAvisos)) as Json;
   if (comAvisos.situacao === 'a-confirmar') {

@@ -82,8 +82,10 @@ let calcular: CalcularPrazoParaProcesso<TransacaoEmMemoria>;
 let criar: CriarPrazo<TransacaoEmMemoria>;
 let recalcular: RecalcularPrazosPorCalendario<TransacaoEmMemoria>;
 
+let anosSemCalendario: number[] = [];
 const processoNoCalendario = (ramoDoTribunal: string): ProcessoNoCalendario => ({
   ramoDoTribunal,
+  anosSemCalendario: (anos) => Promise.resolve(anos.filter((a) => anosSemCalendario.includes(a))),
   jurisdicao: { tribunal: 'TJXA', uf: 'XA', comarca: 'Comarca Fictícia' },
   lacunas: ['municipio'],
   fuso,
@@ -251,6 +253,19 @@ describe('cálculo do prazo para o processo (HU16, PZ-141)', () => {
     const com = await sugerir({ tipoAto: 'ato-longo' });
     expect(com.calculo.vencimento?.ehDepoisDe(vencimento)).toBe(true);
     expect(consultas.at(-1)?.fim.localeCompare(vencimento.paraIso())).toBeGreaterThan(0);
+  });
+
+  it('ano do prazo sem calendário carregado: avisa na memória e não muda as datas (PZ-330)', async () => {
+    const sem = await sugerir();
+    const ano = sem.calculo.vencimento?.ano ?? 0;
+    anosSemCalendario = [ano];
+    const com = await sugerir();
+    anosSemCalendario = [];
+    expect(com.calculo.vencimento?.paraIso()).toBe(sem.calculo.vencimento?.paraIso());
+    expect(JSON.stringify(com.calculo.memoria)).toContain(
+      `Calendário forense de ${String(ano)} não carregado`,
+    );
+    expect(JSON.stringify(sem.calculo.memoria)).not.toContain('não carregado');
   });
 
   it('avisa quando o tribunal tem unidades em outro fuso', async () => {

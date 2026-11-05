@@ -1,7 +1,7 @@
 import { fusoDoJuizo, jurisdicaoDoProcesso } from '@pz/calendario';
 
 import type { ConsultarProcesso, AdvogadosPostgres } from '@pz/cadastro';
-import type { ConsultarDiasNaoUteis } from '@pz/calendario';
+import type { ConsultarAnosSemCalendario, ConsultarDiasNaoUteis } from '@pz/calendario';
 import type { ClassificacoesPostgres } from '@pz/classificacao';
 import type { Transacao } from '@pz/db';
 import type { UnidadeDeTrabalho, Uuid } from '@pz/kernel';
@@ -15,6 +15,8 @@ import type { DestinatariosPostgres } from '@pz/publicacoes';
 export function processoNoCalendario(
   processos: Pick<ConsultarProcesso<unknown>, 'executar'>,
   dias: Pick<ConsultarDiasNaoUteis<unknown>, 'diasNaoUteis'>,
+  /** Anos sem calendário carregado (PZ-330); sem ele, o cálculo não avisa. */
+  anos?: Pick<ConsultarAnosSemCalendario<unknown>, 'executar'>,
 ): LocalizadorDoProcesso {
   return async (processoId) => {
     const r = await processos.executar(processoId);
@@ -34,6 +36,7 @@ export function processoNoCalendario(
           atoNormativo: dia.fonte.atoNormativo,
           urlAto: dia.fonte.urlAto,
         })),
+      ...(anos === undefined ? {} : { anosSemCalendario: (lista) => anos.executar(lista) }),
     };
   };
 }
