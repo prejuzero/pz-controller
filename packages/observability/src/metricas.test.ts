@@ -2,7 +2,10 @@ import { MetricReader } from '@opentelemetry/sdk-metrics';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
+  LIMITES_SLO_PIPELINE_SEGUNDOS,
   NOMES_METRICAS,
+  registrarEmailEnviado,
+  registrarPublicacaoVisivel,
   registrarChamadaIntegracao,
   registrarErroInesperado,
   registrarEstadoCircuito,
@@ -60,6 +63,23 @@ describe('catálogo de métricas', () => {
       valor: ponto.value,
     }));
   }
+
+  it('SLOs do pipeline (HU40): histogramas com os limites de 10 e 30 min; negativo vira 0', async () => {
+    registrarPublicacaoVisivel('djen', 125);
+    registrarEmailEnviado('nova-intimacao', -3);
+
+    const metricas = await coletar();
+    const publicacao = metricas.get(NOMES_METRICAS.sloPublicacaoVisivel)?.dataPoints[0];
+    const email = metricas.get(NOMES_METRICAS.sloEmailEnviado)?.dataPoints[0];
+    expect(publicacao?.attributes).toEqual({ fonte: 'djen' });
+    expect(publicacao?.value).toMatchObject({
+      sum: 125,
+      buckets: { boundaries: [...LIMITES_SLO_PIPELINE_SEGUNDOS] },
+    });
+    expect(email?.attributes).toEqual({ tipo: 'nova-intimacao' });
+    expect(email?.value).toMatchObject({ sum: 0 });
+    expect(LIMITES_SLO_PIPELINE_SEGUNDOS).toEqual(expect.arrayContaining([600, 1800]));
+  });
 
   it('registra integrações, circuito, e-mail, erros e jobs com os atributos dos dashboards', async () => {
     registrarChamadaIntegracao('djen', 'listarPublicacoes', 'falha', 1.5);

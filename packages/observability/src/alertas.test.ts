@@ -3,6 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { LIMITES_SLO_PIPELINE_SEGUNDOS } from './metricas.js';
 import { LIMITES_LATENCIA_HTTP_SEGUNDOS } from './telemetria.js';
 
 // Aceite da HU40 (PZ-232): cada alerta aponta para um runbook que existe. Os alertas são
@@ -41,6 +42,8 @@ describe('alertas como código (HU40)', () => {
         'pz-slo-disponibilidade-lento',
         'pz-slo-latencia-leitura-rapido',
         'pz-slo-latencia-escrita-lento',
+        'pz-slo-publicacao-rapido',
+        'pz-slo-email-lento',
       ]),
     );
   });
@@ -50,9 +53,13 @@ describe('alertas como código (HU40)', () => {
     expect(ancoras).toContain(secao);
   });
 
-  it('os limites de latência dos alertas existem nos buckets do histograma HTTP', () => {
+  it('os limites dos alertas de SLO existem nos buckets dos histogramas', () => {
+    const buckets: readonly number[] = [
+      ...LIMITES_LATENCIA_HTTP_SEGUNDOS,
+      ...LIMITES_SLO_PIPELINE_SEGUNDOS,
+    ];
     const limites = [...alertas.matchAll(/le="([0-9.]+)"/g)].map((m) => Number(m[1]));
-    expect(limites.length).toBeGreaterThan(0);
-    for (const limite of limites) expect(LIMITES_LATENCIA_HTTP_SEGUNDOS).toContain(limite);
+    expect(limites).toEqual(expect.arrayContaining([0.3, 0.8, 600, 1800]));
+    for (const limite of limites) expect(buckets).toContain(limite);
   });
 });
