@@ -8,6 +8,7 @@ import {
   ConsultarRelatorios,
   GerarArquivo,
   GerarRelatorio,
+  RemoverArquivosExpirados,
   SolicitarRelatorio,
 } from '../application/relatorios.js';
 
@@ -41,7 +42,9 @@ class ArmazenamentoFalso implements ArmazenamentoArquivos {
     this.assinados.push(pedido);
     return Promise.resolve(`https://exemplo.invalid/${pedido.caminho}`);
   }
-  remover() {
+  readonly removidos: string[] = [];
+  remover(tenantId: Uuid, caminho: string) {
+    this.removidos.push(`${tenantId}/${caminho}`);
     return Promise.resolve();
   }
   metadados() {
@@ -545,5 +548,54 @@ describe('arquivo do envio manual (HU32)', () => {
       filtros: { prazoId: OUTRO },
     });
     expect(await gerador(fonteCom(1)).executar(outro)).toBe('filtros-invalidos');
+  });
+});
+
+// Arquivos expirados e tentativas esgotadas (PZ-353).
+describe('limpeza e falha definitiva dos relatórios (PZ-353)', () => {
+  const pedir = async (formato: 'pdf' | 'xlsx' = 'pdf') => {
+    const r = await solicitar.executar(solicitante, {
+      tipo: 'agenda',
+      formato,
+      filtros: { de: '2026-11-01', ate: '2026-11-30' },
+    });
+    if (!r.ok) throw r.erro;
+    return r.valor.id;
+  };
+
+  it('apaga só o arquivo de relatório concluído com o link vencido, uma vez', async () => {
+    const vencido = await pedir();
+    const valido = await pedir('xlsx');
+    const pendente = await pedir();
+    await repo.concluir(undefined, vencido, {
+      em: relogio.agora().maisMs(-48 * 3_600_000),
+      expiraEm: relogio.agora().maisMs(-24 * 3_600_000),
+      linhas: 1,
+    });
+    await repo.concluir(undefined, valido, {
+      em: relogio.agora(),
+      expiraEm: relogio.agora().maisMs(3_600_000),
+      linhas: 1,
+    });
+    const remover = new RemoverArquivosExpirados(outbox, repo, armazenamento, relogio, 1);
+    expect(await remover.executar()).toEqual({ removidos: 1 });
+    expect(armazenamento.removidos).toEqual([`${TENANT}/relatorios/${vencido}/relatorio.pdf`]);
+    expect(await remover.executar()).toEqual({ removidos: 0 });
+    expect(repo.itens.get(vencido)?.arquivoRemovidoEm).toBeDefined();
+    expect(repo.itens.get(pendente)?.situacao).toBe('pendente');
+  });
+
+  it('tentativas esgotadas: pendente vira falhou com trilha; concluído não muda', async () => {
+    const id = await pedir();
+    const gerar = gerador(fonteCom(0));
+    expect(await gerar.tentativasEsgotadas(id, 'timeout do banco')).toBe(true);
+    expect(repo.itens.get(id)?.situacao).toBe('falhou');
+    expect(await gerar.tentativasEsgotadas(id, 'de novo')).toBe(false);
+    expect(auditados.filter((a) => a.tipo === 'relatorios.exportacao-falhou')).toEqual([
+      expect.objectContaining({
+        entidadeId: id,
+        depois: { motivo: 'tentativas-esgotadas', erro: 'timeout do banco' },
+      }),
+    ]);
   });
 });

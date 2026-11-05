@@ -26,9 +26,13 @@ export interface ContextoDoJob {
 
 type Tratador = (dados: unknown, contexto: ContextoDoJob) => Promise<void>;
 
+/** O que fazer quando o job esgota as tentativas (foi para a DLQ): ex.: marcar "falhou". */
+export type AoEsgotar<Dados> = (dados: Dados, erro: Error) => Promise<void>;
+
 interface Inscricao {
   readonly definicao: DefinicaoJob<unknown>;
   readonly tratar: Tratador;
+  readonly aoEsgotar?: AoEsgotar<unknown>;
 }
 
 export interface OpcoesFilas {
@@ -165,12 +169,16 @@ export class Filas {
   registrar<Dados>(
     definicao: DefinicaoJob<Dados>,
     tratar: (dados: Dados, contexto: ContextoDoJob) => Promise<void>,
+    opcoes: { aoEsgotar?: AoEsgotar<Dados> } = {},
   ): void {
     if (this.#inscricoes.has(definicao.tipo))
       throw new Error(`Job ${definicao.tipo} já registrado`);
     this.#inscricoes.set(definicao.tipo, {
       definicao: definicao,
       tratar: tratar as Tratador,
+      ...(opcoes.aoEsgotar === undefined
+        ? {}
+        : { aoEsgotar: opcoes.aoEsgotar as AoEsgotar<unknown> }),
     });
   }
 
@@ -291,6 +299,20 @@ export class Filas {
       `job ${String(job.id)} da fila ${nome} foi para a DLQ`,
       'worker.filas.dlq',
     );
+    await this.#aoEsgotar(job, erro);
+  }
+
+  /** Avisa o dono do job (no tenant dele) que as tentativas acabaram; falha aqui vira log e alerta. */
+  async #aoEsgotar(job: Job, erro: Error): Promise<void> {
+    const envelope = EnvelopeJob.safeParse(job.data);
+    if (!envelope.success) return;
+    const inscricao = this.#inscricoes.get(envelope.data.tipo);
+    const dados = inscricao?.definicao.dados.safeParse(envelope.data.dados);
+    if (inscricao?.aoEsgotar === undefined || dados?.success !== true) return;
+    const aoEsgotar = inscricao.aoEsgotar;
+    const { escopo } = envelope.data;
+    const avisar = () => aoEsgotar(dados.data, erro);
+    await ('tenantId' in escopo ? executarNoTenant(escopo.tenantId as Uuid, avisar) : avisar());
   }
 
   /** Profundidade, idade do job mais antigo e DLQ de cada fila ativa (métricas e alertas). */

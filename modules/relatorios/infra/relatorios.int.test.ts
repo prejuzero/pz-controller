@@ -100,7 +100,26 @@ describe('RelatoriosPostgres (HU29)', () => {
       { tipo: 'busca-prazos', formato: 'pdf', filtros: {} },
     );
     if (!outro.ok) throw outro.erro;
-    await noTenant(A, (tx) => repo.falhar(tx, outro.valor.id));
+    expect(await noTenant(A, (tx) => repo.falhar(tx, outro.valor.id))).toBe(true);
+    expect(await noTenant(A, (tx) => repo.falhar(tx, outro.valor.id))).toBe(false);
     expect((await noTenant(A, (tx) => repo.buscar(tx, outro.valor.id)))?.situacao).toBe('falhou');
+
+    // Limpeza (PZ-353): o sistema lista os vencidos de todos os escritórios e marca a remoção.
+    const sistema = new BancoSistema({ url: postgres.url('pz_sistema') });
+    const depois = relogio.agora().maisMs(48 * 3_600_000);
+    const vencidos = await sistema.executarComoSistema('teste: relatórios vencidos', (tx) =>
+      repo.expiradosComArquivo(tx, depois, 10),
+    );
+    expect(vencidos).toEqual([{ id, tenantId: A, formato: 'xlsx' }]);
+    await sistema.executarComoSistema('teste: marcar remoção', (tx) =>
+      repo.marcarArquivoRemovido(tx, id, depois),
+    );
+    expect(
+      await sistema.executarComoSistema('teste: relatórios vencidos', (tx) =>
+        repo.expiradosComArquivo(tx, depois, 10),
+      ),
+    ).toEqual([]);
+    expect((await noTenant(A, (tx) => repo.buscar(tx, id)))?.arquivoRemovidoEm).toBeDefined();
+    await sistema.encerrar();
   });
 });

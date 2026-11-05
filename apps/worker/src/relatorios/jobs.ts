@@ -8,3 +8,11 @@ export const gerarRelatorioJob = definirJob({
   tipo: 'relatorios.gerar',
   dados: z.object({ relatorioId: z.uuid(), tenantId: z.uuid() }).strict(),
 });
+
+/** Apaga os arquivos de relatórios com o link vencido, de todos os escritórios (PZ-353). */
+export const removerArquivosExpiradosJob = definirJob({
+  fila: 'manutencao',
+  tipo: 'relatorios.remover-expirados',
+  dados: z.object({}).strict(),
+  global: true,
+});

@@ -7,6 +7,7 @@ import {
   lembrarConferenciasJob,
 } from '../notificacoes/jobs.js';
 import { marcarVencidosJob } from '../prazos/jobs.js';
+import { removerArquivosExpiradosJob } from '../relatorios/jobs.js';
 
 import { definirJob } from './job.js';
 
@@ -109,5 +110,12 @@ export const AGENDAMENTOS: readonly Agendamento<unknown>[] = [
     cron: '0 8 * * *', // diário às 8h: conferência de painel antes do expediente (HU36)
     dados: {},
     motivo: 'lembretes de conferência de painel dos processos fora da cobertura',
+  }),
+  definirAgendamento({
+    id: 'relatorios.remover-expirados',
+    job: removerArquivosExpiradosJob,
+    cron: '15 3 * * *', // diário às 3h15: o link do relatório vale 24 h (HU29, PZ-353)
+    dados: {},
+    motivo: 'remoção dos arquivos de relatórios com o link vencido (minimização, LGPD)',
   }),
 ] as readonly Agendamento<unknown>[];
