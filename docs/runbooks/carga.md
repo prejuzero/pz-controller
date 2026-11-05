@@ -32,6 +32,15 @@ Ambiente local, um processo de cada app no Docker Desktop (MacBook, 8 GB para os
 
 Leitura: com essa massa, um processo da api atende 500 usuários com folga. O valor vale como referência relativa, não como capacidade de produção: o banco é local e pequeno (sem 1 milhão de publicações) e a rede é do próprio host.
 
+## Outras medições (testes de desempenho dos módulos)
+
+Rodam com `PZ_DESEMPENHO=1`, fora do CI comum, em PostgreSQL de teste (Testcontainers):
+
+| Medida                                                                              | Comando                                             | Resultado (05/11/2026) | Meta     |
+| ----------------------------------------------------------------------------------- | --------------------------------------------------- | ---------------------- | -------- |
+| Histórico do prazo: 500 eventos + 100 de notificações, em 300 mil eventos da trilha | `pnpm --filter @pz/auditoria test:int:desempenho`   | p95 11 ms              | < 300 ms |
+| Busca de publicações com 1 milhão                                                   | `pnpm --filter @pz/publicacoes test:int:desempenho` | ver HU28               | < 500 ms |
+
 ## O que este teste ainda não cobre
 
 Ficaram como pendências da HU40 no Notion:
