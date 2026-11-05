@@ -36,11 +36,12 @@ import {
   ConsultarConferencias,
   ConsultarPerfil,
   ConsultarProcesso,
-  ListarClientes,
   ContarProcessos,
+  EmailsAdicionaisDosAdvogadosPostgres,
+  ListarClientes,
+  ListarProcessos,
   OabsParaBusca,
   ProcessosParaBusca,
-  ListarProcessos,
   ProcessosPostgres,
   RegistrarConferencia,
   RemoverCliente,
@@ -134,7 +135,9 @@ import {
   ConsultarPreferencias,
   DesativarDestinoPush,
   DestinosPushPostgres,
+  EnviosPostgres,
   ListarConsentimentos,
+  ListarEnviosRecentes,
   ListarSupressoes,
   NotificacoesPostgres,
   PreferenciasPostgres,
@@ -297,14 +300,15 @@ import type {
 import type { ReceptorWebhook, ArmazenamentoArquivos } from '@pz/integracoes';
 import type { Clock, Outbox, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 import type {
+  ConsultaDeSupressoes,
   DestinosDoUsuario,
   EmailsDoEscritorio,
   ListaDeSupressao,
   RecursoDoEnvioExiste,
   RepositorioDeConsentimentos,
   RepositorioDeDestinosPush,
+  RepositorioDeEnvios,
   RepositorioDeNotificacoes,
-  ConsultaDeSupressoes,
 } from '@pz/notificacoes';
 import type { RepositorioDaTabela, RepositorioDeTiposDeAto } from '@pz/prazos';
 import type { RepositorioDeEncerramentos, RepositorioDeExportacoes } from '@pz/privacidade';
@@ -556,6 +560,20 @@ interface DependenciasDosEnvios {
   readonly existe: RecursoDoEnvioExiste<unknown>;
   readonly trilha: TrilhaDeAuditoria<unknown>;
   readonly outbox: Outbox<unknown>;
+  readonly envios: RepositorioDeEnvios<unknown>;
+}
+
+/**
+ * Internos do envio manual: contas do escritório (identidade) e e-mails adicionais dos advogados
+ * (cadastro, PZ-361). Composição aqui: um módulo não lê a tabela do outro.
+ */
+function emailsInternos(...fontes: EmailsDoEscritorio<unknown>[]): EmailsDoEscritorio<unknown> {
+  return {
+    internos: async (tx, emails) =>
+      new Set(
+        (await Promise.all(fontes.map((f) => f.internos(tx, emails)))).flatMap((s) => [...s]),
+      ),
+  };
 }
 
 /** Envio manual por e-mail (HU32): pedido na API; anexo e envio no worker. */
@@ -565,8 +583,10 @@ function provedoresDosEnvios(d: DependenciasDosEnvios): Provider[] {
       provide: SolicitarEnvioManual,
       inject: [RELOGIO],
       useFactory: (r: Clock) =>
-        new SolicitarEnvioManual(d.unidade, d.emails, d.existe, d.trilha, d.outbox, r),
+        new SolicitarEnvioManual(d.unidade, d.emails, d.existe, d.trilha, d.outbox, r, d.envios),
     },
+    // Situação dos envios de quem está na sessão (PZ-361).
+    { provide: ListarEnviosRecentes, useValue: new ListarEnviosRecentes(d.unidade, d.envios) },
   ];
 }
 
@@ -1041,6 +1061,8 @@ interface DependenciasDeNotificacoes {
   readonly notificacoes: RepositorioDeNotificacoes<unknown>;
   readonly destinos: DestinosDoUsuario<unknown>;
   readonly supressao: ListaDeSupressao<unknown>;
+  /** Envios manuais com problema entram nos avisos (PZ-361); sem ele, o aviso não aparece. */
+  readonly envios?: Pick<RepositorioDeEnvios<unknown>, 'comProblemaDesde'>;
   readonly consentimentos: RepositorioDeConsentimentos<unknown>;
   readonly push: RepositorioDeDestinosPush<unknown>;
   readonly trilha: TrilhaDeAuditoria<unknown>;
@@ -1122,7 +1144,15 @@ function provedoresDeNotificacoes(
     { provide: DEPENDENCIAS, inject: [RELOGIO], useFactory: criar },
     caso(
       ConsultarAvisosDeEntrega,
-      (d, r) => new ConsultarAvisosDeEntrega(d.unidade, d.notificacoes, d.destinos, d.supressao, r),
+      (d, r) =>
+        new ConsultarAvisosDeEntrega(
+          d.unidade,
+          d.notificacoes,
+          d.destinos,
+          d.supressao,
+          r,
+          d.envios,
+        ),
     ),
     caso(ListarConsentimentos, (d) => new ListarConsentimentos(d.unidade, d.consentimentos)),
     caso(
@@ -1255,6 +1285,7 @@ export class AppModule {
           notificacoes: new NotificacoesPostgres(),
           destinos,
           supressao: new SupressaoPostgres(),
+          envios: new EnviosPostgres(),
           consentimentos: new ConsentimentosPostgres(),
           push: new DestinosPushPostgres(),
           trilha: new TrilhaPostgres(),
@@ -1524,7 +1555,11 @@ export class AppModule {
       ...provedoresDosEnvios(
         opcoes.envios ?? {
           unidade: recursos.banco,
-          emails: new EmailsDoEscritorioPostgres(),
+          emails: emailsInternos(
+            new EmailsDoEscritorioPostgres(),
+            new EmailsAdicionaisDosAdvogadosPostgres(),
+          ),
+          envios: new EnviosPostgres(),
           existe: recursoDoEnvioExiste({
             prazos: new PrazosPostgres(),
             publicacoes: new LeituraPostgres(),

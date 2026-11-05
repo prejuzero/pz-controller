@@ -52,7 +52,10 @@ export type { FiltroDeProcessosNaBusca } from './application/portas.js';
 export { COBERTURAS } from './domain/processo.js';
 export type { Cobertura, CoberturaAlterada, ProcessoMonitorado } from './domain/processo.js';
 export { UFS } from './domain/valores.js';
-export { AdvogadosPostgres } from './infra/advogados-postgres.js';
+export {
+  AdvogadosPostgres,
+  EmailsAdicionaisDosAdvogadosPostgres,
+} from './infra/advogados-postgres.js';
 export { AdvogadosEmMemoria } from './infra/em-memoria.js';
 export { ClientesEmMemoria, ProcessosEmMemoria } from './infra/processos-em-memoria.js';
 export { ClientesPostgres, ProcessosPostgres } from './infra/processos-postgres.js';

@@ -75,6 +75,7 @@ model Tenant {
   compromissos           Compromisso[]
   relatorios             Relatorio[]
   verificacoesHistorico  VerificacaoHistorico[]
+  enviosManuais          EnvioManual[]
   conferencias           ConferenciaPainel[]
   lembretes              LembreteAgendado[]
   tokenCiencias          TokenCiencia[]
@@ -1292,4 +1293,23 @@ model ConferenciaPainel {
 
   @@index([tenantId, processoId, realizadaEm(sort: Desc)])
   @@map("conferencia_painel")
+}
+
+/// Envio manual por e-mail (PZ-361, HU32): situação no portal; os endereços ficam na trilha.
+model EnvioManual {
+  id            String    @id @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  usuarioId     String    @map("usuario_id") @db.Uuid
+  recurso       String
+  destinatarios Int
+  notificacaoId String?   @map("notificacao_id") @db.Uuid
+  motivoFalha   String?   @map("motivo_falha")
+  falhouEm      DateTime? @map("falhou_em") @db.Timestamptz(6)
+  criadoEm      DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm  DateTime  @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, usuarioId, criadoEm])
+  @@map("envio_manual")
 }

@@ -329,6 +329,7 @@ describe('QA das notificações por e-mail (HU30, PZ-195)', () => {
     expect(await avisos.executar(ANA, false)).toEqual({
       emailsRejeitados: ['ana@exemplo.invalid'],
       usuariosDaEquipeComRejeicao: null,
+      enviosComProblema: 0,
     });
     expect((await avisos.executar(BIA, true)).usuariosDaEquipeComRejeicao).toBe(2);
 

@@ -7,5 +7,6 @@ export default criarConfigVitest({
     'infra/exportacao-postgres.ts',
     'infra/notificacoes-postgres.ts',
     'infra/consentimentos-postgres.ts',
+    'infra/envios-postgres.ts',
   ],
 });

@@ -143,3 +143,18 @@ export class AdvogadosPostgres implements RepositorioDeAdvogados<Transacao> {
     });
   }
 }
+
+/**
+ * E-mails adicionais (cópias) dos advogados do escritório da transação (RLS): também contam como
+ * internos no envio manual (PZ-361), sem pedir a confirmação de sigilo.
+ */
+export class EmailsAdicionaisDosAdvogadosPostgres {
+  async internos(transacao: Transacao, emails: readonly string[]): Promise<ReadonlySet<string>> {
+    if (emails.length === 0) return new Set();
+    const linhas = await transacao.$queryRaw<{ email: string }[]>`
+      SELECT DISTINCT lower(trim(e)) AS email
+        FROM advogado, unnest(emails_adicionais) AS e
+       WHERE lower(trim(e)) = ANY(${emails.map((x) => x.trim().toLowerCase())}::text[])`;
+    return new Set(linhas.map((l) => l.email));
+  }
+}

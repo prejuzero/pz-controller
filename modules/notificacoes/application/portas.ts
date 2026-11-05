@@ -1,5 +1,6 @@
 import type { MensagemRenderizada } from './templates.js';
 import type { CanalComConsentimento, ConsentimentoCanal } from '../domain/consentimento.js';
+import type { EnvioRecente, RecursoDoEnvio } from '../domain/envio.js';
 import type { Canal, Notificacao, TipoDeNotificacao } from '../domain/notificacao.js';
 import type { AnexoDeEmail, CapacidadesCanal, ResultadoEnvio } from '@pz/integracoes';
 import type { Instant, Uuid } from '@pz/kernel';
@@ -104,4 +105,27 @@ export interface EnviadorDeCanal {
  */
 export interface ResponsaveisDoEscritorio<Transacao> {
   usuarios(transacao: Transacao): Promise<readonly Uuid[]>;
+}
+
+/**
+ * Porta: registro do envio no escritório (RLS), para quem enviou acompanhar a situação no portal
+ * (PZ-361). Sem os endereços: eles ficam só na trilha.
+ */
+export interface RepositorioDeEnvios<Transacao> {
+  registrar(
+    transacao: Transacao,
+    envio: {
+      readonly id: Uuid;
+      readonly tenantId: Uuid;
+      readonly usuarioId: Uuid;
+      readonly recurso: RecursoDoEnvio;
+      readonly destinatarios: number;
+    },
+  ): Promise<void>;
+  vincularNotificacao(transacao: Transacao, envioId: Uuid, notificacaoId: Uuid): Promise<void>;
+  marcarFalha(transacao: Transacao, envioId: Uuid, motivo: string, em: Instant): Promise<void>;
+  /** Os mais recentes de quem enviou, com a situação derivada da notificação. */
+  recentes(transacao: Transacao, usuarioId: Uuid, limite: number): Promise<EnvioRecente[]>;
+  /** Quantos envios de quem enviou falharam ou foram rejeitados desde `desde`. */
+  comProblemaDesde(transacao: Transacao, usuarioId: Uuid, desde: Instant): Promise<number>;
 }

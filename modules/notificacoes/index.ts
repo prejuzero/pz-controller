@@ -57,7 +57,14 @@ export type {
   NotificacaoSolicitada,
   TipoDeNotificacao,
 } from './domain/notificacao.js';
-export { ConsentimentosEmMemoria, NotificacoesEmMemoria } from './infra/em-memoria.js';
+export {
+  ConsentimentosEmMemoria,
+  EnviosEmMemoria,
+  NotificacoesEmMemoria,
+} from './infra/em-memoria.js';
+export { EnviosPostgres } from './infra/envios-postgres.js';
+export { situacaoDoEnvio } from './domain/envio.js';
+export type { EnvioRecente, RecursoDoEnvio, SituacaoDoEnvio } from './domain/envio.js';
 export { ConsentimentosPostgres, DestinosPushPostgres } from './infra/consentimentos-postgres.js';
 export {
   NotificacoesPostgres,
@@ -108,7 +115,13 @@ export { LembretesEmMemoria, PreferenciasEmMemoria } from './infra/em-memoria.js
 export { LembretesPostgres } from './infra/lembretes-postgres.js';
 export { LembrarConferencias } from './application/conferencias.js';
 export type { ConferenciaDevida } from './application/conferencias.js';
-export { PrepararEnvioManual, SolicitarEnvioManual } from './application/envio-manual.js';
+export {
+  LIMITE_DE_ENVIOS_RECENTES,
+  ListarEnviosRecentes,
+  PrepararEnvioManual,
+  SolicitarEnvioManual,
+} from './application/envio-manual.js';
+export type { RepositorioDeEnvios } from './application/portas.js';
 export type {
   AnexoDoEnvio,
   DependenciasDoPreparo,

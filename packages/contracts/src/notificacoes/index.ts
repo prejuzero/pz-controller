@@ -3,11 +3,14 @@ import { z } from 'zod';
 import { Instante, Uuid } from '../comum.js';
 import { definirRota, nomear } from '../rota.js';
 
-import { enviarPorEmail } from './envios.js';
+import { enviarPorEmail, listarEnviosRecentes } from './envios.js';
 
 export {
+  EnvioRecente,
+  EnviosRecentes,
   EnvioSolicitado,
   enviarPorEmail,
+  listarEnviosRecentes,
   MAXIMO_DE_DESTINATARIOS_DO_ENVIO,
   PedidoDeEnvio,
 } from './envios.js';
@@ -27,6 +30,13 @@ export const AvisosDeEntrega = nomear(
       .nullable()
       .describe(
         'Usuários do escritório com notificação rejeitada nos últimos 7 dias; null para quem não administra a equipe (`usuarios:gerir`).',
+      ),
+    enviosComProblema: z
+      .number()
+      .int()
+      .nonnegative()
+      .describe(
+        'Envios por e-mail do usuário que falharam ou foram rejeitados nos últimos 7 dias.',
       ),
   }),
 );
@@ -199,4 +209,5 @@ export const ROTAS_NOTIFICACOES = [
   registrarDestinoPush,
   desativarDestinoPush,
   enviarPorEmail,
+  listarEnviosRecentes,
 ] as const;

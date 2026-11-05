@@ -10,6 +10,7 @@ import {
   TentativasEmMemoria,
 } from '@pz/identidade';
 import { FixedClock, gerarUuidV7, Instant, OutboxEmMemoria } from '@pz/kernel';
+import { EnviosEmMemoria, NotificacoesEmMemoria } from '@pz/notificacoes';
 import { TabelaEmMemoria } from '@pz/prazos';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -28,6 +29,7 @@ const PRAZO = gerarUuidV7();
 const relogio = new FixedClock(Instant.deIso('2026-11-03T15:00:00Z'));
 const sessoes = new SessoesEmMemoria();
 const perfis = new PerfisEmMemoria();
+const envios = new EnviosEmMemoria(new NotificacoesEmMemoria(), relogio);
 const auditados: EntradaDeAuditoria[] = [];
 let api: NestFastifyApplication;
 const termos = termosEmMemoria();
@@ -82,6 +84,7 @@ beforeAll(async () => {
         },
       },
       outbox: unidade,
+      envios,
     },
     ambiente: carregarAmbiente(esquemaApi, {
       NODE_ENV: 'test',
@@ -226,5 +229,29 @@ describe('envio manual por e-mail (HU32)', () => {
       (await pedir('app', 'POST', '/v1/envios', prazo({ destinatarios: ['a@escritorio.invalid'] })))
         .statusCode,
     ).toBe(202);
+  });
+});
+
+describe('situação dos envios (PZ-361)', () => {
+  it('cada um vê só os próprios envios, do mais recente para o mais antigo', async () => {
+    const r = await pedir('beto', 'POST', '/v1/envios', {
+      recurso: 'prazo',
+      recursoId: PRAZO,
+      destinatarios: ['ana@escritorio.invalid', 'b@escritorio.invalid'],
+    });
+    expect(r.statusCode).toBe(202);
+    const lista = await pedir('beto', 'GET', '/v1/envios');
+    expect(lista.statusCode).toBe(200);
+    expect(lista.json()).toMatchObject({
+      itens: [
+        {
+          id: r.json<{ id: string }>().id,
+          recurso: 'prazo',
+          destinatarios: 2,
+          situacao: 'pendente',
+        },
+      ],
+    });
+    expect((await pedir('cura', 'GET', '/v1/envios')).statusCode).toBe(403);
   });
 });

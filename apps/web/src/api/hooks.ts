@@ -237,4 +237,6 @@ export const useRelatorios = (ativa = true) =>
   useQuery({ ...consultasRelatorios(useApi()).lista(), enabled: ativa });
 export const useSolicitarRelatorio = () =>
   useMutation(mutacoesRelatorios(useApi(), useQueryClient()).solicitar);
-export const useEnviarPorEmail = () => useMutation(mutacaoEnvioPorEmail(useApi()));
+export const useEnviarPorEmail = () =>
+  useMutation(mutacaoEnvioPorEmail(useApi(), useQueryClient()));
+export const useEnviosRecentes = () => useQuery(consultasNotificacoes(useApi()).envios());

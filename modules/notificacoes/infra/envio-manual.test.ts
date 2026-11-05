@@ -9,10 +9,18 @@ import {
 } from '@pz/kernel';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { PrepararEnvioManual, SolicitarEnvioManual } from '../application/envio-manual.js';
-import { EnviarNotificacao, Notificar } from '../application/notificacoes.js';
+import {
+  ListarEnviosRecentes,
+  PrepararEnvioManual,
+  SolicitarEnvioManual,
+} from '../application/envio-manual.js';
+import {
+  ConsultarAvisosDeEntrega,
+  EnviarNotificacao,
+  Notificar,
+} from '../application/notificacoes.js';
 
-import { ConsentimentosEmMemoria, NotificacoesEmMemoria } from './em-memoria.js';
+import { ConsentimentosEmMemoria, EnviosEmMemoria, NotificacoesEmMemoria } from './em-memoria.js';
 
 import type { AnexoDoEnvio, GeradorDoAnexo } from '../application/envio-manual.js';
 import type { EnviadorDeCanal } from '../application/portas.js';
@@ -38,6 +46,7 @@ let auditados: EntradaDeAuditoria[];
 let arquivos: Map<string, ArquivoParaGravar>;
 let suprimidos: Set<string>;
 let repositorio: NotificacoesEmMemoria;
+let envios: EnviosEmMemoria;
 let enviados: {
   destinatarios: readonly string[];
   assunto: string;
@@ -62,6 +71,7 @@ const solicitar = () =>
     trilha,
     outbox,
     relogio,
+    envios,
   );
 
 const notificar = () =>
@@ -106,6 +116,8 @@ const preparar = () =>
     trilha,
     nomeDoRemetente: () => Promise.resolve('Ana Fictícia'),
     link: (anexo) => `https://app.exemplo.invalid/${anexo.origem}`,
+    envios,
+    relogio,
   });
 
 const enviar = () => {
@@ -130,6 +142,7 @@ beforeEach(() => {
   arquivos = new Map();
   suprimidos = new Set();
   repositorio = new NotificacoesEmMemoria();
+  envios = new EnviosEmMemoria(repositorio, relogio);
   enviados = [];
 });
 
@@ -310,6 +323,8 @@ describe('envio manual: variações (HU32)', () => {
       trilha,
       nomeDoRemetente: () => Promise.resolve(undefined),
       link: () => 'https://app.exemplo.invalid/busca',
+      envios,
+      relogio,
     });
     const envioId = gerarUuidV7();
     expect(
@@ -365,4 +380,81 @@ describe('envio manual: variações (HU32)', () => {
       outbox.executar((tx) => semLeitor.executar(tx, idDe(repositorio.todas()[0]))),
     ).rejects.toThrow(/sem leitor de arquivos/);
   });
+});
+
+// Situação do envio no portal e aviso de falha (PZ-361).
+describe('envio manual: situação para quem enviou (PZ-361)', () => {
+  const recentes = () => new ListarEnviosRecentes(outbox, envios).executar(USUARIO);
+
+  it('pedido nasce pendente; enviado depois do e-mail; rejeitado quando o provedor recusa', async () => {
+    const r = await solicitar().executar(remetente, pedidoDePrazo());
+    if (!r.ok) throw r.erro;
+    expect(await recentes()).toEqual([
+      expect.objectContaining({
+        id: r.valor.id,
+        recurso: 'prazo',
+        destinatarios: 1,
+        situacao: 'pendente',
+      }),
+    ]);
+    const preparo = {
+      envioId: r.valor.id,
+      tenantId: TENANT,
+      usuarioId: USUARIO,
+      anexo: { origem: 'prazo' as const, id: PRAZO, formato: 'pdf' as const },
+      destinatarios: ['bia@escritorio.invalid'],
+    };
+    expect(await preparar().executar(preparo)).toBe('solicitado');
+    const [notificacao] = repositorio.todas();
+    await outbox.executar((tx) => enviar().executar(tx, idDe(notificacao)));
+    expect((await recentes())[0]).toMatchObject({ situacao: 'enviado', motivo: null });
+
+    // Rejeição do provedor (bounce) chega pelo webhook e aparece como rejeitado, com aviso.
+    await outbox.executar(async (tx) => {
+      const lida = await repositorio.buscar(tx, idDe(notificacao));
+      if (lida === undefined) throw new Error('sem notificação');
+      lida.registrarDesfecho(
+        { tipo: 'rejeitado', ocorridoEm: relogio.agora(), motivo: 'x' },
+        relogio,
+      );
+      await repositorio.registrarDesfecho(tx, lida);
+    });
+    expect((await recentes())[0]).toMatchObject({ situacao: 'rejeitado', motivo: 'bounce' });
+    expect(await avisos()).toBe(1);
+  });
+
+  it('falha do preparo aparece como falhou, com o motivo, e conta no aviso', async () => {
+    const r = await solicitar().executar(
+      remetente,
+      pedidoDePrazo({ destinatarios: ['cliente@fora.invalid'], confirmacaoSigilo: true }),
+    );
+    if (!r.ok) throw r.erro;
+    suprimidos.add('cliente@fora.invalid');
+    const preparo = {
+      envioId: r.valor.id,
+      tenantId: TENANT,
+      usuarioId: USUARIO,
+      anexo: { origem: 'prazo' as const, id: PRAZO, formato: 'pdf' as const },
+      destinatarios: ['cliente@fora.invalid'],
+    };
+    expect(await preparar().executar(preparo)).toBe('falhou');
+    expect(await recentes()).toEqual([
+      expect.objectContaining({ situacao: 'falhou', motivo: 'destinatarios-suprimidos' }),
+    ]);
+    expect(await avisos()).toBe(1);
+    // Outro usuário não vê os envios de quem enviou.
+    expect(await new ListarEnviosRecentes(outbox, envios).executar(gerarUuidV7())).toEqual([]);
+  });
+
+  const avisos = async () =>
+    (
+      await new ConsultarAvisosDeEntrega(
+        outbox,
+        repositorio,
+        { emails: () => Promise.resolve({ copias: [] }) },
+        { suprimidos: () => Promise.resolve(new Set<string>()), suprimir: () => Promise.resolve() },
+        relogio,
+        envios,
+      ).executar(USUARIO, false)
+    ).enviosComProblema;
 });

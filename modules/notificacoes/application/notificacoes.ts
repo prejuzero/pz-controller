@@ -8,6 +8,7 @@ import { Notificacao, TIPOS_DE_NOTIFICACAO } from '../domain/notificacao.js';
 import { renderizar, TEMPLATES } from './templates.js';
 
 import type {
+  RepositorioDeEnvios,
   DestinosDoUsuario,
   EnviadorDeCanal,
   ListaDeSupressao,
@@ -268,6 +269,8 @@ export interface AvisosDeEntrega {
   readonly emailsRejeitados: readonly string[];
   /** Usuários do escritório com rejeição na janela; `null` para quem não administra a equipe. */
   readonly usuariosDaEquipeComRejeicao: number | null;
+  /** Envios manuais do usuário que falharam ou foram rejeitados na janela (PZ-361). */
+  readonly enviosComProblema: number;
 }
 
 /** Janela do aviso à equipe: rejeições da última semana (HU30). */
@@ -286,6 +289,7 @@ export class ConsultarAvisosDeEntrega<Transacao> {
     private readonly destinos: DestinosDoUsuario<Transacao>,
     private readonly supressao: ListaDeSupressao<Transacao>,
     private readonly relogio: Clock,
+    private readonly envios?: Pick<RepositorioDeEnvios<Transacao>, 'comProblemaDesde'>,
   ) {}
 
   executar(usuarioId: Uuid, administraEquipe: boolean): Promise<AvisosDeEntrega> {
@@ -305,6 +309,10 @@ export class ConsultarAvisosDeEntrega<Transacao> {
         usuariosDaEquipeComRejeicao: administraEquipe
           ? await this.notificacoes.usuariosComRejeicaoDesde(transacao, desde)
           : null,
+        enviosComProblema:
+          this.envios === undefined
+            ? 0
+            : await this.envios.comProblemaDesde(transacao, usuarioId, desde),
       };
     });
   }

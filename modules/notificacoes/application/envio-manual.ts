@@ -2,6 +2,8 @@ import { PedidoDeEnvio } from '@pz/contracts';
 import { err, gerarUuidV7, NaoEncontrado, ok, RegraDeNegocio, Validacao } from '@pz/kernel';
 
 import type { Notificar } from './notificacoes.js';
+import type { RepositorioDeEnvios } from './portas.js';
+import type { EnvioRecente } from '../domain/envio.js';
 import type { OrigemDaAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
 import type { ArmazenamentoArquivos } from '@pz/integracoes';
 import type { Clock, ErroDominio, Outbox, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
@@ -55,6 +57,7 @@ export class SolicitarEnvioManual<Transacao> {
     private readonly trilha: TrilhaDeAuditoria<Transacao>,
     private readonly outbox: Outbox<Transacao>,
     private readonly relogio: Clock,
+    private readonly envios: RepositorioDeEnvios<Transacao>,
   ) {}
 
   async executar(
@@ -111,6 +114,13 @@ export class SolicitarEnvioManual<Transacao> {
         },
         { canal: remetente.canal, usuarioId: remetente.usuarioId },
       );
+      await this.envios.registrar(tx, {
+        id,
+        tenantId: remetente.tenantId,
+        usuarioId: remetente.usuarioId,
+        recurso: pedido.recurso,
+        destinatarios: destinatarios.length,
+      });
       await this.outbox.gravar(tx, [
         {
           id: gerarUuidV7(this.relogio),
@@ -159,10 +169,12 @@ export interface DependenciasDoPreparo<Transacao> {
   readonly gerar: GeradorDoAnexo;
   readonly notificar: Notificar<Transacao>;
   readonly trilha: TrilhaDeAuditoria<Transacao>;
+  readonly envios: RepositorioDeEnvios<Transacao>;
   /** Nome de quem envia, para o e-mail. */
   readonly nomeDoRemetente: (transacao: Transacao, usuarioId: Uuid) => Promise<string | undefined>;
   /** Caminho estável do recurso no portal (abrível pelo app). */
   readonly link: (anexo: AnexoDoEnvio) => string;
+  readonly relogio: Clock;
 }
 
 export type ResultadoDoPreparo = 'solicitado' | 'ja-solicitado' | 'falhou';
@@ -196,7 +208,7 @@ export class PrepararEnvioManual<Transacao> {
     });
     const resultado = await this.d.unidade.executar(async (tx) => {
       const remetente = (await this.d.nomeDoRemetente(tx, pedido.usuarioId)) ?? 'Um advogado';
-      return this.d.notificar.executar(tx, {
+      const pedida = await this.d.notificar.executar(tx, {
         tipo: 'envio-manual',
         tenantId: pedido.tenantId,
         usuarioId: pedido.usuarioId,
@@ -213,6 +225,10 @@ export class PrepararEnvioManual<Transacao> {
           link: this.d.link(pedido.anexo),
         },
       });
+      // A situação no portal acompanha a notificação (enviada, rejeitada).
+      if (pedida.ok && pedida.valor.solicitada)
+        await this.d.envios.vincularNotificacao(tx, pedido.envioId, pedida.valor.notificacaoId);
+      return pedida;
     });
     // Dados recusados pelo template são defeito de quem monta o pedido: retentativa e DLQ.
     if (!resultado.ok) throw resultado.erro;
@@ -222,8 +238,8 @@ export class PrepararEnvioManual<Transacao> {
   }
 
   async #falhou(pedido: EnvioManualPedido, motivo: string): Promise<'falhou'> {
-    await this.d.unidade.executar((tx) =>
-      this.d.trilha.registrar(
+    await this.d.unidade.executar(async (tx) => {
+      await this.d.trilha.registrar(
         tx,
         {
           tipo: 'notificacoes.envio-manual-falhou',
@@ -232,8 +248,27 @@ export class PrepararEnvioManual<Transacao> {
           depois: { motivo },
         },
         { canal: 'sistema', usuarioId: pedido.usuarioId },
-      ),
-    );
+      );
+      // Quem enviou vê a falha no portal (PZ-361): nada falha em silêncio.
+      await this.d.envios.marcarFalha(tx, pedido.envioId, motivo, this.d.relogio.agora());
+    });
     return 'falhou';
+  }
+}
+
+/** Quantos envios recentes o portal mostra a quem enviou (PZ-361). */
+export const LIMITE_DE_ENVIOS_RECENTES = 20;
+
+/** Envios recentes de quem está na sessão, com a situação de cada um (PZ-361). */
+export class ListarEnviosRecentes<Transacao> {
+  constructor(
+    private readonly unidade: UnidadeDeTrabalho<Transacao>,
+    private readonly envios: RepositorioDeEnvios<Transacao>,
+  ) {}
+
+  executar(usuarioId: Uuid): Promise<EnvioRecente[]> {
+    return this.unidade.executar((tx) =>
+      this.envios.recentes(tx, usuarioId, LIMITE_DE_ENVIOS_RECENTES),
+    );
   }
 }
