@@ -149,6 +149,7 @@ describe('@Consome e o despachante', () => {
           'CalendarioAlterado@1',
           ['ConsumidorDoCalendario.alterado', 'ConsumidorDosPrazos.calendarioAlterado'],
         ],
+        ['ComarcaDoProcessoAlterada@1', ['ConsumidorDosPrazos.comarcaAlterada']],
         ['NotificacaoSolicitada@1', ['ConsumidorDeNotificacoes.solicitada']],
         ['FonteDegradada@1', ['ConsumidorDeNotificacoes.fonteDegradada']],
         ['FonteRestabelecida@1', ['ConsumidorDeNotificacoes.fonteRestabelecida']],

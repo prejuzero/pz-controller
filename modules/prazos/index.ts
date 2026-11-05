@@ -88,6 +88,7 @@ export {
   LOTE_DO_RECALCULO,
   prazoDetalhado,
   prazoListado,
+  RecalcularPrazosDoProcesso,
   RecalcularPrazosPorCalendario,
   SugestaoDePrazo,
   TenantsAfetadosPeloCalendario,

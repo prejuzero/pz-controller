@@ -6,7 +6,12 @@ import { z } from 'zod';
 import { Consome } from '../eventos/consome.js';
 import { FILAS_RUNTIME, TENANTS_DA_PUBLICACAO } from '../fichas.js';
 
-import { chaveDoLote, gerarPrazoJob, recalcularPrazosJob } from './jobs.js';
+import {
+  chaveDoLote,
+  gerarPrazoJob,
+  recalcularPrazosDoProcessoJob,
+  recalcularPrazosJob,
+} from './jobs.js';
 
 import type { DadosDoRecalculo } from './jobs.js';
 import type { Filas } from '../filas/runtime.js';
@@ -14,6 +19,7 @@ import type { EventoDominio, Uuid } from '@pz/kernel';
 
 const logger = criarLogger('worker.prazos');
 const EventoDoConteudo = z.object({ conteudoId: z.uuid() });
+const EventoDaComarca = z.object({ processoId: z.uuid() });
 
 /**
  * Liga o recálculo dos prazos ao CalendarioAlterado (HU16): um job por tenant alcançado, na fila
@@ -52,6 +58,19 @@ export class ConsumidorDosPrazos {
       { tenantId },
       `${conteudoId}-${tenantId}`,
     );
+  }
+
+  /** Comarca corrigida (PZ-332): um job no tenant do processo; repetir o evento não duplica. */
+  @Consome('ComarcaDoProcessoAlterada', { versao: 1 })
+  async comarcaAlterada(_transacao: unknown, evento: EventoDominio): Promise<void> {
+    const { processoId } = EventoDaComarca.parse(evento.payload);
+    await this.filas.publicar(
+      recalcularPrazosDoProcessoJob,
+      { processoId, eventoId: evento.id, tenantId: evento.tenantId },
+      { tenantId: evento.tenantId },
+      evento.id,
+    );
+    logger.info({ processoId, eventoId: evento.id }, 'recálculo pela comarca planejado');
   }
 
   @Consome('CalendarioAlterado', { versao: 1 })

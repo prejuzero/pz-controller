@@ -179,6 +179,8 @@ export class PrazosPostgres implements RepositorioDePrazos<Transacao> {
         ...(e.entrada === null ? {} : { entradaCalculo: paraJson(e.entrada) }),
         parametros: paraJson(e.parametros),
         motivoAjuste: e.motivoAjuste,
+        // Muda quando a comarca do processo é corrigida (PZ-332).
+        jurisdicao: paraJson(e.jurisdicao),
         status: paraBanco(e.status),
         versaoOtimista: e.versaoOtimista,
       },

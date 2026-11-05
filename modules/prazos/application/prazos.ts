@@ -632,7 +632,11 @@ export class RecalcularPrazosPorCalendario<Transacao> {
         if (calculo === undefined) continue;
         const antes = prazoListado(prazo.estado);
         const versaoLida = prazo.estado.versaoOtimista;
-        const efeito = prazo.recalcular(calculo, alteracao.eventoCalendarioId, this.relogio);
+        const efeito = prazo.recalcular(
+          calculo,
+          { motivo: 'calendario-alterado', eventoCalendarioId: alteracao.eventoCalendarioId },
+          this.relogio,
+        );
         if (efeito === 'sem-mudanca') continue;
         if (!(await this.prazos.atualizar(transacao, prazo, versaoLida))) {
           // Alterado por outra pessoa no meio: o job tenta de novo e relê o prazo.
@@ -665,6 +669,93 @@ export class RecalcularPrazosPorCalendario<Transacao> {
       vencimentosAlterados,
       proximo: lidos.length < this.lote || ultimo === undefined ? null : ultimo.id,
     };
+  }
+}
+
+/** Um processo tem poucos prazos abertos; o teto evita uma leitura sem fim por engano. */
+const MAXIMO_DE_PRAZOS_DO_PROCESSO = 500;
+
+/**
+ * Recalcula os prazos abertos de um processo cuja comarca foi corrigida (PZ-332): o calendário
+ * aplicável muda, e a jurisdição gravada no prazo decide quais alterações futuras o alcançam.
+ * Mesmo padrão do recálculo por calendário: datas só do motor, leitura do calendário fora da
+ * transação de escrita, trilha e evento na mesma transação, idempotente e sem falha silenciosa.
+ */
+export class RecalcularPrazosDoProcesso<Transacao> {
+  constructor(
+    private readonly unidade: UnidadeDeTrabalho<Transacao>,
+    private readonly prazos: RepositorioDePrazos<Transacao>,
+    private readonly localizar: LocalizadorDoProcesso,
+    private readonly trilha: TrilhaDeAuditoria<Transacao>,
+    private readonly outbox: Outbox<Transacao>,
+    private readonly relogio: Clock,
+  ) {}
+
+  async executar(
+    processoId: Uuid,
+    eventoOrigemId: Uuid,
+  ): Promise<Omit<ResultadoDoLote, 'proximo'>> {
+    const lidos = await this.unidade.executar(async (transacao) => [
+      ...(await this.prazos.listar(transacao, {
+        processoId,
+        status: 'a-confirmar',
+        limite: MAXIMO_DE_PRAZOS_DO_PROCESSO,
+      })),
+      ...(await this.prazos.listar(transacao, {
+        processoId,
+        status: 'pendente',
+        limite: MAXIMO_DE_PRAZOS_DO_PROCESSO,
+      })),
+    ]);
+    const recalculaveis = lidos.filter((p) => p.recalculavel);
+    if (recalculaveis.length === 0) return { lidos: 0, alterados: 0, vencimentosAlterados: 0 };
+    const processo = await this.localizar(processoId);
+    if (processo === undefined) throw new Error(`processo ${processoId} não encontrado`);
+    const jurisdicao: JurisdicaoDoPrazo = { ...processo.jurisdicao, lacunas: processo.lacunas };
+    const novos = new Map<Uuid, CalculoDoPrazo>();
+    for (const prazo of recalculaveis) {
+      const entrada = EntradaGravada.parse(prazo.estado.entrada);
+      novos.set(prazo.id, await calcularComCalendario(entrada, processo));
+    }
+    let alterados = 0;
+    let vencimentosAlterados = 0;
+    await this.unidade.executar(async (transacao) => {
+      for (const prazo of recalculaveis) {
+        const calculo = novos.get(prazo.id);
+        if (calculo === undefined) continue;
+        const antes = { ...prazoListado(prazo.estado), jurisdicao: prazo.estado.jurisdicao };
+        const versaoLida = prazo.estado.versaoOtimista;
+        const efeito = prazo.recalcular(
+          calculo,
+          { motivo: 'comarca-alterada', jurisdicao },
+          this.relogio,
+        );
+        if (efeito === 'sem-mudanca') continue;
+        if (!(await this.prazos.atualizar(transacao, prazo, versaoLida))) {
+          throw new Error(`prazo ${prazo.id} alterado durante o recálculo`);
+        }
+        await this.trilha.registrar(
+          transacao,
+          {
+            tipo: 'prazos.prazo-recalculado',
+            entidade: 'prazo',
+            entidadeId: prazo.id,
+            antes,
+            depois: {
+              ...prazoListado(prazo.estado),
+              jurisdicao: prazo.estado.jurisdicao,
+              motivo: 'comarca-alterada',
+              eventoOrigemId,
+            },
+          },
+          { canal: 'evento' },
+        );
+        await this.outbox.gravar(transacao, prazo.retirarEventos());
+        alterados++;
+        if (efeito === 'vencimento') vencimentosAlterados++;
+      }
+    });
+    return { lidos: recalculaveis.length, alterados, vencimentosAlterados };
   }
 }
 

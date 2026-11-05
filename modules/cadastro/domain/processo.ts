@@ -46,7 +46,12 @@ export type CoberturaAlterada = EventoDominio<
     motivo: string | null;
   }
 >;
-export type EventoDoProcesso = ProcessoMonitorado | CoberturaAlterada;
+/** A comarca decide o calendário dos prazos (PZ-332): os abertos são recalculados. */
+export type ComarcaDoProcessoAlterada = EventoDominio<
+  'ComarcaDoProcessoAlterada',
+  { processoId: Uuid; antes: string | null; depois: string | null }
+>;
+export type EventoDoProcesso = ProcessoMonitorado | CoberturaAlterada | ComarcaDoProcessoAlterada;
 type SemEnvelope<E> = E extends EventoDoProcesso ? Pick<E, 'tipo' | 'payload'> : never;
 
 export interface DadosDoProcesso {
@@ -130,7 +135,13 @@ export class Processo extends AggregateRoot<EventoDoProcesso> {
     const definidos = Object.fromEntries(
       Object.entries(alteracao).filter(([, valor]) => valor !== undefined),
     );
+    const comarcaAntes = this.estadoAtual.comarca;
     this.estadoAtual = { ...this.estadoAtual, ...definidos };
+    if (this.estadoAtual.comarca !== comarcaAntes)
+      this.emitir({
+        tipo: 'ComarcaDoProcessoAlterada',
+        payload: { processoId: this.id, antes: comarcaAntes, depois: this.estadoAtual.comarca },
+      });
   }
 
   /** Cobertura parcial ou manual exige motivo; a automática limpa o motivo. */

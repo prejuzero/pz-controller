@@ -94,7 +94,22 @@ export interface NovoPrazo {
 /** O que um recálculo mudou: nada, só a memória (mesmo vencimento) ou o vencimento. */
 export type EfeitoDoRecalculo = 'sem-mudanca' | 'memoria' | 'vencimento';
 
+/** Por que o prazo foi recalculado: vai no evento e na trilha. */
+export type CausaDoRecalculo =
+  | { readonly motivo: 'calendario-alterado'; readonly eventoCalendarioId: Uuid }
+  /** O advogado corrigiu a comarca do processo (PZ-332): muda o calendário aplicável. */
+  | { readonly motivo: 'comarca-alterada'; readonly jurisdicao: JurisdicaoDoPrazo };
+
 /** JSON com as chaves em ordem: o jsonb do banco não preserva a ordem de montagem. */
+function mesmaJurisdicao(a: JurisdicaoDoPrazo, b: JurisdicaoDoPrazo): boolean {
+  return (
+    a.tribunal === b.tribunal &&
+    a.uf === b.uf &&
+    a.comarca === b.comarca &&
+    a.lacunas.join('|') === b.lacunas.join('|')
+  );
+}
+
 function canonico(valor: Json): string {
   if (valor === null || typeof valor !== 'object') return JSON.stringify(valor);
   if (Array.isArray(valor)) return `[${(valor as readonly Json[]).map(canonico).join(',')}]`;
@@ -164,19 +179,25 @@ export class Prazo extends AggregateRoot {
   }
 
   /**
-   * Aplica o resultado de um novo cálculo depois de uma mudança do calendário. Se o vencimento
-   * muda, o prazo volta a "a confirmar", mesmo já confirmado: a data que o advogado confirmou
-   * deixou de ser a sugerida, e só ele decide a nova (CLAUDE.md, seção 2).
+   * Aplica o resultado de um novo cálculo depois de uma mudança do calendário ou da comarca do
+   * processo. Se o vencimento muda, o prazo volta a "a confirmar", mesmo já confirmado: a data que
+   * o advogado confirmou deixou de ser a sugerida, e só ele decide a nova (CLAUDE.md, seção 2).
+   * A jurisdição nova é gravada mesmo sem mudança de data: é ela que decide quais alterações
+   * futuras do calendário alcançam o prazo.
    */
-  recalcular(calculo: CalculoDoPrazo, eventoCalendarioId: Uuid, relogio: Clock): EfeitoDoRecalculo {
+  recalcular(calculo: CalculoDoPrazo, causa: CausaDoRecalculo, relogio: Clock): EfeitoDoRecalculo {
     const antes = this.#estado;
-    if (!this.recalculavel || canonico(calculo.memoria) === canonico(antes.calculo.memoria)) {
+    if (!this.recalculavel) return 'sem-mudanca';
+    const jurisdicao = causa.motivo === 'comarca-alterada' ? causa.jurisdicao : antes.jurisdicao;
+    const mudouJurisdicao = !mesmaJurisdicao(jurisdicao, antes.jurisdicao);
+    if (!mudouJurisdicao && canonico(calculo.memoria) === canonico(antes.calculo.memoria)) {
       return 'sem-mudanca';
     }
     const mudouVencimento = iso(calculo.vencimento) !== iso(antes.calculo.vencimento);
     this.#estado = {
       ...antes,
       calculo,
+      jurisdicao,
       status: mudouVencimento ? 'a-confirmar' : antes.status,
       versaoOtimista: antes.versaoOtimista + 1,
     };
@@ -194,7 +215,10 @@ export class Prazo extends AggregateRoot {
         vencimentoAnterior: iso(antes.calculo.vencimento),
         vencimentoNovo: iso(calculo.vencimento),
         statusAnterior: antes.status,
-        eventoCalendarioId,
+        motivo: causa.motivo,
+        ...(causa.motivo === 'calendario-alterado'
+          ? { eventoCalendarioId: causa.eventoCalendarioId }
+          : {}),
       },
     } satisfies EventoDominio);
     return 'vencimento';

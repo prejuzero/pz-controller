@@ -318,6 +318,7 @@ export class AtualizarProcesso<Transacao> {
     private readonly processos: RepositorioDeProcessos<Transacao>,
     private readonly clientes: RepositorioDeClientes<Transacao>,
     private readonly trilha: TrilhaDeAuditoria<Transacao>,
+    private readonly outbox: Outbox<Transacao>,
   ) {}
 
   async executar(
@@ -355,6 +356,8 @@ export class AtualizarProcesso<Transacao> {
         },
         origemDe(autor),
       );
+      // Comarca corrigida: os prazos abertos são recalculados pelo novo calendário (PZ-332).
+      await this.outbox.gravar(transacao, processo.retirarEventos());
       return ok(depois);
     });
   }

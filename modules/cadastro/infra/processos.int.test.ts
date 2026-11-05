@@ -168,7 +168,13 @@ describe('processos e clientes no PostgreSQL (HU12)', () => {
     );
     if (!criado.ok) throw criado.erro;
     const id = criado.valor.id;
-    const atualizar = new AtualizarProcesso(banco, processos, clientes, trilha);
+    const atualizar = new AtualizarProcesso(
+      banco,
+      processos,
+      clientes,
+      trilha,
+      new OutboxPostgres(),
+    );
     const sigilo = await noTenant(ana, () => atualizar.executar(ana, id, { sigiloso: true }));
     expect(sigilo.ok && sigilo.valor.sigiloso).toBe(true);
     const cobertura = await noTenant(ana, () =>
