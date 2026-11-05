@@ -301,9 +301,12 @@ export class ContarProcessos<Transacao> {
     private readonly processos: RepositorioDeProcessos<Transacao>,
   ) {}
 
-  executar(filtro: { readonly tribunal?: string }): Promise<number> {
+  executar(filtro: { readonly tribunal?: string; readonly clienteId?: Uuid }): Promise<number> {
     return this.unidade.executar((tx) =>
-      this.processos.contar(tx, filtro.tribunal === undefined ? {} : { tribunal: filtro.tribunal }),
+      this.processos.contar(tx, {
+        ...(filtro.tribunal === undefined ? {} : { tribunal: filtro.tribunal }),
+        ...(filtro.clienteId === undefined ? {} : { clienteId: filtro.clienteId }),
+      }),
     );
   }
 }

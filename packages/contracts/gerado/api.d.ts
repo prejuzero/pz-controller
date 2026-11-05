@@ -7708,6 +7708,8 @@ export interface operations {
                 responsavelId?: string;
                 /** @description Sigla do tribunal. */
                 tribunal?: string;
+                /** @description Só os processos do cliente. */
+                clienteId?: string;
                 dias?: number;
             };
             header?: never;
@@ -7770,6 +7772,8 @@ export interface operations {
                 responsavelId?: string;
                 /** @description Sigla do tribunal. */
                 tribunal?: string;
+                /** @description Só os processos do cliente. */
+                clienteId?: string;
                 limite?: number;
             };
             header?: never;
@@ -7832,6 +7836,8 @@ export interface operations {
                 responsavelId?: string;
                 /** @description Sigla do tribunal. */
                 tribunal?: string;
+                /** @description Só os processos do cliente. */
+                clienteId?: string;
             };
             header?: never;
             path?: never;
@@ -8816,6 +8822,8 @@ export interface operations {
                 responsavelId?: string;
                 /** @description Sigla do tribunal. */
                 tribunal?: string;
+                /** @description Só os processos do cliente. */
+                clienteId?: string;
                 /** @description Card do dashboard (HU26): mesmo critério da contagem; "hoje" é o do servidor. */
                 recorte?: "vence-hoje" | "proximos-7-dias" | "vencidos" | "sem-ciencia";
             };

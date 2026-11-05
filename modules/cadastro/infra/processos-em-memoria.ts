@@ -82,10 +82,15 @@ export class ProcessosEmMemoria implements RepositorioDeProcessos<TransacaoEmMem
     );
   }
 
-  contar(_tx: TransacaoEmMemoria, filtro: Pick<FiltroDeProcessos, 'tribunal'>): Promise<number> {
+  contar(
+    _tx: TransacaoEmMemoria,
+    filtro: Pick<FiltroDeProcessos, 'tribunal' | 'clienteId'>,
+  ): Promise<number> {
     return Promise.resolve(
       [...this.linhas.values()].filter(
-        (p) => filtro.tribunal === undefined || p.tribunal === filtro.tribunal,
+        (p) =>
+          (filtro.tribunal === undefined || p.tribunal === filtro.tribunal) &&
+          (filtro.clienteId === undefined || p.clienteId === filtro.clienteId),
       ).length,
     );
   }

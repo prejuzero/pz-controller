@@ -246,7 +246,7 @@ import { AssistenteController, CompromissosController } from './prazos/compromis
 import { DashboardController } from './prazos/dashboard.controller.js';
 import { historicoDoPrazo } from './prazos/historico.js';
 import { AtosDaTaxonomiaController, PrazosController } from './prazos/prazos.controller.js';
-import { processoNoCalendario } from './prazos/processo.js';
+import { processoNoCalendario, processosDoCliente } from './prazos/processo.js';
 import { TabelaPrazosController } from './prazos/tabela-prazos.controller.js';
 import { PrivacidadeController } from './privacidade/privacidade.controller.js';
 import { PublicacoesController } from './publicacoes/publicacoes.controller.js';
@@ -808,13 +808,27 @@ function provedoresDosPrazos(
     // Lista e busca levam os dias úteis restantes, do motor com o calendário do processo.
     {
       provide: ListarPrazos,
-      inject: [RELOGIO, ConsultarProcesso, ConsultarDiasNaoUteis, ConsultarAnosSemCalendario],
+      inject: [
+        RELOGIO,
+        ConsultarProcesso,
+        ConsultarDiasNaoUteis,
+        ConsultarAnosSemCalendario,
+        ProcessosParaBusca,
+      ],
       useFactory: (
         r: Clock,
         processos: ConsultarProcesso<unknown>,
         dias: ConsultarDiasNaoUteis<unknown>,
         anos: ConsultarAnosSemCalendario<unknown>,
-      ) => new ListarPrazos(d.unidade, prazos, r, processoNoCalendario(processos, dias, anos)),
+        doCliente: ProcessosParaBusca<unknown>,
+      ) =>
+        new ListarPrazos(
+          d.unidade,
+          prazos,
+          r,
+          processoNoCalendario(processos, dias, anos),
+          processosDoCliente(doCliente),
+        ),
     },
     {
       provide: BuscarPrazos,
@@ -899,13 +913,27 @@ function provedoresDosPrazos(
     },
     {
       provide: PainelDosPrazos,
-      inject: [RELOGIO, ConsultarProcesso, ConsultarDiasNaoUteis, ConsultarAnosSemCalendario],
+      inject: [
+        RELOGIO,
+        ConsultarProcesso,
+        ConsultarDiasNaoUteis,
+        ConsultarAnosSemCalendario,
+        ProcessosParaBusca,
+      ],
       useFactory: (
         r: Clock,
         processos: ConsultarProcesso<unknown>,
         dias: ConsultarDiasNaoUteis<unknown>,
         anos: ConsultarAnosSemCalendario<unknown>,
-      ) => new PainelDosPrazos(d.unidade, prazos, r, processoNoCalendario(processos, dias, anos)),
+        doCliente: ProcessosParaBusca<unknown>,
+      ) =>
+        new PainelDosPrazos(
+          d.unidade,
+          prazos,
+          r,
+          processoNoCalendario(processos, dias, anos),
+          processosDoCliente(doCliente),
+        ),
     },
     { provide: ConsultarPrazo, useValue: new ConsultarPrazo(d.unidade, prazos) },
     comRelogio(ConfirmarPrazo, (r) => new ConfirmarPrazo(deps(r))),

@@ -5210,6 +5210,18 @@
             }
           },
           {
+            "name": "clienteId",
+            "in": "query",
+            "required": false,
+            "description": "Só os processos do cliente.",
+            "schema": {
+              "description": "Só os processos do cliente.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
             "name": "dias",
             "in": "query",
             "required": false,
@@ -5308,6 +5320,18 @@
             }
           },
           {
+            "name": "clienteId",
+            "in": "query",
+            "required": false,
+            "description": "Só os processos do cliente.",
+            "schema": {
+              "description": "Só os processos do cliente.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
             "name": "limite",
             "in": "query",
             "required": false,
@@ -5403,6 +5427,18 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 20
+            }
+          },
+          {
+            "name": "clienteId",
+            "in": "query",
+            "required": false,
+            "description": "Só os processos do cliente.",
+            "schema": {
+              "description": "Só os processos do cliente.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           }
         ],
@@ -6582,6 +6618,18 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 20
+            }
+          },
+          {
+            "name": "clienteId",
+            "in": "query",
+            "required": false,
+            "description": "Só os processos do cliente.",
+            "schema": {
+              "description": "Só os processos do cliente.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           },
           {

@@ -174,6 +174,7 @@ export class PrazosEmMemoria implements RepositorioDePrazos<TransacaoEmMemoria> 
             (filtro.processoId === undefined || e.processoId === filtro.processoId) &&
             (filtro.responsavelId === undefined || e.responsavelId === filtro.responsavelId) &&
             (filtro.tribunal === undefined || e.jurisdicao.tribunal === filtro.tribunal) &&
+            (filtro.processoIds === undefined || filtro.processoIds.includes(e.processoId)) &&
             (filtro.recorte === undefined || noRecorte(e, filtro.recorte)) &&
             (cursor === undefined || chave(e) > cursor),
         )
@@ -314,7 +315,8 @@ export class PrazosEmMemoria implements RepositorioDePrazos<TransacaoEmMemoria> 
     return [...this.#prazos.values()].filter(
       (e) =>
         (recorte.responsavelId === undefined || e.responsavelId === recorte.responsavelId) &&
-        (recorte.tribunal === undefined || e.jurisdicao.tribunal === recorte.tribunal),
+        (recorte.tribunal === undefined || e.jurisdicao.tribunal === recorte.tribunal) &&
+        (recorte.processoIds === undefined || recorte.processoIds.includes(e.processoId)),
     );
   }
 

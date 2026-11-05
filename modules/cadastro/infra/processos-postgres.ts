@@ -120,9 +120,15 @@ export class ProcessosPostgres implements RepositorioDeProcessos<Transacao> {
     return linhas.map((l) => l.id as Uuid);
   }
 
-  contar(tx: Transacao, filtro: Pick<FiltroDeProcessos, 'tribunal'>): Promise<number> {
+  contar(
+    tx: Transacao,
+    filtro: Pick<FiltroDeProcessos, 'tribunal' | 'clienteId'>,
+  ): Promise<number> {
     return tx.processo.count({
-      where: filtro.tribunal === undefined ? {} : { tribunal: filtro.tribunal },
+      where: {
+        ...(filtro.tribunal === undefined ? {} : { tribunal: filtro.tribunal }),
+        ...(filtro.clienteId === undefined ? {} : { clienteId: filtro.clienteId }),
+      },
     });
   }
 }

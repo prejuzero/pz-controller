@@ -131,6 +131,7 @@ function ondeNaBusca(f: FiltroDaBuscaDePrazos) {
 const recorteDe = (recorte: RecorteDoPainel) => ({
   r: recorte.responsavelId ?? null,
   t: recorte.tribunal ?? null,
+  p: recorte.processoIds === undefined ? null : [...recorte.processoIds],
 });
 
 /** Prazos do tenant da transação (RLS). Sem DELETE: cancelamento é estado. */
@@ -245,6 +246,7 @@ export class PrazosPostgres implements RepositorioDePrazos<Transacao> {
     const status = filtro.status === undefined ? null : paraBanco(filtro.status);
     const cursorData = filtro.depoisDe?.vencimento?.paraIso() ?? (filtro.depoisDe ? FIM : null);
     const cursorId = filtro.depoisDe?.id ?? null;
+    const processos = filtro.processoIds === undefined ? null : [...filtro.processoIds];
     // Mesmo critério de contarParaOPainel: o card e a lista mostram os mesmos prazos.
     const recorte = filtro.recorte?.tipo ?? null;
     const dia = filtro.recorte?.hoje.paraIso() ?? null;
@@ -264,6 +266,7 @@ export class PrazosPostgres implements RepositorioDePrazos<Transacao> {
          AND (${filtro.processoId ?? null}::uuid IS NULL OR processo_id = ${filtro.processoId ?? null}::uuid)
          AND (${filtro.responsavelId ?? null}::uuid IS NULL OR responsavel_id = ${filtro.responsavelId ?? null}::uuid)
          AND (${filtro.tribunal ?? null}::text IS NULL OR jurisdicao->>'tribunal' = ${filtro.tribunal ?? null}::text)
+         AND (${processos}::uuid[] IS NULL OR processo_id = ANY(${processos}::uuid[]))
          AND (${cursorId}::uuid IS NULL
               OR (COALESCE(vencimento, ${FIM}::date), id) > (${cursorData}::date, ${cursorId}::uuid))
        ORDER BY COALESCE(vencimento, ${FIM}::date), id
@@ -303,7 +306,7 @@ export class PrazosPostgres implements RepositorioDePrazos<Transacao> {
     ate: LocalDate,
     recorte: RecorteDoPainel,
   ): Promise<ContagemDoPainel> {
-    const { r, t } = recorteDe(recorte);
+    const { r, t, p } = recorteDe(recorte);
     const dia = hoje.paraIso();
     const [linha] = await transacao.$queryRaw<Record<keyof ContagemDoPainel, bigint>[]>`
       SELECT
@@ -319,7 +322,8 @@ export class PrazosPostgres implements RepositorioDePrazos<Transacao> {
                 FROM prazo
                WHERE status IN ('a_confirmar', 'pendente', 'vencido')
                  AND (${r}::uuid IS NULL OR responsavel_id = ${r}::uuid)
-         AND (${t}::text IS NULL OR jurisdicao->>'tribunal' = ${t}::text)) p`;
+         AND (${t}::text IS NULL OR jurisdicao->>'tribunal' = ${t}::text)
+         AND (${p}::uuid[] IS NULL OR processo_id = ANY(${p}::uuid[]))) p`;
     const n = (v: bigint | undefined) => Number(v ?? 0n);
     return {
       vencemHoje: n(linha?.vencemHoje),
@@ -336,13 +340,14 @@ export class PrazosPostgres implements RepositorioDePrazos<Transacao> {
     fim: LocalDate,
     recorte: RecorteDoPainel,
   ): Promise<{ data: LocalDate; quantidade: number }[]> {
-    const { r, t } = recorteDe(recorte);
+    const { r, t, p } = recorteDe(recorte);
     const linhas = await transacao.$queryRaw<{ vencimento: Date; quantidade: bigint }[]>`
       SELECT vencimento, count(*) AS quantidade FROM prazo
        WHERE status IN ('a_confirmar', 'pendente')
          AND vencimento BETWEEN ${inicio.paraIso()}::date AND ${fim.paraIso()}::date
          AND (${r}::uuid IS NULL OR responsavel_id = ${r}::uuid)
          AND (${t}::text IS NULL OR jurisdicao->>'tribunal' = ${t}::text)
+         AND (${p}::uuid[] IS NULL OR processo_id = ANY(${p}::uuid[]))
        GROUP BY vencimento ORDER BY vencimento`;
     return linhas.map((l) => ({ data: daData(l.vencimento), quantidade: Number(l.quantidade) }));
   }
@@ -367,13 +372,14 @@ export class PrazosPostgres implements RepositorioDePrazos<Transacao> {
     recorte: RecorteDoPainel,
     limite: number,
   ): Promise<Prazo[]> {
-    const { r, t } = recorteDe(recorte);
+    const { r, t, p } = recorteDe(recorte);
     const ids = await transacao.$queryRaw<{ id: string }[]>`
       SELECT id FROM prazo
        WHERE status IN ('a_confirmar', 'pendente')
          AND vencimento >= ${hoje.paraIso()}::date
          AND (${r}::uuid IS NULL OR responsavel_id = ${r}::uuid)
          AND (${t}::text IS NULL OR jurisdicao->>'tribunal' = ${t}::text)
+         AND (${p}::uuid[] IS NULL OR processo_id = ANY(${p}::uuid[]))
        ORDER BY vencimento, id
        LIMIT ${limite}`;
     return this.#porIds(

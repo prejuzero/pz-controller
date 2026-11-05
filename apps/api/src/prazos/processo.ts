@@ -1,8 +1,16 @@
 import { fusoDoJuizo, jurisdicaoDoProcesso } from '@pz/calendario';
 
-import type { ConsultarProcesso } from '@pz/cadastro';
+import type { ConsultarProcesso, ProcessosParaBusca } from '@pz/cadastro';
 import type { ConsultarAnosSemCalendario, ConsultarDiasNaoUteis } from '@pz/calendario';
-import type { LocalizadorDoProcesso } from '@pz/prazos';
+import type { Uuid } from '@pz/kernel';
+import type { LocalizadorDoProcesso, ProcessosDoCliente } from '@pz/prazos';
+
+/** Processos do cliente pela API pública do cadastro (filtro global do dashboard e da lista). */
+export function processosDoCliente(
+  processos: Pick<ProcessosParaBusca<unknown>, 'executar'>,
+): ProcessosDoCliente {
+  return (clienteId: Uuid) => processos.executar({ clienteId });
+}
 
 /**
  * O processo visto pelo cálculo de prazos, montado pelas APIs públicas do cadastro e do

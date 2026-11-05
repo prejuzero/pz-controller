@@ -28,7 +28,7 @@ import type { PrazoDaLista } from '@pz/contracts';
 
 const ABAS = STATUS_DO_PRAZO;
 /** O recorte do dashboard usa os mesmos campos da contagem dos cards (HU26). */
-const DO_RECORTE = ['responsavelId', 'tribunal'] as const;
+const DO_RECORTE = ['responsavelId', 'tribunal', 'clienteId'] as const;
 /** Nas abas vale o filtro inteiro (PZ-349); o período é o do vencimento. */
 const DAS_ABAS = ['de', 'ate', 'responsavelId', 'tribunal', 'clienteId'] as const;
 
@@ -48,7 +48,7 @@ export function ListaDePrazos({ status: inicial, recorte: doCard }: Props) {
   const { de, ate } = filtro;
   const daLista = campos(filtro, DO_RECORTE);
   // A aba é a busca de prazos pela situação (HU28/HU29): mesma ordem da lista, sem data por
-  // último. Sem período nem cliente, o GET da lista basta.
+  // último. Sem período, o GET da lista basta.
   const daBusca: FiltrosDaTela = {
     statusPrazo: [aba],
     ...campos(filtro, ['responsavelId', 'tribunal', 'clienteId']),
@@ -62,9 +62,7 @@ export function ListaDePrazos({ status: inicial, recorte: doCard }: Props) {
           },
         }),
   };
-  const pelaBusca =
-    recorte === undefined &&
-    (de !== undefined || ate !== undefined || filtro.clienteId !== undefined);
+  const pelaBusca = recorte === undefined && (de !== undefined || ate !== undefined);
   const lista = usePrazos(
     recorte === undefined ? { status: aba, ...daLista } : { recorte, ...daLista },
     !pelaBusca,

@@ -1,6 +1,6 @@
 'use client';
 
-import { CardIndicador, cn, Esqueleto, EstadoVazio, SeloStatus, type TomSelo } from '@pz/ui';
+import { CardIndicador, Esqueleto, EstadoVazio, SeloStatus, type TomSelo } from '@pz/ui';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
@@ -13,6 +13,7 @@ import {
 import { campos, comFiltroGlobal, type FiltroGlobal } from '../../../filtro-global';
 import { formatarDataCivil } from '../../../i18n/formatar';
 import { BarraDeFiltroGlobal, useFiltroGlobal } from '../_casca/filtro-global';
+import { escreverNaUrl } from '../busca/filtros-da-url';
 
 import type { ResumoDoDashboard } from '@pz/contracts';
 
@@ -31,8 +32,24 @@ const CARDS: readonly { chave: Indicador; href: string }[] = [
 const LINK_DO_CARD =
   'block rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foco';
 
-/** Campos do filtro global que o dashboard aceita (período e cliente: pendência da HU26). */
-const APLICADOS = ['responsavelId', 'tribunal'] as const;
+/**
+ * Campos do filtro global que o dashboard aceita. O período não entra: os cards e a linha do tempo
+ * já são janelas de datas a partir de hoje.
+ */
+const APLICADOS = ['responsavelId', 'tribunal', 'clienteId'] as const;
+
+/** Barra da linha do tempo → busca dos prazos abertos que vencem no dia (mesmo critério). */
+function buscaDoDia(data: string, filtro: Partial<Record<(typeof APLICADOS)[number], string>>) {
+  const busca = escreverNaUrl({
+    recurso: 'prazos',
+    filtros: {
+      statusPrazo: ['a-confirmar', 'pendente'],
+      ...filtro,
+      periodo: { de: data, ate: data, campoData: 'vencimento' },
+    },
+  });
+  return `/busca?${busca.toString()}`;
+}
 
 /** O card abre a lista levando o filtro global junto. */
 function comFiltro(href: string, filtro: FiltroGlobal): string {
@@ -117,11 +134,18 @@ export function Dashboard() {
             <div className="flex h-40 items-end gap-1" aria-hidden data-dinamico>
               {linha.data.itens.map((dia, i) => (
                 <div key={dia.data} className="flex h-full min-w-0 flex-1 flex-col justify-end">
-                  <div
-                    className={cn('rounded-t bg-primaria', dia.quantidade === 0 && 'bg-borda')}
-                    style={{ height: `${String(Math.max(2, (dia.quantidade / maximo) * 100))}%` }}
-                    title={`${formatarDataCivil(dia.data)}: ${String(dia.quantidade)}`}
-                  />
+                  {dia.quantidade === 0 ? (
+                    <div className="h-[2%] rounded-t bg-borda" />
+                  ) : (
+                    // Atalho de mouse; pelo teclado, o link do dia está na tabela abaixo.
+                    <Link
+                      href={buscaDoDia(dia.data, doDashboard)}
+                      tabIndex={-1}
+                      className="rounded-t bg-primaria hover:opacity-80"
+                      style={{ height: `${String(Math.max(2, (dia.quantidade / maximo) * 100))}%` }}
+                      title={`${formatarDataCivil(dia.data)}: ${String(dia.quantidade)}`}
+                    />
+                  )}
                   {/* Legenda a cada 5 dias: 30 rótulos não cabem em 360 px. */}
                   <span className="mt-1 h-3 text-center text-[10px] leading-3 text-texto-suave">
                     {i % 5 === 0 ? dia.data.slice(8, 10) : ''}
@@ -140,7 +164,15 @@ export function Dashboard() {
               <tbody>
                 {linha.data.itens.map((dia) => (
                   <tr key={dia.data}>
-                    <td>{formatarDataCivil(dia.data)}</td>
+                    <td>
+                      {dia.quantidade === 0 ? (
+                        formatarDataCivil(dia.data)
+                      ) : (
+                        <Link href={buscaDoDia(dia.data, doDashboard)}>
+                          {formatarDataCivil(dia.data)}
+                        </Link>
+                      )}
+                    </td>
                     <td>{dia.quantidade}</td>
                   </tr>
                 ))}

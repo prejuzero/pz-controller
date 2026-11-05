@@ -5,7 +5,7 @@ import { Prazo, STATUS_DO_PRAZO } from '../domain/prazo.js';
 import { RAMOS, UNIDADES } from '../domain/tabela.js';
 
 import { contadorDeDiasUteis } from './dias-uteis.js';
-import { PROXIMOS_DIAS } from './painel.js';
+import { processosDoFiltro, PROXIMOS_DIAS } from './painel.js';
 import { RECORTES_DA_LISTA } from './portas.js';
 import { prazoDetalhado, prazoListado, SugestaoDePrazo } from './prazos.js';
 
@@ -13,6 +13,7 @@ import type {
   FiltroDePrazos,
   FontesDaGeracao,
   LocalizadorDoProcesso,
+  ProcessosDoCliente,
   RecorteDaLista,
   RepositorioDePrazos,
 } from './portas.js';
@@ -265,6 +266,7 @@ const Consulta = z.object({
   processoId: z.uuid().optional(),
   responsavelId: z.uuid().optional(),
   tribunal: z.string().trim().min(1).max(20).optional(),
+  clienteId: z.uuid().optional(),
   recorte: z.enum(RECORTES_DA_LISTA).optional(),
   cursor: z.string().max(200).optional(),
   limite: z.coerce.number().int().min(1).max(100).default(20),
@@ -282,6 +284,8 @@ export class ListarPrazos<Transacao> {
     private readonly relogio: Clock,
     /** Calendário do processo para os dias úteis restantes; sem ele, ficam nulos. */
     private readonly localizar?: LocalizadorDoProcesso,
+    /** Filtro por cliente (o mesmo do dashboard); sem ele, o `clienteId` é recusado. */
+    private readonly doCliente?: ProcessosDoCliente,
   ) {}
 
   async executar(
@@ -289,7 +293,11 @@ export class ListarPrazos<Transacao> {
   ): Promise<Result<{ itens: PrazoComDiasUteis[]; proximoCursor: string | null }, Validacao>> {
     const dados = Consulta.safeParse(consulta);
     if (!dados.success) return err(validacao(dados.error));
-    const { cursor, limite, status, processoId, responsavelId, tribunal, recorte } = dados.data;
+    const { cursor, limite, status, processoId, responsavelId, tribunal, clienteId, recorte } =
+      dados.data;
+    const processosDoCliente = await processosDoFiltro(clienteId, this.doCliente);
+    if (!processosDoCliente.ok) return processosDoCliente;
+    const processoIds = processosDoCliente.valor;
     let depoisDe: FiltroDePrazos['depoisDe'];
     if (cursor !== undefined) {
       let lido: unknown;
@@ -312,6 +320,7 @@ export class ListarPrazos<Transacao> {
         ...(processoId === undefined ? {} : { processoId: processoId as Uuid }),
         ...(responsavelId === undefined ? {} : { responsavelId: responsavelId as Uuid }),
         ...(tribunal === undefined ? {} : { tribunal }),
+        ...(processoIds === undefined ? {} : { processoIds }),
         ...(depoisDe === undefined ? {} : { depoisDe }),
         ...(recorte === undefined ? {} : { recorte: this.#recorte(recorte) }),
       }),
