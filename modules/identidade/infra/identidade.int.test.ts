@@ -65,7 +65,9 @@ const TENANT_P = '01a10e00-0000-7000-8000-0000000d0f01' as Uuid;
 const ANA = '01a10e00-0000-7000-8000-0000000d0a02' as Uuid;
 const BIA = '01a10e00-0000-7000-8000-0000000d0b02' as Uuid;
 const SENHA_DA_BIA = 'senha ficticia da bia 2026';
-const relogio = new FixedClock(Instant.deIso('2026-10-06T12:00:00Z'));
+// Fixo durante o teste, mas tirado da hora real: o Redis expira as chaves pelo próprio relógio
+// (PXAT), e uma data fixa no passado faz o token de renovação (30 dias) vencer sozinho.
+const relogio = new FixedClock(Instant.deEpochMs(Math.floor(Date.now() / 1000) * 1000));
 const CTX = { ip: '203.0.113.7', userAgent: 'teste' };
 const protecao = () =>
   new ProtecaoDeAcesso(new TentativasRedis(redis), new AcessosPostgres(banco), relogio);
@@ -559,7 +561,10 @@ describe('impersonação com PostgreSQL e Redis (HU07)', () => {
       tenantId: TENANT_A,
       motivo: 'Chamado 7: conferir',
     });
-    expect(gravada?.impersonacao?.expiraEm.paraIso()).toBe('2026-10-06T13:00:00.000Z');
+    // Impersonação vale 1 hora a partir de agora (HU07).
+    expect(gravada?.impersonacao?.expiraEm.paraIso()).toBe(
+      relogio.agora().maisMs(3_600_000).paraIso(),
+    );
 
     const direto = await postgres.conectar('pz_sistema');
     try {

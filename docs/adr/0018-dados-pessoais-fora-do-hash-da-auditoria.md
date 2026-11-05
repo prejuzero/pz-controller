@@ -18,3 +18,4 @@ A LGPD (HU38) exige que, no encerramento da conta, os dados pessoais deixem de e
 
 - Ler a trilha com os dados pessoais exige juntar `auditoria_dado_pessoal`; a cópia WORM leva só os identificadores (minimização).
 - Emissores que gravam dado pessoal em `antes`/`depois` devem marcá-lo com `dadoPessoal(...)`; sem marcação, o valor fica no hash e não é pseudonimizável.
+- Rede de proteção (PZ-305, 05/11/2026): antes do hash, a trilha marca sozinha o que tem cara de dado pessoal (`marcarDadosPessoais`): texto com e-mail, CPF ou CNPJ em qualquer campo, as chaves `email`, `cpf`, `cnpj`, `documento`, `telefone` e `celular`, e `nome` nas entidades de pessoa (`usuario`, `advogado`, `cliente`, `tenant`). Na dúvida, marca: um campo a mais fora do hash só deixa de ser verificável pela cadeia; um dado pessoal no hash não pode mais ser pseudonimizado. Nome de pessoa em texto livre não é detectável: o emissor continua responsável por marcá-lo.
