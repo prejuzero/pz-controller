@@ -173,6 +173,7 @@ export class PrazosEmMemoria implements RepositorioDePrazos<TransacaoEmMemoria> 
             (filtro.status === undefined || e.status === filtro.status) &&
             (filtro.processoId === undefined || e.processoId === filtro.processoId) &&
             (filtro.responsavelId === undefined || e.responsavelId === filtro.responsavelId) &&
+            (filtro.tribunal === undefined || e.jurisdicao.tribunal === filtro.tribunal) &&
             (filtro.recorte === undefined || noRecorte(e, filtro.recorte)) &&
             (cursor === undefined || chave(e) > cursor),
         )

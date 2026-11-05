@@ -12,8 +12,9 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
-import { usePrazos } from '../../../api/hooks';
+import { useBuscaDePrazos, usePrazos } from '../../../api/hooks';
 import { STATUS_DO_PRAZO } from '../../../api/prazos';
+import { campos } from '../../../filtro-global';
 import { formatarDataCivil } from '../../../i18n/formatar';
 import { useCienciaEmLote } from '../_casca/ciencia-em-lote';
 import { BotoesExportar } from '../_casca/exportar';
@@ -21,12 +22,15 @@ import { BarraDeFiltroGlobal, useFiltroGlobal } from '../_casca/filtro-global';
 
 import { Compromissos } from './compromissos';
 
+import type { FiltrosDaTela } from '../../../api/busca';
 import type { RecorteDaLista, StatusDoPrazo } from '../../../api/prazos';
 import type { Prazo } from '@pz/contracts';
 
 const ABAS = STATUS_DO_PRAZO;
-/** A lista aceita o advogado; período, tribunal e cliente ficam com a busca (pendência). */
-const APLICADOS = ['responsavelId'] as const;
+/** O recorte do dashboard usa os mesmos campos da contagem dos cards (HU26). */
+const DO_RECORTE = ['responsavelId', 'tribunal'] as const;
+/** Nas abas vale o filtro inteiro (PZ-349); o período é o do vencimento. */
+const DAS_ABAS = ['de', 'ate', 'responsavelId', 'tribunal', 'clienteId'] as const;
 
 interface Props {
   /** Aba inicial (ex.: o card "aguardando confirmação" do dashboard). */
@@ -40,13 +44,37 @@ export function ListaDePrazos({ status: inicial, recorte: doCard }: Props) {
   const t = useTranslations('prazos');
   const [aba, setAba] = useState<StatusDoPrazo>(inicial ?? 'a-confirmar');
   const [recorte, setRecorte] = useState(doCard);
-  const { responsavelId } = useFiltroGlobal();
-  const doFiltro = responsavelId === undefined ? {} : { responsavelId };
-  const prazos = usePrazos(
-    recorte === undefined ? { status: aba, ...doFiltro } : { recorte, ...doFiltro },
+  const filtro = useFiltroGlobal();
+  const { de, ate } = filtro;
+  const daLista = campos(filtro, DO_RECORTE);
+  // A aba é a busca de prazos pela situação (HU28/HU29): mesma ordem da lista, sem data por
+  // último. Sem período nem cliente, o GET da lista basta.
+  const daBusca: FiltrosDaTela = {
+    statusPrazo: [aba],
+    ...campos(filtro, ['responsavelId', 'tribunal', 'clienteId']),
+    ...(de === undefined && ate === undefined
+      ? {}
+      : {
+          periodo: {
+            campoData: 'vencimento',
+            ...(de === undefined ? {} : { de }),
+            ...(ate === undefined ? {} : { ate }),
+          },
+        }),
+  };
+  const pelaBusca =
+    recorte === undefined &&
+    (de !== undefined || ate !== undefined || filtro.clienteId !== undefined);
+  const lista = usePrazos(
+    recorte === undefined ? { status: aba, ...daLista } : { recorte, ...daLista },
+    !pelaBusca,
   );
+  const busca = useBuscaDePrazos(daBusca, pelaBusca);
+  const prazos = pelaBusca ? busca : lista;
 
-  const linhas = prazos.data?.pages.flatMap((pagina) => pagina.itens) ?? [];
+  const linhas: Prazo[] = pelaBusca
+    ? (busca.data?.pages.flatMap((pagina) => pagina.itens) ?? [])
+    : (lista.data?.pages.flatMap((pagina) => pagina.itens) ?? []);
   const lote = useCienciaEmLote(linhas);
   const colunas: ColunaTabela<Prazo>[] = [
     ...(lote.coluna === undefined ? [] : [lote.coluna]),
@@ -106,14 +134,14 @@ export function ListaDePrazos({ status: inicial, recorte: doCard }: Props) {
         <h1 className="text-2xl font-semibold">{t('titulo')}</h1>
         <p className="max-w-3xl text-texto-suave">{t('descricao')}</p>
       </div>
-      <BarraDeFiltroGlobal aplicados={APLICADOS} />
+      <BarraDeFiltroGlobal aplicados={recorte === undefined ? DAS_ABAS : DO_RECORTE} />
       {/* A aba vira a busca de prazos pela situação (HU29); o recorte do dashboard não exporta. */}
       {recorte === undefined ? (
         <BotoesExportar
           pedido={(formato) => ({
             tipo: 'busca-prazos',
             formato,
-            filtros: { statusPrazo: [aba], ...doFiltro },
+            filtros: daBusca,
           })}
         />
       ) : null}

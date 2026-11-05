@@ -8655,6 +8655,8 @@ export interface operations {
                 status?: "a-confirmar" | "pendente" | "cumprido" | "vencido" | "cancelado";
                 processoId?: string;
                 responsavelId?: string;
+                /** @description Sigla do tribunal. */
+                tribunal?: string;
                 /** @description Card do dashboard (HU26): mesmo critério da contagem; "hoje" é o do servidor. */
                 recorte?: "vence-hoje" | "proximos-7-dias" | "vencidos" | "sem-ciencia";
             };

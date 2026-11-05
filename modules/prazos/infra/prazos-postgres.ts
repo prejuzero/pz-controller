@@ -263,6 +263,7 @@ export class PrazosPostgres implements RepositorioDePrazos<Transacao> {
                   AND status_ciencia = 'pendente'))
          AND (${filtro.processoId ?? null}::uuid IS NULL OR processo_id = ${filtro.processoId ?? null}::uuid)
          AND (${filtro.responsavelId ?? null}::uuid IS NULL OR responsavel_id = ${filtro.responsavelId ?? null}::uuid)
+         AND (${filtro.tribunal ?? null}::text IS NULL OR jurisdicao->>'tribunal' = ${filtro.tribunal ?? null}::text)
          AND (${cursorId}::uuid IS NULL
               OR (COALESCE(vencimento, ${FIM}::date), id) > (${cursorData}::date, ${cursorId}::uuid))
        ORDER BY COALESCE(vencimento, ${FIM}::date), id

@@ -262,6 +262,7 @@ const Consulta = z.object({
   status: z.enum(STATUS_DO_PRAZO).optional(),
   processoId: z.uuid().optional(),
   responsavelId: z.uuid().optional(),
+  tribunal: z.string().trim().min(1).max(20).optional(),
   recorte: z.enum(RECORTES_DA_LISTA).optional(),
   cursor: z.string().max(200).optional(),
   limite: z.coerce.number().int().min(1).max(100).default(20),
@@ -281,7 +282,7 @@ export class ListarPrazos<Transacao> {
   ): Promise<Result<{ itens: PrazoListado[]; proximoCursor: string | null }, Validacao>> {
     const dados = Consulta.safeParse(consulta);
     if (!dados.success) return err(validacao(dados.error));
-    const { cursor, limite, status, processoId, responsavelId, recorte } = dados.data;
+    const { cursor, limite, status, processoId, responsavelId, tribunal, recorte } = dados.data;
     let depoisDe: FiltroDePrazos['depoisDe'];
     if (cursor !== undefined) {
       let lido: unknown;
@@ -303,6 +304,7 @@ export class ListarPrazos<Transacao> {
         ...(status === undefined ? {} : { status }),
         ...(processoId === undefined ? {} : { processoId: processoId as Uuid }),
         ...(responsavelId === undefined ? {} : { responsavelId: responsavelId as Uuid }),
+        ...(tribunal === undefined ? {} : { tribunal }),
         ...(depoisDe === undefined ? {} : { depoisDe }),
         ...(recorte === undefined ? {} : { recorte: this.#recorte(recorte) }),
       }),

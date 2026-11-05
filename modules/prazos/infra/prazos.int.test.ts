@@ -378,6 +378,18 @@ describe('ciclo de vida no PostgreSQL (HU24, PZ-171)', () => {
       new ListarPrazos(banco, new PrazosPostgres(), relogio()).executar({ status: 'cumprido' }),
     );
     expect(lista.ok && lista.valor.itens.map((i) => i.id)).toContain(prazo.id);
+    // Filtro global (PZ-349): tribunal pela jurisdição gravada no prazo.
+    const listar = (tribunal: string) =>
+      noEscritorio(() =>
+        new ListarPrazos(banco, new PrazosPostgres(), relogio()).executar({
+          status: 'cumprido',
+          tribunal,
+        }),
+      );
+    const doTribunal = await listar('TJGO');
+    expect(doTribunal.ok && doTribunal.valor.itens.map((i) => i.id)).toContain(prazo.id);
+    const deOutro = await listar('TRF9');
+    expect(deOutro.ok && deOutro.valor.itens).toEqual([]);
   });
 
   it('um prazo por publicação no tenant (índice único) e job de vencidos', async () => {

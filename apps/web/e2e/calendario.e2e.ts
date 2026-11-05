@@ -64,13 +64,17 @@ test('o filtro global fica na URL, sobrevive ao recarregar e acompanha o menu', 
   await expect(page).toHaveURL('/?tribunal=TJGO');
   await expect(page.getByTestId('filtro-global').getByLabel('Tribunal')).toHaveValue('TJGO');
 
-  // A lista de prazos ainda não filtra por tribunal e avisa, mantendo o filtro na URL.
+  // A lista de prazos aplica o filtro inteiro nas abas (PZ-349).
   await page.getByRole('navigation').getByRole('link', { name: 'Prazos' }).first().click();
   await expect(page).toHaveURL('/prazos?tribunal=TJGO');
-  await expect(page.getByText('Nesta tela o filtro não usa: Tribunal.')).toBeVisible();
+  await expect(page.getByTestId('filtro-global').getByLabel('Tribunal')).toHaveValue('TJGO');
+  await expect(page.getByText(/Nesta tela o filtro não usa/)).toBeHidden();
+  // O recorte do dashboard conta só por advogado e tribunal: o período fica de fora e avisa.
+  await page.goto('/prazos?recorte=vencidos&tribunal=TJGO&de=2026-01-01');
+  await expect(page.getByText('Nesta tela o filtro não usa: De.')).toBeVisible();
 
   await page.getByRole('navigation').getByRole('link', { name: 'Calendário' }).first().click();
-  await page.getByRole('button', { name: 'Limpar filtro' }).click();
+  await page.getByTestId('filtro-global').getByRole('button', { name: 'Limpar filtro' }).click();
   await expect(page).toHaveURL('/calendario');
 });
 
