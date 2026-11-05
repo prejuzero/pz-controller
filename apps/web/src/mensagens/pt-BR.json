@@ -795,8 +795,11 @@
       "cumprido": "Cumpridos",
       "cancelado": "Cancelados"
     },
+    "diasUteis": "{dias, plural, =0 {vence hoje} one {# dia útil} other {# dias úteis}}",
+    "semDiasUteis": "—",
     "colunas": {
       "vencimento": "Vencimento",
+      "diasUteis": "Dias úteis",
       "ato": "Ato",
       "processo": "Processo",
       "ciencia": "Ciência",

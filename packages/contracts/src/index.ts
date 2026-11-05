@@ -257,6 +257,7 @@ export {
   DetalheDoPrazo,
   listarPrazos,
   PaginaDePrazos,
+  PrazoDaLista,
   PedidoComVersao,
   PedidoDeAjuste,
   PedidoDeCancelamento,

@@ -2413,7 +2413,51 @@ export interface components {
             proximoCursor: string | null;
         };
         PaginaDePrazos: {
-            itens: components["schemas"]["Prazo"][];
+            itens: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                processoId: string;
+                publicacaoConteudoId: string | null;
+                tipoAto: string;
+                ramo: ("civel" | "juizados" | "trabalhista" | "penal" | "juizado-criminal") | null;
+                /**
+                 * @description "a-confirmar": sem data sugerida.
+                 * @enum {string}
+                 */
+                situacao: "calculado" | "a-confirmar";
+                dias: number | null;
+                unidade: ("dias" | "horas" | "meses" | "anos") | null;
+                inicio: string | null;
+                vencimento: string | null;
+                /** @description 24h do vencimento no fuso do juízo (exclusive). */
+                fimDoPrazo: string | null;
+                fusoDoJuizo: string | null;
+                fundamento: string | null;
+                versaoMotor: string;
+                versaoTabela: number | null;
+                /** @description Data informada pelo advogado ("definida manualmente"). */
+                vencimentoManual: boolean;
+                /** @enum {string} */
+                origem: "djen" | "manual" | "painel";
+                /** @enum {string} */
+                status: "a-confirmar" | "pendente" | "cumprido" | "vencido" | "cancelado";
+                /** @enum {string} */
+                statusCiencia: "pendente" | "confirmada";
+                responsavelId: string | null;
+                jurisdicao: {
+                    tribunal?: string;
+                    uf?: string;
+                    comarca?: string;
+                    readonly lacunas: string[];
+                };
+                /** @description Classificação de confiança baixa ou revisão manual. */
+                classificacaoIncerta: boolean;
+                motivoAjuste: string | null;
+                versao: number;
+                /** @description Do motor, pelo calendário do processo, até o vencimento (0: vence hoje); null se encerrado, sem data, já vencido ou sem calendário para contar. */
+                diasUteisRestantes: number | null;
+            }[];
             /** @description Nulo quando não há mais páginas. */
             proximoCursor: string | null;
         };
@@ -3151,7 +3195,7 @@ export interface components {
                 classificacaoIncerta: boolean;
                 motivoAjuste: string | null;
                 versao: number;
-                /** @description Do motor, pelo calendário do processo; null se não foi possível contar. */
+                /** @description Do motor, pelo calendário do processo, até o vencimento (0: vence hoje); null se encerrado, sem data, já vencido ou sem calendário para contar. */
                 diasUteisRestantes: number | null;
             }[];
         };
@@ -3217,7 +3261,51 @@ export interface components {
             itens: components["schemas"]["Relatorio"][];
         };
         ResultadoDaBuscaDePrazos: {
-            itens: components["schemas"]["Prazo"][];
+            itens: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                processoId: string;
+                publicacaoConteudoId: string | null;
+                tipoAto: string;
+                ramo: ("civel" | "juizados" | "trabalhista" | "penal" | "juizado-criminal") | null;
+                /**
+                 * @description "a-confirmar": sem data sugerida.
+                 * @enum {string}
+                 */
+                situacao: "calculado" | "a-confirmar";
+                dias: number | null;
+                unidade: ("dias" | "horas" | "meses" | "anos") | null;
+                inicio: string | null;
+                vencimento: string | null;
+                /** @description 24h do vencimento no fuso do juízo (exclusive). */
+                fimDoPrazo: string | null;
+                fusoDoJuizo: string | null;
+                fundamento: string | null;
+                versaoMotor: string;
+                versaoTabela: number | null;
+                /** @description Data informada pelo advogado ("definida manualmente"). */
+                vencimentoManual: boolean;
+                /** @enum {string} */
+                origem: "djen" | "manual" | "painel";
+                /** @enum {string} */
+                status: "a-confirmar" | "pendente" | "cumprido" | "vencido" | "cancelado";
+                /** @enum {string} */
+                statusCiencia: "pendente" | "confirmada";
+                responsavelId: string | null;
+                jurisdicao: {
+                    tribunal?: string;
+                    uf?: string;
+                    comarca?: string;
+                    readonly lacunas: string[];
+                };
+                /** @description Classificação de confiança baixa ou revisão manual. */
+                classificacaoIncerta: boolean;
+                motivoAjuste: string | null;
+                versao: number;
+                /** @description Do motor, pelo calendário do processo, até o vencimento (0: vence hoje); null se encerrado, sem data, já vencido ou sem calendário para contar. */
+                diasUteisRestantes: number | null;
+            }[];
             proximoCursor: string | null;
             totalAproximado: number;
             /** @description true: há mais resultados do que o total contado. */

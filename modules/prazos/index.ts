@@ -103,6 +103,7 @@ export { AgendaDosLembretes } from './application/agenda.js';
 export type { DataDoLembrete, SituacaoDoPrazo } from './application/agenda.js';
 export { BuscarPrazos, TETO_DA_CONTAGEM } from './application/busca.js';
 export type { PaginaDaBuscaDePrazos } from './application/busca.js';
+export type { PrazoComDiasUteis } from './application/ciclo-de-vida.js';
 export { PainelDosPrazos } from './application/painel.js';
 export type { ProximoPrazo, ResumoDosPrazos } from './application/painel.js';
 export { RECORTES_DA_LISTA, TIPOS_DE_DIA } from './application/portas.js';

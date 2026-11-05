@@ -1,12 +1,11 @@
 import { err, hoje, ok, Validacao } from '@pz/kernel';
-import { calendarioDeOcorrencias, diasUteisRestantes } from '@pz/motor-prazos';
 import { z } from 'zod';
 
-import { EFEITO_DO_DIA, prazoListado } from './prazos.js';
+import { contadorDeDiasUteis } from './dias-uteis.js';
+import { prazoListado } from './prazos.js';
 
 import type { LocalizadorDoProcesso, RecorteDoPainel, RepositorioDePrazos } from './portas.js';
 import type { PrazoListado } from './prazos.js';
-import type { Prazo } from '../domain/prazo.js';
 import type { Clock, LocalDate, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 
 /** Janela do card "próximos 7 dias" (RF31), em dias corridos a partir de amanhã. */
@@ -96,33 +95,14 @@ export class PainelDosPrazos<Transacao> {
     const prazos = await this.unidade.executar((tx) =>
       this.prazos.abertosAPartirDe(tx, dia, recorteDe(dados.data), dados.data.limite),
     );
+    const contar = contadorDeDiasUteis(this.localizar, dia);
     return ok(
       await Promise.all(
         prazos.map(async (p) => ({
           ...prazoListado(p.estado),
-          diasUteisRestantes: await this.#diasUteisRestantes(p, dia),
+          diasUteisRestantes: await contar(p),
         })),
       ),
     );
-  }
-
-  async #diasUteisRestantes(prazo: Prazo, dia: LocalDate): Promise<number | null> {
-    const vencimento = prazo.estado.calculo.vencimento;
-    if (vencimento === null) return null;
-    if (!vencimento.ehDepoisDe(dia)) return 0;
-    const processo = await this.localizar(prazo.estado.processoId);
-    if (processo === undefined) return null;
-    const dias = await processo.diasNaoUteis(dia.maisDias(1), vencimento);
-    const calendario = calendarioDeOcorrencias(
-      dias.map((d) => ({
-        data: d.data,
-        efeito: EFEITO_DO_DIA[d.tipo],
-        motivo: d.motivo,
-        atoNormativo: d.atoNormativo,
-        urlAto: d.urlAto,
-      })),
-    );
-    const r = diasUteisRestantes(dia, vencimento, calendario);
-    return r.ok ? r.valor : null;
   }
 }

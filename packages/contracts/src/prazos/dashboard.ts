@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { DataCivil, Uuid } from '../comum.js';
 import { definirRota, nomear } from '../rota.js';
 
-import { Prazo } from './prazos.js';
+import { PrazoDaLista } from './prazos.js';
 
 /**
  * Filtro global do dashboard (HU26), igual nos três endpoints. Período e cliente ainda não
@@ -45,16 +45,7 @@ export type LinhaDoTempo = z.infer<typeof LinhaDoTempo.esquema>;
 export const ProximosPrazos = nomear(
   'ProximosPrazos',
   z.object({
-    itens: z.array(
-      Prazo.esquema.extend({
-        diasUteisRestantes: z
-          .number()
-          .int()
-          .nonnegative()
-          .nullable()
-          .describe('Do motor, pelo calendário do processo; null se não foi possível contar.'),
-      }),
-    ),
+    itens: z.array(PrazoDaLista.esquema),
   }),
 );
 export type ProximosPrazos = z.infer<typeof ProximosPrazos.esquema>;
