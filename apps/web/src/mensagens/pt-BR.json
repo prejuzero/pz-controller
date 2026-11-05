@@ -388,9 +388,11 @@
       "conferenciaAjuda": "Lembrete por e-mail; fica abaixo dos 10 dias corridos da ciência tácita no portal.",
       "dias": "{dias, plural, one {# dia} other {# dias}}",
       "conferenciaResumo": "Conferência do painel a cada {dias, plural, one {# dia} other {# dias}}.",
-      "irConferencias": "Ver conferências"
+      "irConferencias": "Ver conferências",
+      "registrarConferencia": "Registrar a conferência do painel deste processo:"
     },
-    "cancelar": "Cancelar"
+    "cancelar": "Cancelar",
+    "irConferencias": "Conferências de painel"
   },
   "clientes": {
     "titulo": "Clientes",

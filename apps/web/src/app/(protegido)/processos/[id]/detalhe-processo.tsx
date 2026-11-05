@@ -8,6 +8,7 @@ import { useState, type ReactNode } from 'react';
 
 import { useAlterarCobertura, useAtualizarProcesso, useProcesso } from '../../../../api/hooks';
 import { SePermitido } from '../../_casca/se-permitido';
+import { RegistrarConferencia } from '../../conferencias/registrar-conferencia';
 import {
   CaixaSigilo,
   CampoCliente,
@@ -95,6 +96,13 @@ export function DetalheProcesso({
               {t('detalhe.irConferencias')}
             </Link>
           </p>
+        ) : null}
+        {p.cobertura !== 'automatica' || p.sigiloso ? (
+          // Registro direto no processo (PZ-355), sem ir à lista de conferências.
+          <div className="mt-3 space-y-2">
+            <p className="text-sm font-medium">{t('detalhe.registrarConferencia')}</p>
+            <RegistrarConferencia processoId={p.id} />
+          </div>
         ) : null}
       </Secao>
 

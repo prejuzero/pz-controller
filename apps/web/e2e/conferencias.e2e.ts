@@ -27,6 +27,11 @@ test('processo fora da cobertura: conferir sem novidade e encontrar intimação'
 }) => {
   const numero = numeroFicticio();
   await page.goto('/processos');
+  // Atalho para as conferências na tela de Processos (PZ-355).
+  await expect(page.getByRole('link', { name: 'Conferências de painel' })).toHaveAttribute(
+    'href',
+    '/conferencias',
+  );
   await page.getByRole('button', { name: 'Novo processo' }).click();
   await page.getByRole('dialog').getByLabel('Número CNJ').fill(numero);
   await page.getByRole('dialog').getByRole('button', { name: 'Cadastrar' }).click();
@@ -58,4 +63,9 @@ test('processo fora da cobertura: conferir sem novidade e encontrar intimação'
   await linha.getByRole('button', { name: 'Encontrei intimação' }).click();
   await expect(page).toHaveURL(/\/processos\/[0-9a-f-]+\?novoPrazo=1$/);
   await expect(page.getByRole('dialog', { name: 'Novo prazo' })).toBeVisible();
+
+  // Registro direto no detalhe do processo (PZ-355).
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Conferido, sem novidade' }).click();
+  await expect(page.getByText('Conferência registrada.')).toBeVisible();
 });

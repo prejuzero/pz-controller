@@ -1,20 +1,13 @@
 'use client';
 
-import {
-  avisar,
-  Botao,
-  EstadoCarregando,
-  EstadoVazio,
-  SeloStatus,
-  TabelaDados,
-  type ColunaTabela,
-} from '@pz/ui';
+import { EstadoCarregando, EstadoVazio, SeloStatus, TabelaDados, type ColunaTabela } from '@pz/ui';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
-import { useConferencias, usePermissao, useRegistrarConferencia } from '../../../api/hooks';
+import { useConferencias } from '../../../api/hooks';
 import { formatarDataCivil, formatarInstante } from '../../../i18n/formatar';
+
+import { RegistrarConferencia } from './registrar-conferencia';
 
 import type { ConferenciasDoEscritorio } from '@pz/contracts';
 
@@ -27,10 +20,7 @@ type Item = ConferenciasDoEscritorio['itens'][number];
  */
 export function TelaDeConferencias() {
   const t = useTranslations('conferencias');
-  const router = useRouter();
   const conferencias = useConferencias();
-  const registrar = useRegistrarConferencia();
-  const podeRegistrar = usePermissao('prazos:confirmar') === true;
 
   const colunas: ColunaTabela<Item>[] = [
     {
@@ -83,44 +73,7 @@ export function TelaDeConferencias() {
     {
       id: 'acoes',
       header: t('colunas.acoes'),
-      cell: ({ row }) =>
-        podeRegistrar ? (
-          <div className="flex flex-wrap gap-2">
-            <Botao
-              tamanho="sm"
-              disabled={registrar.isPending}
-              onClick={() => {
-                registrar.mutate(
-                  { id: row.original.processoId, resultado: 'sem-novidade' },
-                  {
-                    onSuccess: () => {
-                      avisar.sucesso(t('registrada'));
-                    },
-                  },
-                );
-              }}
-            >
-              {t('semNovidade')}
-            </Botao>
-            <Botao
-              tamanho="sm"
-              variante="secundaria"
-              disabled={registrar.isPending}
-              onClick={() => {
-                registrar.mutate(
-                  { id: row.original.processoId, resultado: 'nova-intimacao' },
-                  {
-                    onSuccess: () => {
-                      router.push(`/processos/${row.original.processoId}?novoPrazo=1`);
-                    },
-                  },
-                );
-              }}
-            >
-              {t('novaIntimacao')}
-            </Botao>
-          </div>
-        ) : null,
+      cell: ({ row }) => <RegistrarConferencia processoId={row.original.processoId} />,
     },
   ];
 
