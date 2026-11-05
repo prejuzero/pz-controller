@@ -132,6 +132,7 @@ import {
   GerarArquivo,
   GerarRelatorio,
   RelatoriosPostgres,
+  RemoverArquivosExpirados,
   RenderizadorPdf,
   RenderizadorXlsx,
 } from '@pz/relatorios';
@@ -718,6 +719,18 @@ export class WorkerModule {
             new TrilhaPostgres(),
             fonteDosRelatorios(banco, relogio, protecao, ambiente.PORTAL_URL),
             [new RenderizadorPdf(), new RenderizadorXlsx()],
+            opcoes.arquivos ?? arquivosDoAmbiente(ambiente, relogio),
+            relogio,
+          ),
+      },
+      {
+        // Limpeza dos arquivos de relatórios vencidos (PZ-353): lista e marca como sistema.
+        provide: RemoverArquivosExpirados,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new RemoverArquivosExpirados(
+            sistema.unidade('relatorios: arquivos com o link vencido'),
+            new RelatoriosPostgres(),
             opcoes.arquivos ?? arquivosDoAmbiente(ambiente, relogio),
             relogio,
           ),

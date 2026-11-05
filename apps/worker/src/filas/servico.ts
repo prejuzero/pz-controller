@@ -22,7 +22,7 @@ import {
   RecalcularPrazosPorCalendario,
 } from '@pz/prazos';
 import { AplicarRetencao, EfetivarEncerramentos } from '@pz/privacidade';
-import { GerarRelatorio } from '@pz/relatorios';
+import { GerarRelatorio, RemoverArquivosExpirados } from '@pz/relatorios';
 
 import { recifrarCamposJob } from '../cadastro/jobs.js';
 import {
@@ -62,7 +62,7 @@ import {
   aplicarRetencaoJob,
   efetivarEncerramentosJob,
 } from '../privacidade/jobs.js';
-import { gerarRelatorioJob } from '../relatorios/jobs.js';
+import { gerarRelatorioJob, removerArquivosExpiradosJob } from '../relatorios/jobs.js';
 
 import {
   AGENDAMENTOS,
@@ -119,6 +119,8 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     @Inject(RecifrarCamposSensiveis)
     private readonly recifrar: RecifrarCamposSensiveis<unknown>,
     @Inject(PrepararEnvioManual) private readonly envios: PrepararEnvioManual<unknown>,
+    @Inject(RemoverArquivosExpirados)
+    private readonly expirados: RemoverArquivosExpirados<unknown>,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -201,9 +203,21 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
       logger.info(await this.lembretes.executar(), 'lembretes disparados');
     });
     // Relatórios (HU29): fila própria, poucos por vez (CPU e memória do renderizador).
-    this.filas.registrar(gerarRelatorioJob, async ({ relatorioId, tenantId }) => {
-      const resultado = await this.gerarRelatorio.executar(relatorioId as Uuid);
-      logger.info({ relatorioId, tenantId, resultado }, 'relatório processado');
+    this.filas.registrar(
+      gerarRelatorioJob,
+      async ({ relatorioId, tenantId }) => {
+        const resultado = await this.gerarRelatorio.executar(relatorioId as Uuid);
+        logger.info({ relatorioId, tenantId, resultado }, 'relatório processado');
+      },
+      {
+        // Tentativas esgotadas (PZ-353): o pedido vira "falhou" na tela, não fica pendente.
+        aoEsgotar: async ({ relatorioId }, erro) => {
+          await this.gerarRelatorio.tentativasEsgotadas(relatorioId as Uuid, erro.message);
+        },
+      },
+    );
+    this.filas.registrar(removerArquivosExpiradosJob, async () => {
+      logger.info(await this.expirados.executar(), 'arquivos de relatórios expirados removidos');
     });
     // Envio manual (HU32): gera o anexo e pede a notificação; falha esperada fica na trilha.
     this.filas.registrar(prepararEnvioJob, async ({ tenantId, envio }) => {

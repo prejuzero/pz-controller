@@ -134,16 +134,29 @@ describe('runtime de filas (HU10) com Redis real', () => {
   it('esgotadas as tentativas (exponencial), o job vai para a DLQ e a métrica aponta', async () => {
     const runtime = filas();
     let tentativas = 0;
-    runtime.registrar(recalcular, () => {
-      tentativas += 1;
-      return Promise.reject(new Error('serviço indisponível'));
-    });
+    const esgotados: unknown[] = [];
+    runtime.registrar(
+      recalcular,
+      () => {
+        tentativas += 1;
+        return Promise.reject(new Error('serviço indisponível'));
+      },
+      {
+        // PZ-353: quem registrou o job fica sabendo que as tentativas acabaram, no tenant dele.
+        aoEsgotar: (dados, erro) => {
+          esgotados.push([dados, erro.message, tenantAtual()]);
+          return Promise.resolve();
+        },
+      },
+    );
 
     await runtime.publicar(recalcular, { prazoId: 'p3' }, { tenantId: TENANT }, 'p3');
     runtime.iniciar();
     await esperar(async () => (await runtime.situacao())[0]?.dlq === 1, 30_000);
 
     expect(tentativas).toBe(5);
+    await esperar(() => Promise.resolve(esgotados.length === 1), 10_000);
+    expect(esgotados).toEqual([[{ prazoId: 'p3' }, 'serviço indisponível', TENANT]]);
     const [situacao] = await runtime.situacao();
     expect(situacao).toMatchObject({ fila: 'prazos', aguardando: 0, dlq: 1 });
     const morto = await conectar().keys(`bull:${filaDlq('prazos')}:*`);

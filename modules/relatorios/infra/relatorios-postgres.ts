@@ -20,6 +20,7 @@ const relatorio = (l: Linha): Relatorio => ({
   ...(l.linhas === null ? {} : { linhas: l.linhas }),
   ...(l.concluidoEm === null ? {} : { concluidoEm: instante(l.concluidoEm) }),
   ...(l.expiraEm === null ? {} : { expiraEm: instante(l.expiraEm) }),
+  ...(l.arquivoRemovidoEm === null ? {} : { arquivoRemovidoEm: instante(l.arquivoRemovidoEm) }),
 });
 
 /** Pedidos de relatório no tenant da transação (RLS). */
@@ -71,10 +72,40 @@ export class RelatoriosPostgres implements RepositorioDeRelatorios<Transacao> {
   }
 
   /** Só um pendente falha; o concluído fica como está. */
-  async falhar(tx: Transacao, id: Uuid): Promise<void> {
+  async expiradosComArquivo(
+    tx: Transacao,
+    ate: Instant,
+    limite: number,
+  ): Promise<Pick<Relatorio, 'id' | 'tenantId' | 'formato'>[]> {
+    const linhas = await tx.relatorio.findMany({
+      where: {
+        situacao: 'concluido',
+        arquivoRemovidoEm: null,
+        expiraEm: { lte: new Date(ate.epochMs) },
+      },
+      select: { id: true, tenantId: true, formato: true },
+      orderBy: { expiraEm: 'asc' },
+      take: limite,
+    });
+    return linhas.map((l) => ({
+      id: l.id as Uuid,
+      tenantId: l.tenantId as Uuid,
+      formato: l.formato as Formato,
+    }));
+  }
+
+  async marcarArquivoRemovido(tx: Transacao, id: Uuid, em: Instant): Promise<void> {
     await tx.relatorio.updateMany({
+      where: { id, arquivoRemovidoEm: null },
+      data: { arquivoRemovidoEm: new Date(em.epochMs) },
+    });
+  }
+
+  async falhar(tx: Transacao, id: Uuid): Promise<boolean> {
+    const { count } = await tx.relatorio.updateMany({
       where: { id, situacao: 'pendente' },
       data: { situacao: 'falhou' },
     });
+    return count === 1;
   }
 }

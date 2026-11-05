@@ -41,9 +41,34 @@ export class RelatoriosEmMemoria implements RepositorioDeRelatorios<unknown> {
     return Promise.resolve();
   }
 
-  falhar(_tx: unknown, id: Uuid): Promise<void> {
+  expiradosComArquivo(
+    _tx: unknown,
+    ate: Instant,
+    limite: number,
+  ): Promise<Pick<Relatorio, 'id' | 'tenantId' | 'formato'>[]> {
+    return Promise.resolve(
+      [...this.itens.values()]
+        .filter(
+          (r) =>
+            r.situacao === 'concluido' &&
+            r.arquivoRemovidoEm === undefined &&
+            r.expiraEm !== undefined &&
+            !r.expiraEm.ehDepoisDe(ate),
+        )
+        .slice(0, limite),
+    );
+  }
+
+  marcarArquivoRemovido(_tx: unknown, id: Uuid, em: Instant): Promise<void> {
     const r = this.itens.get(id);
-    if (r?.situacao === 'pendente') this.itens.set(id, { ...r, situacao: 'falhou' });
+    if (r !== undefined) this.itens.set(id, { ...r, arquivoRemovidoEm: em });
     return Promise.resolve();
+  }
+
+  falhar(_tx: unknown, id: Uuid): Promise<boolean> {
+    const r = this.itens.get(id);
+    if (r?.situacao !== 'pendente') return Promise.resolve(false);
+    this.itens.set(id, { ...r, situacao: 'falhou' });
+    return Promise.resolve(true);
   }
 }

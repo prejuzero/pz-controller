@@ -4,6 +4,7 @@ export {
   ConsultarRelatorios,
   GerarArquivo,
   GerarRelatorio,
+  RemoverArquivosExpirados,
   SolicitarRelatorio,
 } from './application/relatorios.js';
 export type {

@@ -20,6 +20,8 @@ export interface Relatorio {
   readonly solicitadoEm: Instant;
   readonly concluidoEm?: Instant;
   readonly expiraEm?: Instant;
+  /** Arquivo apagado do armazenamento depois que o link expirou (PZ-353). */
+  readonly arquivoRemovidoEm?: Instant;
 }
 
 /** Pedidos de relatório no tenant da transação (RLS). */
@@ -32,7 +34,18 @@ export interface RepositorioDeRelatorios<Transacao> {
     id: Uuid,
     conclusao: { em: Instant; expiraEm: Instant; linhas: number },
   ): Promise<void>;
-  falhar(transacao: Transacao, id: Uuid): Promise<void>;
+  /** Marca "falhou" se ainda estava pendente; `false` se já tinha outra situação. */
+  falhar(transacao: Transacao, id: Uuid): Promise<boolean>;
+  /**
+   * Concluídos com o link vencido até `ate` e o arquivo ainda no armazenamento, de todos os
+   * escritórios (roda como sistema, PZ-353).
+   */
+  expiradosComArquivo(
+    transacao: Transacao,
+    ate: Instant,
+    limite: number,
+  ): Promise<Pick<Relatorio, 'id' | 'tenantId' | 'formato'>[]>;
+  marcarArquivoRemovido(transacao: Transacao, id: Uuid, em: Instant): Promise<void>;
 }
 
 export interface CienciaDoPrazoNoRelatorio {

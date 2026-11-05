@@ -193,6 +193,27 @@ export class GerarRelatorio<Transacao> {
     return 'gerado';
   }
 
+  /**
+   * O job esgotou as tentativas e foi para a DLQ (PZ-353): o pedido deixa de ficar "pendente" na
+   * tela e vira "falhou", com trilha. Só uma vez: se já tinha concluído ou falhado, nada muda.
+   */
+  async tentativasEsgotadas(relatorioId: Uuid, motivo: string): Promise<boolean> {
+    return this.unidade.executar(async (tx) => {
+      if (!(await this.relatorios.falhar(tx, relatorioId))) return false;
+      await this.trilha.registrar(
+        tx,
+        {
+          tipo: 'relatorios.exportacao-falhou',
+          entidade: 'relatorio',
+          entidadeId: relatorioId,
+          depois: { motivo: 'tentativas-esgotadas', erro: motivo.slice(0, 200) },
+        },
+        { canal: 'sistema' },
+      );
+      return true;
+    });
+  }
+
   #documento(r: Relatorio) {
     return montarDocumento(this.fonte, this.relogio, r.tipo, r.filtros, r.usuarioId);
   }
@@ -530,5 +551,40 @@ export class ConsultarRelatorios<Transacao> {
       expiraEm: r.expiraEm?.paraIso() ?? null,
       url,
     };
+  }
+}
+
+/** Quantos relatórios a limpeza trata por consulta (PZ-353). */
+export const LOTE_DA_LIMPEZA = 200;
+
+/**
+ * Apaga do armazenamento os arquivos de relatórios cujo link já expirou (PZ-353, HU29): o
+ * download deixa de existir às 24 h e o arquivo não deve ficar guardado sem uso (minimização,
+ * LGPD). Roda como sistema (job diário, atravessa escritórios); a linha do relatório fica, com
+ * `arquivoRemovidoEm`. Remover de novo um arquivo que já sumiu não é erro.
+ */
+export class RemoverArquivosExpirados<Transacao> {
+  constructor(
+    private readonly sistema: UnidadeDeTrabalho<Transacao>,
+    private readonly relatorios: RepositorioDeRelatorios<Transacao>,
+    private readonly armazenamento: Pick<ArmazenamentoArquivos, 'remover'>,
+    private readonly relogio: Clock,
+    private readonly lote = LOTE_DA_LIMPEZA,
+  ) {}
+
+  async executar(): Promise<{ removidos: number }> {
+    const agora = this.relogio.agora();
+    let removidos = 0;
+    for (;;) {
+      const expirados = await this.sistema.executar((tx) =>
+        this.relatorios.expiradosComArquivo(tx, agora, this.lote),
+      );
+      for (const r of expirados) {
+        await this.armazenamento.remover(r.tenantId, caminhoDoArquivo(r));
+        await this.sistema.executar((tx) => this.relatorios.marcarArquivoRemovido(tx, r.id, agora));
+        removidos++;
+      }
+      if (expirados.length < this.lote) return { removidos };
+    }
   }
 }
