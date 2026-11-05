@@ -160,3 +160,6 @@ export type {
 export { TenantsEmMemoria } from './infra/em-memoria.js';
 export { TenantsPostgres } from './infra/tenants-postgres.js';
 export { ExportacaoDaIdentidadePostgres } from './infra/exportacao-postgres.js';
+export { RecifrarSegredosDoSegundoFator } from './application/recifra.js';
+export type { CifraComRotacao, SegredosParaRecifrar } from './application/recifra.js';
+export { SegredosDoSegundoFatorPostgres } from './infra/segredos-postgres.js';

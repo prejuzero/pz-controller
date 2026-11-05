@@ -7,6 +7,7 @@ export default criarConfigVitest({
     'infra/credenciais-postgres.ts',
     'infra/sessoes-redis.ts',
     'infra/segundo-fator-postgres.ts',
+    'infra/segredos-postgres.ts',
     'infra/acessos-postgres.ts',
     'infra/tentativas-redis.ts',
     'infra/redefinicao.ts',

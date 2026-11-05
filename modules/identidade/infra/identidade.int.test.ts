@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { TrilhaPostgres } from '@pz/auditoria';
 import { Banco, BancoSistema, executarNoTenant } from '@pz/db';
 import { subirBancoDeTeste } from '@pz/db/teste';
+import { CifraVersionada, ProvedorChavesLocal } from '@pz/integracoes';
 import { FixedClock, gerarUuidV7, Instant } from '@pz/kernel';
 import { RedisContainer } from '@testcontainers/redis';
 import { Redis } from 'ioredis';
@@ -19,6 +20,7 @@ import {
   RevogarDispositivo,
 } from '../application/dispositivos.js';
 import { IniciarImpersonacao } from '../application/impersonacao.js';
+import { RecifrarSegredosDoSegundoFator } from '../application/recifra.js';
 import {
   AtivarSegundoFator,
   ConfigurarSegundoFator,
@@ -46,6 +48,7 @@ import {
   PublicadorOutbox,
   RedefinicoesRedis,
 } from './redefinicao.js';
+import { SegredosDoSegundoFatorPostgres } from './segredos-postgres.js';
 import { SegundoFatorPostgres } from './segundo-fator-postgres.js';
 import { CifraAesGcm, SegredosTotp } from './segundo-fator.js';
 import { SessoesRedis } from './sessoes-redis.js';
@@ -676,6 +679,61 @@ describe('administração de tenants com PostgreSQL e Redis (HU39)', () => {
       expect(new Set(rows.map((x) => x.tenant_id))).toEqual(new Set([TENANT_B, TENANT_P]));
     } finally {
       await direto.end();
+    }
+  });
+});
+
+describe('recifra dos segredos do 2FA no PostgreSQL (PZ-359)', () => {
+  it('troca a chave antiga pela ativa em cada tenant, sem perder o segredo; repetir não muda', async () => {
+    const mestra = randomBytes(32).toString('base64');
+    const [antiga, nova] = [randomBytes(32).toString('base64'), randomBytes(32).toString('base64')];
+    const comAntiga = new CifraVersionada(new ProvedorChavesLocal(mestra, `l1:${antiga}`));
+    // Rotação: a nova na frente; a antiga fica na lista para decifrar.
+    const rotacao = new CifraVersionada(new ProvedorChavesLocal(mestra, `k1:${nova},l1:${antiga}`));
+    const sistema = new BancoSistema({ url: postgres.url('pz_sistema') });
+    try {
+      await sistema.executarComoSistema('teste: segredos com a chave antiga', async (tx) => {
+        // Isola dos testes anteriores (2FA com outra cifra): só os dois desta prova.
+        await tx.usuario.updateMany({ data: { totpSegredoCifrado: null } });
+        await tx.usuario.update({
+          where: { id: ANA },
+          data: { totpSegredoCifrado: comAntiga.cifrar('SEGREDOFICTICIOANA') },
+        });
+        await tx.usuario.update({
+          where: { id: BIA },
+          data: { totpSegredoCifrado: comAntiga.cifrar('SEGREDOFICTICIOBIA') },
+        });
+      });
+      const recifrar = () =>
+        new RecifrarSegredosDoSegundoFator(
+          sistema.unidade('teste: tenants com 2FA'),
+          executarNoTenant,
+          banco,
+          new SegredosDoSegundoFatorPostgres(),
+          rotacao,
+        ).executar();
+      expect(await recifrar()).toEqual({ escritorios: 2, recifrados: 2 });
+      const gravados = await sistema.executarComoSistema('teste: conferir', (tx) =>
+        tx.usuario.findMany({
+          where: { id: { in: [ANA, BIA] } },
+          orderBy: { id: 'asc' },
+          select: { totpSegredoCifrado: true },
+        }),
+      );
+      expect(gravados.map((g) => g.totpSegredoCifrado?.split('.')[1])).toEqual(['k1', 'k1']);
+      expect(gravados.map((g) => rotacao.decifrar(g.totpSegredoCifrado ?? ''))).toEqual([
+        'SEGREDOFICTICIOANA',
+        'SEGREDOFICTICIOBIA',
+      ]);
+      expect(await recifrar()).toEqual({ escritorios: 2, recifrados: 0 });
+    } finally {
+      await sistema.executarComoSistema('teste: limpar segredos', (tx) =>
+        tx.usuario.updateMany({
+          where: { id: { in: [ANA, BIA] } },
+          data: { totpSegredoCifrado: null },
+        }),
+      );
+      await sistema.encerrar();
     }
   });
 });

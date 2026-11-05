@@ -66,6 +66,8 @@ import {
   EnviarAvisosDeSeguranca,
   ExportacaoDaIdentidadePostgres,
   NomesDosUsuariosPostgres,
+  RecifrarSegredosDoSegundoFator,
+  SegredosDoSegundoFatorPostgres,
   SessoesRedis,
   TenantsPostgres,
   UsuariosComPermissaoPostgres,
@@ -928,6 +930,17 @@ export class WorkerModule {
           banco,
           new CamposSensiveisPostgres(),
           protecao,
+        ),
+      },
+      {
+        // Segredos do 2FA no mesmo job (PZ-359): a rotação alcança todos, não só quem reconfigura.
+        provide: RecifrarSegredosDoSegundoFator,
+        useValue: new RecifrarSegredosDoSegundoFator(
+          sistema.unidade('identidade: tenants com 2FA para recifrar'),
+          executarNoTenant,
+          banco,
+          new SegredosDoSegundoFatorPostgres(),
+          new CifraVersionada(chaves, ambiente.CHAVE_CIFRAGEM),
         ),
       },
       {
