@@ -835,6 +835,11 @@ describe('ciclo de vida: entradas e filtros (HU24)', () => {
       processoId: PROCESSO,
     });
     expect(doResponsavel.ok && doResponsavel.valor.itens.map((i) => i.id)).toEqual([r.valor.id]);
+    // Filtro global (PZ-349): tribunal pela jurisdição do prazo, o mesmo critério do dashboard.
+    const doTribunal = await listar.executar({ responsavelId: OUTRO_TENANT, tribunal: 'TJXA' });
+    expect(doTribunal.ok && doTribunal.valor.itens.map((i) => i.id)).toEqual([r.valor.id]);
+    const outroTribunal = await listar.executar({ tribunal: 'TRF9' });
+    expect(outroTribunal.ok && outroTribunal.valor.itens).toEqual([]);
     const cursor = Buffer.from(JSON.stringify({ v: null, id: r.valor.id })).toString('base64url');
     const depois = await listar.executar({ cursor });
     expect(depois.ok && depois.valor.itens).toEqual([]);

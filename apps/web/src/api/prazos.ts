@@ -26,9 +26,10 @@ export const RECORTES_DA_LISTA: readonly RecorteDaLista[] = [
   'sem-ciencia',
 ];
 
-/** Lista por situação (aba) ou pelo recorte de um card do dashboard; advogado do filtro global. */
+/** Lista por situação (aba) ou pelo recorte de um card do dashboard; advogado e tribunal do filtro global. */
 export type FiltroDaLista = ({ status: StatusDoPrazo } | { recorte: RecorteDaLista }) & {
   responsavelId?: string;
+  tribunal?: string;
 };
 
 /** Campos do filtro global (HU27) que o dashboard aceita. */

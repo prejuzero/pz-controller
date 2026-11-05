@@ -107,6 +107,7 @@ export const listarPrazos = definirRota({
     status: StatusDoPrazo.optional(),
     processoId: Uuid.optional(),
     responsavelId: Uuid.optional(),
+    tribunal: z.string().trim().min(1).max(20).optional().describe('Sigla do tribunal.'),
     recorte: z
       .enum(['vence-hoje', 'proximos-7-dias', 'vencidos', 'sem-ciencia'])
       .optional()

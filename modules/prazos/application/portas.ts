@@ -179,6 +179,8 @@ export interface FiltroDePrazos {
   readonly status?: StatusDoPrazo;
   readonly processoId?: Uuid;
   readonly responsavelId?: Uuid;
+  /** Sigla do tribunal na jurisdição do prazo (filtro global, como no dashboard). */
+  readonly tribunal?: string;
   readonly depoisDe?: { readonly vencimento: LocalDate | null; readonly id: Uuid };
   /** Card do dashboard aberto na lista (HU26), com o mesmo critério da contagem. */
   readonly recorte?: {

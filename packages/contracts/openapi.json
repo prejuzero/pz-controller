@@ -6521,6 +6521,18 @@
             }
           },
           {
+            "name": "tribunal",
+            "in": "query",
+            "required": false,
+            "description": "Sigla do tribunal.",
+            "schema": {
+              "description": "Sigla do tribunal.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20
+            }
+          },
+          {
             "name": "recorte",
             "in": "query",
             "required": false,
