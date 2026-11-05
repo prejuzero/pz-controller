@@ -23,7 +23,11 @@ export const ITENS_MENU = [
   },
   { chave: 'relatorios', href: '/relatorios', permissao: 'relatorios:exportar' },
   // Administração da plataforma (HU39): só para o administrador PrejuZero.
-  { chave: 'admin', href: '/admin', permissao: { algum: ['admin:tenants', 'admin:filas'] } },
+  {
+    chave: 'admin',
+    href: '/admin',
+    permissao: { algum: ['admin:tenants', 'admin:filas', 'admin:documentos-legais'] },
+  },
   { chave: 'configuracoes', href: '/configuracoes' },
 ] as const satisfies readonly { chave: string; href: string; permissao?: Exigencia }[];
 

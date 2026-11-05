@@ -86,6 +86,8 @@ export const useExportacao = (id: string) =>
   useQuery(consultasPrivacidade(useApi()).exportacao(id));
 export const useEncerramento = () => useQuery(consultasPrivacidade(useApi()).encerramento());
 export const useAceitarTermos = () => useMutation(useMutacoesPrivacidade().aceitar);
+export const useVersoesDosDocumentos = () => useQuery(consultasPrivacidade(useApi()).versoes());
+export const usePublicarDocumento = () => useMutation(useMutacoesPrivacidade().publicar);
 export const useExportarDados = () => useMutation(useMutacoesPrivacidade().exportar);
 export const useEncerrarConta = () => useMutation(useMutacoesPrivacidade().encerrar);
 export const useCancelarEncerramento = () =>

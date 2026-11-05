@@ -1,9 +1,9 @@
-import { err, NaoEncontrado, ok, Validacao } from '@pz/kernel';
+import { err, gerarUuidV7, NaoEncontrado, ok, Validacao } from '@pz/kernel';
 
-import { pendentes } from '../domain/documento.js';
+import { pendentes, problemasDaNovaVersao } from '../domain/documento.js';
 
 import type { RepositorioDeAceites, RepositorioDeDocumentos, UnidadeNoTenant } from './portas.js';
-import type { Aceite, DocumentoLegal } from '../domain/documento.js';
+import type { Aceite, DocumentoLegal, NovaVersao } from '../domain/documento.js';
 import type { OrigemDaAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
 import type { Clock, Instant, Result, Uuid } from '@pz/kernel';
 
@@ -137,5 +137,75 @@ export class AceitarDocumento<Transacao> {
       }
       return ok(undefined);
     });
+  }
+}
+
+/** Quem publica: o administrador da plataforma, na sessão dele (a trilha fica no tenant dele). */
+export interface Publicador {
+  readonly tenantId: Uuid;
+  readonly usuarioId: Uuid;
+  readonly canal: OrigemDaAuditoria['canal'];
+}
+
+/**
+ * Publicação de nova versão de um documento legal (PZ-303, HU38): vale a partir de agora (horário
+ * do servidor) e passa a exigir novo aceite no próximo login. Auditada na mesma transação, sem o
+ * texto (só tipo e versão). O texto vem do jurídico; o sistema não o altera.
+ */
+export class PublicarDocumentoLegal<Transacao> {
+  constructor(
+    private readonly noTenant: UnidadeNoTenant<Transacao>,
+    private readonly documentos: RepositorioDeDocumentos<Transacao>,
+    private readonly trilha: TrilhaDeAuditoria<Transacao>,
+    private readonly relogio: Clock,
+  ) {}
+
+  executar(publicador: Publicador, nova: NovaVersao): Promise<Result<DocumentoLegal, Validacao>> {
+    const agora = this.relogio.agora();
+    return this.noTenant.executar(publicador.tenantId, async (tx) => {
+      const problemas = problemasDaNovaVersao(nova, await this.documentos.todos(tx));
+      if (problemas.length > 0) return err(new Validacao(problemas));
+      const resumo = nova.resumoAlteracoes?.trim();
+      const documento: DocumentoLegal = {
+        id: gerarUuidV7(this.relogio),
+        tipo: nova.tipo,
+        versao: nova.versao,
+        conteudo: nova.conteudo,
+        ...(resumo === undefined || resumo === '' ? {} : { resumoAlteracoes: resumo }),
+        publicadoEm: agora,
+      };
+      if (!(await this.documentos.inserir(tx, documento))) {
+        return err(
+          new Validacao([{ campo: 'versao', mensagem: 'Esta versão acabou de ser publicada.' }]),
+        );
+      }
+      await this.trilha.registrar(
+        tx,
+        {
+          tipo: 'termos.documento-publicado',
+          entidade: 'documento_legal',
+          entidadeId: documento.id,
+          depois: { tipo: documento.tipo, versao: documento.versao, publicadoEm: agora.paraIso() },
+        },
+        { canal: publicador.canal, usuarioId: publicador.usuarioId },
+      );
+      return ok(documento);
+    });
+  }
+}
+
+/** Histórico das versões publicadas até agora, da mais recente para a mais antiga (admin). */
+export class ListarVersoesDosDocumentos<Transacao> {
+  constructor(
+    private readonly noTenant: UnidadeNoTenant<Transacao>,
+    private readonly documentos: RepositorioDeDocumentos<Transacao>,
+    private readonly relogio: Clock,
+  ) {}
+
+  async executar(tenantId: Uuid): Promise<DocumentoLegal[]> {
+    const publicados = await this.noTenant.executar(tenantId, (tx) =>
+      this.documentos.publicadosAte(tx, this.relogio.agora()),
+    );
+    return [...publicados].sort((a, b) => b.publicadoEm.epochMs - a.publicadoEm.epochMs);
   }
 }

@@ -38,6 +38,20 @@ test.describe('painel do administrador (HU39)', () => {
       await page.getByRole('link', { name: 'E-mails rejeitados' }).click();
       await expect(page.getByText(/deixaram de receber e-mails/)).toBeVisible();
       await semViolacoes(page);
+
+      // Documentos legais (PZ-303): prévia igual à página pública; publicar exige confirmação.
+      // Não publica aqui: uma versão nova exigiria novo aceite de todos nos testes seguintes.
+      await page.getByRole('link', { name: 'Documentos legais' }).click();
+      const publicar = page.getByRole('button', { name: 'Publicar nova versão' });
+      await page.getByLabel('Versão', { exact: true }).fill('99.0');
+      await page.getByLabel('Texto do documento').fill('Texto FICTÍCIO da prévia.');
+      await expect(
+        page.getByRole('region', { name: 'Prévia' }).getByText('Texto FICTÍCIO da prévia.'),
+      ).toBeVisible();
+      await expect(publicar).toBeDisabled();
+      await page.getByRole('checkbox').check();
+      await expect(publicar).toBeEnabled();
+      await semViolacoes(page);
     });
   });
 

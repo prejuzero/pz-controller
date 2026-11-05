@@ -3,6 +3,8 @@ import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { chaves } from './chaves';
 import { exigir, type ClienteApi } from './cliente';
 
+import type { PedidoDePublicacaoDeDocumento } from '@pz/contracts';
+
 /** Termos e privacidade (HU38). Os hooks em hooks.ts só repassam. */
 export const consultasPrivacidade = (api: ClienteApi) => ({
   vigentes: () =>
@@ -33,6 +35,12 @@ export const consultasPrivacidade = (api: ClienteApi) => ({
       queryKey: chaves.privacidade.encerramento(),
       queryFn: ({ signal }) => exigir(api.GET('/v1/privacidade/encerramento', { signal })),
     }),
+  /** Histórico de versões publicadas (administrador da plataforma, PZ-303). */
+  versoes: () =>
+    queryOptions({
+      queryKey: chaves.privacidade.versoes(),
+      queryFn: ({ signal }) => exigir(api.GET('/v1/admin/documentos-legais', { signal })),
+    }),
 });
 
 export const mutacoesPrivacidade = (api: ClienteApi, cache: QueryClient) => {
@@ -47,6 +55,18 @@ export const mutacoesPrivacidade = (api: ClienteApi, cache: QueryClient) => {
       // A sessão deixa de pedir o aceite (proximoPasso) e as rotas voltam a responder.
       onSuccess: () =>
         Promise.all([invalidar(), cache.invalidateQueries({ queryKey: chaves.sessao.todas })]),
+    },
+    publicar: {
+      mutationFn: (pedido: PedidoDePublicacaoDeDocumento) => {
+        // Sem o resumo, a chave não vai (exactOptionalPropertyTypes no cliente gerado).
+        const { resumoAlteracoes, ...resto } = pedido;
+        return exigir(
+          api.POST('/v1/admin/documentos-legais', {
+            body: resumoAlteracoes === undefined ? resto : { ...resto, resumoAlteracoes },
+          }),
+        );
+      },
+      onSuccess: invalidar,
     },
     exportar: {
       mutationFn: (escopo: 'titular' | 'escritorio') =>

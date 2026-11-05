@@ -28,6 +28,11 @@ export const CATALOGO_DE_PERMISSOES = {
   'admin:tenants': { descricao: 'Administrar tenants da plataforma.', leitura: false },
   'admin:impersonar': { descricao: 'Acessar um tenant por impersonação auditada.', leitura: false },
   'admin:filas': { descricao: 'Acompanhar filas e reprocessar a DLQ.', leitura: false },
+  'admin:documentos-legais': {
+    descricao:
+      'Publicar nova versão dos termos, da política de privacidade e do aviso de cobertura.',
+    leitura: false,
+  },
   'curadoria:calendario': {
     descricao: 'Propor, aprovar e revogar o calendário forense global (curador).',
     leitura: false,

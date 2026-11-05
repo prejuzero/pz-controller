@@ -12,6 +12,10 @@ export interface UnidadeNoTenant<Transacao> {
 export interface RepositorioDeDocumentos<Transacao> {
   publicadosAte(transacao: Transacao, ate: Instant): Promise<DocumentoLegal[]>;
   buscar(transacao: Transacao, id: Uuid): Promise<DocumentoLegal | undefined>;
+  /** Todas as versões, inclusive as agendadas: a numeração não pode se repetir. */
+  todos(transacao: Transacao): Promise<DocumentoLegal[]>;
+  /** Grava a nova versão (imutável). `false` se o tipo já tem essa versão (corrida). */
+  inserir(transacao: Transacao, documento: DocumentoLegal): Promise<boolean>;
 }
 
 export interface NovoAceite {

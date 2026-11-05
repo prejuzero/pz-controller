@@ -13,6 +13,7 @@ const ABAS = [
   { chave: 'tenants', href: '/admin', permissao: 'admin:tenants' },
   { chave: 'integracoes', href: '/admin/integracoes', permissao: 'admin:filas' },
   { chave: 'rejeicoes', href: '/admin/rejeicoes', permissao: 'admin:tenants' },
+  { chave: 'documentos', href: '/admin/documentos', permissao: 'admin:documentos-legais' },
   // Curadoria (HU13, HU15): telas próprias, para quem também é curador.
   { chave: 'calendario', href: '/calendario', permissao: 'curadoria:calendario' },
   { chave: 'tabelaPrazos', href: '/prazos', permissao: 'curadoria:tabela-prazos' },

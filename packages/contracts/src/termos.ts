@@ -80,9 +80,50 @@ export const listarDocumentosVigentes = definirRota({
   resposta: { status: 200, corpo: DocumentosPendentes },
 });
 
+/** Nova versão de um documento legal (PZ-303): vale a partir do envio e exige novo aceite. */
+export const PedidoDePublicacaoDeDocumento = nomear(
+  'PedidoDePublicacaoDeDocumento',
+  z.object({
+    tipo: TipoDeDocumento,
+    versao: z
+      .string()
+      .regex(/^[0-9]+\.[0-9]+(\.[0-9]+)?$/)
+      .describe('Maior que todas as já publicadas deste documento (ex.: 1.1 ou 2.0.1).'),
+    conteudo: z.string().min(1).max(200_000).describe('Texto aprovado pelo jurídico.'),
+    resumoAlteracoes: z
+      .string()
+      .max(2_000)
+      .optional()
+      .describe('O que mudou, mostrado na tela de novo aceite.'),
+  }),
+);
+export type PedidoDePublicacaoDeDocumento = z.infer<typeof PedidoDePublicacaoDeDocumento.esquema>;
+
+export const publicarDocumentoLegal = definirRota({
+  id: 'publicarDocumentoLegal',
+  metodo: 'post',
+  caminho: '/v1/admin/documentos-legais',
+  resumo:
+    'Publica nova versão de um documento legal; todos os usuários aceitam de novo no próximo login.',
+  tag: 'admin',
+  corpo: PedidoDePublicacaoDeDocumento,
+  resposta: { status: 201, corpo: DocumentoLegal },
+});
+
+export const listarVersoesDocumentosLegais = definirRota({
+  id: 'listarVersoesDocumentosLegais',
+  metodo: 'get',
+  caminho: '/v1/admin/documentos-legais',
+  resumo: 'Todas as versões publicadas dos documentos legais, da mais recente para a mais antiga.',
+  tag: 'admin',
+  resposta: { status: 200, corpo: DocumentosPendentes },
+});
+
 export const ROTAS_TERMOS = [
   listarTermosPendentes,
   aceitarDocumentoLegal,
   listarAceites,
   listarDocumentosVigentes,
+  publicarDocumentoLegal,
+  listarVersoesDocumentosLegais,
 ] as const;

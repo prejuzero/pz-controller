@@ -22,7 +22,13 @@ export const PERFIS_PADRAO = {
     'escritorio:exportar',
     'escritorio:encerrar',
   ],
-  admin_plataforma: ['conta:gerir', 'admin:tenants', 'admin:impersonar', 'admin:filas'],
+  admin_plataforma: [
+    'conta:gerir',
+    'admin:tenants',
+    'admin:impersonar',
+    'admin:filas',
+    'admin:documentos-legais',
+  ],
   admin_escritorio: [
     'conta:gerir',
     'prazos:ler',

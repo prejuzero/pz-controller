@@ -21,6 +21,17 @@ export class TermosEmMemoria
     return Promise.resolve(this.documentos.find((d) => d.id === id));
   }
 
+  todos(): Promise<DocumentoLegal[]> {
+    return Promise.resolve([...this.documentos]);
+  }
+
+  inserir(_tx: TransacaoEmMemoria, documento: DocumentoLegal): Promise<boolean> {
+    if (this.documentos.some((d) => d.tipo === documento.tipo && d.versao === documento.versao))
+      return Promise.resolve(false);
+    this.documentos.push(documento);
+    return Promise.resolve(true);
+  }
+
   aceitosPor(_tx: TransacaoEmMemoria, usuarioId: Uuid): Promise<Aceite[]> {
     return Promise.resolve(
       this.aceites
