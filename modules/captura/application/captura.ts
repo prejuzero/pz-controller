@@ -163,6 +163,14 @@ const Data = z.string().transform((texto, contexto) => {
   contexto.addIssue({ code: 'custom', message: 'Data inválida (AAAA-MM-DD).' });
   return z.NEVER;
 });
+/**
+ * Publicações por evento CapturaConcluida (PZ-309): a ingestão grava um evento por transação, e a
+ * primeira captura de uma OAB movimentada (centenas de publicações e processos novos) passava do
+ * limite da transação (5 s) com a fila em paralelo. Em lotes de 50, cada transação fica curta; a
+ * ingestão é idempotente, então a ordem e a repetição dos lotes não importam.
+ */
+export const PUBLICACOES_POR_EVENTO = 50;
+
 export const EntradaDaCaptura = z
   .object({
     alvoId: z.uuid(),
@@ -323,23 +331,29 @@ export class ExecutarCaptura<Transacao> {
       urlFonte: p.urlFonte,
       metadados: p.metadados,
     }));
-    return alvo.assinantes.map(({ tenantId, referencias }) => ({
-      id: gerarUuidV7(this.relogio),
-      tipo: 'CapturaConcluida',
-      versao: 1,
-      tenantId,
-      agregadoId: alvo.id,
-      ocorridoEm,
-      payload: {
-        alvoId: alvo.id,
-        tipo: alvo.tipo,
-        valor: alvo.valor,
-        referencias: [...referencias],
-        janela: { inicio: janela.inicio.paraIso(), fim: janela.fim.paraIso() },
-        fonte: this.idDaFonte,
-        publicacoes: serializadas,
-      },
-    }));
+    // Sem publicações, um evento só (a ingestão registra o checkpoint do mesmo jeito).
+    const lotes: (typeof serializadas)[] = [];
+    for (let i = 0; i < Math.max(serializadas.length, 1); i += PUBLICACOES_POR_EVENTO)
+      lotes.push(serializadas.slice(i, i + PUBLICACOES_POR_EVENTO));
+    return alvo.assinantes.flatMap(({ tenantId, referencias }) =>
+      lotes.map((lote) => ({
+        id: gerarUuidV7(this.relogio),
+        tipo: 'CapturaConcluida',
+        versao: 1,
+        tenantId,
+        agregadoId: alvo.id,
+        ocorridoEm,
+        payload: {
+          alvoId: alvo.id,
+          tipo: alvo.tipo,
+          valor: alvo.valor,
+          referencias: [...referencias],
+          janela: { inicio: janela.inicio.paraIso(), fim: janela.fim.paraIso() },
+          fonte: this.idDaFonte,
+          publicacoes: lote,
+        },
+      })),
+    );
   }
 }
 

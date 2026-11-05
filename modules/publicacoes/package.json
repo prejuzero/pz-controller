@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --coverage",
     "test:int": "vitest run --config vitest.int.config.ts",
-    "test:int:desempenho": "PZ_DESEMPENHO=1 vitest run --config vitest.int.config.ts infra/desempenho.int.test.ts"
+    "test:int:desempenho": "PZ_DESEMPENHO=1 vitest run --config vitest.int.config.ts infra/desempenho.int.test.ts infra/desempenho-ingestao.int.test.ts"
   },
   "dependencies": {
     "@pz/auditoria": "workspace:*",
