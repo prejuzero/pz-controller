@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { calcularHash, HASH_GENESE } from '../domain/cadeia.js';
 
-import { ConsultarTrecho, VerificarIntegridade } from './integridade.js';
+import { ConsultarTrecho, VerificarCadeiaCompleta, VerificarIntegridade } from './integridade.js';
 
 import type { Checkpoint, RepositorioDaCadeia } from './integridade.js';
 import type { RegistroEncadeado } from '../domain/cadeia.js';
@@ -162,5 +162,40 @@ describe('trecho verificável (HU35)', () => {
 
     registros[0] = { ...em(registros, 0), tipo: 'alterado' };
     expect((await consultar.executar(null, 'a', 'usuario', 'par')).cadeiaIntegra).toBe(false);
+  });
+});
+
+describe('verificação completa depois de uma restauração (PZ-221)', () => {
+  const unidade = { executar: <R>(t: (tx: null) => Promise<R>) => t(null) };
+
+  it('confere da gênese em cada tenant, sem gravar checkpoint nem exportar', async () => {
+    const repo = new Repo(
+      new Map([
+        ['t1', cadeia('t1', 2500)],
+        ['t2', cadeia('t2', 3)],
+      ]),
+    );
+    const r = await new VerificarCadeiaCompleta(unidade, repo, sha256).executar();
+    expect(r).toEqual([
+      { tenantId: 't1', situacao: 'integra', registros: 2500 },
+      { tenantId: 't2', situacao: 'integra', registros: 3 },
+    ]);
+    expect(repo.checkpoints.size).toBe(0);
+  });
+
+  it('alteração ou cadeia mais curta que a âncora: divergente', async () => {
+    const alterada = cadeia('t1', 5);
+    alterada[2] = { ...em(alterada, 2), tipo: 'identidade.sessao-revogada' };
+    const curta = cadeia('t2', 3);
+    const repo = new Repo(
+      new Map([
+        ['t1', alterada],
+        ['t2', curta],
+      ]),
+    );
+    repo.checkpoints.set('t2', { ultimaSequencia: 5, ultimoHash: 'x', ultimaExportada: 5 });
+    const r = await new VerificarCadeiaCompleta(unidade, repo, sha256).executar();
+    expect(r[0]).toMatchObject({ tenantId: 't1', situacao: 'divergente', sequencia: 3 });
+    expect(r[1]).toMatchObject({ tenantId: 't2', situacao: 'divergente', sequencia: 4 });
   });
 });

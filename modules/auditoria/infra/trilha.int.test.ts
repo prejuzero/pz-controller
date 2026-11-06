@@ -3,7 +3,7 @@ import { subirBancoDeTeste } from '@pz/db/teste';
 import { SystemClock } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { VerificarIntegridade } from '../application/integridade.js';
+import { VerificarCadeiaCompleta, VerificarIntegridade } from '../application/integridade.js';
 import { verificarCadeia } from '../domain/cadeia.js';
 import { dadoPessoal } from '../domain/dados-pessoais.js';
 
@@ -220,6 +220,23 @@ describe('verificador diário com PostgreSQL real (PZ-110)', () => {
       situacao: 'divergente',
       sequencia: 500,
     });
+
+    // Verificação completa (aceite da restauração, PZ-221): da gênese, sem gravar nada; a âncora
+    // revela o registro apagado do fim, e a adulteração do tenant A aparece de novo.
+    const completa = await new VerificarCadeiaCompleta(
+      sistema.unidade('verificação completa (teste)'),
+      new CadeiaPostgres(),
+      sha256,
+    ).executar();
+    expect(completa.find((r) => r.tenantId === TENANT_C)).toMatchObject({
+      situacao: 'divergente',
+      sequencia: 4,
+    });
+    expect(completa.find((r) => r.tenantId === TENANT_A)).toMatchObject({
+      situacao: 'divergente',
+      sequencia: 500,
+    });
+    expect(completa.some((r) => r.situacao === 'integra' && r.registros > 0)).toBe(true);
   }, 120_000);
 });
 

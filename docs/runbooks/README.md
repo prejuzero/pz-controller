@@ -7,5 +7,6 @@ Procedimentos operacionais para incidentes e tarefas recorrentes. Cada alerta ap
 - [Alertas](alertas.md)
 - [Rotação de chaves](rotacao-de-chaves.md)
 - [Plano de resposta a incidentes](plano-resposta-incidentes.md)
+- [Backup e restauração (local)](backup-e-restauracao.md)
 
 Implementado em: HU02, HU03, HU37 e HU40. Siga o [CLAUDE.md](/CLAUDE.md) e a página Arquitetura do PrejuZero.
