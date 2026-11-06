@@ -87,7 +87,9 @@ describe.runIf(ATIVO)('vazão da ingestão (10 mil publicações por minuto)', (
           tenantId: TENANT,
           usuarioId: usuario,
           nome: 'Fictícia',
-          cpf: '52998224725',
+          // CPF só cifrado (HU37); fictício, porque a ingestão não o lê.
+          cpfCifrado: 'v2.teste.cifrado-ficticio',
+          cpfIndice: createHash('sha256').update(advogado).digest('hex'),
           celular: '11900000000',
         },
       });

@@ -115,13 +115,16 @@ const LINHAS_GLOBAIS: Readonly<Record<string, string>> = { perfil: 'advogado' };
 const COLUNAS_FIXAS: Readonly<Record<string, Record<string, unknown>>> = {
   feriado_local: { abrangencia: 'uf', uf: 'XA' },
   advogado: {
-    cpf: () => String(randomInt(1e10, 1e11 - 1)).padStart(11, '0'),
-    cpf_cifrado: null,
-    cpf_indice: null,
+    // Fictícios: o teste de isolamento não decifra; só precisa de valor único no formato.
+    cpf_cifrado: 'v2.teste.cifrado-ficticio',
+    cpf_indice: () =>
+      randomInt(1e10, 1e11 - 1)
+        .toString(16)
+        .padStart(64, '0'),
   },
   oab: { uf: 'XA' },
   consentimento_canal: { canal: 'push', origem: 'app' },
-  cliente: { documento: null },
+  cliente: { documento_cifrado: null },
   token_ciencia: {
     hash_token: () =>
       randomInt(1e10, 1e11 - 1)

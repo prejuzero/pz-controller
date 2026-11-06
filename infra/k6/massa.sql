@@ -43,9 +43,11 @@ SELECT t.tenant_id, t.usuario_id, d.id, now(), '127.0.0.1', 'k6-carga'
 FROM carga_tenant t CROSS JOIN documento_legal d
 ON CONFLICT DO NOTHING;
 
-INSERT INTO advogado (id, tenant_id, usuario_id, nome, celular, cpf)
+-- CPF só cifrado (HU37, fase contract): valor fictício que o cenário do k6 nunca decifra (não lê
+-- o perfil); o índice só precisa ser único.
+INSERT INTO advogado (id, tenant_id, usuario_id, nome, celular, cpf_cifrado, cpf_indice)
 SELECT advogado_id, tenant_id, usuario_id, 'Advogada Carga ' || n, '11900000000',
-       lpad(n::text, 11, '0')
+       'v2.carga.cifrado-ficticio', encode(sha256(convert_to('carga-cpf-' || n, 'UTF8')), 'hex')
 FROM carga_tenant
 ON CONFLICT DO NOTHING;
 

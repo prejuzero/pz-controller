@@ -73,7 +73,9 @@ beforeAll(async () => {
         tenantId: A,
         usuarioId: ANA,
         nome: 'Ana Fictícia',
-        cpf: '52998224725',
+        // CPF só cifrado (HU37): a exportação decifra e devolve o original.
+        cpfCifrado: protecao.cifrar('52998224725'),
+        cpfIndice: protecao.indice('52998224725'),
         celular: '11900000000',
       },
     });

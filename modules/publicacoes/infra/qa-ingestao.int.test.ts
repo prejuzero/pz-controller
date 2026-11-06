@@ -126,7 +126,9 @@ beforeAll(async () => {
             tenantId: tenant,
             usuarioId: usuario,
             nome: 'Fictícia',
-            cpf: cpfFicticio(cpf++),
+            // CPF só cifrado (HU37); fictício e único, porque a ingestão não o lê.
+            cpfCifrado: `v2.teste.${cpfFicticio(cpf)}`,
+            cpfIndice: cpfFicticio(cpf++).padStart(64, '0'),
             celular: '11900000000',
           },
         });

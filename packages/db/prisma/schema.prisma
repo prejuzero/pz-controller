@@ -571,12 +571,10 @@ model Advogado {
   tenantId         String   @map("tenant_id") @db.Uuid
   usuarioId        String   @unique @map("usuario_id") @db.Uuid
   nome             String
-  /// Legado em claro (só dígitos); vazio nos novos registros (HU37, ADR-021). Nunca vai para log.
-  cpf              String?  @unique @db.Char(11)
-  /// CPF cifrado com chave de dados identificada (v2.<id>.…).
-  cpfCifrado       String?  @map("cpf_cifrado")
+  /// CPF só cifrado, com chave de dados identificada (v2.<id>.…; HU37, ADR-021). Nunca vai para log.
+  cpfCifrado       String   @map("cpf_cifrado")
   /// Índice cego (HMAC-SHA256 em hex): mantém o CPF único sem guardá-lo em claro.
-  cpfIndice        String?  @unique @map("cpf_indice") @db.Char(64)
+  cpfIndice        String   @unique @map("cpf_indice") @db.Char(64)
   celular          String
   emailsAdicionais String[] @default([]) @map("emails_adicionais")
   criadoEm         DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
@@ -617,8 +615,7 @@ model Cliente {
   id               String   @id @db.Uuid
   tenantId         String   @map("tenant_id") @db.Uuid
   nome             String
-  /// Legado em claro; vazio nos novos registros (HU37, ADR-021).
-  documento        String?
+  /// Documento só cifrado (HU37, ADR-021); null: cliente sem documento.
   documentoCifrado String?  @map("documento_cifrado")
   criadoEm         DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm     DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)

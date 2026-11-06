@@ -219,27 +219,28 @@ describe('cadastro no PostgreSQL (HU11)', () => {
     ).rejects.toThrow();
   });
 
-  it('dump sem CPF em claro; recifra cifra o legado e roda a chave (HU37, ADR-021)', async () => {
+  it('dump sem CPF em claro (colunas removidas); recifra roda a chave (HU37, ADR-021)', async () => {
     const linha = () =>
       sistema.executarComoSistema('conferir o teste', (tx) =>
         tx.advogado.findUniqueOrThrow({
           where: { usuarioId: ana.usuarioId },
-          select: { cpf: true, cpfCifrado: true, cpfIndice: true },
+          select: { cpfCifrado: true, cpfIndice: true },
         }),
       );
     const gravada = await linha();
-    expect(gravada.cpf).toBeNull();
     expect(gravada.cpfCifrado).toMatch(/^v2\.l1\./);
     expect(gravada.cpfCifrado).not.toContain('52998224725');
     expect(gravada.cpfIndice).toBe(protecao.indice('52998224725'));
-
-    // Registro legado (de antes da cifra): CPF em claro, sem índice.
-    await sistema.executarComoSistema('preparar o teste', (tx) =>
-      tx.advogado.update({
-        where: { usuarioId: ana.usuarioId },
-        data: { cpf: '52998224725', cpfCifrado: null, cpfIndice: null },
-      }),
+    // Fase contract: as colunas em claro não existem mais.
+    const colunas = await sistema.executarComoSistema(
+      'conferir o teste',
+      (tx) =>
+        tx.$queryRaw<{ coluna: string }[]>`
+        SELECT table_name || '.' || column_name AS coluna FROM information_schema.columns
+         WHERE (table_name, column_name) IN (('advogado', 'cpf'), ('cliente', 'documento'))`,
     );
+    expect(colunas).toEqual([]);
+
     const nova = randomBytes(32).toString('base64');
     const recifrar = (p: ReturnType<typeof protecaoDeCampos>) =>
       new RecifrarCamposSensiveis(
@@ -254,9 +255,8 @@ describe('cadastro no PostgreSQL (HU11)', () => {
     const primeira = protecaoDeCampos(new ProvedorChavesLocal(MESTRA, `k1:${antiga},l1:${DADOS}`));
     expect((await recifrar(primeira)).atualizados).toBeGreaterThanOrEqual(1);
     const cifrada = await linha();
-    expect(cifrada.cpf).toBeNull();
     expect(cifrada.cpfCifrado).toMatch(/^v2\.k1\./);
-    expect(primeira.decifrar(cifrada.cpfCifrado ?? '')).toBe('52998224725');
+    expect(primeira.decifrar(cifrada.cpfCifrado)).toBe('52998224725');
     // Repetir não muda nada (idempotente).
     const repetida = await recifrar(primeira);
     expect(repetida.atualizados).toBe(0);
@@ -268,7 +268,7 @@ describe('cadastro no PostgreSQL (HU11)', () => {
     await recifrar(rodada);
     const final = await linha();
     expect(final.cpfCifrado).toMatch(/^v2\.k2\./);
-    expect(rodada.decifrar(final.cpfCifrado ?? '')).toBe('52998224725');
+    expect(rodada.decifrar(final.cpfCifrado)).toBe('52998224725');
     expect(final.cpfIndice).toBe(rodada.indice('52998224725'));
   });
 });

@@ -62,7 +62,9 @@ async function semear(tenant: Uuid, usuario: Uuid, n: number) {
         tenantId: tenant,
         usuarioId: usuario,
         nome: 'Pessoa Fictícia',
-        cpf: n === 1 ? '52998224725' : '11144477735',
+        // CPF só cifrado (HU37); fictício, porque o encerramento não o lê.
+        cpfCifrado: `v2.teste.cifrado-ficticio-${String(n)}`,
+        cpfIndice: String(n).padStart(64, '0'),
         celular: '11900000000',
       },
     });
