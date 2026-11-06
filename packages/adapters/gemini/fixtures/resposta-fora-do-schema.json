@@ -1,0 +1,11 @@
+{
+  "candidates": [
+    {
+      "content": { "parts": [{ "text": "{\"outroCampo\":true}" }], "role": "model" },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": { "promptTokenCount": 10, "candidatesTokenCount": 5, "totalTokenCount": 15 },
+  "modelVersion": "gemini-3.6-flash"
+}

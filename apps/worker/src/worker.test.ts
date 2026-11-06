@@ -12,6 +12,7 @@ import { PROCESSADORES_DE_WEBHOOK } from './fichas.js';
 import { ConsumidorDeNotificacoes } from './notificacoes/consumidor.js';
 import { criarServidorDeSaude } from './saude/servidor.js';
 import { criarWorker } from './worker.js';
+import { planoDeIa, provedorIaDoAmbiente } from './worker.module.js';
 
 import type { INestApplicationContext } from '@nestjs/common';
 import type { AlteracaoDoCalendario, CacheDeDiasNaoUteis } from '@pz/calendario';
@@ -420,5 +421,37 @@ describe('notificações (HU30)', () => {
     transacao.usuarioPerfil.findMany = () => Promise.resolve([]);
     await consumidor?.fonteDegradada(transacao as never, evento('FonteDegradada'));
     expect(criadas).toHaveLength(2);
+  });
+});
+
+describe('provedor de IA do ambiente (ADR-022)', () => {
+  const sem = { GEMINI_MODELO: 'gemini-3.5-flash', IA_DADOS_FICTICIOS: 'nao' as const };
+
+  it('Anthropic tem preferência; sem chave nenhuma, a IA fica desligada', () => {
+    expect(provedorIaDoAmbiente({ ...sem, ANTHROPIC_API_KEY: 'a', GEMINI_API_KEY: 'g' })).toEqual({
+      tipo: 'anthropic',
+      chave: 'a',
+    });
+    expect(provedorIaDoAmbiente(sem)).toBeUndefined();
+  });
+
+  it('Gemini só liga com a declaração de dados fictícios', () => {
+    expect(provedorIaDoAmbiente({ ...sem, GEMINI_API_KEY: 'g' })).toBeUndefined();
+    expect(
+      provedorIaDoAmbiente({ ...sem, GEMINI_API_KEY: 'g', IA_DADOS_FICTICIOS: 'sim' }),
+    ).toEqual({ tipo: 'gemini', chave: 'g', modelo: 'gemini-3.5-flash' });
+  });
+
+  it('plano de cada provedor: Anthropic com a configuração padrão; Gemini em todas as tarefas', () => {
+    const relogio = new FixedClock(Instant.deIso('2026-11-06T12:00:00.000Z'));
+    const anthropic = planoDeIa({ tipo: 'anthropic', chave: 'a' }, relogio);
+    expect(anthropic.descritor.id).toBe('anthropic');
+    expect(anthropic.criar()).toBeDefined();
+    const gemini = planoDeIa({ tipo: 'gemini', chave: 'g', modelo: 'modelo-ficticio' }, relogio);
+    expect(gemini.descritor.id).toBe('gemini');
+    expect(gemini.criar()).toBeDefined();
+    for (const tarefa of Object.values(gemini.configuracao.tarefas)) {
+      expect(tarefa.modelos).toEqual([{ provedor: 'gemini', modelo: 'modelo-ficticio' }]);
+    }
   });
 });

@@ -77,6 +77,16 @@ export const esquemaWorker = esquemaBase
      */
     ANTHROPIC_API_KEY: z.string().min(1).optional(),
     /**
+     * Provedor alternativo da validação local (ADR-022): Google Gemini por chave gratuita e
+     * limitada. Só liga com IA_DADOS_FICTICIOS=sim, porque o plano gratuito pode usar o conteúdo
+     * para treino e dados de clientes nunca podem ir para lá (CLAUDE.md, seção 11). A Anthropic,
+     * se configurada, tem preferência.
+     */
+    GEMINI_API_KEY: z.string().min(1).optional(),
+    GEMINI_MODELO: z.string().min(1).default('gemini-3.5-flash'),
+    /** Declaração de quem liga o Gemini: o banco local só tem dados fictícios. */
+    IA_DADOS_FICTICIOS: z.enum(['sim', 'nao']).default('nao'),
+    /**
      * Orçamento diário de IA da plataforma em US$ (HU21), pelo custo estimado de tabela. Acima
      * dele, alerta uma vez por dia; não bloqueia (o bloqueio é o orçamento mensal por tarefa).
      */

@@ -22,3 +22,4 @@ export type { AlertaDeOrcamentoDiario, ChamadaDeIa, RegistroDeUsoDeIa } from './
 export { ArquivoDePrompt, hashDoPrompt, problemasDeVersao, RegistroDePrompts } from './prompts.js';
 export type { PromptMontado } from './prompts.js';
 export { configuracaoPadrao, promptsPadrao } from './padrao.js';
+export { comProvedorAlternativo } from './configuracao.js';
