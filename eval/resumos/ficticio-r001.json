@@ -1,0 +1,9 @@
+{
+  "id": "ficticio-r001",
+  "origem": "ficticio",
+  "teor": "Intime-se a parte autora para, no prazo de 15 (quinze) dias, manifestar-se sobre a contestação apresentada pela parte ré.",
+  "esperado": {
+    "termos": ["contestação"],
+    "temProvidencia": true
+  }
+}

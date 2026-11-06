@@ -40,3 +40,13 @@ Falsos positivos descartados: prazo já vencido ("prazo de 15 dias já decorrido
 - `RegistrarCandidatoDeCuradoria` (consumidor de `PrazoAjustado` no worker): quando o advogado muda o ato ou os dias de um prazo vindo de uma publicação, e a correção diverge da classificação, grava um caso em `caso_candidato_curadoria` (global, sem tenant, teor com dados pessoais minimizados). A mesma correção vira um caso só.
 - O curador (`curadoria:classificacao`) lista, aceita ou descarta, sempre com motivo e trilha (`GET /v1/admin/classificacoes/candidatos`, `POST .../{id}/decisao`). Ao aceitar, pode corrigir o teor anonimizado.
 - `GET .../exportacao` devolve os aceitos no formato de `eval/casos` (`revisor` vazio, `trecho` a preencher). O curador confere a anonimização, preenche o trecho e versiona; outro advogado revisa. Eles entram no próximo `pnpm eval`.
+
+## Resumo por IA (HU62)
+
+Ao receber `PublicacaoClassificada`, o worker resume o conteúdo uma vez (tabela global
+`resumo_publicacao`, ADR-014) pela tarefa `resumir-publicacao` de `packages/ia`. O resumo e a
+providência não podem ter datas (guardrail da plataforma); os trechos de evidência podem, porque
+`decidirResumo` confere que cada um é cópia literal do teor. Trecho fora do teor ou saída inválida
+vão para `revisao_manual` e não são exibidos; sem orçamento, nada é gravado. O portal mostra o
+resumo em `GET /v1/publicacoes/{id}/resumo`, com o selo "Gerado por IA" e os trechos citados.
+Avaliação: `pnpm --filter @pz/eval avaliar-resumos` (eval/README.md).

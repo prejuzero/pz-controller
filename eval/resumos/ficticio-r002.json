@@ -1,0 +1,9 @@
+{
+  "id": "ficticio-r002",
+  "origem": "ficticio",
+  "teor": "Vistos. Julgo procedente o pedido para condenar a parte ré ao pagamento de indenização por danos morais. Custas pela parte ré. Publique-se. Intimem-se.",
+  "esperado": {
+    "termos": ["procedente"],
+    "temProvidencia": true
+  }
+}

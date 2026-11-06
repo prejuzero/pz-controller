@@ -24,8 +24,12 @@ describe('classificação no worker (HU21)', () => {
     await new ConsumidorDaClassificacao(
       falso({ origem: 'regra', situacao: 'ok' }),
       {} as never,
+      {} as never,
     ).publicacaoNova('tx', evento);
-    await new ConsumidorDaClassificacao(falso(undefined), {} as never).publicacaoNova('tx', evento);
+    await new ConsumidorDaClassificacao(falso(undefined), {} as never, {} as never).publicacaoNova(
+      'tx',
+      evento,
+    );
     expect(recebidos).toEqual([
       ['tx', { tenantId: evento.tenantId, payload: evento.payload }],
       ['tx', { tenantId: evento.tenantId, payload: evento.payload }],
@@ -42,10 +46,27 @@ describe('classificação no worker (HU21)', () => {
       },
     };
     const ajuste = { tipo: 'PrazoAjustado', agregadoId: 'p1', payload: {} } as EventoDominio;
-    await new ConsumidorDaClassificacao({} as never, candidatos as never).prazoAjustado(
-      'tx',
-      ajuste,
-    );
+    await new ConsumidorDaClassificacao(
+      {} as never,
+      candidatos as never,
+      {} as never,
+    ).prazoAjustado('tx', ajuste);
     expect(recebidos).toEqual([['tx', ajuste]]);
+  });
+
+  it('PublicacaoClassificada pede o resumo por IA, na transação do consumo (HU62)', async () => {
+    const recebidos: unknown[] = [];
+    const resumir = {
+      executar: (tx: unknown, e: unknown) => {
+        recebidos.push([tx, e]);
+        return Promise.resolve('gerado');
+      },
+    };
+    await new ConsumidorDaClassificacao(
+      {} as never,
+      {} as never,
+      resumir as never,
+    ).publicacaoClassificada('tx', evento);
+    expect(recebidos).toEqual([['tx', { tenantId: evento.tenantId, payload: evento.payload }]]);
   });
 });

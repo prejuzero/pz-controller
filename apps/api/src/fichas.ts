@@ -1,3 +1,5 @@
+import type { Resumo } from '@pz/classificacao';
+
 /** Fichas de injeção da api (tokens do container do NestJS). */
 export const AMBIENTE = Symbol('AMBIENTE');
 export const RELOGIO = Symbol('RELOGIO');
@@ -15,3 +17,7 @@ export const HISTORICO_DO_PRAZO = Symbol('HISTORICO_DO_PRAZO');
 /** Membros ativos que podem ser responsáveis por prazos (HU41), no tenant da requisição. */
 export const RESPONSAVEIS_DA_EQUIPE = Symbol('RESPONSAVEIS_DA_EQUIPE');
 export type ResponsaveisDaEquipe = () => Promise<{ usuarioId: string; nome: string }[]>;
+
+/** Resumo exibível da publicação (HU62), pelo conteúdo; `undefined` se não houver. */
+export const RESUMO_DA_PUBLICACAO = Symbol('RESUMO_DA_PUBLICACAO');
+export type ResumoDaPublicacaoPorConteudo = (conteudoId: string) => Promise<Resumo | undefined>;

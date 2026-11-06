@@ -1,12 +1,16 @@
 'use client';
 
 import { EstadoCarregando, SeloStatus } from '@pz/ui';
-import { ArrowLeft, ExternalLink } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useEffect, useRef } from 'react';
 
-import { useMarcarPublicacaoLida, usePublicacao } from '../../../../api/hooks';
+import {
+  useMarcarPublicacaoLida,
+  usePublicacao,
+  useResumoDaPublicacao,
+} from '../../../../api/hooks';
 import { formatarDataCivil, formatarInstante } from '../../../../i18n/formatar';
 import { EnviarPorEmail } from '../../_casca/enviar-por-email';
 
@@ -74,6 +78,8 @@ export function DetalhePublicacao({ id }: { id: string }) {
         )}
       </dl>
 
+      <ResumoPorIa id={p.id} />
+
       <section className="space-y-3" aria-labelledby="teor">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 id="teor" className="text-lg font-semibold">
@@ -105,5 +111,46 @@ function Item({ rotulo, children }: { rotulo: string; children: React.ReactNode 
       <dt className="text-sm text-texto-suave">{rotulo}</dt>
       <dd>{children}</dd>
     </div>
+  );
+}
+
+/**
+ * Resumo por IA (HU62): identificado como IA, com os trechos literais do teor que o comprovam.
+ * É sugestão: o teor integral, logo abaixo, é o que vale.
+ */
+function ResumoPorIa({ id }: { id: string }) {
+  const t = useTranslations('publicacoes.resumo');
+  const resumo = useResumoDaPublicacao(id).data?.resumo;
+  if (resumo === undefined || resumo === null) return null;
+  return (
+    <section
+      className="space-y-3 rounded-lg border border-borda bg-superficie-elevada p-4"
+      aria-labelledby="resumo-ia"
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 id="resumo-ia" className="text-lg font-semibold">
+          {t('titulo')}
+        </h2>
+        <SeloStatus tom="info">
+          <Sparkles className="size-3" aria-hidden />
+          {t('geradoPorIa')}
+        </SeloStatus>
+      </div>
+      <p>{resumo.texto}</p>
+      {resumo.providencia === null ? null : (
+        <p>
+          <span className="font-medium">{t('providencia')}</span> {resumo.providencia}
+        </p>
+      )}
+      <div className="space-y-1">
+        <h3 className="text-sm font-medium">{t('trechos')}</h3>
+        {resumo.trechos.map((trecho) => (
+          <blockquote key={trecho} className="border-l-2 border-borda-forte pl-3 text-sm italic">
+            {trecho}
+          </blockquote>
+        ))}
+      </div>
+      <p className="text-xs text-texto-suave">{t('aviso')}</p>
+    </section>
   );
 }

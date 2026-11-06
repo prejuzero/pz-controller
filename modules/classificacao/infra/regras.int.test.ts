@@ -8,6 +8,7 @@ import { ClassificarPorRegras } from '../application/classificar.js';
 import { ClassificacoesPostgres } from './classificacoes-postgres.js';
 import { RevisaoManualPostgres } from './fila-de-revisao-postgres.js';
 import { RegrasPostgres } from './regras-postgres.js';
+import { ResumosPostgres } from './resumos-postgres.js';
 import { TaxonomiaPostgres } from './taxonomia-postgres.js';
 
 import type { Transacao } from '@pz/db';
@@ -153,6 +154,32 @@ describe('regras rápidas no PostgreSQL (HU20)', () => {
     expect(
       (await noTenant((tx) => new TaxonomiaPostgres().listar(tx))).map((t) => t.codigo),
     ).toContain('ficticio-citacao');
+  });
+
+  it('resumo: um por conteúdo, o primeiro vale; "ok" exige texto e trecho (HU62)', async () => {
+    const repo = new ResumosPostgres();
+    const conteudo = gerarUuidV7();
+    const noTenant = <T>(f: (tx: Transacao) => Promise<T>) =>
+      executarNoTenant(TENANT, () => banco.executar(f));
+    const ok = {
+      situacao: 'ok' as const,
+      texto: 'Resumo fictício.',
+      providencia: null,
+      trechos: ['trecho fictício literal'],
+      modelo: 'claude-haiku-4-5',
+      versaoPrompt: 'resumir-publicacao@0.3.0',
+      motivo: null,
+    };
+    expect(await noTenant((tx) => repo.existe(tx, conteudo))).toBe(false);
+    expect(await noTenant((tx) => repo.gravar(tx, conteudo, ok))).toBe(true);
+    expect(await noTenant((tx) => repo.gravar(tx, conteudo, { ...ok, texto: 'outro' }))).toBe(
+      false,
+    );
+    expect(await noTenant((tx) => repo.buscar(tx, conteudo))).toEqual(ok);
+    expect(await noTenant((tx) => repo.buscar(tx, gerarUuidV7()))).toBeUndefined();
+    await expect(
+      noTenant((tx) => repo.gravar(tx, gerarUuidV7(), { ...ok, trechos: [] })),
+    ).rejects.toThrow();
   });
 
   it('fila de revisão manual: só "revisao_manual", em ordem de conteúdo, com cursor (HU21)', async () => {

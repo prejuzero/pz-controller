@@ -10872,6 +10872,89 @@
         }
       }
     },
+    "/v1/publicacoes/{id}/resumo": {
+      "get": {
+        "operationId": "consultarResumoDaPublicacao",
+        "summary": "Resumo da publicação gerado por IA (HU62), com trechos de evidência.",
+        "tags": [
+          "publicacoes"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumoDaPublicacao"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/relatorios": {
       "post": {
         "operationId": "solicitarRelatorio",
@@ -19239,6 +19322,69 @@
           "linhas",
           "tiposNovos",
           "propostos"
+        ],
+        "additionalProperties": false
+      },
+      "ResumoDaPublicacao": {
+        "type": "object",
+        "properties": {
+          "resumo": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "texto": {
+                    "type": "string"
+                  },
+                  "providencia": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "trechos": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "geradoPorIa": {
+                    "type": "boolean",
+                    "const": true
+                  },
+                  "modelo": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "versaoPrompt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "texto",
+                  "providencia",
+                  "trechos",
+                  "geradoPorIa",
+                  "modelo",
+                  "versaoPrompt"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null: ainda sem resumo, sem IA configurada ou em revisão."
+          }
+        },
+        "required": [
+          "resumo"
         ],
         "additionalProperties": false
       },

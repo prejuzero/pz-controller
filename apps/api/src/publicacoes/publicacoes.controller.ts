@@ -3,10 +3,16 @@ import { ConsultarPublicacao, ListarPublicacoes, MarcarComoLida } from '@pz/publ
 import { z } from 'zod';
 
 import { autenticacao, validar } from '../auth/auth.controller.js';
+import { RESUMO_DA_PUBLICACAO } from '../fichas.js';
 import { RequerPermissao } from '../http/acesso.js';
 
+import type { ResumoDaPublicacaoPorConteudo } from '../fichas.js';
 import type { RequisicaoAutenticada } from '../http/acesso.js';
-import type { PaginaDePublicacoes, PublicacaoDoTenant as Contrato } from '@pz/contracts';
+import type {
+  PaginaDePublicacoes,
+  PublicacaoDoTenant as Contrato,
+  ResumoDaPublicacao,
+} from '@pz/contracts';
 import type { Uuid } from '@pz/kernel';
 import type { PublicacaoDoTenant } from '@pz/publicacoes';
 
@@ -37,7 +43,34 @@ export class PublicacoesController {
     @Inject(ListarPublicacoes) private readonly listar: ListarPublicacoes<unknown>,
     @Inject(ConsultarPublicacao) private readonly consultar: ConsultarPublicacao<unknown>,
     @Inject(MarcarComoLida) private readonly marcar: MarcarComoLida<unknown>,
+    @Inject(RESUMO_DA_PUBLICACAO) private readonly resumoDe: ResumoDaPublicacaoPorConteudo,
   ) {}
+
+  /**
+   * Resumo por IA (HU62). Antes, a publicação precisa ser do escritório (404 se não for): o resumo
+   * é global por conteúdo, mas só quem recebeu o conteúdo o vê.
+   */
+  @Get(':id/resumo')
+  @RequerPermissao('publicacoes:ler')
+  async consultarResumo(@Param('id') id: string): Promise<ResumoDaPublicacao> {
+    const conteudoId = idDe(id);
+    const publicacao = await this.consultar.executar(conteudoId);
+    if (!publicacao.ok) throw publicacao.erro;
+    const r = await this.resumoDe(conteudoId);
+    return {
+      resumo:
+        r === undefined || r.texto === null
+          ? null
+          : {
+              texto: r.texto,
+              providencia: r.providencia,
+              trechos: [...r.trechos],
+              geradoPorIa: true,
+              modelo: r.modelo,
+              versaoPrompt: r.versaoPrompt,
+            },
+    };
+  }
 
   @Get()
   @RequerPermissao('publicacoes:ler')

@@ -169,6 +169,8 @@ export const useRemoverCliente = () => useMutation(useMutacoesProcessos().remove
 export const usePublicacoes = (filtros: FiltrosPublicacoes) =>
   useInfiniteQuery(consultasPublicacoes(useApi()).lista(filtros));
 export const usePublicacao = (id: string) => useQuery(consultasPublicacoes(useApi()).detalhe(id));
+export const useResumoDaPublicacao = (id: string) =>
+  useQuery(consultasPublicacoes(useApi()).resumo(id));
 export const useMarcarPublicacaoLida = () =>
   useMutation(mutacoesPublicacoes(useApi(), useQueryClient()).marcarLida);
 
