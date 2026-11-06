@@ -1,5 +1,6 @@
 import tarefas from '../configuracao/tarefas.json' with { type: 'json' };
 import classificarAto from '../prompts/classificar-ato.json' with { type: 'json' };
+import escolherFerramenta from '../prompts/escolher-ferramenta.json' with { type: 'json' };
 import resumirPublicacao from '../prompts/resumir-publicacao.json' with { type: 'json' };
 
 import { lerConfiguracaoDasTarefas } from './configuracao.js';
@@ -16,5 +17,5 @@ export function configuracaoPadrao(): ConfiguracaoDasTarefas {
 }
 
 export function promptsPadrao(): RegistroDePrompts {
-  return new RegistroDePrompts([classificarAto, resumirPublicacao]);
+  return new RegistroDePrompts([classificarAto, resumirPublicacao, escolherFerramenta]);
 }

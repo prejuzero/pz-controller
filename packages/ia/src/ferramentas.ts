@@ -103,6 +103,31 @@ export class CatalogoDeFerramentas {
       }));
   }
 
+  /**
+   * Confere, sem executar, se a ferramenta existe para o contexto e se os argumentos seguem o
+   * schema dela (a escolha feita pelo modelo, HU59). Devolve a entrada já normalizada.
+   */
+  validarEntrada(
+    nome: string,
+    argumentos: unknown,
+    contexto: Pick<ContextoDaFerramenta, 'permissoes'>,
+  ): Result<unknown, ErroDominio> {
+    const ferramenta = this.#ferramentas.get(nome);
+    if (ferramenta === undefined || !contexto.permissoes.has(ferramenta.permissao)) {
+      return err(
+        new NaoEncontrado('ferramenta-indisponivel', `Ferramenta ${nome} não disponível aqui.`),
+      );
+    }
+    const entrada = ferramenta.entrada.safeParse(argumentos);
+    return entrada.success
+      ? ok(entrada.data)
+      : err(
+          new Validacao(
+            entrada.error.issues.map((p) => ({ campo: p.path.join('.'), mensagem: p.message })),
+          ),
+        );
+  }
+
   async executar(
     nome: string,
     argumentos: unknown,

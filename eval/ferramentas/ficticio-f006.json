@@ -1,0 +1,11 @@
+{
+  "id": "ficticio-f006",
+  "origem": "ficticio",
+  "pergunta": "Como foi calculado o vencimento do prazo 01a10e00-0000-7000-8000-0000000f0002?",
+  "esperado": {
+    "ferramentas": ["explicar_memoria_calculo"],
+    "argumentos": {
+      "id": "01a10e00-0000-7000-8000-0000000f0002"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "id": "ficticio-f002",
+  "origem": "ficticio",
+  "pergunta": "Mostre os prazos do TJGO que ainda estão sem ciência confirmada.",
+  "esperado": {
+    "ferramentas": ["buscar_prazos"],
+    "argumentos": {
+      "tribunal": "TJGO",
+      "statusCiencia": ["pendente"]
+    }
+  }
+}

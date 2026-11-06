@@ -1,0 +1,14 @@
+{
+  "id": "ficticio-f004",
+  "origem": "ficticio",
+  "pergunta": "Quais prazos trabalhistas vencem na próxima semana?",
+  "esperado": {
+    "ferramentas": ["buscar_prazos"],
+    "argumentos": {
+      "ramo": "trabalhista",
+      "periodo": {
+        "atalho": "proxima-semana"
+      }
+    }
+  }
+}

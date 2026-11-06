@@ -1,0 +1,13 @@
+{
+  "id": "ficticio-f007",
+  "origem": "ficticio",
+  "pergunta": "Fui intimado pelo DJEN com disponibilização em 2027-03-01 para apresentar contestação no processo 01a10e00-0000-7000-8000-0000000f0003, que é cível. Quando vence?",
+  "esperado": {
+    "ferramentas": ["simular_prazo"],
+    "argumentos": {
+      "processoId": "01a10e00-0000-7000-8000-0000000f0003",
+      "meio": "djen",
+      "dataDeReferencia": "2027-03-01"
+    }
+  }
+}

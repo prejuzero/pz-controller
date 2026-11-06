@@ -1,10 +1,22 @@
 {
-  "versao": "2026-10-08.2",
+  "versao": "2026-11-06.1",
   "fonteDosPrecos": "https://www.anthropic.com/pricing (consultada em 08/10/2026; cache lido = 0,1 x entrada)",
   "precos": {
-    "claude-haiku-4-5": { "entrada": 1, "saida": 5, "cacheLido": 0.1 },
-    "claude-haiku-4-5-20251001": { "entrada": 1, "saida": 5, "cacheLido": 0.1 },
-    "claude-sonnet-5-5": { "entrada": 2, "saida": 10, "cacheLido": 0.2 }
+    "claude-haiku-4-5": {
+      "entrada": 1,
+      "saida": 5,
+      "cacheLido": 0.1
+    },
+    "claude-haiku-4-5-20251001": {
+      "entrada": 1,
+      "saida": 5,
+      "cacheLido": 0.1
+    },
+    "claude-sonnet-5-5": {
+      "entrada": 2,
+      "saida": 10,
+      "cacheLido": 0.2
+    }
   },
   "tarefas": {
     "classificar-ato": {
@@ -48,6 +60,27 @@
         "excetoCampos": []
       },
       "orcamentoMensalTokens": 1000000
+    },
+    "escolher-ferramenta": {
+      "descricao": "Escolhe a ferramenta do catálogo (HU59) e os argumentos para a pergunta do advogado. Só leitura; quem executa é o assistente.",
+      "modelos": [
+        {
+          "provedor": "anthropic",
+          "modelo": "claude-haiku-4-5"
+        },
+        {
+          "provedor": "anthropic",
+          "modelo": "claude-sonnet-5-5"
+        }
+      ],
+      "temperatura": 0,
+      "maxTokensSaida": 1024,
+      "cachePrompt": true,
+      "lote": false,
+      "saidaSemDatas": {
+        "excetoCampos": ["argumentos"]
+      },
+      "orcamentoMensalTokens": 2000000
     }
   }
 }

@@ -1,0 +1,9 @@
+{
+  "id": "ficticio-f010",
+  "origem": "ficticio",
+  "pergunta": "Quais prazos já venceram e não foram cumpridos?",
+  "esperado": {
+    "ferramentas": ["buscar_prazos"],
+    "argumentos": {}
+  }
+}

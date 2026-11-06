@@ -585,6 +585,12 @@ importers:
       '@pz/adapter-anthropic':
         specifier: workspace:*
         version: link:../packages/adapters/anthropic
+      '@pz/adapter-gemini':
+        specifier: workspace:*
+        version: link:../packages/adapters/gemini
+      '@pz/assistente':
+        specifier: workspace:*
+        version: link:../modules/assistente
       '@pz/classificacao':
         specifier: workspace:*
         version: link:../modules/classificacao
@@ -693,6 +699,9 @@ importers:
       '@pz/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@pz/integracoes':
+        specifier: workspace:*
+        version: link:../../packages/integracoes
       '@types/node':
         specifier: 24.19.2
         version: 24.19.2
