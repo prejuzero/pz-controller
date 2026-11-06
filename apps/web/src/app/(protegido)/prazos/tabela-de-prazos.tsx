@@ -29,7 +29,7 @@ import { ImportacaoCsvComPrevia } from '../calendario/importacao-csv';
 
 import { FormularioTipoDeAto, FormularioVersao } from './formularios';
 
-import type { VersaoDaTabela } from '@pz/contracts';
+import type { VersaoConsultada as VersaoDaTabela } from '@pz/contracts';
 
 /** Curadoria da tabela de prazos (HU15): taxonomia, propostas e aprovação por quatro olhos. */
 export function TabelaDePrazos() {
@@ -43,12 +43,12 @@ export function TabelaDePrazos() {
     { id: 'ato', header: t('colunas.ato'), cell: ({ row }) => nomeDoAto(row.original.tipoAto) },
     { id: 'ramo', header: t('colunas.ramo'), cell: ({ row }) => t(`ramos.${row.original.ramo}`) },
     {
-      id: 'ultimaAprovada',
-      header: t('colunas.ultimaAprovada'),
+      id: 'vigente',
+      header: t('colunas.vigente'),
       cell: ({ row }) => {
-        const v = row.original.ultimaAprovada;
+        const v = row.original.vigente;
         return v === undefined ? (
-          <span className="text-texto-suave">{t('nenhumaAprovada')}</span>
+          <span className="text-texto-suave">{t('nenhumaVigente')}</span>
         ) : (
           <Prazo versao={v} />
         );
@@ -58,7 +58,7 @@ export function TabelaDePrazos() {
       id: 'vigencia',
       header: t('colunas.vigencia'),
       cell: ({ row }) => {
-        const v = row.original.ultimaAprovada;
+        const v = row.original.vigente;
         return v === undefined ? '—' : <Vigencia versao={v} />;
       },
     },

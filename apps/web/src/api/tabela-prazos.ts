@@ -3,7 +3,7 @@ import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { chaves } from './chaves';
 import { exigir, type ClienteApi } from './cliente';
 
-import type { PedidoDeVersaoDaTabela, VersaoDaTabela } from '@pz/contracts';
+import type { PedidoDeVersaoDaTabela, VersaoConsultada as VersaoDaTabela } from '@pz/contracts';
 import type { paths } from '@pz/contracts/gerado/api';
 
 type CorpoDaVersao =
@@ -17,8 +17,8 @@ export interface GrupoDaTabela {
   readonly tipoAto: string;
   readonly ramo: VersaoDaTabela['ramo'];
   readonly versoes: readonly VersaoDaTabela[];
-  /** Maior versão aprovada; a escolha pela data do ato é do módulo prazos (selecionarVigente). */
-  readonly ultimaAprovada: VersaoDaTabela | undefined;
+  /** A que vale hoje, marcada pela API na data do servidor (selecionarVigente, PZ-298). */
+  readonly vigente: VersaoDaTabela | undefined;
   readonly rascunhos: number;
 }
 
@@ -39,7 +39,7 @@ export function agruparVersoes(versoes: readonly VersaoDaTabela[]): GrupoDaTabel
           tipoAto: primeira.tipoAto,
           ramo: primeira.ramo,
           versoes: ordenadas,
-          ultimaAprovada: ordenadas.find((v) => v.status === 'aprovado'),
+          vigente: ordenadas.find((v) => v.vigente),
           rascunhos: ordenadas.filter((v) => v.status === 'rascunho').length,
         },
       ];

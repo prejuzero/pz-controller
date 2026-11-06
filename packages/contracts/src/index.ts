@@ -245,6 +245,7 @@ export {
   ROTAS_TABELA_PRAZOS,
   TipoDeAto,
   TiposDeAto,
+  VersaoConsultada,
   VersaoDaTabela,
   VersoesDaTabela,
 } from './prazos/index.js';

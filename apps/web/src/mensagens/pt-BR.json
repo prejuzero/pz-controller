@@ -428,12 +428,12 @@
     "colunas": {
       "ato": "Ato",
       "ramo": "Ramo",
-      "ultimaAprovada": "Última aprovada",
+      "vigente": "Vigente hoje",
       "vigencia": "Vigência",
       "pendentes": "Rascunhos",
       "acoes": "Ações"
     },
-    "nenhumaAprovada": "Nenhuma aprovada",
+    "nenhumaVigente": "Nenhuma vigente hoje",
     "aPartirDe": "a partir de {inicio}",
     "periodo": "{inicio} a {fim}",
     "historico": "Histórico",

@@ -56,7 +56,11 @@ test.describe('curadoria da tabela de prazos (HU15)', () => {
     await page.getByRole('option', { name: NOME }).click();
     await dialogo.getByLabel('Quantidade').fill('15');
     await dialogo.getByRole('button', { name: /Vigência a partir de/ }).click();
-    await page.getByRole('button', { name: /15 de/ }).first().click();
+    // Dia 1º do mês corrente: já começou, então a versão aprovada aparece como vigente hoje.
+    await page
+      .getByRole('button', { name: /, 1 de / })
+      .first()
+      .click();
     await dialogo.getByLabel('Fundamento legal').fill('FICTÍCIO: Lei de Teste, art. 1º');
     await dialogo.getByLabel('Link da fonte oficial').fill('https://exemplo.invalid/ficticio');
     await dialogo.getByRole('button', { name: 'Propor' }).click();
@@ -79,6 +83,7 @@ test.describe('curadoria da tabela de prazos (HU15)', () => {
     await expect(outro.getByText('Versão aprovada.')).toBeVisible();
     await contexto.close();
 
+    // A coluna "Vigente hoje" é marcada pela API na data do servidor (PZ-298).
     await page.reload();
     await expect((await linhaDoAto(page)).getByText('FICTÍCIO: Lei de Teste')).toBeVisible();
   });
