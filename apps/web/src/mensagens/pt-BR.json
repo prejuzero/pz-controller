@@ -848,7 +848,8 @@
       "aConfirmar": "Sem data sugerida: {detalhe}. Informe o vencimento pelo ajuste.",
       "motivoAjuste": "Último motivo de ajuste",
       "versoes": "Motor {motor} · tabela {tabela}",
-      "documento": "Abrir o PDF de origem"
+      "documento": "Abrir o PDF de origem",
+      "explicacao": "Em linguagem simples"
     },
     "acoes": {
       "confirmar": "Confirmar prazo",

@@ -54,6 +54,9 @@ export const DetalheDoPrazo = nomear(
   'DetalheDoPrazo',
   Prazo.esquema.extend({
     memoria: z.unknown().describe('Memória de cálculo do motor (CLAUDE.md, seção 4.4).'),
+    explicacao: z
+      .array(z.string())
+      .describe('A memória em linguagem simples (HU62), montada só do que o motor gravou; sem IA.'),
     parametros: z.unknown().describe('Entrada do cálculo (ato, meio, referência, condições).'),
   }),
 );

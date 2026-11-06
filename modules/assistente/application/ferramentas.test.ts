@@ -74,7 +74,9 @@ function fontes(
     },
     consultarPrazo: (id, c) => {
       registrar('consultarPrazo', id, c);
-      return Promise.resolve(ok({ ...prazo, memoria: null, parametros: {} }) as never);
+      return Promise.resolve(
+        ok({ ...prazo, memoria: null, explicacao: [], parametros: {} }) as never,
+      );
     },
   };
 }

@@ -111,6 +111,23 @@ export function DetalhePrazo({ id }: { id: string }) {
         </Item>
       </dl>
 
+      {p.explicacao.length === 0 ? null : (
+        // HU62: a memória contada em frases, montada só do que o motor gravou (sem IA).
+        <section
+          className="space-y-2 rounded-lg border border-borda bg-superficie-elevada p-4"
+          aria-labelledby="explicacao"
+        >
+          <h2 id="explicacao" className="text-lg font-semibold">
+            {t('detalhe.explicacao')}
+          </h2>
+          {p.explicacao.map((linha) => (
+            <p key={linha} className="text-sm">
+              {linha}
+            </p>
+          ))}
+        </section>
+      )}
+
       <section className="space-y-3" aria-labelledby="memoria">
         <h2 id="memoria" className="text-lg font-semibold">
           {t('detalhe.memoria')}

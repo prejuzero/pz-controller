@@ -2543,6 +2543,8 @@ export interface components {
             versao: number;
             /** @description Memória de cálculo do motor (CLAUDE.md, seção 4.4). */
             memoria: unknown;
+            /** @description A memória em linguagem simples (HU62), montada só do que o motor gravou; sem IA. */
+            explicacao: string[];
             /** @description Entrada do cálculo (ato, meio, referência, condições). */
             parametros: unknown;
         };
