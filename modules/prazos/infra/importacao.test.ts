@@ -41,7 +41,7 @@ beforeEach(() => {
   repositorio = new TabelaEmMemoria();
   trilha = new TrilhaFalsa();
   importar = new ImportarTabelaDePrazos(outbox, repositorio, repositorio, trilha, relogio());
-  consultar = new ConsultarTabelaDePrazos(outbox, repositorio, repositorio);
+  consultar = new ConsultarTabelaDePrazos(outbox, repositorio, repositorio, relogio());
 });
 
 const csv = (...linhas: string[]) => [CABECALHO, ...linhas].join('\n');

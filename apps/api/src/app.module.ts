@@ -749,7 +749,8 @@ function provedoresDaTabelaDePrazos(d: DependenciasDaTabelaDePrazos): Provider[]
     },
     {
       provide: ConsultarTabelaDePrazos,
-      useValue: new ConsultarTabelaDePrazos(d.unidade, d.tipos, d.tabela),
+      inject: [RELOGIO],
+      useFactory: (r: Clock) => new ConsultarTabelaDePrazos(d.unidade, d.tipos, d.tabela, r),
     },
   ];
 }

@@ -66,7 +66,7 @@ beforeEach(async () => {
   cadastrar = new CadastrarTipoDeAto(outbox, repositorio, trilha);
   propor = new ProporVersaoDaTabela(outbox, repositorio, repositorio, trilha, r);
   aprovar = new AprovarVersaoDaTabela(outbox, repositorio, trilha, outbox, r);
-  consultar = new ConsultarTabelaDePrazos(outbox, repositorio, repositorio);
+  consultar = new ConsultarTabelaDePrazos(outbox, repositorio, repositorio, r);
   resolver = new ResolverPrazoAplicavel(outbox, repositorio);
   for (const codigo of ['ato-ficticio', CODIGO_MANIFESTACAO_GENERICA]) {
     await cadastrar.executar(ana, { codigo, nome: `FICTÍCIO ${codigo}`, descricao: '' });
@@ -178,6 +178,21 @@ describe('fluxo de proposta e aprovação (HU15)', () => {
     await propor.executar(ana, proposta({ ramo: 'penal' }));
     expect((await consultar.versoes({ ramo: 'penal' })).map((v) => v.status)).toEqual(['rascunho']);
     expect(await consultar.versoes({})).toHaveLength(2);
+  });
+
+  it('marca a versão vigente hoje (data do servidor) em cada ato e ramo (PZ-298)', async () => {
+    // Hoje no relógio de teste: 2026-10-06. FICTÍCIO: três versões aprovadas do cível.
+    const antiga = await proporEAprovar({ dias: 7, vigenciaInicio: '2020-01-01' });
+    const atual = await proporEAprovar({ dias: 9, vigenciaInicio: '2024-03-01' });
+    const futura = await proporEAprovar({ dias: 11, vigenciaInicio: '2027-01-01' });
+    const rascunho = await propor.executar(ana, proposta({ vigenciaInicio: '2025-01-01' }));
+    if (!rascunho.ok) throw rascunho.erro;
+    const penal = await proporEAprovar({ ramo: 'penal', vigenciaInicio: '2020-01-01' });
+    const vigentes = (await consultar.versoes({})).filter((v) => v.vigente).map((v) => v.id);
+    expect(vigentes.sort()).toEqual([atual.id, penal.id].sort());
+    expect(vigentes).not.toContain(antiga.id);
+    expect(vigentes).not.toContain(futura.id);
+    expect(vigentes).not.toContain(rascunho.valor.id);
   });
 });
 

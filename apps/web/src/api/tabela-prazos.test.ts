@@ -10,7 +10,7 @@ import {
   mutacoesTabelaPrazos,
 } from './tabela-prazos';
 
-import type { VersaoDaTabela } from '@pz/contracts';
+import type { VersaoConsultada as VersaoDaTabela } from '@pz/contracts';
 
 // Versões FICTÍCIAS: só exercitam a tela, sem regra jurídica real.
 const versao = (parcial: Partial<VersaoDaTabela>): VersaoDaTabela => ({
@@ -35,6 +35,7 @@ const versao = (parcial: Partial<VersaoDaTabela>): VersaoDaTabela => ({
   propostoEm: '2026-10-07T12:00:00.000Z',
   aprovadoPor: '0199a000-0000-7000-8000-00000000000b',
   aprovadoEm: '2026-10-07T13:00:00.000Z',
+  vigente: false,
   ...parcial,
 });
 
@@ -43,16 +44,17 @@ describe('tabela de prazos no portal (HU15)', () => {
     const grupos = agruparVersoes([
       versao({ versao: 1 }),
       versao({ versao: 3, status: 'rascunho', aprovadoPor: null, aprovadoEm: null }),
-      versao({ versao: 2 }),
+      versao({ versao: 2, vigente: true }),
       versao({ tipoAto: 'ficticio-a', ramo: 'penal' }),
     ]);
     expect(grupos.map((g) => [g.tipoAto, g.ramo, g.versoes.map((v) => v.versao)])).toEqual([
       ['ficticio-a', 'civel', [3, 2, 1]],
       ['ficticio-a', 'penal', [1]],
     ]);
-    expect(grupos[0]?.ultimaAprovada?.versao).toBe(2);
+    // A vigente vem marcada pela API (data do servidor), não pela maior versão.
+    expect(grupos[0]?.vigente?.versao).toBe(2);
     expect(grupos[0]?.rascunhos).toBe(1);
-    expect(agruparVersoes([versao({ status: 'rascunho' })])[0]?.ultimaAprovada).toBeUndefined();
+    expect(agruparVersoes([versao({ versao: 4 })])[0]?.vigente).toBeUndefined();
   });
 
   it('diff entre versões: só os campos que mudaram, com ausente como travessão', () => {

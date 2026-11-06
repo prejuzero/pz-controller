@@ -3552,7 +3552,57 @@ export interface components {
             aprovadoEm: string | null;
         };
         VersoesDaTabela: {
-            itens: components["schemas"]["VersaoDaTabela"][];
+            itens: {
+                /** Format: uuid */
+                id: string;
+                /** @description Código da taxonomia única (kebab-case). */
+                tipoAto: string;
+                /** @enum {string} */
+                ramo: "civel" | "juizados" | "trabalhista" | "penal" | "juizado-criminal";
+                versao: number;
+                dias: number;
+                /**
+                 * @description Fora de dias, só há cálculo com regra específica cadastrada.
+                 * @enum {string}
+                 */
+                unidade: "dias" | "horas" | "meses" | "anos";
+                fundamento: string;
+                fonteUrl: string;
+                /** Format: date */
+                vigenciaInicio: string;
+                vigenciaFim: string | null;
+                /**
+                 * @description Ausente na proposta: a do ramo (corridos no penal e no juizado criminal).
+                 * @enum {string}
+                 */
+                contagem: "uteis" | "corridos";
+                /**
+                 * @description Quem tem prazo em dobro neste ato; "verificar" sugere o simples e mostra o dobro.
+                 * @enum {string}
+                 */
+                politicaDobro: "entes-cpc" | "so-defensoria" | "fazenda-para-recorrer" | "nao-dobra" | "verificar";
+                /**
+                 * @description Automático pela publicação ou ciência, pela data informada pelo advogado, ou não calcula.
+                 * @enum {string}
+                 */
+                calculo: "automatico" | "data-informada" | "nao-calcula";
+                marcoInicial: string | null;
+                localDoAto: ("orgao-do-processo" | "juizo-de-origem" | "tribunal-de-segundo-grau" | "orgao-da-decisao" | "tribunal-superior" | "nao-se-aplica") | null;
+                alerta: string | null;
+                /**
+                 * @description Só a aprovada entra no cálculo.
+                 * @enum {string}
+                 */
+                status: "rascunho" | "aprovado";
+                /** Format: uuid */
+                propostoPor: string;
+                /** Format: date-time */
+                propostoEm: string;
+                aprovadoPor: string | null;
+                aprovadoEm: string | null;
+                /** @description Vale hoje (data do servidor) no ato e ramo: a mesma seleção do cálculo. */
+                vigente: boolean;
+            }[];
         };
         WebhookAceito: {
             /** @description O mesmo webhook (ID externo) já tinha sido recebido. */

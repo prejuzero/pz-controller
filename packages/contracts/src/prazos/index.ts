@@ -105,9 +105,19 @@ export const VersaoDaTabela = nomear(
 );
 export type VersaoDaTabela = z.infer<typeof VersaoDaTabela.esquema>;
 
+export const VersaoConsultada = nomear(
+  'VersaoConsultada',
+  VersaoDaTabela.esquema.extend({
+    vigente: z
+      .boolean()
+      .describe('Vale hoje (data do servidor) no ato e ramo: a mesma seleção do cálculo.'),
+  }),
+);
+export type VersaoConsultada = z.infer<typeof VersaoConsultada.esquema>;
+
 export const VersoesDaTabela = nomear(
   'VersoesDaTabela',
-  z.object({ itens: z.array(VersaoDaTabela.esquema) }),
+  z.object({ itens: z.array(VersaoConsultada.esquema) }),
 );
 export type VersoesDaTabela = z.infer<typeof VersoesDaTabela.esquema>;
 

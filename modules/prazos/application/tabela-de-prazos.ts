@@ -1,4 +1,4 @@
-import { Conflito, err, LocalDate, NaoEncontrado, ok, Validacao } from '@pz/kernel';
+import { Conflito, err, hoje, LocalDate, NaoEncontrado, ok, Validacao } from '@pz/kernel';
 import { z } from 'zod';
 
 import { CODIGO_MANIFESTACAO_GENERICA, resolverPrazo } from '../domain/resolucao.js';
@@ -8,6 +8,7 @@ import {
   LOCAIS_DO_ATO,
   POLITICAS_DE_DOBRO,
   RAMOS,
+  selecionarVigente,
   UNIDADES,
   VersaoDaTabela,
 } from '../domain/tabela.js';
@@ -136,6 +137,9 @@ export interface VersaoListada {
   readonly aprovadoPor: Uuid | null;
   readonly aprovadoEm: string | null;
 }
+
+/** Na consulta da curadoria: se é a versão que vale hoje (data do servidor) no ato e ramo. */
+export type VersaoConsultada = VersaoListada & { readonly vigente: boolean };
 
 export function listada(estado: EstadoDaVersao): VersaoListada {
   return {
@@ -294,17 +298,34 @@ export class ConsultarTabelaDePrazos<Transacao> {
     private readonly unidade: UnidadeDeTrabalho<Transacao>,
     private readonly repositorioDeTipos: RepositorioDeTiposDeAto<Transacao>,
     private readonly tabela: RepositorioDaTabela<Transacao>,
+    private readonly relogio: Clock,
   ) {}
 
   tiposDeAto(): Promise<TipoDeAto[]> {
     return this.unidade.executar((transacao) => this.repositorioDeTipos.listar(transacao));
   }
 
-  async versoes(filtro: FiltroDeVersoes): Promise<VersaoListada[]> {
+  /**
+   * Versões com a vigente de hoje marcada (PZ-298): a mesma seleção do cálculo (CPC, art. 14),
+   * na data do servidor, nunca na do navegador.
+   */
+  async versoes(filtro: FiltroDeVersoes): Promise<VersaoConsultada[]> {
     const versoes = await this.unidade.executar((transacao) =>
       this.tabela.listar(transacao, filtro),
     );
-    return versoes.map((versao) => listada(versao.estado));
+    const dia = hoje(this.relogio);
+    const grupos = new Map<string, VersaoDaTabela[]>();
+    for (const versao of versoes) {
+      const chave = `${versao.estado.tipoAto}|${versao.estado.ramo}`;
+      grupos.set(chave, [...(grupos.get(chave) ?? []), versao]);
+    }
+    const vigentes = new Set(
+      [...grupos.values()].flatMap((grupo) => selecionarVigente(grupo, dia)?.estado.id ?? []),
+    );
+    return versoes.map((versao) => ({
+      ...listada(versao.estado),
+      vigente: vigentes.has(versao.estado.id),
+    }));
   }
 }
 

@@ -19,7 +19,11 @@ export {
   ProporVersaoDaTabela,
   ResolverPrazoAplicavel,
 } from './application/tabela-de-prazos.js';
-export type { CuradorEmAcao, VersaoListada } from './application/tabela-de-prazos.js';
+export type {
+  CuradorEmAcao,
+  VersaoConsultada,
+  VersaoListada,
+} from './application/tabela-de-prazos.js';
 export type {
   FiltroDeVersoes,
   RepositorioDaTabela,

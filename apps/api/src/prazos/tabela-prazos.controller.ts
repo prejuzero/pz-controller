@@ -17,6 +17,7 @@ import type {
   ResultadoDaImportacaoDaTabela,
   TipoDeAto,
   TiposDeAto,
+  VersaoConsultada,
   VersaoDaTabela,
   VersoesDaTabela,
 } from '@pz/contracts';
@@ -94,7 +95,7 @@ export class TabelaPrazosController {
       itens: (await this.consultar.versoes({
         ...(filtro.tipoAto === undefined ? {} : { tipoAto: filtro.tipoAto }),
         ...(filtro.ramo === undefined ? {} : { ramo: filtro.ramo }),
-      })) as VersaoDaTabela[],
+      })) as VersaoConsultada[],
     };
   }
 

@@ -17261,7 +17261,203 @@
           "itens": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VersaoDaTabela"
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "tipoAto": {
+                  "type": "string",
+                  "maxLength": 80,
+                  "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+                  "description": "Código da taxonomia única (kebab-case)."
+                },
+                "ramo": {
+                  "type": "string",
+                  "enum": [
+                    "civel",
+                    "juizados",
+                    "trabalhista",
+                    "penal",
+                    "juizado-criminal"
+                  ]
+                },
+                "versao": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "dias": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "unidade": {
+                  "type": "string",
+                  "enum": [
+                    "dias",
+                    "horas",
+                    "meses",
+                    "anos"
+                  ],
+                  "description": "Fora de dias, só há cálculo com regra específica cadastrada."
+                },
+                "fundamento": {
+                  "type": "string"
+                },
+                "fonteUrl": {
+                  "type": "string"
+                },
+                "vigenciaInicio": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                },
+                "vigenciaFim": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "contagem": {
+                  "type": "string",
+                  "enum": [
+                    "uteis",
+                    "corridos"
+                  ],
+                  "description": "Ausente na proposta: a do ramo (corridos no penal e no juizado criminal)."
+                },
+                "politicaDobro": {
+                  "type": "string",
+                  "enum": [
+                    "entes-cpc",
+                    "so-defensoria",
+                    "fazenda-para-recorrer",
+                    "nao-dobra",
+                    "verificar"
+                  ],
+                  "description": "Quem tem prazo em dobro neste ato; \"verificar\" sugere o simples e mostra o dobro."
+                },
+                "calculo": {
+                  "type": "string",
+                  "enum": [
+                    "automatico",
+                    "data-informada",
+                    "nao-calcula"
+                  ],
+                  "description": "Automático pela publicação ou ciência, pela data informada pelo advogado, ou não calcula."
+                },
+                "marcoInicial": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "localDoAto": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "orgao-do-processo",
+                        "juizo-de-origem",
+                        "tribunal-de-segundo-grau",
+                        "orgao-da-decisao",
+                        "tribunal-superior",
+                        "nao-se-aplica"
+                      ],
+                      "description": "Órgão cujo calendário vale para o ato."
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "alerta": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "rascunho",
+                    "aprovado"
+                  ],
+                  "description": "Só a aprovada entra no cálculo."
+                },
+                "propostoPor": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "propostoEm": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                },
+                "aprovadoPor": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "aprovadoEm": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "vigente": {
+                  "type": "boolean",
+                  "description": "Vale hoje (data do servidor) no ato e ramo: a mesma seleção do cálculo."
+                }
+              },
+              "required": [
+                "id",
+                "tipoAto",
+                "ramo",
+                "versao",
+                "dias",
+                "unidade",
+                "fundamento",
+                "fonteUrl",
+                "vigenciaInicio",
+                "vigenciaFim",
+                "contagem",
+                "politicaDobro",
+                "calculo",
+                "marcoInicial",
+                "localDoAto",
+                "alerta",
+                "status",
+                "propostoPor",
+                "propostoEm",
+                "aprovadoPor",
+                "aprovadoEm",
+                "vigente"
+              ],
+              "additionalProperties": false
             }
           }
         },
