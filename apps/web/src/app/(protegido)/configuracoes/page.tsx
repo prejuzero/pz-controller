@@ -39,6 +39,13 @@ export default async function PaginaConfiguracoes() {
             descricao={t('coberturaDescricao')}
           />
         </SePermitido>
+        <SePermitido permissao="usuarios:gerir">
+          <Item
+            href="/configuracoes/equipe"
+            titulo={t('equipe')}
+            descricao={t('equipeDescricao')}
+          />
+        </SePermitido>
         <SePermitido permissao="integracoes:gerir">
           <Item
             href="/configuracoes/integracoes"

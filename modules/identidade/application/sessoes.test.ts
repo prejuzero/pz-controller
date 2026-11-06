@@ -203,6 +203,26 @@ describe('autenticar', () => {
     expect(sessoes.mapa.size).toBe(0);
     expect(acessos.registrados.at(-1)).toMatchObject({ usuarioId: USUARIO, sucesso: false });
   });
+
+  it('membro desativado (HU41): só a senha certa revela, e a sessão não nasce', async () => {
+    const { autenticar, credenciais, sessoes } = montar();
+    const atual = credenciais.porEmail.get('advogada@exemplo.com');
+    if (atual === undefined) throw new Error('credencial ausente');
+    credenciais.porEmail.set('advogada@exemplo.com', { ...atual, usuarioDesativado: true });
+    expect(
+      await autenticar.executar(
+        { email: 'advogada@exemplo.com', senha: 'senha errada longa' },
+        CTX,
+      ),
+    ).toMatchObject({ ok: false, erro: { codigo: 'credenciais-invalidas' } });
+    expect(
+      await autenticar.executar(
+        { email: 'advogada@exemplo.com', senha: 'senha correta longa' },
+        CTX,
+      ),
+    ).toMatchObject({ ok: false, erro: { codigo: 'membro-desativado' } });
+    expect(sessoes.mapa.size).toBe(0);
+  });
 });
 
 describe('validar e encerrar sessão', () => {

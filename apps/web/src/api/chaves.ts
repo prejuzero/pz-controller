@@ -100,4 +100,8 @@ export const chaves = {
     entregas: () => [...chaves.integracoes.todas, 'entregas'] as const,
     autorizacao: (pedido: object) => [...chaves.integracoes.todas, 'autorizacao', pedido] as const,
   },
+  membros: {
+    todas: ['membros'] as const,
+    lista: () => [...chaves.membros.todas, 'lista'] as const,
+  },
 };

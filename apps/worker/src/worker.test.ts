@@ -140,6 +140,7 @@ describe('@Consome e o despachante', () => {
           ],
         ],
         ['VerificacaoDeEmailSolicitada@1', ['ConsumidorDeAvisosDeIdentidade.verificacaoDeEmail']],
+        ['ConviteDeMembroEnviado@1', ['ConsumidorDeAvisosDeIdentidade.conviteEnviado']],
         [
           'ContaBloqueada@1',
           ['ConsumidorDeAvisosDeIdentidade.bloqueio', 'ConsumidorDeAuditoria.contaBloqueada'],

@@ -53,7 +53,8 @@ export class SolicitarRedefinicaoDeSenha {
     const email = normalizarEmail(emailInformado);
     if (!email.ok) return;
     const credencial = await this.credenciais.localizarPorEmail(email.valor);
-    if (credencial === undefined) return;
+    // Membro desativado (HU41) não recebe link: a resposta é a mesma de e-mail desconhecido.
+    if (credencial === undefined || credencial.usuarioDesativado === true) return;
     const token = this.tokens.novoToken();
     const agora = this.relogio.agora();
     await this.redefinicoes.guardar(

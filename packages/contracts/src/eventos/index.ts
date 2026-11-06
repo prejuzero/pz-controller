@@ -56,6 +56,13 @@ export const VerificacaoDeEmailSolicitada = definirEvento(
   z.object({ usuarioId: z.uuid(), tokenCifrado: z.string().min(1) }),
 );
 
+/** Convite para a equipe do escritório (HU41): o token vai cifrado; o worker envia o link. */
+export const ConviteDeMembroEnviado = definirEvento(
+  'ConviteDeMembroEnviado',
+  1,
+  z.object({ conviteId: z.uuid(), tokenCifrado: z.string().min(1) }),
+);
+
 /** Advogado cadastrado (HU11): tenant autônomo, conta e advogado criados juntos. */
 export const AdvogadoCadastrado = definirEvento(
   'AdvogadoCadastrado',
@@ -471,6 +478,7 @@ export const EVENTOS = catalogoDeEventos(
   CoberturaAlterada,
   ComarcaDoProcessoAlterada,
   VerificacaoDeEmailSolicitada,
+  ConviteDeMembroEnviado,
   NotificacaoSolicitada,
   NotificacaoEntregue,
   NotificacaoRejeitada,

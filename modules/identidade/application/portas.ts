@@ -10,6 +10,8 @@ export interface CredencialArmazenada {
   readonly segundoFatorAtivo: boolean;
   /** Escritório suspenso pelo administrador (HU39): a senha certa não abre sessão. */
   readonly tenantSuspenso?: boolean;
+  /** Membro desativado pelo administrador do escritório (HU41): idem. */
+  readonly usuarioDesativado?: boolean;
 }
 
 export interface RepositorioDeCredenciais {

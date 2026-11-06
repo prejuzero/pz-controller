@@ -15,6 +15,8 @@ export const ROTA_ACEITAR_TERMOS = '/aceitar-termos';
 export const ROTA_CIENCIA = '/ciencia';
 /** Verificação do PDF do histórico (HU35): pública, pelo QR code; não expõe conteúdo. */
 export const ROTA_VERIFICAR = '/verificar';
+// O caminho vem do e-mail do convite (modules/identidade/application/equipe.ts, HU41).
+export const ROTA_CONVITE = '/convite';
 const ROTAS_PUBLICAS = [
   ROTA_ENTRAR,
   ROTA_RECUPERAR_SENHA,
@@ -23,10 +25,11 @@ const ROTAS_PUBLICAS = [
   ROTA_VERIFICAR_EMAIL,
   ROTA_CIENCIA,
   ROTA_VERIFICAR,
+  ROTA_CONVITE,
   ...ROTAS_LEGAIS,
 ];
 
-export type MotivoEntrar = 'sessao-expirada' | 'senha-redefinida';
+export type MotivoEntrar = 'sessao-expirada' | 'senha-redefinida' | 'convite-aceito';
 
 export function ehRotaPublica(caminho: string): boolean {
   return ROTAS_PUBLICAS.some((rota) => caminho === rota || caminho.startsWith(`${rota}/`));

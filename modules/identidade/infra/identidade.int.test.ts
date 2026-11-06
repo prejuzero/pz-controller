@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 
 import { TrilhaPostgres } from '@pz/auditoria';
-import { Banco, BancoSistema, executarNoTenant } from '@pz/db';
+import { Banco, BancoSistema, executarNoTenant, OutboxPostgres } from '@pz/db';
 import { subirBancoDeTeste } from '@pz/db/teste';
 import { CifraVersionada, ProvedorChavesLocal } from '@pz/integracoes';
 import { FixedClock, gerarUuidV7, Instant } from '@pz/kernel';
@@ -25,6 +25,7 @@ import {
   RenovarTokens,
   RevogarDispositivo,
 } from '../application/dispositivos.js';
+import { AceitarConvite, ConvidarMembro } from '../application/equipe.js';
 import { IniciarImpersonacao } from '../application/impersonacao.js';
 import { RecifrarSegredosDoSegundoFator } from '../application/recifra.js';
 import {
@@ -46,6 +47,7 @@ import { HasherArgon2 } from './argon2.js';
 import { ClientesOAuthPostgres } from './clientes-oauth-postgres.js';
 import { CredenciaisPostgres } from './credenciais-postgres.js';
 import { CodigosRedis, DispositivosPostgres, RenovacoesRedis } from './dispositivos.js';
+import { EquipePostgres } from './equipe-postgres.js';
 import { PerfisPostgres, UsuariosComPermissaoPostgres } from './perfis-postgres.js';
 import {
   EmailsDoEscritorioPostgres,
@@ -131,6 +133,7 @@ describe('credenciais no PostgreSQL (HU06)', () => {
       senhaHash: null,
       segundoFatorAtivo: false,
       tenantSuspenso: false,
+      usuarioDesativado: false,
     });
     expect(
       await credenciais().localizarPorEmail('ninguem@exemplo.invalid' as Email),
@@ -637,6 +640,77 @@ describe('app público OAuth com PostgreSQL e Redis (HU49)', () => {
     expect(await redis.exists(`pz:renovacao:${hashDoToken(emitidos.valor.tokenDeRenovacao)}`)).toBe(
       0,
     );
+  });
+});
+
+describe('equipe do escritório no PostgreSQL (HU41)', () => {
+  it('convite pela função restrita, aceite no tenant, perfis e desativação que barra o login', async () => {
+    const equipe = new EquipePostgres(banco);
+    const credenciais = new CredenciaisPostgres(banco);
+    const trilha = new TrilhaPostgres();
+    const deps = {
+      unidade: banco,
+      equipe,
+      credenciais,
+      trilha,
+      outbox: new OutboxPostgres(),
+      tokens: new GeradorDeTokensSeguro(),
+      cifra: { cifrar: (t: string) => t, decifrar: (t: string) => t },
+      relogio,
+    };
+    const convite = await executarNoTenant(TENANT_A, () =>
+      new ConvidarMembro(deps).executar(
+        { tenantId: TENANT_A, usuarioId: ANA },
+        { email: 'nova.colab@exemplo.invalid', nome: 'Nova Colab', perfil: 'colaborador' },
+      ),
+    );
+    if (!convite.ok) throw new Error('convidar deveria passar');
+    const [pendente] = await executarNoTenant(TENANT_A, () =>
+      banco.executar((tx) =>
+        tx.eventoDominio.findMany({ where: { tipo: 'ConviteDeMembroEnviado' } }),
+      ),
+    );
+    const token = (pendente?.payload as { tokenCifrado: string }).tokenCifrado;
+    expect(
+      await executarNoTenant(TENANT_B, () =>
+        banco.executar((tx) => equipe.convitesAbertos(tx, relogio.agora())),
+      ),
+    ).toEqual([]);
+    expect((await equipe.localizarConvite(token))?.aberto).toBe(true);
+    const aceito = await new AceitarConvite(deps, new HasherArgon2(), noTenantDoBanco).executar(
+      token,
+      'senha ficticia da colab 2026',
+    );
+    expect(aceito.ok).toBe(true);
+    expect((await equipe.localizarConvite(token))?.aberto).toBe(false);
+    const credencial = await credenciais.localizarPorEmail('nova.colab@exemplo.invalid' as Email);
+    expect(credencial).toMatchObject({ tenantId: TENANT_A, usuarioDesativado: false });
+    if (credencial === undefined) throw new Error('credencial deveria existir');
+    const { usuarioId } = credencial;
+    const membros = await executarNoTenant(TENANT_A, () =>
+      banco.executar((tx) => equipe.membros(tx)),
+    );
+    expect(membros.find((m) => m.usuarioId === usuarioId)?.perfis).toEqual(['colaborador']);
+
+    await executarNoTenant(TENANT_A, () =>
+      banco.executar((tx) => equipe.definirPerfis(tx, usuarioId, ['advogado', 'colaborador'])),
+    );
+    const depois = await executarNoTenant(TENANT_A, () =>
+      banco.executar((tx) => equipe.membros(tx)),
+    );
+    expect(depois.find((m) => m.usuarioId === usuarioId)?.perfis).toEqual([
+      'advogado',
+      'colaborador',
+    ]);
+    expect(
+      await executarNoTenant(TENANT_A, () =>
+        banco.executar((tx) => equipe.desativar(tx, usuarioId, relogio.agora())),
+      ),
+    ).toBe(true);
+    expect(
+      (await credenciais.localizarPorEmail('nova.colab@exemplo.invalid' as Email))
+        ?.usuarioDesativado,
+    ).toBe(true);
   });
 });
 

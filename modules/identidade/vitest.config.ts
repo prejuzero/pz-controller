@@ -14,6 +14,7 @@ export default criarConfigVitest({
     'infra/dispositivos.ts',
     'infra/contas-postgres.ts',
     'infra/clientes-oauth-postgres.ts',
+    'infra/equipe-postgres.ts',
     // Fonte da exportação LGPD: coberta pelo teste de integração do módulo privacidade.
     'infra/exportacao-postgres.ts',
   ],

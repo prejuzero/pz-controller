@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { EnviarAvisosDeSeguranca } from '@pz/identidade';
+import { EnviarAvisosDeSeguranca, EnviarConvite } from '@pz/identidade';
 
 import { Consome } from '../eventos/consome.js';
 
@@ -12,7 +12,17 @@ export class ConsumidorDeAvisosDeIdentidade {
   constructor(
     @Inject(EnviarAvisosDeSeguranca)
     private readonly avisos: EnviarAvisosDeSeguranca<Transacao>,
+    @Inject(EnviarConvite) private readonly convite: EnviarConvite<Transacao>,
   ) {}
+
+  /** Convite para a equipe (HU41): envia o link de aceite. */
+  @Consome('ConviteDeMembroEnviado', { versao: 1 })
+  conviteEnviado(
+    transacao: Transacao,
+    evento: EventoDominio<'ConviteDeMembroEnviado', { conviteId: Uuid; tokenCifrado: string }>,
+  ): Promise<void> {
+    return this.convite.executar(transacao, evento);
+  }
 
   @Consome('RedefinicaoDeSenhaSolicitada', { versao: 1 })
   redefinicao(

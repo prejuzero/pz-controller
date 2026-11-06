@@ -19,6 +19,12 @@ O exemplo gerado (`Identidade`, `CriarIdentidade`, evento `IdentidadeCriado`) mo
 - **Regras por recurso** (ex.: responsável do prazo): `Politica<Recurso>` e `autorizar()` do `@pz/kernel`, no domínio do módulo dono do recurso.
 - **Impersonação** (`POST/DELETE /v1/admin/impersonacao`, `admin:impersonar`): o administrador da plataforma acessa um tenant com motivo (10 a 500 caracteres), por no máximo 60 min, só pelo portal (token de dispositivo não impersona). Fica na própria sessão: o tenant de origem não muda; o efetivo da requisição (RLS) passa a ser o acessado (`tenantEfetivo`). Valem só as permissões de leitura do catálogo, mais `admin:impersonar` para encerrar; perder essa permissão no perfil corta tudo na hora. Início e encerramento vão para a trilha no tenant acessado e no plataforma, antes de a sessão mudar (sem rastro, sem acesso). Ao vencer, cai sozinha no próximo uso da sessão (o início já registrou até quando valia). Os logs de cada requisição levam `userId` (o administrador), `tenantId` (o acessado) e `impersonacaoId`.
 
+## Equipe do escritório (HU41)
+
+- **Titular:** quem cria a conta recebe `advogado` e `admin_escritorio` (contas antigas, pela migração `20261124000000_equipe`).
+- **Convite** (`POST /v1/equipe/convites`, `usuarios:gerir`): e-mail único no sistema, perfil `advogado`, `colaborador` ou `admin_escritorio`, link de uso único por 7 dias (só o hash do token no banco; o token vai cifrado no evento `ConviteDeMembroEnviado` e o worker envia o e-mail). O aceite (`/convite#token=…` no portal) cria o usuário no escritório com a senha e o e-mail já verificado; o 2FA é configurado no primeiro login. O aceite acha o convite pela função restrita `pz_localizar_convite`, sem BYPASSRLS.
+- **Perfis e desativação:** o escritório mantém ao menos um administrador ativo; ninguém desativa a si mesmo. Desativar barra o login (só depois da senha certa, como no escritório suspenso), a redefinição de senha, e derruba sessões, apps e renovações na hora. Tudo vai para a trilha na mesma transação.
+
 ## Clientes OAuth de integradores (HU49)
 
 - **Client Credentials** (OAuth 2.1, RFC 6749 seção 4.4): quem tem `integracoes:gerir` registra um cliente (`POST /v1/integracoes/clientes`) e recebe o `client_secret` uma única vez; só o SHA-256 dele fica no banco (`cliente_oauth`, RLS). `POST /v1/oauth/token` (público, formulário ou JSON, segredo no corpo ou em `Authorization: Basic`) devolve um token Bearer de 15 min, sem renovação.

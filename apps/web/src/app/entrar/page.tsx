@@ -18,7 +18,9 @@ export default async function Entrar({ searchParams }: PageProps<'/entrar'>) {
       ? t('sessaoExpirada')
       : motivo === 'senha-redefinida'
         ? t('senhaRedefinida')
-        : undefined;
+        : motivo === 'convite-aceito'
+          ? t('conviteAceito')
+          : undefined;
   return (
     <PaginaAcesso titulo={t('titulo')}>
       {aviso === undefined ? null : (

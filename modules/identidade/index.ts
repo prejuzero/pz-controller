@@ -56,6 +56,7 @@ export {
   RenovacoesEmMemoria,
   ClientesOAuthEmMemoria,
   CodigosEmMemoria,
+  EquipeEmMemoria,
 } from './infra/em-memoria.js';
 export { CriarConta } from './application/contas.js';
 export type { ContaNova, RepositorioDeContas } from './application/contas.js';
@@ -193,3 +194,22 @@ export type {
 export { CodigosRedis } from './infra/dispositivos.js';
 export { desafioPkce } from './infra/tokens.js';
 export type { TipoDeClienteOAuth } from './domain/cliente-oauth.js';
+export {
+  AceitarConvite,
+  AlterarPerfisDoMembro,
+  CancelarConvite,
+  ConvidarMembro,
+  DescreverConvite,
+  DesativarMembro,
+  EnviarConvite,
+  ListarEquipe,
+  PERFIS_DA_EQUIPE,
+  VALIDADE_DO_CONVITE_MS,
+} from './application/equipe.js';
+export type {
+  DadosDosConvites,
+  DependenciasDaEquipe,
+  PerfilDaEquipe,
+  RepositorioDaEquipe,
+} from './application/equipe.js';
+export { DadosDosConvitesPostgres, EquipePostgres } from './infra/equipe-postgres.js';

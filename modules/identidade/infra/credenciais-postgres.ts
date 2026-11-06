@@ -22,8 +22,9 @@ export class CredenciaisPostgres implements RepositorioDeCredenciais {
             senha_hash: string | null;
             segundo_fator_ativo: boolean;
             tenant_suspenso: boolean;
+            usuario_desativado: boolean;
           }[]
-        >`SELECT usuario_id, tenant_id, senha_hash, segundo_fator_ativo, tenant_suspenso FROM pz_localizar_credencial(${email})`,
+        >`SELECT usuario_id, tenant_id, senha_hash, segundo_fator_ativo, tenant_suspenso, usuario_desativado FROM pz_localizar_credencial(${email})`,
     );
     return linha === undefined
       ? undefined
@@ -33,6 +34,7 @@ export class CredenciaisPostgres implements RepositorioDeCredenciais {
           senhaHash: linha.senha_hash,
           segundoFatorAtivo: linha.segundo_fator_ativo,
           tenantSuspenso: linha.tenant_suspenso,
+          usuarioDesativado: linha.usuario_desativado,
         };
   }
 

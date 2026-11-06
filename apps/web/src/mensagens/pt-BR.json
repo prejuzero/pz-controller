@@ -11,7 +11,8 @@
     "senha": "Senha",
     "enviar": "Entrar",
     "esqueciSenha": "Esqueci minha senha",
-    "criarConta": "Ainda não tem conta? Cadastre-se"
+    "criarConta": "Ainda não tem conta? Cadastre-se",
+    "conviteAceito": "Convite aceito. Entre com o seu e-mail e a senha que você criou; em seguida, ative a verificação em duas etapas."
   },
   "segundoFator": {
     "titulo": "Verificação em duas etapas",
@@ -267,7 +268,9 @@
     "notificacoes": "Notificações",
     "notificacoesDescricao": "Lembretes de prazo, resumo diário e avisos de nova intimação.",
     "integracoes": "Integrações",
-    "integracoesDescricao": "Acesso de outros sistemas à API e avisos automáticos (webhooks)."
+    "integracoesDescricao": "Acesso de outros sistemas à API e avisos automáticos (webhooks).",
+    "equipe": "Equipe",
+    "equipeDescricao": "Convide advogados e colaboradores e defina o que cada um pode fazer."
   },
   "cadastro": {
     "titulo": "Criar conta",
@@ -1424,5 +1427,66 @@
     "negar": "Negar",
     "invalidoTitulo": "Pedido de autorização inválido",
     "incompleto": "O link do aplicativo está incompleto. Volte ao aplicativo e tente de novo."
+  },
+  "convite": {
+    "titulo": "Aceitar convite",
+    "para": "Convite para {nome} ({email}), como {perfil}.",
+    "senha": "Crie a sua senha",
+    "segundoFator": "No primeiro acesso, você vai ativar a verificação em duas etapas com um aplicativo autenticador.",
+    "aceitar": "Aceitar e criar senha",
+    "invalido": "Convite inválido, expirado, cancelado ou já usado. Peça um novo convite ao administrador do escritório."
+  },
+  "equipe": {
+    "titulo": "Equipe",
+    "descricao": "Quem faz parte do escritório e o que cada pessoa pode fazer. Toda alteração fica na trilha de auditoria.",
+    "convidar": "Convidar",
+    "convidarDescricao": "A pessoa recebe um link por e-mail, válido por 7 dias, para criar a senha.",
+    "enviarConvite": "Enviar convite",
+    "campos": {
+      "nome": "Nome",
+      "email": "E-mail",
+      "perfil": "Perfil",
+      "perfis": "Perfis"
+    },
+    "colunas": {
+      "nome": "Nome",
+      "email": "E-mail",
+      "perfis": "Perfil",
+      "situacao": "Situação",
+      "expira": "Expira em",
+      "acoes": "Ações"
+    },
+    "perfis": {
+      "advogado": "Advogado",
+      "colaborador": "Colaborador",
+      "admin_escritorio": "Administrador do escritório"
+    },
+    "perfisDescricao": {
+      "advogado": "Confirma e ajusta prazos, cadastra processos e clientes.",
+      "colaborador": "Consulta prazos, publicações e processos.",
+      "admin_escritorio": "Gerencia a equipe, além do que o advogado faz."
+    },
+    "ativo": "Ativo",
+    "desativado": "Desativado",
+    "membros": {
+      "titulo": "Membros",
+      "vazio": "Nenhum membro."
+    },
+    "convites": {
+      "titulo": "Convites abertos",
+      "vazio": "Nenhum convite aberto.",
+      "cancelar": "Cancelar convite",
+      "cancelado": "Convite cancelado.",
+      "enviado": "Convite enviado."
+    },
+    "alterarPerfis": "Perfis",
+    "alterarPerfisTitulo": "Perfis de {nome}",
+    "perfisAlterados": "Perfis alterados.",
+    "salvar": "Salvar",
+    "cancelar": "Cancelar",
+    "desativar": "Desativar",
+    "desativarTitulo": "Desativar {nome}?",
+    "desativarDescricao": "A pessoa deixa de entrar e as sessões dela caem na hora. Os prazos sob responsabilidade dela continuam no escritório.",
+    "desativadoAviso": "Membro desativado."
   }
 }

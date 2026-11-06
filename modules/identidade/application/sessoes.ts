@@ -21,6 +21,11 @@ import type { Clock, Result, Uuid, Validacao } from '@pz/kernel';
 /** Mensagem única para qualquer falha de login: não revela se o e-mail existe. */
 const credenciaisInvalidas = () =>
   new NaoAutenticado('credenciais-invalidas', 'E-mail ou senha inválidos.');
+const membroDesativado = () =>
+  new NaoAutenticado(
+    'membro-desativado',
+    'Seu acesso a este escritório foi desativado. Fale com o administrador do escritório.',
+  );
 const tenantSuspenso = () =>
   new NaoAutenticado(
     'tenant-suspenso',
@@ -160,8 +165,9 @@ export class Autenticar implements ProvedorIdentidade {
       }
       return err(credenciaisInvalidas());
     }
-    // Só depois da senha certa: quem não sabe a senha não descobre que o escritório está suspenso.
-    if (credencial.tenantSuspenso === true) {
+    // Só depois da senha certa: quem não sabe a senha não descobre que o escritório está suspenso
+    // nem que o acesso foi desativado (HU41).
+    if (credencial.tenantSuspenso === true || credencial.usuarioDesativado === true) {
       await this.protecao.registrar({
         usuarioId: credencial.usuarioId,
         tenantId: credencial.tenantId,
@@ -169,7 +175,7 @@ export class Autenticar implements ProvedorIdentidade {
         ...contexto,
         sucesso: false,
       });
-      return err(tenantSuspenso());
+      return err(credencial.tenantSuspenso === true ? tenantSuspenso() : membroDesativado());
     }
     await this.protecao.passou(chave, {
       ...acesso,
