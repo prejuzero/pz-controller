@@ -55,6 +55,7 @@ export {
   DispositivosEmMemoria,
   RenovacoesEmMemoria,
   ClientesOAuthEmMemoria,
+  CodigosEmMemoria,
 } from './infra/em-memoria.js';
 export { CriarConta } from './application/contas.js';
 export type { ContaNova, RepositorioDeContas } from './application/contas.js';
@@ -177,3 +178,18 @@ export type {
   TokenDeCliente,
 } from './application/clientes-oauth.js';
 export { ClientesOAuthPostgres } from './infra/clientes-oauth-postgres.js';
+export {
+  AutorizarCliente,
+  DescreverAutorizacao,
+  TrocarCodigoPorTokens,
+  VALIDADE_DO_ACESSO_EM_SEGUNDOS,
+  VALIDADE_DO_CODIGO_MS,
+} from './application/autorizacao-oauth.js';
+export type {
+  ArmazemDeCodigos,
+  DescricaoDaAutorizacao,
+  PedidoDeAutorizacao,
+} from './application/autorizacao-oauth.js';
+export { CodigosRedis } from './infra/dispositivos.js';
+export { desafioPkce } from './infra/tokens.js';
+export type { TipoDeClienteOAuth } from './domain/cliente-oauth.js';

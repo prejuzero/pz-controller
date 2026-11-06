@@ -5,6 +5,7 @@ export const TIPOS_DE_AUDITORIA = [
   'identidade.dispositivo-registrado',
   'identidade.cliente-oauth-registrado',
   'identidade.cliente-oauth-revogado',
+  'identidade.cliente-oauth-autorizado',
   'webhooks.assinatura-registrada',
   'webhooks.assinatura-desativada',
   'webhooks.entrega-reenviada',

@@ -2,6 +2,7 @@ import { Instant } from '@pz/kernel';
 
 import { hashDoToken } from './tokens.js';
 
+import type { ArmazemDeCodigos, DadosDoCodigo } from '../application/autorizacao-oauth.js';
 import type {
   ArmazemDeRenovacoes,
   DadosDaRenovacao,
@@ -28,6 +29,7 @@ export class DispositivosPostgres implements RepositorioDeDispositivos {
           nomeDispositivo: d.nome,
           criadoEm: new Date(d.criadoEm.epochMs),
           ultimoUso: new Date(d.ultimoUso.epochMs),
+          clienteOauthId: d.clienteOAuthId ?? null,
         },
       }),
     );
@@ -49,6 +51,7 @@ export class DispositivosPostgres implements RepositorioDeDispositivos {
       criadoEm: Instant.deEpochMs(l.criadoEm.getTime()),
       ultimoUso: Instant.deEpochMs(l.ultimoUso.getTime()),
       ...(l.revogadaEm === null ? {} : { revogadaEm: Instant.deEpochMs(l.revogadaEm.getTime()) }),
+      ...(l.clienteOauthId === null ? {} : { clienteOAuthId: l.clienteOauthId as Uuid }),
     }));
   }
 
@@ -77,6 +80,20 @@ export class DispositivosPostgres implements RepositorioDeDispositivos {
       }),
     );
     return count === 1;
+  }
+
+  async revogarDoCliente(clienteOAuthId: Uuid, em: Instant): Promise<Uuid[]> {
+    return this.banco.executar(async (tx) => {
+      const abertos = await tx.sessaoDispositivo.findMany({
+        where: { clienteOauthId: clienteOAuthId, revogadaEm: null },
+        select: { id: true },
+      });
+      await tx.sessaoDispositivo.updateMany({
+        where: { id: { in: abertos.map((a) => a.id) } },
+        data: { revogadaEm: new Date(em.epochMs) },
+      });
+      return abertos.map((a) => a.id as Uuid);
+    });
   }
 }
 
@@ -117,5 +134,27 @@ export class RenovacoesRedis implements ArmazemDeRenovacoes {
     const doDispositivo = `${this.prefixo}dispositivo:${dispositivoId}`;
     const hashes = await this.redis.smembers(doDispositivo);
     await this.redis.del(doDispositivo, ...hashes.map((h) => `${this.prefixo}${h}`));
+  }
+}
+
+/** Códigos de autorização OAuth no Redis (HU49): só o hash, uso único (GETDEL), TTL curto. */
+export class CodigosRedis implements ArmazemDeCodigos {
+  constructor(
+    private readonly redis: Redis,
+    private readonly prefixo = 'pz:codigo-oauth:',
+  ) {}
+
+  async emitir(codigo: string, dados: DadosDoCodigo, expiraEm: Instant): Promise<void> {
+    await this.redis.set(
+      `${this.prefixo}${hashDoToken(codigo)}`,
+      JSON.stringify(dados),
+      'PXAT',
+      expiraEm.epochMs,
+    );
+  }
+
+  async consumir(codigo: string): Promise<DadosDoCodigo | undefined> {
+    const bruto = await this.redis.getdel(`${this.prefixo}${hashDoToken(codigo)}`);
+    return bruto === null ? undefined : (JSON.parse(bruto) as DadosDoCodigo);
   }
 }

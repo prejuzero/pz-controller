@@ -20,3 +20,8 @@ export function segredoConfere(segredo: string, hash: string): boolean {
   const guardado = Buffer.from(hash, 'hex');
   return calculado.length === guardado.length && timingSafeEqual(calculado, guardado);
 }
+
+/** `code_challenge` S256 do PKCE: base64url(SHA-256(verificador)) (RFC 7636, seção 4.2). */
+export function desafioPkce(verificador: string): string {
+  return createHash('sha256').update(verificador, 'ascii').digest('base64url');
+}

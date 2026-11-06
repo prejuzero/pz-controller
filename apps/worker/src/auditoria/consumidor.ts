@@ -30,6 +30,11 @@ export class ConsumidorDeAuditoria {
     return this.auditar.executar(tx, evento);
   }
 
+  @Consome('ClienteOAuthAutorizado', { versao: 1 })
+  clienteOAuthAutorizado(tx: Transacao, evento: EventoDominio): Promise<void> {
+    return this.auditar.executar(tx, evento);
+  }
+
   @Consome('ClienteOAuthRevogado', { versao: 1 })
   clienteOAuthRevogado(tx: Transacao, evento: EventoDominio): Promise<void> {
     return this.auditar.executar(tx, evento);

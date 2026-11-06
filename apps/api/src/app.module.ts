@@ -83,12 +83,17 @@ import {
   AtivarSegundoFator,
   Autenticar,
   AcessosPostgres,
+  AutorizarCliente,
   ClientesOAuthPostgres,
+  CodigosRedis,
+  desafioPkce,
+  DescreverAutorizacao,
   DispositivosPostgres,
   EmitirTokenDeCliente,
   ListarClientesOAuth,
   RegistrarClienteOAuth,
   RevogarClienteOAuth,
+  TrocarCodigoPorTokens,
   ListarDispositivos,
   RegistrarDispositivo,
   RenovacoesRedis,
@@ -309,6 +314,7 @@ import type {
   DependenciasDaImpersonacao,
   RepositorioDeTenantsAdministrados,
   ArmazemDeRenovacoes,
+  ArmazemDeCodigos,
   RepositorioDeClientesOAuth,
   RepositorioDeDispositivos,
   ArmazemDeRedefinicoes,
@@ -366,6 +372,7 @@ export interface OpcoesApi {
     readonly verificacoesDeEmail?: ArmazemDeRedefinicoes;
     readonly dispositivos?: RepositorioDeDispositivos;
     readonly clientesOAuth?: RepositorioDeClientesOAuth;
+    readonly codigosOAuth?: ArmazemDeCodigos;
     readonly renovacoes?: ArmazemDeRenovacoes;
     readonly perfis?: RepositorioDePerfis;
     /** Banco, tenants e trilha da impersonação (o resto vem da composição). */
@@ -1341,6 +1348,7 @@ export class AppModule {
     const renovacoes = opcoes.identidade?.renovacoes ?? new RenovacoesRedis(recursos.redis);
     const clientesOAuth =
       opcoes.identidade?.clientesOAuth ?? new ClientesOAuthPostgres(recursos.banco);
+    const codigosOAuth = opcoes.identidade?.codigosOAuth ?? new CodigosRedis(recursos.redis);
     const perfis = opcoes.identidade?.perfis ?? new PerfisPostgres(recursos.banco);
     const tenantsPostgres = new TenantsPostgres();
     const impersonacao = opcoes.identidade?.impersonacao ?? {
@@ -1516,7 +1524,50 @@ export class AppModule {
         provide: RevogarClienteOAuth,
         inject: [RELOGIO],
         useFactory: (relogio: Clock) =>
-          new RevogarClienteOAuth(clientesOAuth, sessoes, publicador, relogio),
+          new RevogarClienteOAuth(
+            clientesOAuth,
+            sessoes,
+            dispositivos,
+            renovacoes,
+            publicador,
+            relogio,
+          ),
+      },
+      {
+        provide: DescreverAutorizacao,
+        inject: [ConsultarPermissoes],
+        useFactory: (permissoes: ConsultarPermissoes) =>
+          new DescreverAutorizacao(clientesOAuth, permissoes),
+      },
+      {
+        provide: AutorizarCliente,
+        inject: [RELOGIO, ConsultarPermissoes],
+        useFactory: (relogio: Clock, permissoes: ConsultarPermissoes) =>
+          new AutorizarCliente(
+            clientesOAuth,
+            permissoes,
+            codigosOAuth,
+            tokens,
+            publicador,
+            relogio,
+          ),
+      },
+      {
+        provide: TrocarCodigoPorTokens,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new TrocarCodigoPorTokens(
+            clientesOAuth,
+            codigosOAuth,
+            desafioPkce,
+            dispositivos,
+            sessoes,
+            renovacoes,
+            tokens,
+            publicador,
+            relogio,
+            noTenantDoBanco,
+          ),
       },
       {
         provide: EmitirTokenDeCliente,

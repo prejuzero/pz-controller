@@ -12,7 +12,11 @@ import { consultasCalendario, mutacoesCalendario } from './calendario';
 import { consultasCaptura } from './captura';
 import { mutacoesCiencia } from './ciencia';
 import { consultasHistorico } from './historico';
-import { consultasIntegracoes, mutacoesIntegracoes } from './integracoes';
+import {
+  consultasIntegracoes,
+  mutacoesIntegracoes,
+  type PedidoDeAutorizacaoOAuth,
+} from './integracoes';
 import { consultasNotificacoes, mutacaoEnvioPorEmail, mutacoesNotificacoes } from './notificacoes';
 import {
   consultasPrazos,
@@ -254,6 +258,10 @@ export const useEventosDeWebhook = () => useQuery(consultasIntegracoes(useApi())
 export const useWebhooks = () => useQuery(consultasIntegracoes(useApi()).webhooks());
 export const useEntregasDeWebhook = () => useQuery(consultasIntegracoes(useApi()).entregas());
 export const useRegistrarCliente = () => useMutation(useMutacoesIntegracoes().registrarCliente);
+export const useRegistrarApp = () => useMutation(useMutacoesIntegracoes().registrarApp);
+export const useDescricaoDaAutorizacao = (pedido: PedidoDeAutorizacaoOAuth) =>
+  useQuery(consultasIntegracoes(useApi()).autorizacao(pedido));
+export const useAutorizarApp = () => useMutation(useMutacoesIntegracoes().autorizar);
 export const useRevogarCliente = () => useMutation(useMutacoesIntegracoes().revogarCliente);
 export const useRegistrarWebhook = () => useMutation(useMutacoesIntegracoes().registrarWebhook);
 export const useDesativarWebhook = () => useMutation(useMutacoesIntegracoes().desativarWebhook);

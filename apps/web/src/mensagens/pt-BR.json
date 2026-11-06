@@ -1340,12 +1340,17 @@
         "escopos": "Acesso",
         "ultimoUso": "Último uso",
         "situacao": "Situação",
-        "acoes": "Ações"
+        "acoes": "Ações",
+        "tipo": "Tipo"
       },
       "revogar": "Revogar",
       "revogarTitulo": "Revogar {nome}?",
       "revogarDescricao": "O sistema conectado perde o acesso na hora, inclusive o token em uso.",
-      "revogadoAviso": "Integração revogada."
+      "revogadoAviso": "Integração revogada.",
+      "tipos": {
+        "confidencial": "Integração (com segredo)",
+        "publico": "App (autorização do usuário)"
+      }
     },
     "webhooks": {
       "titulo": "Webhooks",
@@ -1392,6 +1397,32 @@
       },
       "reenviar": "Reenviar",
       "reenviada": "Entrega reenviada."
+    },
+    "apps": {
+      "novo": "Novo app",
+      "descricao": "Apps (assistentes de IA, aplicativos) pedem a cada advogado que os autorize, sem segredo (OAuth 2.1 com PKCE). Cada advogado decide por si.",
+      "nome": "Nome",
+      "ajudaNome": "Aparece na tela de autorização. Ex.: Assistente do escritório.",
+      "escopos": "O que o app pode pedir",
+      "retornos": "Endereços de retorno",
+      "ajudaRetornos": "Um por linha. HTTPS, ou http://localhost no ambiente local.",
+      "retornosErro": "Informe de 1 a 5 endereços.",
+      "criar": "Criar app",
+      "criado": "App criado",
+      "id": "Identificador (client_id)",
+      "semSegredo": "Apps não têm segredo: usam o identificador e PKCE. O identificador também aparece na lista."
     }
+  },
+  "consentimento": {
+    "titulo": "Autorizar aplicativo",
+    "pergunta": "{app} quer acessar sua conta no PrejuZero",
+    "descricao": "Permita só se você reconhece este aplicativo. Ele vai agir em seu nome, com o acesso abaixo.",
+    "poderaTitulo": "O aplicativo poderá",
+    "limites": "Só leitura: o aplicativo não confirma prazos, não ajusta datas e não dá ciência. Você pode encerrar o acesso a qualquer momento em Configurações → Segurança.",
+    "retorno": "Depois, você volta para {url}.",
+    "permitir": "Permitir",
+    "negar": "Negar",
+    "invalidoTitulo": "Pedido de autorização inválido",
+    "incompleto": "O link do aplicativo está incompleto. Volte ao aplicativo e tente de novo."
   }
 }

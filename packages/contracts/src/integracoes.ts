@@ -3,16 +3,21 @@ import { z } from 'zod';
 import { definirRota, nomear } from './rota.js';
 
 /**
- * Pedido de token do Client Credentials (RFC 6749, seção 4.4; OAuth 2.1). Campos em snake_case
- * por serem os nomes do padrão. O segredo pode vir aqui ou no cabeçalho `Authorization: Basic`.
+ * Pedido de token (OAuth 2.1): `client_credentials` (integrador com segredo, no corpo ou em
+ * `Authorization: Basic`), `authorization_code` (app público, com PKCE) e `refresh_token`
+ * (renovação rotativa). Campos em snake_case por serem os nomes do padrão.
  */
 export const PedidoDeTokenOAuth = nomear(
   'PedidoDeTokenOAuth',
   z.object({
-    grant_type: z.literal('client_credentials'),
+    grant_type: z.enum(['client_credentials', 'authorization_code', 'refresh_token']),
     client_id: z.uuid().optional(),
     client_secret: z.string().min(20).max(200).optional(),
     scope: z.string().max(1000).optional().describe('Escopos separados por espaço.'),
+    code: z.string().min(20).max(200).optional(),
+    redirect_uri: z.string().max(2000).optional(),
+    code_verifier: z.string().max(128).optional(),
+    refresh_token: z.string().min(20).max(200).optional(),
   }),
 );
 export type PedidoDeTokenOAuth = z.infer<typeof PedidoDeTokenOAuth.esquema>;
@@ -24,6 +29,10 @@ export const TokenOAuth = nomear(
     token_type: z.literal('Bearer'),
     expires_in: z.int().positive().describe('Segundos (15 min).'),
     scope: z.string(),
+    refresh_token: z
+      .string()
+      .optional()
+      .describe('Só nos grants do app público: uso único; reutilizar revoga a sessão.'),
   }),
 );
 export type TokenOAuth = z.infer<typeof TokenOAuth.esquema>;
@@ -44,6 +53,8 @@ export const emitirTokenOAuth = definirRota({
 const ClienteDeIntegracaoBase = z.object({
   id: z.uuid().describe('O `client_id`.'),
   nome: z.string(),
+  tipo: z.enum(['confidencial', 'publico']),
+  redirectUris: z.array(z.string()),
   escopos: z.array(z.string()),
   criadoEm: z.iso.datetime(),
   ultimoUso: z.iso.datetime().nullable(),
@@ -63,6 +74,26 @@ export const PedidoDeClienteDeIntegracao = nomear(
     escopos: z.array(z.string().max(64)).min(1).max(20),
   }),
 );
+
+/** App público (Authorization Code + PKCE): sem segredo, com endereços de retorno. */
+export const PedidoDeAppOAuth = nomear(
+  'PedidoDeAppOAuth',
+  z.object({
+    nome: z.string().trim().min(1).max(100),
+    escopos: z.array(z.string().max(64)).min(1).max(20),
+    redirectUris: z
+      .array(z.string().max(2000))
+      .min(1)
+      .max(5)
+      .describe('HTTPS, ou HTTP em localhost; comparados por igualdade exata.'),
+  }),
+);
+
+export const AppOAuthCriado = nomear(
+  'AppOAuthCriado',
+  z.object({ cliente: ClienteDeIntegracaoBase }),
+);
+export type AppOAuthCriado = z.infer<typeof AppOAuthCriado.esquema>;
 
 export const ClienteDeIntegracaoCriado = nomear(
   'ClienteDeIntegracaoCriado',
@@ -105,6 +136,16 @@ export const registrarClienteDeIntegracao = definirRota({
   tag: 'integracoes',
   corpo: PedidoDeClienteDeIntegracao,
   resposta: { status: 201, corpo: ClienteDeIntegracaoCriado },
+});
+
+export const registrarAppOAuth = definirRota({
+  id: 'registrarAppOAuth',
+  metodo: 'post',
+  caminho: '/v1/integracoes/apps',
+  resumo: 'Registra um app público (Authorization Code + PKCE), sem segredo.',
+  tag: 'integracoes',
+  corpo: PedidoDeAppOAuth,
+  resposta: { status: 201, corpo: AppOAuthCriado },
 });
 
 export const revogarClienteDeIntegracao = definirRota({
@@ -270,11 +311,65 @@ export const reenviarEntregaDeWebhook = definirRota({
   erros: [404, 409],
 });
 
+/** Pedido de autorização (OAuth 2.1, seção 4.1.1), como chega à tela de consentimento. */
+export const PedidoDeAutorizacaoOAuth = nomear(
+  'PedidoDeAutorizacaoOAuth',
+  z.object({
+    response_type: z.string().max(20),
+    client_id: z.uuid(),
+    redirect_uri: z.string().max(2000),
+    scope: z.string().max(1000).optional(),
+    state: z.string().max(500).optional(),
+    code_challenge: z.string().max(128),
+    code_challenge_method: z.string().max(10),
+  }),
+);
+export type PedidoDeAutorizacaoOAuth = z.infer<typeof PedidoDeAutorizacaoOAuth.esquema>;
+
+export const DescricaoDaAutorizacaoOAuth = nomear(
+  'DescricaoDaAutorizacaoOAuth',
+  z.object({
+    cliente: z.object({ id: z.uuid(), nome: z.string() }),
+    redirectUri: z.string(),
+    escopos: z.array(z.object({ escopo: z.string(), descricao: z.string() })),
+  }),
+);
+export type DescricaoDaAutorizacaoOAuth = z.infer<typeof DescricaoDaAutorizacaoOAuth.esquema>;
+
+export const AutorizacaoOAuthConcedida = nomear(
+  'AutorizacaoOAuthConcedida',
+  z.object({ redirecionarPara: z.string().describe('Retorno do app com `code` e `state`.') }),
+);
+export type AutorizacaoOAuthConcedida = z.infer<typeof AutorizacaoOAuthConcedida.esquema>;
+
+export const descreverAutorizacaoOAuth = definirRota({
+  id: 'descreverAutorizacaoOAuth',
+  metodo: 'get',
+  caminho: '/v1/oauth/autorizacao',
+  resumo: 'Confere o pedido de autorização e descreve o que o app pede (tela de consentimento).',
+  tag: 'integracoes',
+  consulta: PedidoDeAutorizacaoOAuth.esquema,
+  resposta: { status: 200, corpo: DescricaoDaAutorizacaoOAuth },
+});
+
+export const autorizarClienteOAuth = definirRota({
+  id: 'autorizarClienteOAuth',
+  metodo: 'post',
+  caminho: '/v1/oauth/autorizacao',
+  resumo: 'O usuário permite: emite o código (uso único) e devolve o endereço de retorno.',
+  tag: 'integracoes',
+  corpo: PedidoDeAutorizacaoOAuth,
+  resposta: { status: 200, corpo: AutorizacaoOAuthConcedida },
+});
+
 export const ROTAS_INTEGRACOES = [
   emitirTokenOAuth,
+  descreverAutorizacaoOAuth,
+  autorizarClienteOAuth,
   listarEscoposDeIntegracao,
   listarClientesDeIntegracao,
   registrarClienteDeIntegracao,
+  registrarAppOAuth,
   revogarClienteDeIntegracao,
   listarEventosDeWebhook,
   listarAssinaturasDeWebhook,

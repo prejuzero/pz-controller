@@ -68,3 +68,29 @@ Cada evento chega como `POST` JSON:
 O corpo traz só identificadores: busque os detalhes pela API (ex.: `GET /v1/prazos/{prazoId}`). Para conferir a origem, leia `PrejuZero-Assinatura: t=<segundos>,v1=<hex>` e calcule `HMAC-SHA256(segredo, "<t>.<corpo bruto>")`. Compare em tempo constante e recuse `t` com mais de 5 minutos de diferença. Use `PrejuZero-Evento-Id` para ignorar repetições.
 
 Responda 2xx em até 10 segundos. 4xx (fora 408 e 429) não é repetido. Erro de rede, timeout e 5xx são tentados de novo até 6 vezes, com espera crescente. Depois disso, a entrega aparece como falha em `GET /v1/integracoes/webhooks/entregas` e pode ser reenviada (`POST /v1/integracoes/webhooks/entregas/{id}/reenviar`). `POST /v1/integracoes/webhooks/{id}/testar` envia um `webhook.teste`.
+
+## Apps que agem em nome do advogado (Authorization Code + PKCE)
+
+Para assistentes de IA e aplicativos que cada advogado autoriza por si. Não têm segredo: provam a posse do pedido com PKCE (OAuth 2.1).
+
+1. Em **Configurações → Integrações → Novo app**, informe o nome, os escopos de leitura e os endereços de retorno (HTTPS, ou `http://localhost` para apps locais). Anote o identificador (`client_id`).
+2. O app gera um `code_verifier` aleatório (43 a 128 caracteres) e o `code_challenge = base64url(SHA-256(code_verifier))`, e abre no navegador:
+
+   ```
+   http://localhost:3001/oauth/autorizar?response_type=code&client_id=<id>&redirect_uri=<retorno>&scope=prazos:ler&state=<aleatorio>&code_challenge=<desafio>&code_challenge_method=S256
+   ```
+
+3. O advogado entra (se ainda não estiver logado), vê o que o app pede e clica em **Permitir**. O navegador volta para o retorno com `?code=…&state=…`. Se ele clicar em **Negar**, volta com `?error=access_denied`. Confira se o `state` é o mesmo que o app enviou.
+4. Em até 60 segundos, o app troca o código, uma única vez:
+
+   ```bash
+   curl -X POST http://localhost:3000/v1/oauth/token \
+     -d grant_type=authorization_code -d client_id=<id> -d code=<code> \
+     -d redirect_uri=<retorno> -d code_verifier=<verificador>
+   ```
+
+   A resposta traz `access_token` (15 min) e `refresh_token`.
+
+5. Para renovar: `grant_type=refresh_token` com `client_id` e `refresh_token`. Cada renovação devolve um par novo, e o anterior deixa de valer. Usar de novo um `refresh_token` já trocado revoga a sessão (sinal de roubo).
+
+O advogado encerra o acesso em **Configurações → Segurança** (sessões ativas). Revogar o app em **Integrações** derruba o acesso de todos os advogados que o autorizaram.

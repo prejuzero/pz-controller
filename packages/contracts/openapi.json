@@ -5714,6 +5714,78 @@
         }
       }
     },
+    "/v1/integracoes/apps": {
+      "post": {
+        "operationId": "registrarAppOAuth",
+        "summary": "Registra um app público (Authorization Code + PKCE), sem segredo.",
+        "tags": [
+          "integracoes"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeAppOAuth"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppOAuthCriado"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/integracoes/clientes": {
       "get": {
         "operationId": "listarClientesDeIntegracao",
@@ -7140,6 +7212,203 @@
           },
           "422": {
             "description": "Regra de negócio violada.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/oauth/autorizacao": {
+      "get": {
+        "operationId": "descreverAutorizacaoOAuth",
+        "summary": "Confere o pedido de autorização e descreve o que o app pede (tela de consentimento).",
+        "tags": [
+          "integracoes"
+        ],
+        "parameters": [
+          {
+            "name": "response_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 20
+            }
+          },
+          {
+            "name": "client_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "redirect_uri",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          {
+            "name": "code_challenge",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "code_challenge_method",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DescricaoDaAutorizacaoOAuth"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "autorizarClienteOAuth",
+        "summary": "O usuário permite: emite o código (uso único) e devolve o endereço de retorno.",
+        "tags": [
+          "integracoes"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeAutorizacaoOAuth"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutorizacaoOAuthConcedida"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -10991,6 +11260,88 @@
         ],
         "additionalProperties": false
       },
+      "AppOAuthCriado": {
+        "type": "object",
+        "properties": {
+          "cliente": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                "description": "O `client_id`."
+              },
+              "nome": {
+                "type": "string"
+              },
+              "tipo": {
+                "type": "string",
+                "enum": [
+                  "confidencial",
+                  "publico"
+                ]
+              },
+              "redirectUris": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "escopos": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "criadoEm": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "ultimoUso": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "revogadoEm": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "nome",
+              "tipo",
+              "redirectUris",
+              "escopos",
+              "criadoEm",
+              "ultimoUso",
+              "revogadoEm"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "cliente"
+        ],
+        "additionalProperties": false
+      },
       "AssinaturaDeWebhookCriada": {
         "type": "object",
         "properties": {
@@ -11138,6 +11489,19 @@
         },
         "required": [
           "itens"
+        ],
+        "additionalProperties": false
+      },
+      "AutorizacaoOAuthConcedida": {
+        "type": "object",
+        "properties": {
+          "redirecionarPara": {
+            "type": "string",
+            "description": "Retorno do app com `code` e `state`."
+          }
+        },
+        "required": [
+          "redirecionarPara"
         ],
         "additionalProperties": false
       },
@@ -11406,6 +11770,19 @@
               "nome": {
                 "type": "string"
               },
+              "tipo": {
+                "type": "string",
+                "enum": [
+                  "confidencial",
+                  "publico"
+                ]
+              },
+              "redirectUris": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
               "escopos": {
                 "type": "array",
                 "items": {
@@ -11445,6 +11822,8 @@
             "required": [
               "id",
               "nome",
+              "tipo",
+              "redirectUris",
               "escopos",
               "criadoEm",
               "ultimoUso",
@@ -11506,6 +11885,19 @@
                 "nome": {
                   "type": "string"
                 },
+                "tipo": {
+                  "type": "string",
+                  "enum": [
+                    "confidencial",
+                    "publico"
+                  ]
+                },
+                "redirectUris": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
                 "escopos": {
                   "type": "array",
                   "items": {
@@ -11545,6 +11937,8 @@
               "required": [
                 "id",
                 "nome",
+                "tipo",
+                "redirectUris",
                 "escopos",
                 "criadoEm",
                 "ultimoUso",
@@ -11912,6 +12306,57 @@
         "required": [
           "email",
           "senha"
+        ],
+        "additionalProperties": false
+      },
+      "DescricaoDaAutorizacaoOAuth": {
+        "type": "object",
+        "properties": {
+          "cliente": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "nome": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "nome"
+            ],
+            "additionalProperties": false
+          },
+          "redirectUri": {
+            "type": "string"
+          },
+          "escopos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "escopo": {
+                  "type": "string"
+                },
+                "descricao": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "escopo",
+                "descricao"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "cliente",
+          "redirectUri",
+          "escopos"
         ],
         "additionalProperties": false
       },
@@ -14530,6 +14975,41 @@
         ],
         "additionalProperties": false
       },
+      "PedidoDeAppOAuth": {
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "escopos": {
+            "minItems": 1,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          "redirectUris": {
+            "minItems": 1,
+            "maxItems": 5,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "description": "HTTPS, ou HTTP em localhost; comparados por igualdade exata."
+          }
+        },
+        "required": [
+          "nome",
+          "escopos",
+          "redirectUris"
+        ],
+        "additionalProperties": false
+      },
       "PedidoDeAssinatura": {
         "type": "object",
         "properties": {
@@ -14586,6 +15066,48 @@
           "url",
           "descricao",
           "eventos"
+        ],
+        "additionalProperties": false
+      },
+      "PedidoDeAutorizacaoOAuth": {
+        "type": "object",
+        "properties": {
+          "response_type": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "redirect_uri": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "scope": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "state": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "code_challenge": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "code_challenge_method": {
+            "type": "string",
+            "maxLength": 10
+          }
+        },
+        "required": [
+          "response_type",
+          "client_id",
+          "redirect_uri",
+          "code_challenge",
+          "code_challenge_method"
         ],
         "additionalProperties": false
       },
@@ -16066,7 +16588,11 @@
         "properties": {
           "grant_type": {
             "type": "string",
-            "const": "client_credentials"
+            "enum": [
+              "client_credentials",
+              "authorization_code",
+              "refresh_token"
+            ]
           },
           "client_id": {
             "type": "string",
@@ -16082,6 +16608,24 @@
             "description": "Escopos separados por espaço.",
             "type": "string",
             "maxLength": 1000
+          },
+          "code": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 200
+          },
+          "redirect_uri": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "code_verifier": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "refresh_token": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 200
           }
         },
         "required": [
@@ -18297,6 +18841,10 @@
             "description": "Segundos (15 min)."
           },
           "scope": {
+            "type": "string"
+          },
+          "refresh_token": {
+            "description": "Só nos grants do app público: uso único; reutilizar revoga a sessão.",
             "type": "string"
           }
         },

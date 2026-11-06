@@ -84,4 +84,29 @@ describe('integrações no portal (HU49)', () => {
       `POST /v1/integracoes/webhooks/${ID}/testar`,
     ]);
   });
+
+  it('app público e consentimento: descrever, autorizar e registrar', async () => {
+    const { api, cache, requisicoes } = montar({ redirecionarPara: 'http://localhost:1/cb' });
+    const pedido = {
+      response_type: 'code',
+      client_id: ID,
+      redirect_uri: 'http://localhost:1/cb',
+      code_challenge: 'x'.repeat(43),
+      code_challenge_method: 'S256',
+    };
+    await cache.query(consultasIntegracoes(api).autorizacao(pedido));
+    const m = mutacoesIntegracoes(api, cache);
+    await m.autorizar.mutationFn(pedido);
+    await m.registrarApp.mutationFn({
+      nome: 'App',
+      escopos: ['prazos:ler'],
+      redirectUris: ['http://localhost:1/cb'],
+    });
+    await m.registrarApp.onSuccess();
+    expect(rotas(requisicoes).map((r) => r.split('?')[0])).toEqual([
+      'GET /v1/oauth/autorizacao',
+      'POST /v1/oauth/autorizacao',
+      'POST /v1/integracoes/apps',
+    ]);
+  });
 });

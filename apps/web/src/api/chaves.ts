@@ -98,5 +98,6 @@ export const chaves = {
     eventos: () => [...chaves.integracoes.todas, 'eventos'] as const,
     webhooks: () => [...chaves.integracoes.todas, 'webhooks'] as const,
     entregas: () => [...chaves.integracoes.todas, 'entregas'] as const,
+    autorizacao: (pedido: object) => [...chaves.integracoes.todas, 'autorizacao', pedido] as const,
   },
 };

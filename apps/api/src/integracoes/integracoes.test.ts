@@ -2,9 +2,14 @@ import { randomBytes } from 'node:crypto';
 
 import { Controller, Get } from '@nestjs/common';
 import { carregarAmbiente } from '@pz/config/env';
+import { CABECALHO_CSRF, COOKIE_CSRF, COOKIE_SESSAO } from '@pz/contracts';
 import {
   AcessosEmMemoria,
   ClientesOAuthEmMemoria,
+  CodigosEmMemoria,
+  desafioPkce,
+  DispositivosEmMemoria,
+  RenovacoesEmMemoria,
   CredenciaisEmMemoria,
   PerfisEmMemoria,
   PublicadorEmMemoria,
@@ -70,6 +75,9 @@ beforeAll(async () => {
       perfis,
       publicador,
       clientesOAuth: new ClientesOAuthEmMemoria(),
+      codigosOAuth: new CodigosEmMemoria(),
+      dispositivos: new DispositivosEmMemoria(),
+      renovacoes: new RenovacoesEmMemoria(),
     },
     janelaDeRequisicoes: { registrar: () => Promise.resolve(1) },
     controllersExtras: [RotasDeTeste],
@@ -255,5 +263,189 @@ describe('credencial Basic', () => {
     expect(credencialBasic(b('semdoispontos'))).toBeUndefined();
     expect(credencialBasic('Bearer x')).toBeUndefined();
     expect(credencialBasic(undefined)).toBeUndefined();
+  });
+});
+
+describe('Authorization Code + PKCE (HU49)', () => {
+  const VERIFICADOR = 'v'.repeat(43);
+  const RETORNO = 'http://localhost:8765/retorno';
+  const portal = () => ({
+    cookie: `${COOKIE_SESSAO}=${tokenDoAdvogado}; ${COOKIE_CSRF}=csrf-ficticio`,
+    [CABECALHO_CSRF]: 'csrf-ficticio',
+  });
+
+  it('registra o app, consente pelo portal, troca o código, renova e revoga', async () => {
+    const criado = await api.inject({
+      method: 'POST',
+      url: '/v1/integracoes/apps',
+      headers: advogado(),
+      payload: { nome: 'Assistente fictício', escopos: ['prazos:ler'], redirectUris: [RETORNO] },
+    });
+    expect(criado.statusCode).toBe(201);
+    const app = criado.json<{ cliente: { id: string; tipo: string } }>().cliente;
+    expect(app.tipo).toBe('publico');
+    const pedido = {
+      response_type: 'code',
+      client_id: app.id,
+      redirect_uri: RETORNO,
+      scope: 'prazos:ler',
+      state: 'estado-ficticio',
+      code_challenge: desafioPkce(VERIFICADOR),
+      code_challenge_method: 'S256',
+    };
+    const consulta = new URLSearchParams(pedido).toString();
+    const descricao = await api.inject({
+      method: 'GET',
+      url: `/v1/oauth/autorizacao?${consulta}`,
+      headers: portal(),
+    });
+    expect(descricao.statusCode).toBe(200);
+    expect(descricao.json<{ cliente: { nome: string } }>().cliente.nome).toBe(
+      'Assistente fictício',
+    );
+    // Token de app não consente por outro app.
+    const porBearer = await api.inject({
+      method: 'GET',
+      url: `/v1/oauth/autorizacao?${consulta}`,
+      headers: advogado(),
+    });
+    expect(porBearer.statusCode).toBe(403);
+
+    const autorizado = await api.inject({
+      method: 'POST',
+      url: '/v1/oauth/autorizacao',
+      headers: portal(),
+      payload: pedido,
+    });
+    expect(autorizado.statusCode).toBe(200);
+    const destino = new URL(autorizado.json<{ redirecionarPara: string }>().redirecionarPara);
+    expect(destino.searchParams.get('state')).toBe('estado-ficticio');
+    const codigo = destino.searchParams.get('code') ?? '';
+
+    const token = await pedirToken(
+      new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: app.id,
+        code: codigo,
+        redirect_uri: RETORNO,
+        code_verifier: VERIFICADOR,
+      }).toString(),
+    );
+    expect(token.statusCode).toBe(200);
+    const corpo = token.json<{ access_token: string; refresh_token: string; scope: string }>();
+    expect(corpo.scope).toBe('prazos:ler');
+    const bearer = { authorization: `Bearer ${corpo.access_token}` };
+    expect(
+      (await api.inject({ method: 'GET', url: '/v1/teste-oauth/prazos', headers: bearer }))
+        .statusCode,
+    ).toBe(200);
+    expect(
+      (await api.inject({ method: 'GET', url: '/v1/teste-oauth/processos', headers: bearer }))
+        .statusCode,
+    ).toBe(403);
+
+    const renovado = await pedirToken(
+      new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: app.id,
+        refresh_token: corpo.refresh_token,
+      }).toString(),
+    );
+    expect(renovado.statusCode).toBe(200);
+    const reuso = await pedirToken(
+      new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: app.id,
+        refresh_token: corpo.refresh_token,
+      }).toString(),
+    );
+    expect(reuso.json<{ codigo: string }>().codigo).toBe('invalid_grant');
+
+    const codigoErro = async (payload: Record<string, string>, headers = {}) => {
+      const r = await pedirToken(new URLSearchParams(payload).toString(), headers);
+      return [r.statusCode, r.json<{ codigo: string }>().codigo];
+    };
+    expect(await codigoErro({ grant_type: 'authorization_code', client_id: app.id })).toEqual([
+      400,
+      'invalid_request',
+    ]);
+    expect(await codigoErro({ grant_type: 'refresh_token', client_id: app.id })).toEqual([
+      400,
+      'invalid_request',
+    ]);
+    expect(
+      await codigoErro(
+        { grant_type: 'refresh_token', refresh_token: 'r'.repeat(30) },
+        { authorization: 'Basic eDp5' },
+      ),
+    ).toEqual([401, 'invalid_client']);
+    expect(
+      await codigoErro({
+        grant_type: 'authorization_code',
+        client_id: app.id,
+        code: 'c'.repeat(30),
+        redirect_uri: RETORNO,
+        code_verifier: VERIFICADOR,
+      }),
+    ).toEqual([401, 'invalid_grant']);
+    for (const [faltando, campos] of [
+      ['redirect_uri', { code: 'c'.repeat(30), code_verifier: VERIFICADOR }],
+      ['code_verifier', { code: 'c'.repeat(30), redirect_uri: RETORNO }],
+    ] as const) {
+      const r = await pedirToken(
+        new URLSearchParams({
+          grant_type: 'authorization_code',
+          client_id: app.id,
+          ...campos,
+        }).toString(),
+      );
+      expect([r.statusCode, r.json<{ codigo: string }>().codigo, faltando]).toEqual([
+        400,
+        'invalid_request',
+        faltando,
+      ]);
+    }
+    // grant conhecido com campo inválido: pedido inválido, não grant desconhecido.
+    expect(await codigoErro({ grant_type: 'client_credentials', client_id: 'nao-e-uuid' })).toEqual(
+      [400, 'invalid_request'],
+    );
+
+    // Pedido sem scope e sem state; app desconhecido; endereço de retorno inválido no registro.
+    const semOpcionais = new URLSearchParams({
+      response_type: 'code',
+      client_id: app.id,
+      redirect_uri: RETORNO,
+      code_challenge: desafioPkce(VERIFICADOR),
+      code_challenge_method: 'S256',
+    }).toString();
+    expect(
+      (
+        await api.inject({
+          method: 'GET',
+          url: `/v1/oauth/autorizacao?${semOpcionais}`,
+          headers: portal(),
+        })
+      ).statusCode,
+    ).toBe(200);
+    const desconhecido = await api.inject({
+      method: 'POST',
+      url: '/v1/oauth/autorizacao',
+      headers: portal(),
+      payload: { ...pedido, client_id: gerarUuidV7() },
+    });
+    expect(desconhecido.json<{ codigo: string }>().codigo).toBe('invalid_client');
+    const getDesconhecido = await api.inject({
+      method: 'GET',
+      url: `/v1/oauth/autorizacao?${new URLSearchParams({ ...pedido, client_id: gerarUuidV7() }).toString()}`,
+      headers: portal(),
+    });
+    expect(getDesconhecido.statusCode).toBe(400);
+    const retornoInvalido = await api.inject({
+      method: 'POST',
+      url: '/v1/integracoes/apps',
+      headers: advogado(),
+      payload: { nome: 'x', escopos: ['prazos:ler'], redirectUris: ['http://app.exemplo.invalid'] },
+    });
+    expect(retornoInvalido.statusCode).toBe(400);
   });
 });

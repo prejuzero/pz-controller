@@ -14,6 +14,7 @@ import {
   ReativarTenant,
   SuspenderTenant,
 } from '../application/administracao-de-tenants.js';
+import { AutorizarCliente, TrocarCodigoPorTokens } from '../application/autorizacao-oauth.js';
 import {
   EmitirTokenDeCliente,
   RegistrarClienteOAuth,
@@ -44,7 +45,7 @@ import { AcessosPostgres } from './acessos-postgres.js';
 import { HasherArgon2 } from './argon2.js';
 import { ClientesOAuthPostgres } from './clientes-oauth-postgres.js';
 import { CredenciaisPostgres } from './credenciais-postgres.js';
-import { DispositivosPostgres, RenovacoesRedis } from './dispositivos.js';
+import { CodigosRedis, DispositivosPostgres, RenovacoesRedis } from './dispositivos.js';
 import { PerfisPostgres, UsuariosComPermissaoPostgres } from './perfis-postgres.js';
 import {
   EmailsDoEscritorioPostgres,
@@ -60,7 +61,7 @@ import { CifraAesGcm, SegredosTotp } from './segundo-fator.js';
 import { SessoesRedis } from './sessoes-redis.js';
 import { TenantsPostgres } from './tenants-postgres.js';
 import { TentativasRedis } from './tentativas-redis.js';
-import { GeradorDeTokensSeguro, hashDoToken } from './tokens.js';
+import { desafioPkce, GeradorDeTokensSeguro, hashDoToken } from './tokens.js';
 
 import type { ConsultarPermissoes } from '../application/autorizacao.js';
 import type { Email } from '../domain/credenciais.js';
@@ -488,7 +489,8 @@ describe('clientes OAuth com PostgreSQL e Redis (HU49)', () => {
       ),
     );
     if (!registrado.ok) throw new Error('registrar deveria passar');
-    const { cliente, segredo } = registrado.valor;
+    const { cliente } = registrado.valor;
+    const segredo = registrado.valor.segredo ?? '';
     const [gravado] = await executarNoTenant(TENANT_A, () =>
       banco.executar((tx) => tx.clienteOauth.findMany({ select: { segredoHash: true } })),
     );
@@ -514,7 +516,14 @@ describe('clientes OAuth com PostgreSQL e Redis (HU49)', () => {
     const [usado] = await executarNoTenant(TENANT_A, () => clientes.listar());
     expect(usado?.ultimoUso).toEqual(relogio.agora());
 
-    const revogar = new RevogarClienteOAuth(clientes, sessoes, publicador, relogio);
+    const revogar = new RevogarClienteOAuth(
+      clientes,
+      sessoes,
+      new DispositivosPostgres(banco),
+      new RenovacoesRedis(redis),
+      publicador,
+      relogio,
+    );
     expect(
       (
         await executarNoTenant(TENANT_B, () =>
@@ -529,6 +538,105 @@ describe('clientes OAuth com PostgreSQL e Redis (HU49)', () => {
       false,
     );
     expect((await emitir.executar({ clienteId: cliente.id, segredo })).ok).toBe(false);
+  });
+});
+
+describe('app público OAuth com PostgreSQL e Redis (HU49)', () => {
+  it('código de uso único no Redis, sessão ligada ao app e revogação de tudo', async () => {
+    const clientes = new ClientesOAuthPostgres(banco);
+    const sessoes = new SessoesRedis(redis);
+    const dispositivos = new DispositivosPostgres(banco);
+    const renovacoes = new RenovacoesRedis(redis);
+    const codigos = new CodigosRedis(redis);
+    const publicador = new PublicadorOutbox(banco);
+    const tokens = new GeradorDeTokensSeguro();
+    const permissoes = {
+      executar: () => Promise.resolve(new Set(['prazos:ler'])),
+    } as unknown as ConsultarPermissoes;
+    const sessao = {
+      id: gerarUuidV7(),
+      usuarioId: ANA,
+      tenantId: TENANT_A,
+      nivel: 'completo' as const,
+      segundoFatorAtivo: true,
+      criadaEm: relogio.agora(),
+      ultimoUso: relogio.agora(),
+    };
+    const retorno = 'http://localhost:8765/retorno';
+    const registrado = await executarNoTenant(TENANT_A, () =>
+      new RegistrarClienteOAuth(clientes, permissoes, tokens, publicador, relogio).executar(
+        sessao,
+        {
+          nome: 'Assistente fictício',
+          escopos: ['prazos:ler'],
+          tipo: 'publico',
+          redirectUris: [retorno],
+        },
+      ),
+    );
+    if (!registrado.ok) throw new Error('registrar deveria passar');
+    const { cliente } = registrado.valor;
+    expect(registrado.valor.segredo).toBeNull();
+    expect(await clientes.localizar(cliente.id)).toMatchObject({
+      tipo: 'publico',
+      redirectUris: [retorno],
+    });
+    expect(await clientes.autenticar(cliente.id, 'x'.repeat(43))).toBeUndefined();
+
+    const verificador = 'v'.repeat(43);
+    const autorizado = await executarNoTenant(TENANT_A, () =>
+      new AutorizarCliente(clientes, permissoes, codigos, tokens, publicador, relogio).executar(
+        sessao,
+        {
+          responseType: 'code',
+          clienteId: cliente.id,
+          redirectUri: retorno,
+          desafio: desafioPkce(verificador),
+          metodoDoDesafio: 'S256',
+        },
+      ),
+    );
+    if (!autorizado.ok) throw new Error('autorizar deveria passar');
+    const codigo = new URL(autorizado.valor.redirecionarPara).searchParams.get('code') ?? '';
+    expect(await redis.exists(`pz:codigo-oauth:${codigo}`)).toBe(0); // só o hash
+    const trocar = new TrocarCodigoPorTokens(
+      clientes,
+      codigos,
+      desafioPkce,
+      dispositivos,
+      sessoes,
+      renovacoes,
+      tokens,
+      publicador,
+      relogio,
+      noTenantDoBanco,
+    );
+    const entrada = { codigo, clienteId: cliente.id, redirectUri: retorno, verificador };
+    const emitidos = await trocar.executar(entrada);
+    if (!emitidos.ok) throw new Error('troca deveria passar');
+    expect((await trocar.executar(entrada)).ok).toBe(false);
+    const doApp = (await executarNoTenant(TENANT_A, () => dispositivos.listar(ANA))).filter(
+      (d) => d.clienteOAuthId === cliente.id,
+    );
+    expect(doApp).toHaveLength(1);
+
+    const revogar = new RevogarClienteOAuth(
+      clientes,
+      sessoes,
+      dispositivos,
+      renovacoes,
+      publicador,
+      relogio,
+    );
+    expect((await executarNoTenant(TENANT_A, () => revogar.executar(sessao, cliente.id))).ok).toBe(
+      true,
+    );
+    expect(
+      (await new ValidarSessao(sessoes, relogio).executar(emitidos.valor.tokenDeAcesso)).ok,
+    ).toBe(false);
+    expect(await redis.exists(`pz:renovacao:${hashDoToken(emitidos.valor.tokenDeRenovacao)}`)).toBe(
+      0,
+    );
   });
 });
 

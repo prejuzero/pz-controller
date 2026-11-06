@@ -24,6 +24,12 @@ const MAPA: Readonly<Record<string, (payload: Payload) => EntradaDeAuditoria>> =
     entidadeId: String(p.clienteId),
     depois: { escopos: p.escopos },
   }),
+  ClienteOAuthAutorizado: (p) => ({
+    tipo: 'identidade.cliente-oauth-autorizado',
+    entidade: 'cliente_oauth',
+    entidadeId: String(p.clienteId),
+    depois: { escopos: p.escopos },
+  }),
   ClienteOAuthRevogado: (p) => ({
     tipo: 'identidade.cliente-oauth-revogado',
     entidade: 'cliente_oauth',

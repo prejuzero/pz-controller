@@ -1,53 +1,71 @@
 import { err, gerarUuidV7, NaoAutenticado, NaoEncontrado, ok, Validacao } from '@pz/kernel';
 
-import { escoposDoCliente, escoposDoToken } from '../domain/cliente-oauth.js';
+import { enderecosDeRetorno, escoposDoCliente, escoposDoToken } from '../domain/cliente-oauth.js';
 import { expiracao } from '../domain/sessao.js';
 
 import { VALIDADE_DO_ACESSO_MS } from './dispositivos.js';
 
 import type { ConsultarPermissoes } from './autorizacao.js';
-import type { ArmazemDeSessoes, GeradorDeTokens, PublicadorDeEventos } from './portas.js';
+import type {
+  ArmazemDeRenovacoes,
+  ArmazemDeSessoes,
+  GeradorDeTokens,
+  PublicadorDeEventos,
+  RepositorioDeDispositivos,
+} from './portas.js';
 import type { NoTenant } from './redefinicao.js';
+import type { TipoDeClienteOAuth } from '../domain/cliente-oauth.js';
 import type { Sessao } from '../domain/sessao.js';
 import type { Clock, Instant, Result, Uuid } from '@pz/kernel';
 
-/** Cliente OAuth de integrador (HU49): age em nome de quem o registrou, só nos escopos dele. */
+/**
+ * Cliente OAuth (HU49). Confidencial: integrador que age em nome de quem o registrou. Público:
+ * app que age em nome de quem o autorizar (Authorization Code + PKCE). Sempre só nos escopos dele.
+ */
 export interface ClienteOAuth {
   readonly id: Uuid;
   readonly tenantId: Uuid;
   readonly usuarioId: Uuid;
   readonly nome: string;
+  readonly tipo: TipoDeClienteOAuth;
+  readonly redirectUris: readonly string[];
   readonly escopos: readonly string[];
   readonly criadoEm: Instant;
   readonly ultimoUso?: Instant;
   readonly revogadoEm?: Instant;
 }
 
-/** O que o endpoint de token precisa de um cliente cujo segredo conferiu. */
+/** O que o endpoint de token precisa do cliente (sem tenant no pedido). */
 export interface ClienteAutenticado {
   readonly tenantId: Uuid;
   readonly usuarioId: Uuid;
+  readonly tipo: TipoDeClienteOAuth;
+  readonly redirectUris: readonly string[];
   readonly escopos: readonly string[];
   readonly revogado: boolean;
   readonly tenantSuspenso: boolean;
 }
 
 export interface RepositorioDeClientesOAuth {
-  /** Guarda só o hash do segredo. */
-  registrar(cliente: ClienteOAuth, segredo: string): Promise<void>;
+  /** Guarda só o hash do segredo (cliente público não tem segredo). */
+  registrar(cliente: ClienteOAuth, segredo: string | null): Promise<void>;
   /** Clientes do tenant do contexto (RLS). */
   listar(): Promise<ClienteOAuth[]>;
+  /** Um cliente do tenant do contexto (RLS): a tela de consentimento só vê os do escritório. */
+  buscar(id: Uuid): Promise<ClienteOAuth | undefined>;
   /** Marca como revogado no tenant do contexto; `false` se não existe ou já estava revogado. */
   revogar(id: Uuid, agora: Instant): Promise<boolean>;
-  /** Sem tenant (endpoint público): confere o segredo em tempo constante. */
+  /** Sem tenant (endpoint público): confere o segredo em tempo constante (só confidencial). */
   autenticar(id: Uuid, segredo: string): Promise<ClienteAutenticado | undefined>;
+  /** Sem tenant e sem segredo: o cliente público do pedido de token (o PKCE prova a posse). */
+  localizar(id: Uuid): Promise<ClienteAutenticado | undefined>;
   registrarUso(id: Uuid, agora: Instant): Promise<void>;
 }
 
 export interface ClienteRegistrado {
   readonly cliente: ClienteOAuth;
-  /** Mostrado uma única vez; depois só o hash existe. */
-  readonly segredo: string;
+  /** Mostrado uma única vez; depois só o hash existe. `null` no cliente público. */
+  readonly segredo: string | null;
 }
 
 export interface TokenDeCliente {
@@ -90,26 +108,36 @@ export class RegistrarClienteOAuth {
 
   async executar(
     sessao: Sessao,
-    entrada: { readonly nome: string; readonly escopos: readonly string[] },
+    entrada: {
+      readonly nome: string;
+      readonly escopos: readonly string[];
+      readonly tipo?: TipoDeClienteOAuth;
+      readonly redirectUris?: readonly string[];
+    },
   ): Promise<Result<ClienteRegistrado, Validacao>> {
     const escopos = escoposDoCliente(entrada.escopos, await this.permissoes.executar(sessao));
     if (!escopos.ok) return escopos;
+    const tipo = entrada.tipo ?? 'confidencial';
+    const enderecos = tipo === 'publico' ? enderecosDeRetorno(entrada.redirectUris ?? []) : ok([]);
+    if (!enderecos.ok) return enderecos;
     const cliente: ClienteOAuth = {
       id: gerarUuidV7(this.relogio),
       tenantId: sessao.tenantId,
       usuarioId: sessao.usuarioId,
       nome: entrada.nome.trim().slice(0, 100),
+      tipo,
+      redirectUris: enderecos.valor,
       escopos: escopos.valor,
       criadoEm: this.relogio.agora(),
     };
-    const segredo = this.tokens.novoToken();
+    const segredo = tipo === 'confidencial' ? this.tokens.novoToken() : null;
     await this.clientes.registrar(cliente, segredo);
     await this.publicador.publicar(sessao.tenantId, [
       evento(
         'ClienteOAuthRegistrado',
         sessao,
         cliente.id,
-        { escopos: cliente.escopos.join(' ') },
+        { escopos: cliente.escopos.join(' '), tipo },
         this.relogio,
       ),
     ]);
@@ -125,20 +153,30 @@ export class ListarClientesOAuth {
   }
 }
 
-/** Revoga o cliente e derruba na hora os tokens já emitidos para ele. */
+/**
+ * Revoga o cliente e derruba na hora os tokens já emitidos para ele: os do Client Credentials e
+ * as sessões (acesso e renovação) de cada autorização dada a ele.
+ */
 export class RevogarClienteOAuth {
   constructor(
     private readonly clientes: RepositorioDeClientesOAuth,
     private readonly sessoes: ArmazemDeSessoes,
+    private readonly dispositivos: RepositorioDeDispositivos,
+    private readonly renovacoes: ArmazemDeRenovacoes,
     private readonly publicador: PublicadorDeEventos,
     private readonly relogio: Clock,
   ) {}
 
   async executar(sessao: Sessao, id: Uuid): Promise<Result<void, NaoEncontrado>> {
-    if (!(await this.clientes.revogar(id, this.relogio.agora()))) {
+    const agora = this.relogio.agora();
+    if (!(await this.clientes.revogar(id, agora))) {
       return err(new NaoEncontrado('cliente-nao-encontrado', 'Integração não encontrada.'));
     }
     await this.sessoes.removerTodasDoDispositivo(id);
+    for (const dispositivoId of await this.dispositivos.revogarDoCliente(id, agora)) {
+      await this.sessoes.removerTodasDoDispositivo(dispositivoId);
+      await this.renovacoes.revogarDoDispositivo(dispositivoId);
+    }
     await this.publicador.publicar(sessao.tenantId, [
       evento('ClienteOAuthRevogado', sessao, id, {}, this.relogio),
     ]);
@@ -170,7 +208,7 @@ export class EmitirTokenDeCliente {
   }): Promise<Result<TokenDeCliente, ErroDoToken>> {
     const cliente = await this.clientes.autenticar(entrada.clienteId, entrada.segredo);
     // Escritório suspenso (HU39) não recebe token, como no login.
-    if (cliente === undefined || cliente.revogado || cliente.tenantSuspenso) {
+    if (cliente?.tipo !== 'confidencial' || cliente.revogado || cliente.tenantSuspenso) {
       return err(clienteInvalido());
     }
     const escopos = escoposDoToken(entrada.escopo, cliente.escopos);

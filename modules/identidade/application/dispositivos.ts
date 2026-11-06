@@ -26,13 +26,15 @@ export interface TokensDeDispositivo {
   readonly acessoExpiraEm: Instant;
   readonly tokenDeRenovacao: string;
   readonly renovacaoExpiraEm: Instant;
+  /** Autorização OAuth (HU49): os escopos do token. */
+  readonly escopos?: readonly string[];
 }
 
 const renovacaoInvalida = () =>
   new NaoAutenticado('renovacao-invalida', 'Sessão do dispositivo expirada ou revogada.');
 
 /** Emite o par de tokens de um dispositivo (sessão de acesso curta + renovação). */
-class EmissorDeTokens {
+export class EmissorDeTokens {
   constructor(
     private readonly sessoes: ArmazemDeSessoes,
     private readonly renovacoes: ArmazemDeRenovacoes,
@@ -52,6 +54,7 @@ class EmissorDeTokens {
       ultimoUso: agora,
       dispositivoId: dados.dispositivoId,
       expiraAte: agora.maisMs(VALIDADE_DO_ACESSO_MS),
+      ...(dados.escopos === undefined ? {} : { escopos: dados.escopos }),
     };
     const [tokenDeAcesso, tokenDeRenovacao] = [this.tokens.novoToken(), this.tokens.novoToken()];
     const renovacaoExpiraEm = agora.maisMs(VALIDADE_DA_RENOVACAO_MS);
@@ -63,6 +66,7 @@ class EmissorDeTokens {
       acessoExpiraEm: expiracao(acesso),
       tokenDeRenovacao,
       renovacaoExpiraEm,
+      ...(dados.escopos === undefined ? {} : { escopos: dados.escopos }),
     };
   }
 }
@@ -145,10 +149,20 @@ export class RenovarTokens {
     this.#emissor = new EmissorDeTokens(sessoes, renovacoes, tokens, relogio);
   }
 
-  async executar(tokenDeRenovacao: string): Promise<Result<TokensDeDispositivo, NaoAutenticado>> {
+  /**
+   * `clienteOAuthId`: o cliente que pede (grant `refresh_token`, HU49). O token de uma autorização
+   * só renova para o mesmo cliente, e o de um app do portal não renova por um cliente OAuth.
+   */
+  async executar(
+    tokenDeRenovacao: string,
+    clienteOAuthId?: Uuid,
+  ): Promise<Result<TokensDeDispositivo, NaoAutenticado>> {
     const resultado = await this.renovacoes.consumir(tokenDeRenovacao);
     if (resultado.tipo === 'invalido') return err(renovacaoInvalida());
     const { dados } = resultado;
+    if (resultado.tipo === 'valido' && dados.clienteOAuthId !== clienteOAuthId) {
+      return err(renovacaoInvalida());
+    }
     if (resultado.tipo === 'reuso') {
       await revogarTudo(
         this.dispositivos,

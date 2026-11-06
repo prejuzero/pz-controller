@@ -215,12 +215,16 @@ model SessaoDispositivo {
   criadoEm        DateTime    @map("criado_em") @db.Timestamptz(6)
   ultimoUso       DateTime    @map("ultimo_uso") @db.Timestamptz(6)
   revogadaEm      DateTime?   @map("revogada_em") @db.Timestamptz(6)
+  /// Nascida de uma autorização OAuth (HU49): revogar o cliente revoga a sessão.
+  clienteOauthId  String?     @map("cliente_oauth_id") @db.Uuid
 
-  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  usuario      Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  clienteOauth ClienteOauth? @relation(fields: [clienteOauthId], references: [id], onDelete: Restrict)
 
   @@index([tenantId])
   @@index([usuarioId])
+  @@index([clienteOauthId])
   @@map("sessao_dispositivo")
 }
 
@@ -230,15 +234,19 @@ model ClienteOauth {
   tenantId     String    @map("tenant_id") @db.Uuid
   usuarioId    String    @map("usuario_id") @db.Uuid
   nome         String
-  segredoHash  String    @map("segredo_hash")
+  segredoHash  String?   @map("segredo_hash")
   escopos      String[]
+  /// `confidencial` (Client Credentials) ou `publico` (Authorization Code + PKCE).
+  tipo         String    @default("confidencial")
+  redirectUris String[]  @default([]) @map("redirect_uris")
   ultimoUso    DateTime? @map("ultimo_uso") @db.Timestamptz(6)
   revogadoEm   DateTime? @map("revogado_em") @db.Timestamptz(6)
   criadoEm     DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm DateTime  @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  usuario      Usuario             @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  dispositivos SessaoDispositivo[]
 
   @@index([tenantId])
   @@map("cliente_oauth")

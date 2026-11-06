@@ -13,6 +13,8 @@ import { escoposDoCliente, escoposDoToken } from '../domain/cliente-oauth.js';
 
 import {
   ClientesOAuthEmMemoria,
+  DispositivosEmMemoria,
+  RenovacoesEmMemoria,
   PerfisEmMemoria,
   PublicadorEmMemoria,
   SessoesEmMemoria,
@@ -26,6 +28,8 @@ const relogio = new FixedClock(Instant.deIso('2026-11-06T12:00:00Z'));
 
 function montar() {
   const clientes = new ClientesOAuthEmMemoria();
+  const dispositivos = new DispositivosEmMemoria();
+  const renovacoes = new RenovacoesEmMemoria();
   const sessoes = new SessoesEmMemoria();
   const publicador = new PublicadorEmMemoria();
   const perfis = new PerfisEmMemoria();
@@ -53,7 +57,14 @@ function montar() {
     validar: new ValidarSessao(sessoes, relogio),
     registrar: new RegistrarClienteOAuth(clientes, permissoes, tokens, publicador, relogio),
     listar: new ListarClientesOAuth(clientes),
-    revogar: new RevogarClienteOAuth(clientes, sessoes, publicador, relogio),
+    revogar: new RevogarClienteOAuth(
+      clientes,
+      sessoes,
+      dispositivos,
+      renovacoes,
+      publicador,
+      relogio,
+    ),
     emitir: new EmitirTokenDeCliente(clientes, sessoes, tokens, relogio, noTenant),
   };
 }
@@ -97,11 +108,11 @@ describe('clientes OAuth: Client Credentials (HU49)', () => {
       payload: { clienteId: r.valor.cliente.id, escopos: 'prazos:ler' },
     });
     // O segredo nunca sai de novo: a listagem não o tem.
-    expect(JSON.stringify(await m.listar.executar())).not.toContain(r.valor.segredo);
+    expect(JSON.stringify(await m.listar.executar())).not.toContain(r.valor.segredo ?? '');
 
     const token = await m.emitir.executar({
       clienteId: r.valor.cliente.id,
-      segredo: r.valor.segredo,
+      segredo: r.valor.segredo ?? '',
     });
     if (!token.ok) throw new Error('falhou');
     expect(token.valor.escopos).toEqual(['prazos:ler']);
@@ -129,15 +140,15 @@ describe('clientes OAuth: Client Credentials (HU49)', () => {
       return t.ok ? 'ok' : t.erro.codigo;
     };
     expect(await codigo({ clienteId: id, segredo: 'errado' })).toBe('invalid_client');
-    expect(await codigo({ clienteId: gerarUuidV7(), segredo: r.valor.segredo })).toBe(
+    expect(await codigo({ clienteId: gerarUuidV7(), segredo: r.valor.segredo ?? '' })).toBe(
       'invalid_client',
     );
-    expect(await codigo({ clienteId: id, segredo: r.valor.segredo, escopo: 'prazos:ler' })).toBe(
-      'invalid_scope',
-    );
-    const emitido = await m.emitir.executar({ clienteId: id, segredo: r.valor.segredo });
+    expect(
+      await codigo({ clienteId: id, segredo: r.valor.segredo ?? '', escopo: 'prazos:ler' }),
+    ).toBe('invalid_scope');
+    const emitido = await m.emitir.executar({ clienteId: id, segredo: r.valor.segredo ?? '' });
     m.clientes.tenantsSuspensos.add(m.sessao.tenantId);
-    expect(await codigo({ clienteId: id, segredo: r.valor.segredo })).toBe('invalid_client');
+    expect(await codigo({ clienteId: id, segredo: r.valor.segredo ?? '' })).toBe('invalid_client');
     m.clientes.tenantsSuspensos.clear();
 
     expect((await m.revogar.executar(m.sessao, id)).ok).toBe(true);
@@ -145,7 +156,7 @@ describe('clientes OAuth: Client Credentials (HU49)', () => {
     // Revogar derruba na hora o token já emitido.
     if (!emitido.ok) throw new Error('falhou');
     expect((await m.validar.executar(emitido.valor.tokenDeAcesso)).ok).toBe(false);
-    expect(await codigo({ clienteId: id, segredo: r.valor.segredo })).toBe('invalid_client');
+    expect(await codigo({ clienteId: id, segredo: r.valor.segredo ?? '' })).toBe('invalid_client');
     const deNovo = await m.revogar.executar(m.sessao, id);
     expect(!deNovo.ok && deNovo.erro.codigo).toBe('cliente-nao-encontrado');
     expect(await m.clientes.autenticar('nao-existe' as Uuid, 'x')).toBeUndefined();

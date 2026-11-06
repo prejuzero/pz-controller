@@ -8,19 +8,30 @@ import {
   Inject,
   Param,
   Post,
+  Query,
   Req,
   Res,
 } from '@nestjs/common';
-import { PedidoDeClienteDeIntegracao, PedidoDeTokenOAuth } from '@pz/contracts';
 import {
+  PedidoDeAppOAuth,
+  PedidoDeAutorizacaoOAuth,
+  PedidoDeClienteDeIntegracao,
+  PedidoDeTokenOAuth,
+} from '@pz/contracts';
+import {
+  AutorizarCliente,
   CATALOGO_DE_PERMISSOES,
+  DescreverAutorizacao,
   EmitirTokenDeCliente,
   escoposOAuth,
   ListarClientesOAuth,
   RegistrarClienteOAuth,
+  RenovarTokens,
   RevogarClienteOAuth,
+  TrocarCodigoPorTokens,
+  VALIDADE_DO_ACESSO_EM_SEGUNDOS,
 } from '@pz/identidade';
-import { NaoAutenticado, Validacao } from '@pz/kernel';
+import { NaoAutenticado, Proibido, Validacao } from '@pz/kernel';
 import { criarLogger } from '@pz/observability';
 import { z } from 'zod';
 
@@ -30,12 +41,15 @@ import { LimitarPorIp } from '../http/limite.js';
 
 import type { RequisicaoAutenticada } from '../http/acesso.js';
 import type {
+  AppOAuthCriado,
+  AutorizacaoOAuthConcedida,
   ClienteDeIntegracaoCriado,
   ClientesDeIntegracao,
+  DescricaoDaAutorizacaoOAuth,
   EscoposDeIntegracao,
   TokenOAuth,
 } from '@pz/contracts';
-import type { ClienteOAuth } from '@pz/identidade';
+import type { ClienteOAuth, PedidoDeAutorizacao, TokensDeDispositivo } from '@pz/identidade';
 import type { Instant, Uuid } from '@pz/kernel';
 import type { FastifyReply } from 'fastify';
 
@@ -64,6 +78,8 @@ function paraCliente(c: ClienteOAuth): ClientesDeIntegracao['itens'][number] {
   return {
     id: c.id,
     nome: c.nome,
+    tipo: c.tipo,
+    redirectUris: [...c.redirectUris],
     escopos: [...c.escopos],
     criadoEm: c.criadoEm.paraIso(),
     ultimoUso: iso(c.ultimoUso),
@@ -71,10 +87,41 @@ function paraCliente(c: ClienteOAuth): ClientesDeIntegracao['itens'][number] {
   };
 }
 
+function paraPedido(p: PedidoDeAutorizacaoOAuth): PedidoDeAutorizacao {
+  return {
+    responseType: p.response_type,
+    clienteId: p.client_id as Uuid,
+    redirectUri: p.redirect_uri,
+    desafio: p.code_challenge,
+    metodoDoDesafio: p.code_challenge_method,
+    ...(p.scope === undefined ? {} : { escopo: p.scope }),
+    ...(p.state === undefined ? {} : { estado: p.state }),
+  };
+}
+
+function paraTokenComRenovacao(t: TokensDeDispositivo): TokenOAuth {
+  return {
+    access_token: t.tokenDeAcesso,
+    token_type: 'Bearer',
+    expires_in: VALIDADE_DO_ACESSO_EM_SEGUNDOS,
+    scope: (t.escopos ?? []).join(' '),
+    refresh_token: t.tokenDeRenovacao,
+  };
+}
+
+/** Consentimento só pela sessão do navegador (cookie + CSRF), nunca por token de app. */
+function sessaoDoPortal(requisicao: RequisicaoAutenticada) {
+  const { sessao, modo } = autenticacao(requisicao);
+  if (modo !== 'cookie') {
+    throw new Proibido('autorizacao-so-no-portal', 'Autorize pelo portal, com sua senha.');
+  }
+  return sessao;
+}
+
 /**
- * API pública para integradores (HU49, ADR-015): o escritório registra clientes OAuth e eles
- * trocam id e segredo por um token curto (Client Credentials). O token usa as mesmas rotas `/v1`
- * do portal, limitado aos escopos de leitura do cliente.
+ * API pública (HU49, ADR-015). Integrador confidencial: Client Credentials. App público:
+ * Authorization Code + PKCE, com consentimento no portal e renovação rotativa. O token usa as
+ * mesmas rotas `/v1` do portal, limitado aos escopos de leitura concedidos.
  */
 @Controller()
 export class IntegracoesController {
@@ -83,6 +130,10 @@ export class IntegracoesController {
     @Inject(ListarClientesOAuth) private readonly listar: ListarClientesOAuth,
     @Inject(RevogarClienteOAuth) private readonly revogar: RevogarClienteOAuth,
     @Inject(EmitirTokenDeCliente) private readonly emitir: EmitirTokenDeCliente,
+    @Inject(DescreverAutorizacao) private readonly descrever: DescreverAutorizacao,
+    @Inject(AutorizarCliente) private readonly autorizar: AutorizarCliente,
+    @Inject(TrocarCodigoPorTokens) private readonly trocar: TrocarCodigoPorTokens,
+    @Inject(RenovarTokens) private readonly renovar: RenovarTokens,
   ) {}
 
   @Post(ROTA_DE_TOKEN.slice(1))
@@ -100,10 +151,13 @@ export class IntegracoesController {
       const tipo = (corpo as { grant_type?: unknown } | null)?.grant_type;
       throw new Validacao(
         pedido.error.issues.map((p) => ({ campo: p.path.join('.'), mensagem: p.message })),
-        tipo === undefined || tipo === 'client_credentials'
+        tipo === undefined || PedidoDeTokenOAuth.esquema.shape.grant_type.safeParse(tipo).success
           ? 'invalid_request'
           : 'unsupported_grant_type',
       );
+    }
+    if (pedido.data.grant_type !== 'client_credentials') {
+      return this.#tokenDoApp(pedido.data, cabecalho);
     }
     const basic = credencialBasic(cabecalho);
     const doCorpo = pedido.data.client_id !== undefined || pedido.data.client_secret !== undefined;
@@ -141,6 +195,74 @@ export class IntegracoesController {
     };
   }
 
+  /** App público: sem segredo; o `client_id` vem no corpo (OAuth 2.1, seção 3.2.2). */
+  async #tokenDoApp(
+    pedido: PedidoDeTokenOAuth,
+    cabecalho: string | undefined,
+  ): Promise<TokenOAuth> {
+    const clienteId = pedido.client_id;
+    if (clienteId === undefined || cabecalho !== undefined || pedido.client_secret !== undefined) {
+      throw new NaoAutenticado('invalid_client', 'App público: só o client_id, no corpo.');
+    }
+    const faltando = (campo: string) =>
+      new Validacao([{ campo, mensagem: 'Obrigatório.' }], 'invalid_request');
+    let resultado;
+    if (pedido.grant_type === 'authorization_code') {
+      const { code, redirect_uri: redirectUri, code_verifier: verificador } = pedido;
+      if (code === undefined) throw faltando('code');
+      if (redirectUri === undefined) throw faltando('redirect_uri');
+      if (verificador === undefined) throw faltando('code_verifier');
+      resultado = await this.trocar.executar({
+        codigo: code,
+        clienteId: clienteId as Uuid,
+        redirectUri,
+        verificador,
+      });
+    } else {
+      if (pedido.refresh_token === undefined) throw faltando('refresh_token');
+      const renovado = await this.renovar.executar(pedido.refresh_token, clienteId as Uuid);
+      // A renovação recusada é concessão inválida para o padrão (RFC 6749, seção 5.2).
+      resultado = renovado.ok
+        ? renovado
+        : { ok: false as const, erro: new NaoAutenticado('invalid_grant', renovado.erro.message) };
+    }
+    if (!resultado.ok) {
+      logger.warn(
+        { clienteId, grant: pedido.grant_type, codigo: resultado.erro.codigo },
+        'token OAuth recusado',
+      );
+      throw resultado.erro;
+    }
+    return paraTokenComRenovacao(resultado.valor);
+  }
+
+  @Get('v1/oauth/autorizacao')
+  @RequerPermissao('conta:gerir')
+  async descreverAutorizacao(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Query() consulta: unknown,
+  ): Promise<DescricaoDaAutorizacaoOAuth> {
+    const pedido = paraPedido(validar(PedidoDeAutorizacaoOAuth.esquema, consulta));
+    const r = await this.descrever.executar(sessaoDoPortal(requisicao), pedido);
+    if (!r.ok) throw r.erro;
+    return { ...r.valor, escopos: [...r.valor.escopos] };
+  }
+
+  @Post('v1/oauth/autorizacao')
+  @RequerPermissao('conta:gerir')
+  @HttpCode(200)
+  async autorizarCliente(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Body() corpo: unknown,
+    @Res({ passthrough: true }) resposta: FastifyReply,
+  ): Promise<AutorizacaoOAuthConcedida> {
+    const pedido = paraPedido(validar(PedidoDeAutorizacaoOAuth.esquema, corpo));
+    const r = await this.autorizar.executar(sessaoDoPortal(requisicao), pedido);
+    if (!r.ok) throw r.erro;
+    void resposta.header('cache-control', 'no-store');
+    return r.valor;
+  }
+
   @Get('v1/integracoes/escopos')
   @RequerPermissao('integracoes:gerir')
   escopos(): EscoposDeIntegracao {
@@ -166,8 +288,26 @@ export class IntegracoesController {
     const pedido = validar(PedidoDeClienteDeIntegracao.esquema, corpo);
     const resultado = await this.registrar.executar(autenticacao(requisicao).sessao, pedido);
     if (!resultado.ok) throw resultado.erro;
+    const { cliente, segredo } = resultado.valor;
+    if (segredo === null) throw new Error('cliente confidencial registrado sem segredo');
     void resposta.header('cache-control', 'no-store');
-    return { cliente: paraCliente(resultado.valor.cliente), segredo: resultado.valor.segredo };
+    return { cliente: paraCliente(cliente), segredo };
+  }
+
+  @Post('v1/integracoes/apps')
+  @RequerPermissao('integracoes:gerir')
+  @HttpCode(201)
+  async registrarApp(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Body() corpo: unknown,
+  ): Promise<AppOAuthCriado> {
+    const pedido = validar(PedidoDeAppOAuth.esquema, corpo);
+    const resultado = await this.registrar.executar(autenticacao(requisicao).sessao, {
+      ...pedido,
+      tipo: 'publico',
+    });
+    if (!resultado.ok) throw resultado.erro;
+    return { cliente: paraCliente(resultado.valor.cliente) };
   }
 
   @Delete('v1/integracoes/clientes/:id')
