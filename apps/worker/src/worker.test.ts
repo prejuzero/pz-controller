@@ -184,6 +184,7 @@ describe('@Consome e o despachante', () => {
           'PrazoConfirmado@1',
           ['ConsumidorDosLembretes.confirmado', 'ConsumidorDosWebhooks.prazoConfirmado'],
         ],
+        ['PrazoDelegado@1', ['ConsumidorDosLembretes.delegado']],
         [
           'PrazoRecalculado@1',
           ['ConsumidorDosLembretes.recalculado', 'ConsumidorDosWebhooks.prazoRecalculado'],

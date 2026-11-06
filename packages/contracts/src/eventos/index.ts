@@ -430,6 +430,13 @@ export const PrazoAjustado = definirEvento(
 
 export const PrazoCumprido = definirEvento('PrazoCumprido', 1, DoPrazo);
 
+/** O prazo passou a outro membro da equipe (HU41): os lembretes seguem o novo responsável. */
+export const PrazoDelegado = definirEvento(
+  'PrazoDelegado',
+  1,
+  DoPrazo.extend({ responsavelAnterior: z.uuid().nullable(), responsavelNovo: z.uuid() }),
+);
+
 export const PrazoCancelado = definirEvento(
   'PrazoCancelado',
   1,
@@ -499,6 +506,7 @@ export const EVENTOS = catalogoDeEventos(
   PrazoRecalculado,
   PrazoConfirmado,
   PrazoAjustado,
+  PrazoDelegado,
   PrazoCumprido,
   PrazoCancelado,
   PrazoVencido,

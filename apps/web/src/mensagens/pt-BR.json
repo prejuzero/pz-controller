@@ -869,7 +869,11 @@
       "salvar": "Salvar ajuste",
       "voltar": "Voltar",
       "confirmarCiencia": "Confirmar ciência",
-      "cienciaConfirmada": "Ciência registrada."
+      "cienciaConfirmada": "Ciência registrada.",
+      "delegar": "Delegar",
+      "delegarDescricao": "O prazo passa a outro membro da equipe, com as mesmas datas. Os lembretes passam a ir para ele, e a mudança fica no histórico.",
+      "novoResponsavel": "Novo responsável",
+      "delegado": "Prazo delegado."
     },
     "novo": {
       "botao": "Novo prazo",
@@ -1139,7 +1143,8 @@
     "tribunalMarcador": "Ex.: TJGO",
     "cliente": "Cliente",
     "limpar": "Limpar filtro",
-    "naoAplicado": "Nesta tela o filtro não usa: {campos}."
+    "naoAplicado": "Nesta tela o filtro não usa: {campos}.",
+    "responsavel": "Responsável"
   },
   "agenda": {
     "titulo": "Calendário de prazos",

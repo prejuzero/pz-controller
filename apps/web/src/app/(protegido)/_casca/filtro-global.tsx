@@ -4,7 +4,7 @@ import { Botao, Campo, SeletorData, Selecao } from '@pz/ui';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
-import { useClientes, useEquipe, useSessao } from '../../../api/hooks';
+import { useClientes, useResponsaveis, useSessao } from '../../../api/hooks';
 import {
   CAMPOS_DO_FILTRO_GLOBAL,
   comFiltroGlobal,
@@ -43,7 +43,8 @@ export function BarraDeFiltroGlobal({ aplicados }: Props) {
   const filtro = lerFiltroGlobal(busca);
   const usuarioId = useSessao().data?.usuarioId;
   const clientes = useClientes();
-  const equipe = useEquipe();
+  // Advogados e colaboradores ativos (HU41): quem pode ter prazo, inclusive delegado.
+  const equipe = useResponsaveis();
 
   const mudar = (parcial: FiltroGlobal) => {
     const query = comFiltroGlobal(busca, { ...filtro, ...parcial }).toString();
@@ -80,7 +81,7 @@ export function BarraDeFiltroGlobal({ aplicados }: Props) {
         ) : null}
         {usa('responsavelId') ? (
           <Selecao
-            rotulo={t('advogado')}
+            rotulo={t('responsavel')}
             valor={filtro.responsavelId ?? ''}
             opcoes={[
               { valor: '', rotulo: t('todos') },

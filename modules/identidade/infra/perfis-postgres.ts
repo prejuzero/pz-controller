@@ -27,11 +27,25 @@ export class PerfisPostgres implements RepositorioDePerfis {
 export class UsuariosComPermissaoPostgres {
   async listar(tx: Transacao, permissao: Permissao): Promise<Uuid[]> {
     const linhas = await tx.usuarioPerfil.findMany({
-      where: { dono: { permissoes: { some: { permissao } } } },
+      // Membro desativado (HU41) não recebe avisos nem prazos.
+      where: { dono: { permissoes: { some: { permissao } } }, usuario: { desativadoEm: null } },
       select: { usuarioId: true },
       distinct: ['usuarioId'],
       orderBy: { usuarioId: 'asc' },
     });
     return linhas.map((linha) => linha.usuarioId as Uuid);
+  }
+
+  /** Membros ativos com a permissão, com o nome (quem pode receber um prazo delegado, HU41). */
+  async membros(tx: Transacao, permissao: Permissao): Promise<{ usuarioId: Uuid; nome: string }[]> {
+    const linhas = await tx.usuario.findMany({
+      where: {
+        desativadoEm: null,
+        perfis: { some: { dono: { permissoes: { some: { permissao } } } } },
+      },
+      select: { id: true, nome: true },
+      orderBy: [{ nome: 'asc' }, { id: 'asc' }],
+    });
+    return linhas.map((l) => ({ usuarioId: l.id as Uuid, nome: l.nome }));
   }
 }

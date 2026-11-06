@@ -40,6 +40,7 @@ export const PERFIS_PADRAO = {
     'calendario:gerir',
     'relatorios:exportar',
     'usuarios:gerir',
+    'prazos:distribuir',
     'processos:ler',
     'processos:gerir',
     'escritorio:exportar',

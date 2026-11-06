@@ -181,6 +181,8 @@ export class PrazosPostgres implements RepositorioDePrazos<Transacao> {
         motivoAjuste: e.motivoAjuste,
         // Muda quando a comarca do processo é corrigida (PZ-332).
         jurisdicao: paraJson(e.jurisdicao),
+        // Muda quando o prazo é delegado (HU41).
+        responsavelId: e.responsavelId,
         status: paraBanco(e.status),
         versaoOtimista: e.versaoOtimista,
       },

@@ -226,6 +226,8 @@ export const usePrazo = (id: string) => useQuery(consultasPrazos(useApi()).detal
 export const useConfirmarPrazo = () => useMutation(useMutacoesPrazos().confirmar);
 export const useCumprirPrazo = () => useMutation(useMutacoesPrazos().cumprir);
 export const useCancelarPrazo = () => useMutation(useMutacoesPrazos().cancelar);
+export const useDelegarPrazo = () => useMutation(useMutacoesPrazos().delegar);
+export const useResponsaveis = () => useQuery(consultasPrazos(useApi()).responsaveis());
 export const useAjustarPrazo = () => useMutation(useMutacoesPrazos().ajustar);
 export const useSimularAjuste = () => useMutation(useMutacoesPrazos().simular);
 export const useAtosDaTaxonomia = () => useQuery(consultasPrazos(useApi()).atos());

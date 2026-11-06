@@ -66,6 +66,7 @@ export {
   CadastrarPrazoManual,
   EntradaDoPrazoManual,
   CancelarPrazo,
+  DelegarPrazo,
   ConfirmarPrazo,
   ConsultarPrazo,
   CumprirPrazo,
@@ -82,6 +83,7 @@ export type {
   AutorDoCadastro,
   AutorNoPrazo,
   NoTenant,
+  ResponsavelElegivel,
   ResultadoDaGeracao,
 } from './application/ciclo-de-vida.js';
 export {

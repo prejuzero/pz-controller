@@ -1,6 +1,6 @@
 'use client';
 
-import { avisar, Botao, Campo, Dialogo } from '@pz/ui';
+import { avisar, Botao, Campo, Dialogo, Selecao } from '@pz/ui';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
@@ -10,7 +10,9 @@ import {
   useConfirmarCiencia,
   useConfirmarPrazo,
   useCumprirPrazo,
+  useDelegarPrazo,
   usePermissao,
+  useResponsaveis,
   useSimularAjuste,
 } from '../../../../api/hooks';
 import { formatarDataCivil } from '../../../../i18n/formatar';
@@ -25,6 +27,7 @@ export function AcoesDoPrazo({ prazo }: { prazo: DetalheDoPrazo }) {
   const t = useTranslations('prazos.acoes');
   const podeConfirmar = usePermissao('prazos:confirmar') === true;
   const podeAjustar = usePermissao('prazos:ajustar') === true;
+  const podeDistribuir = usePermissao('prazos:distribuir') === true;
   const confirmar = useConfirmarPrazo();
   const cumprir = useCumprirPrazo();
   const ciencia = useConfirmarCiencia();
@@ -69,6 +72,7 @@ export function AcoesDoPrazo({ prazo }: { prazo: DetalheDoPrazo }) {
       ) : null}
       {podeAjustar ? <Ajustar prazo={prazo} /> : null}
       {podeAjustar ? <Cancelar prazo={prazo} /> : null}
+      {podeDistribuir ? <Delegar prazo={prazo} /> : null}
     </div>
   );
 }
@@ -210,6 +214,58 @@ function Cancelar({ prazo }: { prazo: DetalheDoPrazo }) {
         />
         <Botao type="submit" disabled={!valido} carregando={cancelar.isPending}>
           {t('cancelar')}
+        </Botao>
+      </form>
+    </Dialogo>
+  );
+}
+
+/** Delegar a outro membro ativo (HU41): só o responsável muda; os lembretes passam a ele. */
+function Delegar({ prazo }: { prazo: DetalheDoPrazo }) {
+  const t = useTranslations('prazos.acoes');
+  const [aberto, setAberto] = useState(false);
+  const [responsavelId, setResponsavelId] = useState('');
+  const responsaveis = useResponsaveis();
+  const delegar = useDelegarPrazo();
+  const opcoes = (responsaveis.data?.itens ?? [])
+    .filter((m) => m.usuarioId !== prazo.responsavelId)
+    .map((m) => ({ valor: m.usuarioId, rotulo: m.nome }));
+  return (
+    <Dialogo
+      aberto={aberto}
+      aoMudarAberto={setAberto}
+      gatilho={<Botao variante="secundaria">{t('delegar')}</Botao>}
+      titulo={t('delegar')}
+      descricao={t('delegarDescricao')}
+    >
+      <form
+        method="post"
+        noValidate
+        className="grid gap-4"
+        onSubmit={(evento) => {
+          evento.preventDefault();
+          if (responsavelId === '') return;
+          delegar.mutate(
+            { id: prazo.id, versao: prazo.versao, responsavelId },
+            {
+              onSuccess: () => {
+                setAberto(false);
+                avisar.sucesso(t('delegado'));
+              },
+            },
+          );
+        }}
+      >
+        <Selecao
+          rotulo={t('novoResponsavel')}
+          obrigatorio
+          opcoes={opcoes}
+          valor={responsavelId}
+          aoMudar={setResponsavelId}
+          name="responsavelId"
+        />
+        <Botao type="submit" disabled={responsavelId === ''} carregando={delegar.isPending}>
+          {t('delegar')}
         </Botao>
       </form>
     </Dialogo>

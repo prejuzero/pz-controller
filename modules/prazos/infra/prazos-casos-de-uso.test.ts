@@ -5,6 +5,7 @@ import {
   AjustarPrazo,
   CadastrarPrazoManual,
   CancelarPrazo,
+  DelegarPrazo,
   ConfirmarPrazo,
   ConsultarPrazo,
   CumprirPrazo,
@@ -604,6 +605,20 @@ describe('ciclo de vida do prazo (HU24, PZ-169)', () => {
       'PrazoAjustado',
       'PrazoCumprido',
     ]);
+  });
+
+  it('delega a membro ativo com trilha e evento; recusa quem não é membro (HU41)', async () => {
+    const p = await criado();
+    const BIA = '01a10e00-0000-7000-8000-00000000d0b1' as Uuid;
+    const delegar = new DelegarPrazo(deps(), (id) => Promise.resolve(id === BIA));
+    const fora = await delegar.executar(quem, p.id, { versao: 1, responsavelId: USUARIO });
+    expect(!fora.ok && fora.erro.codigo).toBe('responsavel-inexistente');
+    const invalido = await delegar.executar(quem, p.id, { versao: 1 });
+    expect(!invalido.ok && invalido.erro.codigo).toBe('validacao');
+    const r = await delegar.executar(quem, p.id, { versao: 1, responsavelId: BIA });
+    expect(r.ok && r.valor).toMatchObject({ responsavelId: BIA, versao: 2 });
+    expect(trilha.registros.map((x) => x.tipo)).toContain('prazos.prazo-delegado');
+    expect(outbox.pendentes().map((e) => e.tipo)).toContain('PrazoDelegado');
   });
 
   it('versão desatualizada ou transição inválida: conflito (409) sem gravar', async () => {

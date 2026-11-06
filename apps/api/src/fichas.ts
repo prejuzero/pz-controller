@@ -11,3 +11,7 @@ export const JANELA_DE_REQUISICOES = Symbol('JANELA_DE_REQUISICOES');
 export const FILAS_DO_PAINEL = Symbol('FILAS_DO_PAINEL');
 /** Histórico do prazo (HU35): composição auditoria + notificações + prazos + identidade. */
 export const HISTORICO_DO_PRAZO = Symbol('HISTORICO_DO_PRAZO');
+
+/** Membros ativos que podem ser responsáveis por prazos (HU41), no tenant da requisição. */
+export const RESPONSAVEIS_DA_EQUIPE = Symbol('RESPONSAVEIS_DA_EQUIPE');
+export type ResponsaveisDaEquipe = () => Promise<{ usuarioId: string; nome: string }[]>;

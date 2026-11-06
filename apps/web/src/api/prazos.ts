@@ -148,6 +148,12 @@ export const consultasPrazos = (api: ClienteApi) => ({
       queryFn: ({ signal }) =>
         exigir(api.GET('/v1/compromissos', { params: { query: { de, ate } }, signal })),
     }),
+  /** Membros ativos que podem ser responsáveis (HU41): filtro e delegação. */
+  responsaveis: () =>
+    queryOptions({
+      queryKey: chaves.prazos.responsaveis(),
+      queryFn: ({ signal }) => exigir(api.GET('/v1/prazos/responsaveis', { signal })),
+    }),
   detalhe: (id: string) =>
     queryOptions({
       queryKey: chaves.prazos.detalhe(id),
@@ -165,6 +171,12 @@ export const mutacoesPrazos = (api: ClienteApi, cache: QueryClient) => {
   return {
     confirmar: { mutationFn: comVersao('/v1/prazos/{id}/confirmar'), onSuccess: invalidar },
     cumprir: { mutationFn: comVersao('/v1/prazos/{id}/cumprir'), onSuccess: invalidar },
+    /** Delegar a outro membro ativo (HU41). */
+    delegar: {
+      mutationFn: ({ id, ...body }: { id: string; versao: number; responsavelId: string }) =>
+        exigir(api.POST('/v1/prazos/{id}/delegar', { params: { path: { id } }, body })),
+      onSuccess: invalidar,
+    },
     cancelar: {
       mutationFn: ({ id, ...body }: Cancelamento & { id: string }) =>
         exigir(api.POST('/v1/prazos/{id}/cancelar', { params: { path: { id } }, body })),

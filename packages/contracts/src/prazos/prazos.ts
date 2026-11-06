@@ -168,6 +168,33 @@ export const cancelarPrazo = acao(
   PedidoDeCancelamento,
 );
 
+export const PedidoDeDelegacao = nomear(
+  'PedidoDeDelegacao',
+  z.object({ versao: Versao, responsavelId: Uuid }).strict(),
+);
+
+export const delegarPrazo = acao(
+  'delegarPrazo',
+  'delegar',
+  'Delega o prazo a outro membro ativo da equipe (HU41); só o responsável muda.',
+  PedidoDeDelegacao,
+);
+
+export const ResponsaveisDaEquipe = nomear(
+  'ResponsaveisDaEquipe',
+  z.object({ itens: z.array(z.object({ usuarioId: Uuid, nome: z.string() })) }),
+);
+export type ResponsaveisDaEquipe = z.infer<typeof ResponsaveisDaEquipe.esquema>;
+
+export const listarResponsaveis = definirRota({
+  id: 'listarResponsaveis',
+  metodo: 'get',
+  caminho: '/v1/prazos/responsaveis',
+  resumo: 'Membros ativos da equipe que podem ser responsáveis por prazos (HU41).',
+  tag: 'prazos',
+  resposta: { status: 200, corpo: ResponsaveisDaEquipe },
+});
+
 export const PedidoDePrazoManual = nomear(
   'PedidoDePrazoManual',
   z
@@ -244,4 +271,6 @@ export const ROTAS_PRAZOS = [
   simularAjustePrazo,
   cumprirPrazo,
   cancelarPrazo,
+  delegarPrazo,
+  listarResponsaveis,
 ] as const;
