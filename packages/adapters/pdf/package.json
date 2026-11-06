@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@pz/integracoes": "workspace:*",
-    "unpdf": "2.0.0"
+    "unpdf": "2.0.1"
   },
   "devDependencies": {
     "@pz/config": "workspace:*",
