@@ -1,0 +1,29 @@
+{
+  "name": "@pz/assistente",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Assistente de IA (F2): catálogo de ferramentas de leitura sobre as APIs públicas dos módulos (HU59, ADR-016).",
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "scripts": {
+    "lint": "eslint --max-warnings=0 .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@pz/contracts": "workspace:*",
+    "@pz/ia": "workspace:*",
+    "@pz/kernel": "workspace:*",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@pz/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "@vitest/coverage-v8": "5.0.5",
+    "eslint": "10.13.0",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  }
+}

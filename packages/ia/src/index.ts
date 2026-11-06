@@ -23,3 +23,10 @@ export { ArquivoDePrompt, hashDoPrompt, problemasDeVersao, RegistroDePrompts } f
 export type { PromptMontado } from './prompts.js';
 export { configuracaoPadrao, promptsPadrao } from './padrao.js';
 export { comProvedorAlternativo } from './configuracao.js';
+export { CatalogoDeFerramentas } from './ferramentas.js';
+export type {
+  AuditarFerramenta,
+  ContextoDaFerramenta,
+  ExecucaoDeFerramenta,
+  Ferramenta,
+} from './ferramentas.js';
