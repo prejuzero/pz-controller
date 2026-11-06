@@ -13393,6 +13393,13 @@
           "memoria": {
             "description": "Memória de cálculo do motor (CLAUDE.md, seção 4.4)."
           },
+          "explicacao": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "A memória em linguagem simples (HU62), montada só do que o motor gravou; sem IA."
+          },
           "parametros": {
             "description": "Entrada do cálculo (ato, meio, referência, condições)."
           }
@@ -13423,6 +13430,7 @@
           "motivoAjuste",
           "versao",
           "memoria",
+          "explicacao",
           "parametros"
         ],
         "additionalProperties": false

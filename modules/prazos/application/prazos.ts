@@ -12,6 +12,7 @@ import {
 } from '@pz/motor-prazos';
 import { z } from 'zod';
 
+import { explicarCalculo } from '../domain/explicacao.js';
 import { Prazo } from '../domain/prazo.js';
 import { CONTAGENS, RAMOS, UNIDADES } from '../domain/tabela.js';
 
@@ -444,6 +445,13 @@ export function prazoDetalhado(estado: EstadoDoPrazo) {
   return {
     ...prazoListado(estado),
     memoria: estado.calculo.memoria,
+    // A memória em linguagem simples (HU62): só reescreve o que o motor gravou.
+    explicacao: explicarCalculo({
+      dias: estado.calculo.dias,
+      unidade: estado.calculo.unidade,
+      status: estado.status,
+      memoria: estado.calculo.memoria,
+    }),
     parametros: estado.parametros,
   };
 }
