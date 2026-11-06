@@ -91,4 +91,12 @@ export const chaves = {
     todas: ['clientes'] as const,
     lista: () => [...chaves.clientes.todas, 'lista'] as const,
   },
+  integracoes: {
+    todas: ['integracoes'] as const,
+    escopos: () => [...chaves.integracoes.todas, 'escopos'] as const,
+    clientes: () => [...chaves.integracoes.todas, 'clientes'] as const,
+    eventos: () => [...chaves.integracoes.todas, 'eventos'] as const,
+    webhooks: () => [...chaves.integracoes.todas, 'webhooks'] as const,
+    entregas: () => [...chaves.integracoes.todas, 'entregas'] as const,
+  },
 };

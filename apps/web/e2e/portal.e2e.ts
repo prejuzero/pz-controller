@@ -67,6 +67,7 @@ test.describe('acessibilidade (axe)', () => {
     '/processos/clientes',
     '/configuracoes/privacidade',
     '/configuracoes/cobertura',
+    '/configuracoes/integracoes',
   ]) {
     test(`sem violações em ${rota}`, async ({ page }) => {
       await page.goto(rota);

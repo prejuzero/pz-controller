@@ -265,7 +265,9 @@
     "cobertura": "Cobertura",
     "coberturaDescricao": "Última captura de cada OAB e o que exige conferência manual.",
     "notificacoes": "Notificações",
-    "notificacoesDescricao": "Lembretes de prazo, resumo diário e avisos de nova intimação."
+    "notificacoesDescricao": "Lembretes de prazo, resumo diário e avisos de nova intimação.",
+    "integracoes": "Integrações",
+    "integracoesDescricao": "Acesso de outros sistemas à API e avisos automáticos (webhooks)."
   },
   "cadastro": {
     "titulo": "Criar conta",
@@ -1305,6 +1307,91 @@
       "falha": "O provedor de e-mail falhou.",
       "destinatarios-suprimidos": "Todos os destinatários estão bloqueados por rejeições anteriores.",
       "outro": "O conteúdo não pôde ser gerado (pode ter sido removido). Tente enviar de novo."
+    }
+  },
+  "integracoes": {
+    "titulo": "Integrações",
+    "descricao": "Conecte o PrejuZero ao sistema do escritório. Integrações só leem dados: confirmar prazo e dar ciência continuam sendo do advogado.",
+    "guia": "Passo a passo no guia da API pública (docs/guias/api-publica-para-integradores.md).",
+    "cancelar": "Cancelar",
+    "fechar": "Fechar",
+    "copiar": "Copiar",
+    "copiado": "Copiado.",
+    "segredoAviso": "Copie e guarde em local seguro agora: este segredo não será mostrado de novo.",
+    "ativo": "Ativo",
+    "revogado": "Revogado",
+    "desativado": "Desativado",
+    "nunca": "Nunca",
+    "clientes": {
+      "titulo": "Acesso à API",
+      "descricao": "Cada integração recebe um identificador e um segredo para pedir o token de acesso (OAuth 2.1, Client Credentials).",
+      "novo": "Nova integração",
+      "nome": "Nome",
+      "ajudaNome": "Ex.: ERP do escritório, planilha de BI.",
+      "escopos": "O que a integração pode ler",
+      "escoposErro": "Escolha ao menos um item.",
+      "criar": "Criar integração",
+      "criado": "Integração criada",
+      "id": "Identificador (client_id)",
+      "segredo": "Segredo (client_secret)",
+      "vazio": "Nenhuma integração criada.",
+      "colunas": {
+        "nome": "Nome",
+        "escopos": "Acesso",
+        "ultimoUso": "Último uso",
+        "situacao": "Situação",
+        "acoes": "Ações"
+      },
+      "revogar": "Revogar",
+      "revogarTitulo": "Revogar {nome}?",
+      "revogarDescricao": "O sistema conectado perde o acesso na hora, inclusive o token em uso.",
+      "revogadoAviso": "Integração revogada."
+    },
+    "webhooks": {
+      "titulo": "Webhooks",
+      "descricao": "Avisos automáticos para o endereço do seu sistema a cada evento escolhido, assinados com o segredo do webhook.",
+      "novo": "Novo webhook",
+      "descricaoCampo": "Descrição",
+      "url": "Endereço (URL)",
+      "ajudaUrl": "HTTPS. No ambiente local, também http://localhost.",
+      "eventos": "Eventos",
+      "eventosErro": "Escolha ao menos um evento.",
+      "criar": "Criar webhook",
+      "criado": "Webhook criado",
+      "segredo": "Segredo da assinatura",
+      "vazio": "Nenhum webhook criado.",
+      "colunas": {
+        "descricao": "Descrição",
+        "url": "Endereço",
+        "eventos": "Eventos",
+        "situacao": "Situação",
+        "acoes": "Ações"
+      },
+      "testar": "Testar",
+      "testeEnviado": "Evento de teste enviado. Acompanhe em Entregas recentes.",
+      "desativar": "Desativar",
+      "desativarTitulo": "Desativar {descricao}?",
+      "desativarDescricao": "Novos eventos deixam de ser enviados. As entregas já feitas continuam no histórico.",
+      "desativadoAviso": "Webhook desativado."
+    },
+    "entregas": {
+      "titulo": "Entregas recentes",
+      "vazio": "Nenhuma entrega ainda.",
+      "colunas": {
+        "quando": "Quando",
+        "evento": "Evento",
+        "situacao": "Situação",
+        "tentativas": "Tentativas",
+        "erro": "Último erro",
+        "acoes": "Ações"
+      },
+      "situacoes": {
+        "pendente": "Enviando",
+        "entregue": "Entregue",
+        "falhou": "Falhou"
+      },
+      "reenviar": "Reenviar",
+      "reenviada": "Entrega reenviada."
     }
   }
 }
