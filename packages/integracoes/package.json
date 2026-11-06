@@ -15,7 +15,7 @@
     "test:int": "vitest run --config vitest.int.config.ts"
   },
   "dependencies": {
-    "@opentelemetry/api": "1.9.1",
+    "@opentelemetry/api": "1.10.0",
     "@pz/kernel": "workspace:*",
     "@pz/observability": "workspace:*",
     "cockatiel": "4.0.0",

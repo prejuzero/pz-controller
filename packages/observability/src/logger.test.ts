@@ -1,7 +1,7 @@
 import { Writable } from 'node:stream';
 
 import { context, propagation, trace, TraceFlags } from '@opentelemetry/api';
-import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
+import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import { pino } from 'pino';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -109,7 +109,7 @@ describe('criarLogger', () => {
     const { destino, registros } = memoria();
     const logger = criarLogger('api', { destino });
     // Sem gerenciador de contexto registrado, context.with não propaga nada.
-    new NodeTracerProvider().register();
+    context.setGlobalContextManager(new AsyncLocalStorageContextManager().enable());
     const spanContext = {
       traceId: '0af7651916cd43dd8448eb211c80319c',
       spanId: 'b7ad6b7169203331',

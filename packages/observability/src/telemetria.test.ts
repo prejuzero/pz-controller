@@ -3,7 +3,7 @@ import { Writable } from 'node:stream';
 
 import { diag, metrics, trace } from '@opentelemetry/api';
 import { MetricReader } from '@opentelemetry/sdk-metrics';
-import { InMemorySpanExporter } from '@opentelemetry/sdk-trace-node';
+import { InMemorySpanExporter } from '@opentelemetry/sdk-trace';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { criarLogger } from './logger.js';

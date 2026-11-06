@@ -1,6 +1,6 @@
 import { context, ROOT_CONTEXT, trace } from '@opentelemetry/api';
 import { RPCType, setRPCMetadata } from '@opentelemetry/core';
-import { InMemorySpanExporter } from '@opentelemetry/sdk-trace-node';
+import { InMemorySpanExporter } from '@opentelemetry/sdk-trace';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { registrarRotaHttp } from './rota-http.js';
