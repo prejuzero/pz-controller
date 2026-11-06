@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 
-import { InMemorySpanExporter } from '@opentelemetry/sdk-trace-node';
+import { InMemorySpanExporter } from '@opentelemetry/sdk-trace';
 import {
   definirDescritor,
   ErroTransitorio,

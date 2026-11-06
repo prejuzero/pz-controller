@@ -1,4 +1,10 @@
 import { context, diag, DiagLogLevel, metrics, propagation, trace } from '@opentelemetry/api';
+import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
+import {
+  CompositePropagator,
+  W3CBaggagePropagator,
+  W3CTraceContextPropagator,
+} from '@opentelemetry/core';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
@@ -12,11 +18,7 @@ import {
   MeterProvider,
   PeriodicExportingMetricReader,
 } from '@opentelemetry/sdk-metrics';
-import {
-  BatchSpanProcessor,
-  NodeTracerProvider,
-  SimpleSpanProcessor,
-} from '@opentelemetry/sdk-trace-node';
+import { BatchSpanProcessor, SimpleSpanProcessor, TracerProvider } from '@opentelemetry/sdk-trace';
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
 
 import { criarLogger } from './logger.js';
@@ -24,7 +26,7 @@ import { criarLogger } from './logger.js';
 import type { Logger } from './logger.js';
 import type { Instrumentation } from '@opentelemetry/instrumentation';
 import type { IMetricReader } from '@opentelemetry/sdk-metrics';
-import type { SpanExporter, SpanProcessor } from '@opentelemetry/sdk-trace-node';
+import type { SpanExporter, SpanProcessor } from '@opentelemetry/sdk-trace';
 
 export interface OpcoesTelemetria {
   /** Nome do serviço nos traces e métricas: `pz-api`, `pz-worker`, `pz-web`. */
@@ -104,11 +106,11 @@ export function iniciarTelemetria(opcoes: OpcoesTelemetria): Telemetria {
   const processadores: SpanProcessor[] = [];
   if (endpoint !== undefined) {
     processadores.push(
-      new BatchSpanProcessor(new OTLPTraceExporter({ url: `${endpoint}/v1/traces` })),
+      new BatchSpanProcessor({ exporter: new OTLPTraceExporter({ url: `${endpoint}/v1/traces` }) }),
     );
   }
   if (opcoes.exportadorDeSpans !== undefined) {
-    processadores.push(new SimpleSpanProcessor(opcoes.exportadorDeSpans));
+    processadores.push(new SimpleSpanProcessor({ exporter: opcoes.exportadorDeSpans }));
   }
 
   const leitores: IMetricReader[] = [];
@@ -122,12 +124,19 @@ export function iniciarTelemetria(opcoes: OpcoesTelemetria): Telemetria {
   }
   if (opcoes.leitorDeMetricas !== undefined) leitores.push(opcoes.leitorDeMetricas);
 
-  const provedorDeTraces = new NodeTracerProvider({
+  const provedorDeTraces = new TracerProvider({
     resource: recurso,
     spanProcessors: processadores,
   });
-  // Registra o gerenciador de contexto (AsyncLocalStorage) e o propagador W3C Trace Context.
-  provedorDeTraces.register();
+  // O SDK 3 não registra nada sozinho (o register() do NodeTracerProvider saiu): contexto por
+  // AsyncLocalStorage, propagadores W3C (Trace Context e Baggage, os padrões de antes) e o provedor.
+  context.setGlobalContextManager(new AsyncLocalStorageContextManager().enable());
+  propagation.setGlobalPropagator(
+    new CompositePropagator({
+      propagators: [new W3CTraceContextPropagator(), new W3CBaggagePropagator()],
+    }),
+  );
+  trace.setGlobalTracerProvider(provedorDeTraces);
 
   const provedorDeMetricas = new MeterProvider({
     resource: recurso,

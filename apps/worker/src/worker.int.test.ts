@@ -1,5 +1,5 @@
 import { trace } from '@opentelemetry/api';
-import { InMemorySpanExporter } from '@opentelemetry/sdk-trace-node';
+import { InMemorySpanExporter } from '@opentelemetry/sdk-trace';
 import { carregarAmbiente } from '@pz/config/env';
 import { Banco, executarNoTenant, OutboxPostgres, WebhooksPostgres } from '@pz/db';
 import { subirBancoDeTeste } from '@pz/db/teste';

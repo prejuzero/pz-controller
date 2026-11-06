@@ -1,7 +1,7 @@
 import { Writable } from 'node:stream';
 
 import { SpanStatusCode, trace } from '@opentelemetry/api';
-import { InMemorySpanExporter } from '@opentelemetry/sdk-trace-node';
+import { InMemorySpanExporter } from '@opentelemetry/sdk-trace';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { executarComContexto } from './contexto.js';
