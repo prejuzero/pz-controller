@@ -231,6 +231,9 @@ importers:
       '@pz/administracao':
         specifier: workspace:*
         version: link:../../modules/administracao
+      '@pz/assistente':
+        specifier: workspace:*
+        version: link:../../modules/assistente
       '@pz/auditoria':
         specifier: workspace:*
         version: link:../../modules/auditoria
@@ -261,6 +264,9 @@ importers:
       '@pz/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@pz/ia':
+        specifier: workspace:*
+        version: link:../../packages/ia
       '@pz/identidade':
         specifier: workspace:*
         version: link:../../modules/identidade
@@ -668,6 +674,40 @@ importers:
       vitest:
         specifier: 5.0.5
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
+
+  modules/assistente:
+    dependencies:
+      '@pz/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@pz/ia':
+        specifier: workspace:*
+        version: link:../../packages/ia
+      '@pz/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@pz/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@types/node':
+        specifier: 24.19.2
+        version: 24.19.2
+      '@vitest/coverage-v8':
+        specifier: 5.0.5
+        version: 5.0.5(@vitest/browser@5.0.5)(vitest@5.0.5)
+      eslint:
+        specifier: 10.13.0
+        version: 10.13.0(jiti@2.6.1)(supports-color@10.2.2)
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.0.5
+        version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.6.1)(tsx@4.23.15)(yaml@2.9.1))
 
   modules/auditoria:
     dependencies:

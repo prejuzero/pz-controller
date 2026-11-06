@@ -78,6 +78,7 @@ import {
   TaxonomiaPostgres,
 } from '@pz/classificacao';
 import { Banco, executarNoTenant, OutboxPostgres, WebhooksPostgres } from '@pz/db';
+import { CatalogoDeFerramentas } from '@pz/ia';
 import {
   AtivarSegundoFator,
   Autenticar,
@@ -214,6 +215,7 @@ import { Redis } from 'ioredis';
 
 import { AdminController } from './admin/admin.controller.js';
 import { CuradoriaDaClassificacaoController } from './admin/curadoria.controller.js';
+import { catalogoDeFerramentas } from './assistente/catalogo.js';
 import { HistoricoController } from './auditoria/historico.controller.js';
 import { AuthController } from './auth/auth.controller.js';
 import { ContextoDoUsuario } from './auth/contexto-do-usuario.js';
@@ -1645,6 +1647,26 @@ export class AppModule {
       ),
       ...provedoresDaTabelaDePrazos(tabelaDePrazos),
       ...provedoresDosPrazos(tabelaDePrazos, arquivosDoAmbiente(opcoes.ambiente)),
+      {
+        // Catálogo de ferramentas de IA (HU59): leitura pelas APIs públicas, auditada no tenant.
+        provide: CatalogoDeFerramentas,
+        inject: [Buscar, ConsultarProcesso, CadastrarPrazoManual, ConsultarPrazo],
+        useFactory: (
+          buscar: Buscar,
+          consultarProcesso: ConsultarProcesso<unknown>,
+          cadastrarPrazo: CadastrarPrazoManual<unknown>,
+          consultarPrazo: ConsultarPrazo<unknown>,
+        ) =>
+          catalogoDeFerramentas({
+            buscar,
+            consultarProcesso,
+            cadastrarPrazo,
+            consultarPrazo,
+            unidade: tabelaDePrazos.unidade,
+            trilha: tabelaDePrazos.trilha,
+            noTenant: (tenantId, trabalho) => noTenantDoBanco(tenantId, trabalho),
+          }),
+      },
       ...provedoresDaCiencia(tabelaDePrazos, opcoes.ambiente.CHAVE_CIFRAGEM),
       ...provedoresDoCadastro(cadastro),
       {
