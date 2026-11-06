@@ -133,14 +133,12 @@ export class ProcessosPostgres implements RepositorioDeProcessos<Transacao> {
   }
 }
 
-/** Documento da linha: o cifrado (atual) ou o legado em claro, até a recifra. */
+/** Documento da linha: só existe cifrado (HU37, ADR-021, fase contract); null: sem documento. */
 export function documentoDe(
-  linha: { documento: string | null; documentoCifrado: string | null },
+  linha: { documentoCifrado: string | null },
   protecao: ProtecaoDeCampos,
 ): string | null {
-  return linha.documentoCifrado === null
-    ? linha.documento
-    : protecao.decifrar(linha.documentoCifrado);
+  return linha.documentoCifrado === null ? null : protecao.decifrar(linha.documentoCifrado);
 }
 
 /** Clientes no PostgreSQL (HU12), no tenant da transação (RLS); documento só cifrado (HU37). */
@@ -151,7 +149,6 @@ export class ClientesPostgres implements RepositorioDeClientes<Transacao> {
     id: string;
     tenantId: string;
     nome: string;
-    documento: string | null;
     documentoCifrado: string | null;
   }): Cliente {
     return {
@@ -163,10 +160,7 @@ export class ClientesPostgres implements RepositorioDeClientes<Transacao> {
   }
 
   #documento(documento: string | null) {
-    return {
-      documento: null,
-      documentoCifrado: documento === null ? null : this.protecao.cifrar(documento),
-    };
+    return { documentoCifrado: documento === null ? null : this.protecao.cifrar(documento) };
   }
 
   async inserir(tx: Transacao, cliente: Cliente): Promise<void> {

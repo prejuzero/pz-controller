@@ -18,15 +18,9 @@ const colunasDaOab = (tenantId: Uuid, advogadoId: Uuid, oab: Oab) => ({
   ativa: oab.ativa,
 });
 
-/** CPF da linha: o cifrado (atual) ou o legado em claro, até a recifra. */
-export function cpfDe(
-  linha: { cpf: string | null; cpfCifrado: string | null },
-  protecao: ProtecaoDeCampos,
-): string {
-  if (linha.cpfCifrado !== null) return protecao.decifrar(linha.cpfCifrado);
-  // CHECK advogado_cpf_presente: sem o cifrado, o legado existe.
-  if (linha.cpf === null) throw new Error('Advogado sem CPF');
-  return linha.cpf;
+/** CPF da linha: só existe cifrado (HU37, ADR-021, fase contract). */
+export function cpfDe(linha: { cpfCifrado: string }, protecao: ProtecaoDeCampos): string {
+  return protecao.decifrar(linha.cpfCifrado);
 }
 
 /**
@@ -49,7 +43,6 @@ export class AdvogadosPostgres implements RepositorioDeAdvogados<Transacao> {
           usuarioId: e.usuarioId,
           nome: e.nome,
           // CPF só cifrado e com índice cego (HU37, ADR-021): o índice mantém a unicidade.
-          cpf: null,
           cpfCifrado: this.protecao.cifrar(e.cpf),
           cpfIndice: this.protecao.indice(e.cpf),
           celular: e.celular,

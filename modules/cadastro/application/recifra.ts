@@ -1,32 +1,30 @@
 import type { ProtecaoDeCampos } from './portas.js';
 import type { UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 
-/** Linha com campo sensível a cifrar (legado em claro) ou a recifrar (chave antiga). */
+/** Campo sensível cifrado, candidato a recifra quando a chave dele não é mais a ativa. */
 export interface CampoParaRecifrar {
   readonly tabela: 'advogado' | 'cliente';
   readonly id: Uuid;
-  /** Texto em claro (legado) ou cifrado; `null`: cliente sem documento. */
-  readonly claro: string | null;
-  readonly cifrado: string | null;
+  readonly cifrado: string;
 }
 
 /** Porta: as linhas e a gravação (no tenant da transação, RLS); só inserção não se aplica aqui. */
 export interface CamposSensiveis<Transacao> {
-  /** Tenants com algum campo em claro ou cifrado (papel sistema): a recifra decide o que muda. */
+  /** Tenants com algum campo cifrado (papel sistema): a recifra decide o que muda. */
   tenants(transacao: Transacao): Promise<Uuid[]>;
   lote(transacao: Transacao, depoisDe: Uuid | null, limite: number): Promise<CampoParaRecifrar[]>;
   gravar(
     transacao: Transacao,
     campo: CampoParaRecifrar,
-    novo: { cifrado: string | null; indice: string | null },
+    novo: { cifrado: string; indice: string | null },
   ): Promise<void>;
 }
 
 const LOTE = 200;
 
 /**
- * Cifra os campos legados em claro e recifra os de chave antiga com a chave ativa (HU37,
- * PZ-219; ADR-021). Idempotente: o que já está com a chave ativa não muda. Roda por tenant (RLS),
+ * Recifra com a chave ativa os campos cifrados com chave antiga (HU37, PZ-219; ADR-021). Desde a
+ * fase contract não há mais campo em claro. Idempotente: o que já está com a chave ativa não muda. Roda por tenant (RLS),
  * em lotes; a rotação de chaves é: pôr a nova chave na frente da lista e rodar este job.
  */
 export class RecifrarCamposSensiveis<Transacao> {
@@ -64,10 +62,9 @@ export class RecifrarCamposSensiveis<Transacao> {
     return { escritorios: tenants.length, atualizados };
   }
 
-  #novo(c: CampoParaRecifrar): { cifrado: string | null; indice: string | null } | undefined {
-    if (c.cifrado !== null && !this.protecao.precisaRecifrar(c.cifrado)) return undefined;
-    const texto = c.cifrado !== null ? this.protecao.decifrar(c.cifrado) : c.claro;
-    if (texto === null) return undefined;
+  #novo(c: CampoParaRecifrar): { cifrado: string; indice: string | null } | undefined {
+    if (!this.protecao.precisaRecifrar(c.cifrado)) return undefined;
+    const texto = this.protecao.decifrar(c.cifrado);
     return {
       cifrado: this.protecao.cifrar(texto),
       indice: c.tabela === 'advogado' ? this.protecao.indice(texto) : null,

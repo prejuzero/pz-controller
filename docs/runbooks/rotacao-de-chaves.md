@@ -9,7 +9,7 @@ Campos cifrados: segredo do 2FA, CPF do advogado e documento do cliente. Formato
 3. Faça o deploy da api e do worker com a mesma lista (a api passa a cifrar com a nova; a antiga ainda decifra).
 4. Rode o job `cadastro.recifrar-campos` (agendado diariamente às 3h30; pelo painel das filas, `/admin/filas`, dá para adiantar). Ele é idempotente, recifra os campos do cadastro e os segredos do 2FA, e registra quantos de cada.
 5. Confira que nenhum campo usa a chave antiga:
-   `SELECT count(*) FROM advogado WHERE cpf_cifrado NOT LIKE 'v2.k2.%' OR cpf IS NOT NULL;`, o mesmo para `cliente.documento_cifrado` e `SELECT count(*) FROM usuario WHERE totp_segredo_cifrado NOT LIKE 'v2.k2.%';`.
+   `SELECT count(*) FROM advogado WHERE cpf_cifrado NOT LIKE 'v2.k2.%';`, o mesmo para `cliente.documento_cifrado` e `SELECT count(*) FROM usuario WHERE totp_segredo_cifrado NOT LIKE 'v2.k2.%';`.
 6. Só então remova a chave antiga da lista e faça o deploy.
 
 ## Não fazer
@@ -20,3 +20,7 @@ Campos cifrados: segredo do 2FA, CPF do advogado e documento do cliente. Formato
 ## Reverter a migração `20261111000000_campos_cifrados`
 
 Só é possível com todos os CPFs ainda em claro. Depois do job, a reversão é recusada pelo próprio script.
+
+## Reverter a migração `20261120000000_campos_cifrados_contract`
+
+Recria as colunas `advogado.cpf` e `cliente.documento` **vazias**: o banco não tem a chave para decifrar, e os dados continuam nas colunas cifradas. Só serve para voltar o código a uma versão anterior à fase contract.

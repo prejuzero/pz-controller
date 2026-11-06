@@ -4,11 +4,28 @@
 import { argon2, randomBytes } from 'node:crypto';
 import { promisify } from 'node:util';
 
+import { protecaoDeCampos, ProvedorChavesLocal } from '@pz/integracoes';
 import pg from 'pg';
 
 const url =
   process.env.DATABASE_URL_SISTEMA ??
   'postgresql://pz_sistema:pz_sistema_local@127.0.0.1:5432/prejuzero';
+
+// CPF só cifrado (HU37, ADR-021): as mesmas chaves da api e do worker (CHAVE_CIFRAGEM e
+// CHAVES_DE_DADOS do .env). Sem a chave, o seed para: um CPF que a api não decifra quebraria o perfil.
+function protecaoDoAmbiente() {
+  const mestra = process.env.CHAVE_CIFRAGEM;
+  if (mestra === undefined || mestra === '') {
+    throw new Error(
+      'CHAVE_CIFRAGEM ausente: defina no .env (openssl rand -base64 32) e rode de novo.',
+    );
+  }
+  const lista = process.env.CHAVES_DE_DADOS;
+  return protecaoDeCampos(
+    new ProvedorChavesLocal(mestra, lista === undefined || lista === '' ? undefined : lista),
+    mestra,
+  );
+}
 
 const TENANT_DEMONSTRACAO = '01a10e00-0000-7000-8000-00000000d001';
 const USUARIO_DEMONSTRACAO = '01a10e00-0000-7000-8000-00000000d002';
@@ -79,11 +96,19 @@ try {
     [TENANT_DEMONSTRACAO, USUARIO_DEMONSTRACAO],
   );
   // Advogado e OAB FICTÍCIOS (HU11): CPF gerado só para a demonstração, OAB inexistente.
+  const protecao = protecaoDoAmbiente();
+  const cpf = '52998224725';
   await cliente.query(
-    `INSERT INTO advogado (id, tenant_id, usuario_id, nome, cpf, celular)
-     VALUES ($1, $2, $3, 'Pessoa Demonstração', '52998224725', '11900000000')
+    `INSERT INTO advogado (id, tenant_id, usuario_id, nome, cpf_cifrado, cpf_indice, celular)
+     VALUES ($1, $2, $3, 'Pessoa Demonstração', $4, $5, '11900000000')
      ON CONFLICT DO NOTHING`,
-    [ADVOGADO_DEMONSTRACAO, TENANT_DEMONSTRACAO, USUARIO_DEMONSTRACAO],
+    [
+      ADVOGADO_DEMONSTRACAO,
+      TENANT_DEMONSTRACAO,
+      USUARIO_DEMONSTRACAO,
+      protecao.cifrar(cpf),
+      protecao.indice(cpf),
+    ],
   );
   await cliente.query(
     `INSERT INTO oab (id, tenant_id, advogado_id, numero, uf, tipo)
