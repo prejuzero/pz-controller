@@ -36,3 +36,18 @@ Roda cada caso pelo mesmo caso de uso da produção (regras rápidas, depois a p
 - **Gravações** (`gravacoes/<tarefa@versao>.json`): respostas reais do modelo, reproduzidas no CI sem rede e sem custo. A chave de cada resposta é o hash do prompt montado (texto, versão, taxonomia, teor) e do modelo com seus parâmetros: mudou qualquer um, a gravação deixa de valer.
 - **Regravar** (exige `ANTHROPIC_API_KEY`, nunca no CI): `ANTHROPIC_API_KEY=... pnpm eval --gravar`. Regrava as respostas da versão atual do prompt e grava o resultado em `historico/<tarefa@versao>.json` (histórico por versão do prompt). Versione os dois arquivos no PR.
 - **Gate**: só casos `real-anonimizado` com revisor contam para a meta (≥ 98%). Reprova abaixo da meta ou se faltar gravação para algum caso da meta. Sem casos reais revisados, passa com aviso explícito no CI.
+
+## Uso das ferramentas (HU59)
+
+Casos em `ferramentas/*.json`: a pergunta e a ferramenta esperada (`null` quando nenhuma serve),
+com os argumentos que precisam aparecer. O runner usa o caso de uso `EscolherFerramenta`, o
+catálogo real e o prompt `escolher-ferramenta`; as ferramentas não executam.
+
+```
+pnpm --filter @pz/eval avaliar-ferramentas            # reproduz as gravações (CI)
+pnpm --filter @pz/eval avaliar-ferramentas --gravar   # chama a API e regrava
+```
+
+`--gravar` usa `ANTHROPIC_API_KEY` ou, só com casos fictícios, `GEMINI_API_KEY` (ADR-022);
+`--intervalo-ms` espaça as chamadas para a cota gratuita. Só casos `real-anonimizado` contam para
+a meta de 98% e reprovam sem gravação; os fictícios exercitam o fluxo e apenas avisam.

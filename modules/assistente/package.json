@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@pz/config": "workspace:*",
+    "@pz/integracoes": "workspace:*",
     "@types/node": "24.19.2",
     "@vitest/coverage-v8": "5.0.5",
     "eslint": "10.13.0",

@@ -1,0 +1,11 @@
+{
+  "id": "ficticio-f003",
+  "origem": "ficticio",
+  "pergunta": "Chegou alguma publicação falando em penhora?",
+  "esperado": {
+    "ferramentas": ["buscar_publicacoes"],
+    "argumentos": {
+      "palavraChave": "penhora"
+    }
+  }
+}

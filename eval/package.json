@@ -13,10 +13,13 @@
     "test": "vitest run --coverage",
     "anonimizar": "tsx src/cli/anonimizar.ts",
     "amostrar": "tsx src/cli/amostrar.ts",
-    "avaliar": "tsx src/cli/avaliar.ts"
+    "avaliar": "tsx src/cli/avaliar.ts",
+    "avaliar-ferramentas": "tsx src/cli/avaliar-ferramentas.ts"
   },
   "dependencies": {
     "@pz/adapter-anthropic": "workspace:*",
+    "@pz/adapter-gemini": "workspace:*",
+    "@pz/assistente": "workspace:*",
     "@pz/classificacao": "workspace:*",
     "@pz/ia": "workspace:*",
     "@pz/integracoes": "workspace:*",

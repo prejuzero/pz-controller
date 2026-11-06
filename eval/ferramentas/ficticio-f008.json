@@ -1,0 +1,9 @@
+{
+  "id": "ficticio-f008",
+  "origem": "ficticio",
+  "pergunta": "Qual é a capital da França?",
+  "esperado": {
+    "ferramentas": [null],
+    "argumentos": {}
+  }
+}

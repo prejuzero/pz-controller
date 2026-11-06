@@ -1,0 +1,13 @@
+{
+  "id": "ficticio-f001",
+  "origem": "ficticio",
+  "pergunta": "Quais prazos vencem hoje?",
+  "esperado": {
+    "ferramentas": ["buscar_prazos"],
+    "argumentos": {
+      "periodo": {
+        "atalho": "hoje"
+      }
+    }
+  }
+}
