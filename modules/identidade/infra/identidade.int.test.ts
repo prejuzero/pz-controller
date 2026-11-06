@@ -15,6 +15,11 @@ import {
   SuspenderTenant,
 } from '../application/administracao-de-tenants.js';
 import {
+  EmitirTokenDeCliente,
+  RegistrarClienteOAuth,
+  RevogarClienteOAuth,
+} from '../application/clientes-oauth.js';
+import {
   RegistrarDispositivo,
   RenovarTokens,
   RevogarDispositivo,
@@ -37,6 +42,7 @@ import { PERMISSOES } from '../domain/permissoes.js';
 
 import { AcessosPostgres } from './acessos-postgres.js';
 import { HasherArgon2 } from './argon2.js';
+import { ClientesOAuthPostgres } from './clientes-oauth-postgres.js';
 import { CredenciaisPostgres } from './credenciais-postgres.js';
 import { DispositivosPostgres, RenovacoesRedis } from './dispositivos.js';
 import { PerfisPostgres, UsuariosComPermissaoPostgres } from './perfis-postgres.js';
@@ -56,6 +62,7 @@ import { TenantsPostgres } from './tenants-postgres.js';
 import { TentativasRedis } from './tentativas-redis.js';
 import { GeradorDeTokensSeguro, hashDoToken } from './tokens.js';
 
+import type { ConsultarPermissoes } from '../application/autorizacao.js';
 import type { Email } from '../domain/credenciais.js';
 import type { BancoDeTeste } from '@pz/db/teste';
 import type { Uuid } from '@pz/kernel';
@@ -453,6 +460,75 @@ describe('sessões por dispositivo com PostgreSQL e Redis (HU06)', () => {
       (await executarNoTenant(TENANT_A, () => revogar.executar(sessao, terceiro.dispositivoId))).ok,
     ).toBe(true);
     expect((await renovar.executar(terceiro.tokenDeRenovacao)).ok).toBe(false);
+  });
+});
+
+describe('clientes OAuth com PostgreSQL e Redis (HU49)', () => {
+  it('só o hash do segredo, token pela função restrita, RLS por tenant e revogação na hora', async () => {
+    const clientes = new ClientesOAuthPostgres(banco);
+    const sessoes = new SessoesRedis(redis);
+    const publicador = new PublicadorOutbox(banco);
+    const tokens = new GeradorDeTokensSeguro();
+    const permissoes = {
+      executar: () => Promise.resolve(new Set(['prazos:ler'])),
+    } as unknown as ConsultarPermissoes;
+    const sessao = {
+      id: gerarUuidV7(),
+      usuarioId: ANA,
+      tenantId: TENANT_A,
+      nivel: 'completo' as const,
+      segundoFatorAtivo: true,
+      criadaEm: relogio.agora(),
+      ultimoUso: relogio.agora(),
+    };
+    const registrado = await executarNoTenant(TENANT_A, () =>
+      new RegistrarClienteOAuth(clientes, permissoes, tokens, publicador, relogio).executar(
+        sessao,
+        { nome: 'ERP fictício', escopos: ['prazos:ler'] },
+      ),
+    );
+    if (!registrado.ok) throw new Error('registrar deveria passar');
+    const { cliente, segredo } = registrado.valor;
+    const [gravado] = await executarNoTenant(TENANT_A, () =>
+      banco.executar((tx) => tx.clienteOauth.findMany({ select: { segredoHash: true } })),
+    );
+    expect(gravado?.segredoHash).toBe(hashDoToken(segredo));
+    expect(await executarNoTenant(TENANT_B, () => clientes.listar())).toEqual([]);
+    // Sem tenant, a api (pz_app) só chega ao cliente pela função restrita.
+    await expect(
+      banco.executarSemTenant('teste: ler direto', (tx) => tx.clienteOauth.count()),
+    ).resolves.toBe(0);
+
+    const emitir = new EmitirTokenDeCliente(clientes, sessoes, tokens, relogio, noTenantDoBanco);
+    expect((await emitir.executar({ clienteId: cliente.id, segredo: 'x'.repeat(43) })).ok).toBe(
+      false,
+    );
+    const token = await emitir.executar({ clienteId: cliente.id, segredo });
+    if (!token.ok) throw new Error('token deveria sair');
+    const validada = await new ValidarSessao(sessoes, relogio).executar(token.valor.tokenDeAcesso);
+    expect(validada.ok && validada.valor).toMatchObject({
+      tenantId: TENANT_A,
+      usuarioId: ANA,
+      escopos: ['prazos:ler'],
+    });
+    const [usado] = await executarNoTenant(TENANT_A, () => clientes.listar());
+    expect(usado?.ultimoUso).toEqual(relogio.agora());
+
+    const revogar = new RevogarClienteOAuth(clientes, sessoes, publicador, relogio);
+    expect(
+      (
+        await executarNoTenant(TENANT_B, () =>
+          revogar.executar({ ...sessao, tenantId: TENANT_B }, cliente.id),
+        )
+      ).ok,
+    ).toBe(false);
+    expect((await executarNoTenant(TENANT_A, () => revogar.executar(sessao, cliente.id))).ok).toBe(
+      true,
+    );
+    expect((await new ValidarSessao(sessoes, relogio).executar(token.valor.tokenDeAcesso)).ok).toBe(
+      false,
+    );
+    expect((await emitir.executar({ clienteId: cliente.id, segredo })).ok).toBe(false);
   });
 });
 

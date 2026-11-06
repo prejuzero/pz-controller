@@ -32,6 +32,11 @@ export interface Sessao {
   readonly dispositivoId?: Uuid;
   /** Limite absoluto próprio (token de acesso curto), além das regras gerais. */
   readonly expiraAte?: Instant;
+  /**
+   * Token de cliente OAuth (HU49): as permissões efetivas são estas, e só enquanto o usuário
+   * dono do cliente ainda as tiver.
+   */
+  readonly escopos?: readonly string[];
   /** Administrador da plataforma acessando outro tenant (HU07); some ao vencer. */
   readonly impersonacao?: Impersonacao;
 }

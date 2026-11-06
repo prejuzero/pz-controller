@@ -51,6 +51,7 @@ import { ROTAS_CALENDARIO } from './calendario/index.js';
 import { ROTAS_CAPTURA } from './captura.js';
 import { ROTAS_CIENCIA } from './ciencia.js';
 import { ROTAS_HISTORICO } from './historico.js';
+import { ROTAS_INTEGRACOES } from './integracoes.js';
 export {
   CodigoDeVerificacao,
   consultarHistoricoDoPrazo,
@@ -374,6 +375,20 @@ export { definirRota, nomear } from './rota.js';
 export type { EsquemaNomeado, MetodoHttp, Rota, StatusDeErro } from './rota.js';
 export { consultarSituacao, ROTAS_SAUDE, SituacaoDaApi } from './saude/index.js';
 export { receberWebhook, ROTAS_WEBHOOKS, WebhookAceito } from './webhooks/index.js';
+export {
+  ClienteDeIntegracaoCriado,
+  ClientesDeIntegracao,
+  emitirTokenOAuth,
+  EscoposDeIntegracao,
+  listarClientesDeIntegracao,
+  listarEscoposDeIntegracao,
+  PedidoDeClienteDeIntegracao,
+  PedidoDeTokenOAuth,
+  registrarClienteDeIntegracao,
+  revogarClienteDeIntegracao,
+  ROTAS_INTEGRACOES,
+  TokenOAuth,
+} from './integracoes.js';
 
 /** Todas as rotas da API `/v1`. Cada módulo novo acrescenta as suas aqui. */
 export const ROTAS = [
@@ -397,6 +412,7 @@ export const ROTAS = [
   ...ROTAS_NOTIFICACOES,
   ...ROTAS_SAUDE,
   ...ROTAS_WEBHOOKS,
+  ...ROTAS_INTEGRACOES,
 ] as const;
 
 /** O documento OpenAPI 3.1 da API, gerado das rotas (é o que `openapi.json` guarda). */

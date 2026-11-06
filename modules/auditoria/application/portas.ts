@@ -3,6 +3,8 @@ import { z } from 'zod';
 /** Catálogo tipado dos tipos de evento da trilha (HU08): tipo novo entra aqui primeiro. */
 export const TIPOS_DE_AUDITORIA = [
   'identidade.dispositivo-registrado',
+  'identidade.cliente-oauth-registrado',
+  'identidade.cliente-oauth-revogado',
   'identidade.sessao-revogada',
   'identidade.conta-bloqueada',
   'identidade.redefinicao-de-senha-solicitada',

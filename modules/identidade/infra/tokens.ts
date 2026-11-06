@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
 import type { GeradorDeTokens } from '../application/portas.js';
 
@@ -12,4 +12,11 @@ export class GeradorDeTokensSeguro implements GeradorDeTokens {
 /** O token nunca é guardado: só o SHA-256 dele (vazamento do armazenamento não vira sessão). */
 export function hashDoToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
+}
+
+/** O segredo confere com o hash guardado, em tempo constante (não vaza por tempo de resposta). */
+export function segredoConfere(segredo: string, hash: string): boolean {
+  const calculado = Buffer.from(hashDoToken(segredo), 'hex');
+  const guardado = Buffer.from(hash, 'hex');
+  return calculado.length === guardado.length && timingSafeEqual(calculado, guardado);
 }

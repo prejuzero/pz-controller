@@ -25,6 +25,10 @@ export const CATALOGO_DE_PERMISSOES = {
     descricao: 'Convidar usuários do escritório e atribuir perfis.',
     leitura: false,
   },
+  'integracoes:gerir': {
+    descricao: 'Registrar e revogar integrações do escritório (clientes da API, HU49).',
+    leitura: false,
+  },
   'admin:tenants': { descricao: 'Administrar tenants da plataforma.', leitura: false },
   'admin:impersonar': { descricao: 'Acessar um tenant por impersonação auditada.', leitura: false },
   'admin:filas': { descricao: 'Acompanhar filas e reprocessar a DLQ.', leitura: false },

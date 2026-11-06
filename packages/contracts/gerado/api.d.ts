@@ -1049,6 +1049,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/integracoes/clientes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Clientes de integração do escritório. */
+        get: operations["listarClientesDeIntegracao"];
+        put?: never;
+        /** Registra um cliente de integração e devolve o segredo uma única vez. */
+        post: operations["registrarClienteDeIntegracao"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integracoes/clientes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoga o cliente e derruba na hora os tokens emitidos para ele. */
+        delete: operations["revogarClienteDeIntegracao"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integracoes/escopos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Escopos que um cliente de integração pode receber (só leitura). */
+        get: operations["listarEscoposDeIntegracao"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/notificacoes/avisos": {
         parameters: {
             query?: never;
@@ -1166,6 +1218,23 @@ export interface paths {
         post?: never;
         /** Remove uma OAB suplementar do monitoramento (a principal não sai). */
         delete: operations["removerOab"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/oauth/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Emite token de acesso para um cliente de integração (Client Credentials). */
+        post: operations["emitirTokenOAuth"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1916,12 +1985,44 @@ export interface components {
             /** @description Já havia ciência: nada novo foi gravado. */
             jaConfirmada: boolean;
         };
+        ClienteDeIntegracaoCriado: {
+            cliente: {
+                /**
+                 * Format: uuid
+                 * @description O `client_id`.
+                 */
+                id: string;
+                nome: string;
+                escopos: string[];
+                /** Format: date-time */
+                criadoEm: string;
+                ultimoUso: string | null;
+                revogadoEm: string | null;
+            };
+            /** @description O `client_secret`: mostrado só agora; guarde em local seguro. */
+            segredo: string;
+        };
         ClienteDoTenant: {
             /** Format: uuid */
             id: string;
             nome: string;
             /** @description CPF ou CNPJ sem pontuação. */
             documento: string | null;
+        };
+        ClientesDeIntegracao: {
+            itens: {
+                /**
+                 * Format: uuid
+                 * @description O `client_id`.
+                 */
+                id: string;
+                nome: string;
+                escopos: string[];
+                /** Format: date-time */
+                criadoEm: string;
+                ultimoUso: string | null;
+                revogadoEm: string | null;
+            }[];
         };
         CodigoSegundoFator: {
             /** @description 6 dígitos do aplicativo ou um código de recuperação (XXXXX-XXXXX). */
@@ -2180,6 +2281,12 @@ export interface components {
                 motivo: string | null;
                 /** Format: date-time */
                 criadoEm: string;
+            }[];
+        };
+        EscoposDeIntegracao: {
+            itens: {
+                escopo: string;
+                descricao: string;
             }[];
         };
         EventoDoCalendario: {
@@ -2603,6 +2710,10 @@ export interface components {
             /** @description CPF ou CNPJ, com ou sem máscara. */
             documento?: string | null;
         };
+        PedidoDeClienteDeIntegracao: {
+            nome: string;
+            escopos: string[];
+        };
         PedidoDeCobertura: {
             /**
              * @description Automática: as fontes públicas trazem as intimações; parcial ou manual: conferir no painel do tribunal.
@@ -2988,6 +3099,15 @@ export interface components {
             nome: string;
             descricao: string;
             sinonimos?: string[];
+        };
+        PedidoDeTokenOAuth: {
+            /** @constant */
+            grant_type: "client_credentials";
+            /** Format: uuid */
+            client_id?: string;
+            client_secret?: string;
+            /** @description Escopos separados por espaço. */
+            scope?: string;
         };
         PedidoDeTokensDeDispositivo: {
             /** @enum {string} */
@@ -3468,6 +3588,14 @@ export interface components {
         };
         TiposDeAto: {
             itens: components["schemas"]["TipoDeAto"][];
+        };
+        TokenOAuth: {
+            access_token: string;
+            /** @constant */
+            token_type: "Bearer";
+            /** @description Segundos (15 min). */
+            expires_in: number;
+            scope: string;
         };
         TokensDeDispositivo: {
             /** Format: uuid */
@@ -8134,6 +8262,225 @@ export interface operations {
             };
         };
     };
+    listarClientesDeIntegracao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientesDeIntegracao"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    registrarClienteDeIntegracao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeClienteDeIntegracao"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClienteDeIntegracaoCriado"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    revogarClienteDeIntegracao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso, sem corpo. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarEscoposDeIntegracao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EscoposDeIntegracao"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
     consultarAvisosDeEntrega: {
         parameters: {
             query?: never;
@@ -8717,6 +9064,67 @@ export interface operations {
             };
             /** @description Regra de negócio violada. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    emitirTokenOAuth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeTokenOAuth"];
+                "application/x-www-form-urlencoded": components["schemas"]["PedidoDeTokenOAuth"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenOAuth"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Limite de requisições excedido. */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

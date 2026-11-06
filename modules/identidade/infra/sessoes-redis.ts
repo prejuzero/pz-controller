@@ -17,6 +17,7 @@ interface SessaoSerializada {
   ultimoUso: number;
   dispositivoId?: string;
   expiraAte?: number;
+  escopos?: string[];
   impersonacao?: {
     id: string;
     tenantId: string;
@@ -56,6 +57,7 @@ export class SessoesRedis implements ArmazemDeSessoes {
       ultimoUso: sessao.ultimoUso.epochMs,
       ...(sessao.dispositivoId === undefined ? {} : { dispositivoId: sessao.dispositivoId }),
       ...(sessao.expiraAte === undefined ? {} : { expiraAte: sessao.expiraAte.epochMs }),
+      ...(sessao.escopos === undefined ? {} : { escopos: [...sessao.escopos] }),
       ...(sessao.impersonacao === undefined
         ? {}
         : {
@@ -92,6 +94,7 @@ export class SessoesRedis implements ArmazemDeSessoes {
       ultimoUso: Instant.deEpochMs(dados.ultimoUso),
       ...(dados.dispositivoId === undefined ? {} : { dispositivoId: dados.dispositivoId as Uuid }),
       ...(dados.expiraAte === undefined ? {} : { expiraAte: Instant.deEpochMs(dados.expiraAte) }),
+      ...(dados.escopos === undefined ? {} : { escopos: dados.escopos }),
       ...(dados.impersonacao === undefined
         ? {}
         : {

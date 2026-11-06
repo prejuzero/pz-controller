@@ -53,6 +53,7 @@ model Tenant {
   eventosProcessados     EventoProcessado[]
   acessos                Acesso[]
   dispositivos           SessaoDispositivo[]
+  clientesOauth          ClienteOauth[]
   perfis                 UsuarioPerfil[]
   auditoria              EventoAuditoria[]
   verificacao            AuditoriaVerificacao?
@@ -102,11 +103,12 @@ model Usuario {
   criadoEm           DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm       DateTime  @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  acessos      Acesso[]
-  dispositivos SessaoDispositivo[]
-  perfis       UsuarioPerfil[]
-  advogado     Advogado?
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  acessos       Acesso[]
+  dispositivos  SessaoDispositivo[]
+  clientesOauth ClienteOauth[]
+  perfis        UsuarioPerfil[]
+  advogado      Advogado?
 
   @@unique([tenantId, email])
   @@map("usuario")
@@ -218,6 +220,26 @@ model SessaoDispositivo {
   @@index([tenantId])
   @@index([usuarioId])
   @@map("sessao_dispositivo")
+}
+
+/// Cliente OAuth 2.1 de integrador (HU49): Client Credentials, segredo só como hash, revogável.
+model ClienteOauth {
+  id           String    @id @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  usuarioId    String    @map("usuario_id") @db.Uuid
+  nome         String
+  segredoHash  String    @map("segredo_hash")
+  escopos      String[]
+  ultimoUso    DateTime? @map("ultimo_uso") @db.Timestamptz(6)
+  revogadoEm   DateTime? @map("revogado_em") @db.Timestamptz(6)
+  criadoEm     DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime  @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@map("cliente_oauth")
 }
 
 /// Trilha de auditoria imutável (HU08, ADR-006): só INSERT, cadeia SHA-256 por tenant.
