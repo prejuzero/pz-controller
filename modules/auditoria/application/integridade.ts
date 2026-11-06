@@ -123,6 +123,66 @@ export class VerificarIntegridade<Transacao> {
   }
 }
 
+/** Resultado da verificação completa: íntegra (com quantos registros) ou onde diverge. */
+export type ResultadoDaVerificacaoCompleta =
+  | { readonly tenantId: string; readonly situacao: 'integra'; readonly registros: number }
+  | {
+      readonly tenantId: string;
+      readonly situacao: 'divergente';
+      readonly sequencia: number;
+      readonly motivo: string;
+    };
+
+/**
+ * Verificação completa da cadeia, da gênese ao fim, em cada tenant (PZ-221): o aceite de uma
+ * restauração de backup. Só lê: não grava checkpoint nem exporta para o WORM. A âncora
+ * (checkpoint) restaurada junto ainda serve para detectar uma cadeia mais curta que ela.
+ */
+export class VerificarCadeiaCompleta<Transacao> {
+  constructor(
+    private readonly unidade: UnidadeDeTrabalho<Transacao>,
+    private readonly cadeia: RepositorioDaCadeia<Transacao>,
+    private readonly sha256: Sha256,
+  ) {}
+
+  async executar(): Promise<ResultadoDaVerificacaoCompleta[]> {
+    const tenants = await this.unidade.executar((tx) => this.cadeia.tenants(tx));
+    const resultados: ResultadoDaVerificacaoCompleta[] = [];
+    for (const tenantId of tenants) {
+      resultados.push(await this.unidade.executar((tx) => this.#tenant(tx, tenantId)));
+    }
+    return resultados;
+  }
+
+  async #tenant(tx: Transacao, tenantId: string): Promise<ResultadoDaVerificacaoCompleta> {
+    let elo = { sequencia: 0, hash: HASH_GENESE };
+    for (;;) {
+      const lote = await this.cadeia.ler(tx, tenantId, elo.sequencia, LOTE);
+      if (lote.length === 0) break;
+      const verificacao = verificarCadeia(lote, this.sha256, elo);
+      if (!verificacao.valida) {
+        return {
+          tenantId,
+          situacao: 'divergente',
+          sequencia: verificacao.sequencia,
+          motivo: verificacao.motivo,
+        };
+      }
+      elo = verificacao.ultimo ?? elo;
+    }
+    const ancora = await this.cadeia.checkpoint(tx, tenantId);
+    if (ancora !== undefined && elo.sequencia < ancora.ultimaSequencia) {
+      return {
+        tenantId,
+        situacao: 'divergente',
+        sequencia: elo.sequencia + 1,
+        motivo: `registros removidos do fim da cadeia (âncora na sequência ${String(ancora.ultimaSequencia)})`,
+      };
+    }
+    return { tenantId, situacao: 'integra', registros: elo.sequencia };
+  }
+}
+
 /**
  * Trecho verificável de uma entidade (base do PDF verificável, HU35): os registros dela e se a
  * cadeia inteira do tenant, da gênese até o fim, confere.

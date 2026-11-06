@@ -16,7 +16,12 @@ export {
 } from './domain/dados-pessoais.js';
 export type { DadoPessoalMarcado } from './domain/dados-pessoais.js';
 export { DadosPessoaisDaTrilhaPostgres, sha256, TrilhaPostgres } from './infra/trilha-postgres.js';
-export { ConsultarTrecho, VerificarIntegridade } from './application/integridade.js';
+export {
+  ConsultarTrecho,
+  VerificarCadeiaCompleta,
+  VerificarIntegridade,
+} from './application/integridade.js';
+export type { ResultadoDaVerificacaoCompleta } from './application/integridade.js';
 export type {
   Checkpoint,
   DestinoWorm,

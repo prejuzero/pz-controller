@@ -36,7 +36,9 @@
     "infra:logs": "infra/docker/compose.sh logs -f",
     "alertas:testar": "infra/docker/observabilidade/testar-alertas.sh",
     "dast": "infra/dast/zap.sh",
-    "carga": "infra/k6/carga.sh"
+    "carga": "infra/k6/carga.sh",
+    "backup": "infra/backup/backup.sh",
+    "restaurar": "infra/backup/restaurar.sh"
   },
   "lint-staged": {
     "*.{ts,tsx,js,mjs,cjs}": [

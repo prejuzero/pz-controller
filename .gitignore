@@ -58,3 +58,6 @@ apps/web/e2e/.resultados/
 eval/relatorio/
 infra/dast/.relatorio/
 infra/k6/.relatorio/
+
+# Backups locais (pnpm backup): dados do banco local, nunca no git.
+/backups/
