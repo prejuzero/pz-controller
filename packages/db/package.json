@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.1",
-    "@prisma/client": "7.10.0",
+    "@prisma/client": "7.10.1",
     "@pz/config": "workspace:*",
     "@pz/kernel": "workspace:*",
     "@pz/observability": "workspace:*",
