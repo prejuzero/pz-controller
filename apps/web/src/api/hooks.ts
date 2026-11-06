@@ -12,6 +12,7 @@ import { consultasCalendario, mutacoesCalendario } from './calendario';
 import { consultasCaptura } from './captura';
 import { mutacoesCiencia } from './ciencia';
 import { consultasHistorico } from './historico';
+import { consultasIntegracoes, mutacoesIntegracoes } from './integracoes';
 import { consultasNotificacoes, mutacaoEnvioPorEmail, mutacoesNotificacoes } from './notificacoes';
 import {
   consultasPrazos,
@@ -241,3 +242,20 @@ export const useSolicitarRelatorio = () =>
 export const useEnviarPorEmail = () =>
   useMutation(mutacaoEnvioPorEmail(useApi(), useQueryClient()));
 export const useEnviosRecentes = () => useQuery(consultasNotificacoes(useApi()).envios());
+
+function useMutacoesIntegracoes() {
+  return mutacoesIntegracoes(useApi(), useQueryClient());
+}
+
+// Integrações do escritório (HU49).
+export const useEscoposDeIntegracao = () => useQuery(consultasIntegracoes(useApi()).escopos());
+export const useClientesDeIntegracao = () => useQuery(consultasIntegracoes(useApi()).clientes());
+export const useEventosDeWebhook = () => useQuery(consultasIntegracoes(useApi()).eventos());
+export const useWebhooks = () => useQuery(consultasIntegracoes(useApi()).webhooks());
+export const useEntregasDeWebhook = () => useQuery(consultasIntegracoes(useApi()).entregas());
+export const useRegistrarCliente = () => useMutation(useMutacoesIntegracoes().registrarCliente);
+export const useRevogarCliente = () => useMutation(useMutacoesIntegracoes().revogarCliente);
+export const useRegistrarWebhook = () => useMutation(useMutacoesIntegracoes().registrarWebhook);
+export const useDesativarWebhook = () => useMutation(useMutacoesIntegracoes().desativarWebhook);
+export const useTestarWebhook = () => useMutation(useMutacoesIntegracoes().testarWebhook);
+export const useReenviarEntrega = () => useMutation(useMutacoesIntegracoes().reenviarEntrega);

@@ -39,6 +39,13 @@ export default async function PaginaConfiguracoes() {
             descricao={t('coberturaDescricao')}
           />
         </SePermitido>
+        <SePermitido permissao="integracoes:gerir">
+          <Item
+            href="/configuracoes/integracoes"
+            titulo={t('integracoes')}
+            descricao={t('integracoesDescricao')}
+          />
+        </SePermitido>
         <SePermitido permissao="calendario:ler">
           <Item
             href="/configuracoes/feriados-locais"
