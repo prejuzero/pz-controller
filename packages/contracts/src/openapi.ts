@@ -103,7 +103,12 @@ function operacao(rota: Rota): Json {
       : {
           requestBody: {
             required: true,
-            content: { 'application/json': { schema: REF(rota.corpo.nome) } },
+            content: {
+              'application/json': { schema: REF(rota.corpo.nome) },
+              ...(rota.corpoTambemFormulario === true
+                ? { 'application/x-www-form-urlencoded': { schema: REF(rota.corpo.nome) } }
+                : {}),
+            },
           },
         }),
     ...(rota.corpoBinario === undefined

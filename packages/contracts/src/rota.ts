@@ -37,6 +37,8 @@ export interface Rota {
   readonly parametrosDeCaminho?: z.ZodObject;
   readonly consulta?: z.ZodObject;
   readonly corpo?: EsquemaNomeado;
+  /** O corpo também vem como formulário (`application/x-www-form-urlencoded`; ex.: OAuth 2.1). */
+  readonly corpoTambemFormulario?: boolean;
   /** Corpo binário em vez de JSON (ex.: o PDF do cadastro assistido). Exclui `corpo`. */
   readonly corpoBinario?: 'application/pdf';
   /** Resposta de sucesso. `null` para 204 sem corpo. */

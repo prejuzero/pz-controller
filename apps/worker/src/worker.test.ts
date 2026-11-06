@@ -146,6 +146,8 @@ describe('@Consome e o despachante', () => {
         ],
         ['DispositivoRegistrado@1', ['ConsumidorDeAuditoria.dispositivoRegistrado']],
         ['SessaoRevogada@1', ['ConsumidorDeAuditoria.sessaoRevogada']],
+        ['ClienteOAuthRegistrado@1', ['ConsumidorDeAuditoria.clienteOAuthRegistrado']],
+        ['ClienteOAuthRevogado@1', ['ConsumidorDeAuditoria.clienteOAuthRevogado']],
         [
           'CalendarioAlterado@1',
           ['ConsumidorDoCalendario.alterado', 'ConsumidorDosPrazos.calendarioAlterado'],

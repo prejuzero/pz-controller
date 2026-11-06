@@ -113,6 +113,7 @@ const LINHAS_GLOBAIS: Readonly<Record<string, string>> = { perfil: 'advogado' };
  * da tabela (dados fictícios).
  */
 const COLUNAS_FIXAS: Readonly<Record<string, Record<string, unknown>>> = {
+  cliente_oauth: { escopos: ['prazos:ler'] },
   feriado_local: { abrangencia: 'uf', uf: 'XA' },
   advogado: {
     // Fictícios: o teste de isolamento não decifra; só precisa de valor único no formato.
@@ -272,6 +273,7 @@ export const TABELAS_SEM_DELETE: readonly string[] = [
   'encerramento_conta',
   'publicacao_destinatario',
   'prazo',
+  'cliente_oauth',
   'compromisso',
   'lembrete_agendado',
   'token_ciencia',

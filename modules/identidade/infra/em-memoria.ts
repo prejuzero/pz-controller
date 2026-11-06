@@ -2,8 +2,15 @@ import { Instant } from '@pz/kernel';
 
 import { PERFIS_PADRAO } from '../domain/perfis.js';
 
+import { hashDoToken, segredoConfere } from './tokens.js';
+
 import type { RepositorioDeTenantsAdministrados } from '../application/administracao-de-tenants.js';
 import type { RepositorioDePerfis } from '../application/autorizacao.js';
+import type {
+  ClienteAutenticado,
+  ClienteOAuth,
+  RepositorioDeClientesOAuth,
+} from '../application/clientes-oauth.js';
 import type { RepositorioDeTenants } from '../application/impersonacao.js';
 import type {
   ArmazemDeRenovacoes,
@@ -336,5 +343,51 @@ export class TenantsEmMemoria
 
   usuarios(_transacao: unknown, tenantId: Uuid): Promise<Uuid[]> {
     return Promise.resolve(this.#usuarios.get(tenantId) ?? []);
+  }
+}
+
+/** Clientes OAuth em memória (HU49), para testes das apps; guarda o segredo como hash. */
+export class ClientesOAuthEmMemoria implements RepositorioDeClientesOAuth {
+  readonly #clientes = new Map<string, { cliente: ClienteOAuth; hash: string }>();
+  tenantsSuspensos = new Set<string>();
+
+  registrar(cliente: ClienteOAuth, segredo: string): Promise<void> {
+    this.#clientes.set(cliente.id, { cliente, hash: hashDoToken(segredo) });
+    return Promise.resolve();
+  }
+
+  listar(): Promise<ClienteOAuth[]> {
+    return Promise.resolve([...this.#clientes.values()].map((c) => c.cliente));
+  }
+
+  revogar(id: Uuid, agora: Instant): Promise<boolean> {
+    const atual = this.#clientes.get(id);
+    if (atual === undefined || atual.cliente.revogadoEm !== undefined)
+      return Promise.resolve(false);
+    this.#clientes.set(id, { ...atual, cliente: { ...atual.cliente, revogadoEm: agora } });
+    return Promise.resolve(true);
+  }
+
+  autenticar(id: Uuid, segredo: string): Promise<ClienteAutenticado | undefined> {
+    const atual = this.#clientes.get(id);
+    if (atual === undefined || !segredoConfere(segredo, atual.hash)) {
+      return Promise.resolve(undefined);
+    }
+    const { cliente } = atual;
+    return Promise.resolve({
+      tenantId: cliente.tenantId,
+      usuarioId: cliente.usuarioId,
+      escopos: cliente.escopos,
+      revogado: cliente.revogadoEm !== undefined,
+      tenantSuspenso: this.tenantsSuspensos.has(cliente.tenantId),
+    });
+  }
+
+  registrarUso(id: Uuid, agora: Instant): Promise<void> {
+    const atual = this.#clientes.get(id);
+    if (atual !== undefined) {
+      this.#clientes.set(id, { ...atual, cliente: { ...atual.cliente, ultimoUso: agora } });
+    }
+    return Promise.resolve();
   }
 }

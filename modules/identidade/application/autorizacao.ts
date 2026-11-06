@@ -33,6 +33,10 @@ export class ConsultarPermissoes {
       if (ehPermissao(permissao)) validas.add(permissao);
       else this.avisar(permissao);
     }
+    if (sessao.escopos !== undefined) {
+      const escopos = new Set(sessao.escopos);
+      return new Set([...validas].filter((p) => escopos.has(p)));
+    }
     return sessao.impersonacao === undefined ? validas : permissoesNaImpersonacao(validas);
   }
 }

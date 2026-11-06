@@ -17,6 +17,18 @@ const MAPA: Readonly<Record<string, (payload: Payload) => EntradaDeAuditoria>> =
     entidadeId: String(p.dispositivoId),
     depois: { motivo: p.motivo },
   }),
+  // HU49: integração registrada ou revogada (nunca o segredo).
+  ClienteOAuthRegistrado: (p) => ({
+    tipo: 'identidade.cliente-oauth-registrado',
+    entidade: 'cliente_oauth',
+    entidadeId: String(p.clienteId),
+    depois: { escopos: p.escopos },
+  }),
+  ClienteOAuthRevogado: (p) => ({
+    tipo: 'identidade.cliente-oauth-revogado',
+    entidade: 'cliente_oauth',
+    entidadeId: String(p.clienteId),
+  }),
   ContaBloqueada: (p) => ({
     tipo: 'identidade.conta-bloqueada',
     entidade: 'usuario',

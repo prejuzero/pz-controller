@@ -19,6 +19,13 @@ O exemplo gerado (`Identidade`, `CriarIdentidade`, evento `IdentidadeCriado`) mo
 - **Regras por recurso** (ex.: responsável do prazo): `Politica<Recurso>` e `autorizar()` do `@pz/kernel`, no domínio do módulo dono do recurso.
 - **Impersonação** (`POST/DELETE /v1/admin/impersonacao`, `admin:impersonar`): o administrador da plataforma acessa um tenant com motivo (10 a 500 caracteres), por no máximo 60 min, só pelo portal (token de dispositivo não impersona). Fica na própria sessão: o tenant de origem não muda; o efetivo da requisição (RLS) passa a ser o acessado (`tenantEfetivo`). Valem só as permissões de leitura do catálogo, mais `admin:impersonar` para encerrar; perder essa permissão no perfil corta tudo na hora. Início e encerramento vão para a trilha no tenant acessado e no plataforma, antes de a sessão mudar (sem rastro, sem acesso). Ao vencer, cai sozinha no próximo uso da sessão (o início já registrou até quando valia). Os logs de cada requisição levam `userId` (o administrador), `tenantId` (o acessado) e `impersonacaoId`.
 
+## Clientes OAuth de integradores (HU49)
+
+- **Client Credentials** (OAuth 2.1, RFC 6749 seção 4.4): quem tem `integracoes:gerir` registra um cliente (`POST /v1/integracoes/clientes`) e recebe o `client_secret` uma única vez; só o SHA-256 dele fica no banco (`cliente_oauth`, RLS). `POST /v1/oauth/token` (público, formulário ou JSON, segredo no corpo ou em `Authorization: Basic`) devolve um token Bearer de 15 min, sem renovação.
+- **O cliente age em nome de quem o registrou**: o token é uma sessão desse usuário com `escopos`; as permissões efetivas são os escopos que ele ainda tiver (`ConsultarPermissoes`). Só escopos de **leitura** do catálogo: integração não confirma prazo, não ajusta data nem dá ciência.
+- **Revogar** (`DELETE /v1/integracoes/clientes/{id}`) derruba na hora os tokens emitidos. Registro e revogação vão para a trilha (`identidade.cliente-oauth-registrado` e `-revogado`). Escritório suspenso não recebe token. Limite de 120 requisições/min por cliente, dentro do limite do escritório.
+- O endpoint de token localiza o cliente pela função restrita `pz_localizar_cliente_oauth` (papel `pz_credencial`, como o login): a api segue sem BYPASSRLS.
+
 ## Tenants da plataforma (HU39)
 
 - `GET /v1/admin/tenants` (cursor), `GET /v1/admin/tenants/{id}`, `PATCH .../assinatura`, `POST/DELETE .../suspensao`, todas com `admin:tenants`. Só a linha do tenant (nome, tipo, plano, assinatura, suspensão); dados de negócio só por impersonação.

@@ -54,6 +54,7 @@ export {
   RedefinicoesEmMemoria,
   DispositivosEmMemoria,
   RenovacoesEmMemoria,
+  ClientesOAuthEmMemoria,
 } from './infra/em-memoria.js';
 export { CriarConta } from './application/contas.js';
 export type { ContaNova, RepositorioDeContas } from './application/contas.js';
@@ -163,3 +164,16 @@ export { ExportacaoDaIdentidadePostgres } from './infra/exportacao-postgres.js';
 export { RecifrarSegredosDoSegundoFator } from './application/recifra.js';
 export type { CifraComRotacao, SegredosParaRecifrar } from './application/recifra.js';
 export { SegredosDoSegundoFatorPostgres } from './infra/segredos-postgres.js';
+export {
+  EmitirTokenDeCliente,
+  ListarClientesOAuth,
+  RegistrarClienteOAuth,
+  RevogarClienteOAuth,
+} from './application/clientes-oauth.js';
+export type {
+  ClienteOAuth,
+  ClienteRegistrado,
+  RepositorioDeClientesOAuth,
+  TokenDeCliente,
+} from './application/clientes-oauth.js';
+export { ClientesOAuthPostgres } from './infra/clientes-oauth-postgres.js';

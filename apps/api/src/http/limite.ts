@@ -77,6 +77,8 @@ export class JanelaEmMemoria implements JanelaDeRequisicoes {
 }
 
 const MINUTO_MS = 60_000;
+/** Cada integração (HU49) tem a própria cota, dentro da do escritório. */
+export const LIMITE_POR_CLIENTE_OAUTH_POR_MINUTO = 120;
 /** Sondas do balanceador e do orquestrador vêm de poucos IPs e não contam no limite global. */
 const SEM_LIMITE_GLOBAL = '/health';
 
@@ -154,6 +156,20 @@ export class LimiteDoTenant implements NestInterceptor {
       );
       if (total > porUsuario.maximo)
         demais(contexto, porUsuario.janelaMs, rota, { usuarioId, total, escopo: 'usuario' });
+    }
+    const sessao = requisicao.autenticacao?.sessao;
+    if (sessao?.escopos !== undefined && sessao.dispositivoId !== undefined) {
+      const total = await this.janela.registrar(
+        `pz:limite-cliente:${sessao.dispositivoId}`,
+        MINUTO_MS,
+      );
+      if (total > LIMITE_POR_CLIENTE_OAUTH_POR_MINUTO) {
+        demais(contexto, MINUTO_MS, requisicao.routeOptions.url ?? requisicao.url, {
+          clienteId: sessao.dispositivoId,
+          total,
+          escopo: 'cliente-oauth',
+        });
+      }
     }
     if (tenantId !== undefined) {
       const total = await this.janela.registrar(`pz:limite-tenant:${tenantId}`, MINUTO_MS);

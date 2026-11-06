@@ -83,7 +83,12 @@ import {
   AtivarSegundoFator,
   Autenticar,
   AcessosPostgres,
+  ClientesOAuthPostgres,
   DispositivosPostgres,
+  EmitirTokenDeCliente,
+  ListarClientesOAuth,
+  RegistrarClienteOAuth,
+  RevogarClienteOAuth,
   ListarDispositivos,
   RegistrarDispositivo,
   RenovacoesRedis,
@@ -240,6 +245,7 @@ import {
 import { GuardaDeAcesso } from './http/acesso.js';
 import { GuardaDeLimite, JanelaRedis, LimiteDoTenant } from './http/limite.js';
 import { FiltroDeProblemas } from './http/problemas.js';
+import { IntegracoesController } from './integracoes/integracoes.controller.js';
 import { EnviosController } from './notificacoes/envios.controller.js';
 import { NotificacoesController } from './notificacoes/notificacoes.controller.js';
 import { recursoDoEnvioExiste } from './notificacoes/recurso-do-envio.js';
@@ -291,6 +297,7 @@ import type {
   DependenciasDaImpersonacao,
   RepositorioDeTenantsAdministrados,
   ArmazemDeRenovacoes,
+  RepositorioDeClientesOAuth,
   RepositorioDeDispositivos,
   ArmazemDeRedefinicoes,
   PublicadorDeEventos,
@@ -345,6 +352,7 @@ export interface OpcoesApi {
     readonly redefinicoes?: ArmazemDeRedefinicoes;
     readonly verificacoesDeEmail?: ArmazemDeRedefinicoes;
     readonly dispositivos?: RepositorioDeDispositivos;
+    readonly clientesOAuth?: RepositorioDeClientesOAuth;
     readonly renovacoes?: ArmazemDeRenovacoes;
     readonly perfis?: RepositorioDePerfis;
     /** Banco, tenants e trilha da impersonação (o resto vem da composição). */
@@ -1283,6 +1291,8 @@ export class AppModule {
     const dispositivos =
       opcoes.identidade?.dispositivos ?? new DispositivosPostgres(recursos.banco);
     const renovacoes = opcoes.identidade?.renovacoes ?? new RenovacoesRedis(recursos.redis);
+    const clientesOAuth =
+      opcoes.identidade?.clientesOAuth ?? new ClientesOAuthPostgres(recursos.banco);
     const perfis = opcoes.identidade?.perfis ?? new PerfisPostgres(recursos.banco);
     const tenantsPostgres = new TenantsPostgres();
     const impersonacao = opcoes.identidade?.impersonacao ?? {
@@ -1436,6 +1446,25 @@ export class AppModule {
           ),
       },
       { provide: ListarDispositivos, useValue: new ListarDispositivos(dispositivos) },
+      {
+        provide: RegistrarClienteOAuth,
+        inject: [RELOGIO, ConsultarPermissoes],
+        useFactory: (relogio: Clock, permissoes: ConsultarPermissoes) =>
+          new RegistrarClienteOAuth(clientesOAuth, permissoes, tokens, publicador, relogio),
+      },
+      { provide: ListarClientesOAuth, useValue: new ListarClientesOAuth(clientesOAuth) },
+      {
+        provide: RevogarClienteOAuth,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new RevogarClienteOAuth(clientesOAuth, sessoes, publicador, relogio),
+      },
+      {
+        provide: EmitirTokenDeCliente,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new EmitirTokenDeCliente(clientesOAuth, sessoes, tokens, relogio, noTenantDoBanco),
+      },
       {
         provide: RevogarDispositivo,
         inject: [RELOGIO],
@@ -1725,6 +1754,7 @@ export class AppModule {
         SondasController,
         OpenApiController,
         WebhooksController,
+        IntegracoesController,
         ...(opcoes.controllersExtras ?? []),
       ],
       providers: provedores,
