@@ -1,40 +1,65 @@
 'use client';
 
 import {
+  createPaginatedRowModel,
+  createSortedRowModel,
   flexRender,
-  getCoreRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
+  rowPaginationFeature,
+  rowSortingFeature,
+  sortFn_alphanumeric,
+  sortFn_basic,
+  sortFn_datetime,
+  sortFn_text,
+  tableFeatures,
+  useTable,
   type Cell,
   type ColumnDef,
-  type SortingState,
+  type RowData,
 } from '@tanstack/react-table';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 
 import { mensagens } from '../mensagens.js';
 
 import { Botao } from './botao.js';
 
-export type ColunaTabela<T> = ColumnDef<T>;
+/**
+ * Recursos da tabela (TanStack Table v9): ordenação e paginação, registrados uma vez. Fixos para
+ * que o tipo das colunas seja um só; sem `tamanhoPagina`, a paginação fica manual (desligada).
+ */
+const RECURSOS = tableFeatures({
+  rowSortingFeature,
+  sortedRowModel: createSortedRowModel(),
+  // As que a ordenação 'auto' escolhe pelo tipo do valor (texto, número, data).
+  sortFns: {
+    alphanumeric: sortFn_alphanumeric,
+    basic: sortFn_basic,
+    datetime: sortFn_datetime,
+    text: sortFn_text,
+  },
+  rowPaginationFeature,
+  paginatedRowModel: createPaginatedRowModel(),
+});
+type Recursos = typeof RECURSOS;
+
+export type ColunaTabela<T extends RowData> = ColumnDef<Recursos, T>;
 
 /**
  * O flexRender monta a célula como componente: com colunas declaradas inline, cada render cria um
  * tipo novo e o React remonta a célula (diálogo aberto fecha e o onSuccess do mutate se perde).
  * Chamada como função, o React reconcilia pelo que ela devolve. Por isso célula não usa hooks.
  */
-function renderizarCelula<T>(celula: Cell<T, unknown>): ReactNode {
+function renderizarCelula<T extends RowData>(celula: Cell<Recursos, T>): ReactNode {
   const definicao = celula.column.columnDef.cell;
   return typeof definicao === 'function'
     ? (definicao(celula.getContext()) as ReactNode)
     : definicao;
 }
 
-export interface TabelaDadosProps<T> {
+export interface TabelaDadosProps<T extends RowData> {
   /** Nome acessível da tabela (vira o <caption>, visível só para leitores de tela). */
   titulo: string;
-  colunas: ColumnDef<T>[];
+  colunas: ColunaTabela<T>[];
   dados: T[];
   /** Linhas por página; omita para não paginar no cliente. */
   tamanhoPagina?: number | undefined;
@@ -47,7 +72,7 @@ const ICONE_ORDEM = { asc: ArrowUp, desc: ArrowDown } as const;
 const ARIA_ORDEM = { asc: 'ascending', desc: 'descending' } as const;
 
 /** Tabela de dados (TanStack Table) com ordenação por coluna e paginação acessíveis por teclado. */
-export function TabelaDados<T>({
+export function TabelaDados<T extends RowData>({
   titulo,
   colunas,
   dados,
@@ -55,21 +80,13 @@ export function TabelaDados<T>({
   vazio,
   idLinha,
 }: TabelaDadosProps<T>) {
-  const [ordenacao, setOrdenacao] = useState<SortingState>([]);
-  // eslint-disable-next-line react-hooks/incompatible-library -- useReactTable devolve funções novas a cada render por projeto da TanStack Table; o componente não é memoizado
-  const tabela = useReactTable({
+  const tabela = useTable({
+    features: RECURSOS,
     data: dados,
     columns: colunas,
-    state: { sorting: ordenacao },
-    onSortingChange: setOrdenacao,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     ...(tamanhoPagina === undefined
-      ? {}
-      : {
-          getPaginationRowModel: getPaginationRowModel(),
-          initialState: { pagination: { pageIndex: 0, pageSize: tamanhoPagina } },
-        }),
+      ? { manualPagination: true }
+      : { initialState: { pagination: { pageIndex: 0, pageSize: tamanhoPagina } } }),
     ...(idLinha === undefined ? {} : { getRowId: idLinha }),
   });
   const linhas = tabela.getRowModel().rows;
@@ -116,7 +133,7 @@ export function TabelaDados<T>({
             {linhas.length === 0 ? (
               <tr>
                 <td
-                  colSpan={tabela.getVisibleLeafColumns().length}
+                  colSpan={tabela.getAllLeafColumns().length}
                   className="px-3 py-8 text-center text-texto-suave"
                 >
                   {vazio ?? mensagens.tabela.semResultados}
@@ -128,7 +145,7 @@ export function TabelaDados<T>({
                   key={linha.id}
                   className="border-b border-borda last:border-b-0 hover:bg-superficie"
                 >
-                  {linha.getVisibleCells().map((celula) => (
+                  {linha.getAllCells().map((celula) => (
                     <td key={celula.id} className="px-3 py-2 text-texto">
                       {renderizarCelula(celula)}
                     </td>
@@ -145,10 +162,7 @@ export function TabelaDados<T>({
           className="flex items-center justify-end gap-2 text-sm text-texto-suave"
         >
           <span aria-live="polite">
-            {mensagens.tabela.pagina(
-              tabela.getState().pagination.pageIndex + 1,
-              tabela.getPageCount(),
-            )}
+            {mensagens.tabela.pagina(tabela.state.pagination.pageIndex + 1, tabela.getPageCount())}
           </span>
           <Botao
             variante="secundaria"

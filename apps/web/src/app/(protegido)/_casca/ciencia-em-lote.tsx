@@ -2,7 +2,7 @@
 
 import { avisar, Botao, type ColunaTabela } from '@pz/ui';
 import { useTranslations } from 'next-intl';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import { useConfirmarCienciaEmLote, usePermissao } from '../../../api/hooks';
 
@@ -18,7 +18,12 @@ const selecionavel = (p: Prazo) => p.statusCiencia === 'pendente' && p.status !=
  * barra mostra quantos estão marcados. Só prazos sem ciência e não cancelados podem ser marcados.
  * Só com a permissão de confirmar prazos.
  */
-export function useCienciaEmLote<P extends Prazo>(prazos: readonly P[]) {
+export function useCienciaEmLote<P extends Prazo>(
+  prazos: readonly P[],
+): {
+  coluna: ColunaTabela<P> | undefined;
+  barra: ReactNode;
+} {
   const t = useTranslations('ciencia.lote');
   const permitido = usePermissao('prazos:confirmar') === true;
   const [marcados, setMarcados] = useState<ReadonlySet<string>>(new Set());
