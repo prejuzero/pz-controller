@@ -49,6 +49,8 @@ export { AssinaturaCanonica } from './portas/provedor-cobranca.js';
 export type { ProvedorCobranca } from './portas/provedor-cobranca.js';
 export { AnexoDeEmail, EmailCanonico, LIMITE_DOS_ANEXOS_BYTES } from './portas/provedor-email.js';
 export type { ProvedorEmail } from './portas/provedor-email.js';
+export { EntregaWebhook, ResultadoEntregaWebhook } from './portas/entregador-webhook.js';
+export type { EntregadorWebhook } from './portas/entregador-webhook.js';
 export { MensagemIA, PromptIA } from './portas/provedor-ia.js';
 export type {
   FerramentaIA,

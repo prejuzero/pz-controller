@@ -168,18 +168,49 @@ describe('@Consome e o despachante', () => {
         ['PublicacaoNova@1', ['ConsumidorDaClassificacao.publicacaoNova']],
         [
           'PrazoAjustado@1',
-          ['ConsumidorDosLembretes.ajustado', 'ConsumidorDaClassificacao.prazoAjustado'],
+          [
+            'ConsumidorDosLembretes.ajustado',
+            'ConsumidorDaClassificacao.prazoAjustado',
+            'ConsumidorDosWebhooks.prazoAjustado',
+          ],
         ],
-        ['PrazoSugerido@1', ['ConsumidorDosLembretes.sugerido']],
-        ['PrazoConfirmado@1', ['ConsumidorDosLembretes.confirmado']],
-        ['PrazoRecalculado@1', ['ConsumidorDosLembretes.recalculado']],
-        ['PrazoCumprido@1', ['ConsumidorDosLembretes.cumprido', 'ConsumidorDaCiencia.cumprido']],
-        ['CienciaConfirmada@1', ['ConsumidorDaCiencia.confirmada']],
+        [
+          'PrazoSugerido@1',
+          ['ConsumidorDosLembretes.sugerido', 'ConsumidorDosWebhooks.prazoSugerido'],
+        ],
+        [
+          'PrazoConfirmado@1',
+          ['ConsumidorDosLembretes.confirmado', 'ConsumidorDosWebhooks.prazoConfirmado'],
+        ],
+        [
+          'PrazoRecalculado@1',
+          ['ConsumidorDosLembretes.recalculado', 'ConsumidorDosWebhooks.prazoRecalculado'],
+        ],
+        [
+          'PrazoCumprido@1',
+          [
+            'ConsumidorDosLembretes.cumprido',
+            'ConsumidorDaCiencia.cumprido',
+            'ConsumidorDosWebhooks.prazoCumprido',
+          ],
+        ],
+        [
+          'CienciaConfirmada@1',
+          ['ConsumidorDaCiencia.confirmada', 'ConsumidorDosWebhooks.cienciaConfirmada'],
+        ],
         ['NotificacaoEntregue@1', ['ConsumidorDaCiencia.entregue']],
-        ['PrazoCancelado@1', ['ConsumidorDosLembretes.cancelado']],
+        [
+          'PrazoCancelado@1',
+          ['ConsumidorDosLembretes.cancelado', 'ConsumidorDosWebhooks.prazoCancelado'],
+        ],
         ['PreferenciasDeNotificacaoAlteradas@1', ['ConsumidorDosLembretes.preferencias']],
         ['PublicacaoClassificada@1', ['ConsumidorDosPrazos.publicacaoClassificada']],
-        ['PublicacaoRecebida@1', ['ConsumidorDosPrazos.publicacaoRecebida']],
+        [
+          'PublicacaoRecebida@1',
+          ['ConsumidorDosPrazos.publicacaoRecebida', 'ConsumidorDosWebhooks.publicacaoRecebida'],
+        ],
+        ['PrazoVencido@1', ['ConsumidorDosWebhooks.prazoVencido']],
+        ['EntregaWebhookAgendada@1', ['ConsumidorDosWebhooks.entregaAgendada']],
       ]),
     );
   });

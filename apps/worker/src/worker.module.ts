@@ -6,6 +6,7 @@ import { DESCRITOR_GEMINI, ProvedorIaGemini } from '@pz/adapter-gemini';
 import { ArmazenamentoS3 } from '@pz/adapter-s3';
 import { criarProvedorEmailSes, DESCRITOR_SES, WebhooksSes } from '@pz/adapter-ses';
 import { DESCRITOR_SMTP, ProvedorEmailSmtp } from '@pz/adapter-smtp';
+import { DESCRITOR_WEBHOOK_HTTP, EntregadorWebhookHttp } from '@pz/adapter-webhook-http';
 import {
   ContadorDeUsoDeIaRedis,
   PainelRedis,
@@ -149,6 +150,13 @@ import {
   VerificadorHttp,
 } from '@pz/saude';
 import { ExportacaoDosTermosPostgres } from '@pz/termos';
+import {
+  AssinaturasDeWebhookPostgres,
+  CriptografiaNode,
+  EntregarWebhook,
+  EntregasDeWebhookPostgres,
+  RegistrarEntregas,
+} from '@pz/webhooks';
 import { Redis } from 'ioredis';
 
 import { ConsumidorDeAuditoria } from './auditoria/consumidor.js';
@@ -197,6 +205,7 @@ import { RecursosDoBanco } from './recursos.js';
 import { ConsumidorDosRelatorios } from './relatorios/consumidor.js';
 import { fonteDosRelatorios } from './relatorios/fonte.js';
 import { ConsumidorDeSituacao } from './saude/consumidor.js';
+import { ConsumidorDosWebhooks } from './webhooks/consumidor.js';
 
 import type { AmbienteWorker } from './ambiente.js';
 import type { FonteDoRelay } from './eventos/relay.js';
@@ -208,7 +217,12 @@ import type { ProtecaoDeCampos } from '@pz/cadastro';
 import type { CacheDeDiasNaoUteis } from '@pz/calendario';
 import type { ClassificadorIa } from '@pz/classificacao';
 import type { Transacao } from '@pz/db';
-import type { ArmazenamentoArquivos, FontePublicacoes, ProvedorEmail } from '@pz/integracoes';
+import type {
+  ArmazenamentoArquivos,
+  EntregadorWebhook,
+  FontePublicacoes,
+  ProvedorEmail,
+} from '@pz/integracoes';
 import type { Clock, OutboxEmMemoria, Uuid } from '@pz/kernel';
 import type { EncerradorDeSessoes } from '@pz/privacidade';
 import type { VerificadorDeDependencia } from '@pz/saude';
@@ -217,6 +231,8 @@ export interface OpcoesWorker {
   readonly ambiente: AmbienteWorker;
   /** Substituições para testes. */
   readonly relogio?: Clock;
+  /** Testes: entregador de webhooks sem rede. */
+  readonly entregadorWebhook?: EntregadorWebhook;
   readonly verificadores?: readonly VerificadorDeDependencia[];
   /** Outbox em memória no lugar do PostgreSQL (testes unitários, sem banco). */
   readonly outbox?: OutboxEmMemoria;
@@ -361,6 +377,30 @@ function emailDoAmbiente(
   registro.validar();
   registros.push(registro);
   return registro.obter('provedor-email');
+}
+
+/**
+ * Entregador de webhooks pelo registro (ADR-005, ADR-023). Fora de produção aceita HTTP e rede
+ * local: o receptor de teste roda na própria máquina.
+ */
+function entregadorDoAmbiente(
+  ambiente: AmbienteWorker,
+  relogio: Clock,
+  registros: RegistroDeAdaptadores[],
+): EntregadorWebhook {
+  const registro = new RegistroDeAdaptadores(
+    { padrao: { 'entregador-webhook': DESCRITOR_WEBHOOK_HTTP.id } },
+    // Cada tentativa é um job: a retentativa e a espera são as da fila `integracoes`.
+    { relogio, politica: { tentativas: 1 } },
+  );
+  registro.registrar(
+    DESCRITOR_WEBHOOK_HTTP,
+    () =>
+      new EntregadorWebhookHttp({ permitirRedeLocal: ambiente.NODE_ENV !== 'production' }, relogio),
+  );
+  registro.validar();
+  registros.push(registro);
+  return registro.obter('entregador-webhook');
 }
 
 /**
@@ -596,6 +636,17 @@ export class WorkerModule {
     const protecao = protecaoDeCampos(chaves, ambiente.CHAVE_CIFRAGEM);
     const sistema = new BancoSistema({ url: ambiente.DATABASE_URL_SISTEMA, maxConexoes: 4 });
     const outboxPostgres = new OutboxPostgres();
+    const relogioPadrao = opcoes.relogio ?? new SystemClock();
+    const depsDosWebhooks = {
+      unidade: banco,
+      assinaturas: new AssinaturasDeWebhookPostgres(),
+      entregas: new EntregasDeWebhookPostgres(),
+      trilha: new TrilhaPostgres(),
+      outbox: outboxPostgres,
+      cifra: new CifraVersionada(chaves, ambiente.CHAVE_CIFRAGEM),
+      criptografia: new CriptografiaNode(),
+      relogio: relogioPadrao,
+    };
     const localizadorDosPrazos = (relogio: Clock) => localizadorDosPrazosNoBanco(banco, relogio);
     const tokensDaCiencia = new TokensHmac(Buffer.from(ambiente.CHAVE_CIFRAGEM, 'base64'));
     const agendaDosLembretes = (relogio: Clock) =>
@@ -625,7 +676,7 @@ export class WorkerModule {
       { provide: BANCO, useValue: banco },
       { provide: BANCO_SISTEMA, useValue: sistema },
       { provide: AMBIENTE, useValue: ambiente },
-      { provide: RELOGIO, useValue: opcoes.relogio ?? new SystemClock() },
+      { provide: RELOGIO, useValue: relogioPadrao },
       {
         provide: VERIFICADORES,
         useValue: opcoes.verificadores ?? verificadoresDoAmbiente(ambiente, banco, redis),
@@ -686,6 +737,7 @@ export class WorkerModule {
       ConsumidorDosEnvios,
       ConsumidorDasPublicacoes,
       ConsumidorDaClassificacao,
+      ConsumidorDosWebhooks,
       {
         // Classificação (HU21): regras rápidas e, com chave configurada, a plataforma de IA.
         provide: ClassificarPublicacao,
@@ -771,6 +823,15 @@ export class WorkerModule {
             opcoes.arquivos ?? arquivosDoAmbiente(ambiente, relogio),
             relogio,
           ),
+      },
+      // Webhooks de saída (HU49, ADR-023): segredo cifrado (ADR-021) e envio pelo registro.
+      { provide: RegistrarEntregas, useValue: new RegistrarEntregas(depsDosWebhooks) },
+      {
+        provide: EntregarWebhook,
+        useValue: new EntregarWebhook(
+          depsDosWebhooks,
+          opcoes.entregadorWebhook ?? entregadorDoAmbiente(ambiente, relogioPadrao, registros),
+        ),
       },
       {
         // Relatórios (HU29): a busca da HU28, renderizadores PDF e XLSX e o armazenamento.

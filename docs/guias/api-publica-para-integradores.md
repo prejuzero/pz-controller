@@ -40,3 +40,31 @@ Erros em `application/problem+json`; o campo `codigo` traz o código do OAuth: `
 ## Revogar
 
 `DELETE /v1/integracoes/clientes/{id}`: o token em uso para de valer na hora. Registro e revogação ficam na trilha de auditoria.
+
+## Webhooks de saída
+
+Em vez de consultar a API de tempos em tempos, o sistema do escritório pode receber um aviso a cada evento. Quem tem `integracoes:gerir` registra o endereço e os eventos:
+
+```bash
+curl -X POST http://localhost:3000/v1/integracoes/webhooks \
+  -H "Authorization: Bearer <token da sua sessão>" -H "Content-Type: application/json" \
+  -d '{"url":"http://localhost:4000/webhooks","descricao":"Receptor local","eventos":["prazo.confirmado","publicacao.recebida"]}'
+```
+
+A resposta traz o `segredo` (`whsec_…`) **uma única vez**. `GET /v1/integracoes/webhooks/eventos` lista os eventos. Fora do ambiente local, só endereços HTTPS públicos.
+
+Cada evento chega como `POST` JSON:
+
+```json
+{
+  "id": "…",
+  "tipo": "prazo.confirmado",
+  "versao": 1,
+  "ocorridoEm": "2027-03-01T12:00:00.000Z",
+  "dados": { "prazoId": "…", "processoId": "…" }
+}
+```
+
+O corpo traz só identificadores: busque os detalhes pela API (ex.: `GET /v1/prazos/{prazoId}`). Para conferir a origem, leia `PrejuZero-Assinatura: t=<segundos>,v1=<hex>` e calcule `HMAC-SHA256(segredo, "<t>.<corpo bruto>")`. Compare em tempo constante e recuse `t` com mais de 5 minutos de diferença. Use `PrejuZero-Evento-Id` para ignorar repetições.
+
+Responda 2xx em até 10 segundos. 4xx (fora 408 e 429) não é repetido. Erro de rede, timeout e 5xx são tentados de novo até 6 vezes, com espera crescente. Depois disso, a entrega aparece como falha em `GET /v1/integracoes/webhooks/entregas` e pode ser reenviada (`POST /v1/integracoes/webhooks/entregas/{id}/reenviar`). `POST /v1/integracoes/webhooks/{id}/testar` envia um `webhook.teste`.
