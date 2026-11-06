@@ -7,6 +7,8 @@ export const mensagens = {
   selecioneData: 'Selecione uma data',
   remover: (rotulo: string) => `Remover ${rotulo}`,
   campoObrigatorio: 'obrigatório',
+  mostrarSenha: 'Mostrar senha',
+  ocultarSenha: 'Ocultar senha',
   tabela: {
     semResultados: 'Nenhum resultado encontrado.',
     paginaAnterior: 'Página anterior',
