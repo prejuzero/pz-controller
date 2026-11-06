@@ -56,6 +56,39 @@ export const consultarPublicacao = definirRota({
   erros: [404],
 });
 
+/**
+ * Resumo da publicação por IA (HU62): sugestão identificada como IA, com os trechos literais do
+ * teor que a comprovam. Sem datas no resumo e na providência; confira sempre o teor integral.
+ */
+export const ResumoDaPublicacao = nomear(
+  'ResumoDaPublicacao',
+  z.object({
+    resumo: z
+      .object({
+        texto: z.string(),
+        providencia: z.string().nullable(),
+        trechos: z.array(z.string()).min(1),
+        geradoPorIa: z.literal(true),
+        modelo: z.string().nullable(),
+        versaoPrompt: z.string().nullable(),
+      })
+      .nullable()
+      .describe('null: ainda sem resumo, sem IA configurada ou em revisão.'),
+  }),
+);
+export type ResumoDaPublicacao = z.infer<typeof ResumoDaPublicacao.esquema>;
+
+export const consultarResumoDaPublicacao = definirRota({
+  id: 'consultarResumoDaPublicacao',
+  metodo: 'get',
+  caminho: '/v1/publicacoes/{id}/resumo',
+  resumo: 'Resumo da publicação gerado por IA (HU62), com trechos de evidência.',
+  tag: 'publicacoes',
+  parametrosDeCaminho: z.object({ id: Uuid }),
+  resposta: { status: 200, corpo: ResumoDaPublicacao },
+  erros: [404],
+});
+
 export const marcarPublicacaoLida = definirRota({
   id: 'marcarPublicacaoLida',
   metodo: 'post',
@@ -71,4 +104,5 @@ export const ROTAS_PUBLICACOES = [
   listarPublicacoes,
   consultarPublicacao,
   marcarPublicacaoLida,
+  consultarResumoDaPublicacao,
 ] as const;

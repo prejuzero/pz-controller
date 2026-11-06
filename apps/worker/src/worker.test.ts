@@ -207,7 +207,13 @@ describe('@Consome e o despachante', () => {
           ['ConsumidorDosLembretes.cancelado', 'ConsumidorDosWebhooks.prazoCancelado'],
         ],
         ['PreferenciasDeNotificacaoAlteradas@1', ['ConsumidorDosLembretes.preferencias']],
-        ['PublicacaoClassificada@1', ['ConsumidorDosPrazos.publicacaoClassificada']],
+        [
+          'PublicacaoClassificada@1',
+          [
+            'ConsumidorDosPrazos.publicacaoClassificada',
+            'ConsumidorDaClassificacao.publicacaoClassificada',
+          ],
+        ],
         [
           'PublicacaoRecebida@1',
           ['ConsumidorDosPrazos.publicacaoRecebida', 'ConsumidorDosWebhooks.publicacaoRecebida'],

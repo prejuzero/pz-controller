@@ -14,7 +14,8 @@
     "anonimizar": "tsx src/cli/anonimizar.ts",
     "amostrar": "tsx src/cli/amostrar.ts",
     "avaliar": "tsx src/cli/avaliar.ts",
-    "avaliar-ferramentas": "tsx src/cli/avaliar-ferramentas.ts"
+    "avaliar-ferramentas": "tsx src/cli/avaliar-ferramentas.ts",
+    "avaliar-resumos": "tsx src/cli/avaliar-resumos.ts"
   },
   "dependencies": {
     "@pz/adapter-anthropic": "workspace:*",

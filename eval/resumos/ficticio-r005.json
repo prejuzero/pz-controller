@@ -1,0 +1,9 @@
+{
+  "id": "ficticio-r005",
+  "origem": "ficticio",
+  "teor": "Ciência às partes do retorno dos autos do Tribunal. Nada sendo requerido, arquivem-se os autos.",
+  "esperado": {
+    "termos": ["arquiv"],
+    "temProvidencia": false
+  }
+}

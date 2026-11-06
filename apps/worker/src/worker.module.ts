@@ -59,6 +59,9 @@ import {
   ClassificarPublicacao,
   RegistrarCandidatoDeCuradoria,
   RegrasPostgres,
+  ResumidorIaPlataforma,
+  ResumirPublicacao,
+  ResumosPostgres,
   TaxonomiaPostgres,
 } from '@pz/classificacao';
 import { Banco, BancoSistema, executarNoTenant, OutboxPostgres } from '@pz/db';
@@ -217,7 +220,7 @@ import type { ArmazemDoPainel } from '@pz/administracao';
 import type { DestinoWorm } from '@pz/auditoria';
 import type { ProtecaoDeCampos } from '@pz/cadastro';
 import type { CacheDeDiasNaoUteis } from '@pz/calendario';
-import type { ClassificadorIa } from '@pz/classificacao';
+import type { ClassificadorIa, InstrucaoEmbutida, Resumidor } from '@pz/classificacao';
 import type { Transacao } from '@pz/db';
 import type {
   ArmazenamentoArquivos,
@@ -246,6 +249,7 @@ export interface OpcoesWorker {
   readonly email?: ProvedorEmail;
   /** Classificador por IA (HU21); nos testes, falso. */
   readonly classificadorIa?: ClassificadorIa;
+  readonly resumidorIa?: Resumidor;
   /** Painel do administrador (HU39); nos testes, em memória. */
   readonly painelDeIntegracoes?: ArmazemDoPainel;
   /** Destino WORM no lugar do S3 (testes). */
@@ -493,7 +497,7 @@ function iaDoAmbiente(
   redis: Redis,
   relogio: Clock,
   registros: RegistroDeAdaptadores[],
-): ClassificadorIa | undefined {
+): { classificador: ClassificadorIa; resumidor: Resumidor } | undefined {
   const escolhido = provedorIaDoAmbiente(ambiente);
   if (escolhido === undefined) return undefined;
   const { descritor, criar, configuracao } = planoDeIa(escolhido, relogio);
@@ -520,10 +524,15 @@ function iaDoAmbiente(
       relogio,
     },
   );
-  return new ClassificadorIaPlataforma(plataforma, promptsPadrao(), (deteccao) => {
-    // Só o nome dos padrões e o tenant: o teor da publicação não vai para o log.
+  // Só o nome dos padrões e o tenant: o teor da publicação não vai para o log.
+  const aoDetectar = (deteccao: InstrucaoEmbutida) => {
     logger.warn(deteccao, 'instrução embutida no teor da publicação (tratada como dado)');
-  });
+  };
+  return {
+    classificador: new ClassificadorIaPlataforma(plataforma, promptsPadrao(), aoDetectar),
+    // Resumo (HU62): a mesma plataforma, com orçamento e métricas por tarefa.
+    resumidor: new ResumidorIaPlataforma(plataforma, promptsPadrao(), aoDetectar),
+  };
 }
 
 /** Arquivos do sistema (exportações LGPD) no S3 ou RustFS local, só JSON e CSV. */
@@ -638,6 +647,11 @@ export class WorkerModule {
     const protecao = protecaoDeCampos(chaves, ambiente.CHAVE_CIFRAGEM);
     const sistema = new BancoSistema({ url: ambiente.DATABASE_URL_SISTEMA, maxConexoes: 4 });
     const outboxPostgres = new OutboxPostgres();
+    // Uma plataforma de IA para a classificação e o resumo: mesmo registro, saúde e orçamento.
+    let iaCriada: { valor: ReturnType<typeof iaDoAmbiente> } | undefined;
+    const iaUnica = (relogio: Clock, bancoDaIa: Banco, redisDaIa: Redis) =>
+      (iaCriada ??= { valor: iaDoAmbiente(ambiente, bancoDaIa, redisDaIa, relogio, registros) })
+        .valor;
     const relogioPadrao = opcoes.relogio ?? new SystemClock();
     const depsDosWebhooks = {
       unidade: banco,
@@ -745,8 +759,7 @@ export class WorkerModule {
         provide: ClassificarPublicacao,
         inject: [RELOGIO, BANCO, REDIS],
         useFactory: (relogio: Clock, banco: Banco, redis: Redis) => {
-          const ia =
-            opcoes.classificadorIa ?? iaDoAmbiente(ambiente, banco, redis, relogio, registros);
+          const ia = opcoes.classificadorIa ?? iaUnica(relogio, banco, redis)?.classificador;
           return new ClassificarPublicacao({
             teores: new TeoresPostgres(),
             regras: new RegrasPostgres(),
@@ -756,6 +769,15 @@ export class WorkerModule {
             outbox: outboxPostgres,
             relogio,
           });
+        },
+      },
+      {
+        // Resumo por IA (HU62): só com provedor de IA configurado; sem ele, não há resumo.
+        provide: ResumirPublicacao,
+        inject: [RELOGIO, BANCO, REDIS],
+        useFactory: (relogio: Clock, banco: Banco, redis: Redis) => {
+          const resumidor = opcoes.resumidorIa ?? iaUnica(relogio, banco, redis)?.resumidor;
+          return new ResumirPublicacao(new TeoresPostgres(), new ResumosPostgres(), resumidor);
         },
       },
       {

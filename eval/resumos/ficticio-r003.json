@@ -1,0 +1,9 @@
+{
+  "id": "ficticio-r003",
+  "origem": "ficticio",
+  "teor": "Defiro o pedido de tutela de urgência para determinar o restabelecimento do fornecimento de energia elétrica na unidade consumidora da parte autora, sob pena de multa diária.",
+  "esperado": {
+    "termos": ["tutela"],
+    "temProvidencia": false
+  }
+}

@@ -1944,6 +1944,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/publicacoes/{id}/resumo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Resumo da publicação gerado por IA (HU62), com trechos de evidência. */
+        get: operations["consultarResumoDaPublicacao"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/relatorios": {
         parameters: {
             query?: never;
@@ -3930,6 +3947,18 @@ export interface components {
             tiposNovos: string[];
             /** @description Rascunhos gravados (vazio na prévia); cada um ainda exige aprovação. */
             propostos: components["schemas"]["VersaoDaTabela"][];
+        };
+        ResumoDaPublicacao: {
+            /** @description null: ainda sem resumo, sem IA configurada ou em revisão. */
+            resumo: {
+                texto: string;
+                providencia: string | null;
+                trechos: string[];
+                /** @constant */
+                geradoPorIa: true;
+                modelo: string | null;
+                versaoPrompt: string | null;
+            } | null;
         };
         ResumoDasFilas: {
             filas: {
@@ -12786,6 +12815,73 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    consultarResumoDaPublicacao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResumoDaPublicacao"];
+                };
             };
             /** @description Entrada inválida. */
             400: {

@@ -1,5 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { ClassificarPublicacao, RegistrarCandidatoDeCuradoria } from '@pz/classificacao';
+import {
+  ClassificarPublicacao,
+  RegistrarCandidatoDeCuradoria,
+  ResumirPublicacao,
+} from '@pz/classificacao';
 import { criarLogger } from '@pz/observability';
 
 import { Consome } from '../eventos/consome.js';
@@ -15,7 +19,21 @@ export class ConsumidorDaClassificacao {
     @Inject(ClassificarPublicacao) private readonly classificar: ClassificarPublicacao<unknown>,
     @Inject(RegistrarCandidatoDeCuradoria)
     private readonly candidatos: RegistrarCandidatoDeCuradoria<unknown>,
+    @Inject(ResumirPublicacao) private readonly resumir: ResumirPublicacao<unknown>,
   ) {}
+
+  /** Resumo por IA (HU62), uma vez por conteúdo, depois da classificação. */
+  @Consome('PublicacaoClassificada', { versao: 1 })
+  async publicacaoClassificada(
+    transacao: unknown,
+    evento: EventoDominio<string, { conteudoId: string }>,
+  ): Promise<void> {
+    const desfecho = await this.resumir.executar(transacao, {
+      tenantId: evento.tenantId,
+      payload: evento.payload,
+    });
+    logger.info({ conteudoId: evento.payload.conteudoId, desfecho }, 'resumo da publicação');
+  }
 
   /** Correção do advogado vira caso candidato da curadoria (HU22), na transação do consumo. */
   @Consome('PrazoAjustado', { versao: 1 })

@@ -637,6 +637,13 @@
       "origem": "Fonte",
       "processo": "Ver processo",
       "indicio": "A leitura fica registrada como indício de conhecimento. Ela não é ciência e não confirma prazo."
+    },
+    "resumo": {
+      "titulo": "Resumo",
+      "geradoPorIa": "Gerado por IA",
+      "providencia": "O que fazer:",
+      "trechos": "Trechos do texto original que embasam o resumo",
+      "aviso": "Sugestão da IA, sem datas. Confira sempre o teor integral abaixo: é ele que vale."
     }
   },
   "cobertura": {

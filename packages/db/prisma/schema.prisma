@@ -466,6 +466,22 @@ model RegraClassificacao {
 /// Tabela de prazos por ato e ramo (HU15, ADR-007): versões com vigência e aprovação por quatro
 /// olhos. Global; versão aprovada é imutável (trigger pz_tabela_prazo_imutavel).
 /// Classificação de um conteúdo de publicação (HU21): uma por conteúdo global; nunca uma data.
+/// Resumo da publicação por IA (HU62): um por conteúdo global; trechos literais do teor.
+model ResumoPublicacao {
+  conteudoId   String   @id @map("conteudo_id") @db.Uuid
+  situacao     String
+  texto        String?
+  providencia  String?
+  trechos      String[] @default([])
+  modelo       String?
+  versaoPrompt String?  @map("versao_prompt")
+  motivo       String?
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  @@map("resumo_publicacao")
+}
+
 model Classificacao {
   conteudoId   String   @id @map("conteudo_id") @db.Uuid
   origem       String

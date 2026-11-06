@@ -77,6 +77,8 @@ import {
   RegrasPostgres,
   RevisaoManualPostgres,
   TaxonomiaPostgres,
+  ConsultarResumo,
+  ResumosPostgres,
 } from '@pz/classificacao';
 import { Banco, executarNoTenant, OutboxPostgres, WebhooksPostgres } from '@pz/db';
 import { CatalogoDeFerramentas } from '@pz/ia';
@@ -270,6 +272,7 @@ import {
   RECEPTORES_DE_WEBHOOK,
   RELOGIO,
   RESPONSAVEIS_DA_EQUIPE,
+  RESUMO_DA_PUBLICACAO,
   VERIFICADORES,
 } from './fichas.js';
 import { GuardaDeAcesso } from './http/acesso.js';
@@ -295,7 +298,7 @@ import { DocumentosLegaisController, TermosController } from './termos/termos.co
 import { WebhooksController } from './webhooks/webhooks.controller.js';
 
 import type { AmbienteApi } from './ambiente.js';
-import type { ResponsaveisDaEquipe } from './fichas.js';
+import type { ResponsaveisDaEquipe, ResumoDaPublicacaoPorConteudo } from './fichas.js';
 import type { JanelaDeRequisicoes } from './http/limite.js';
 import type { FontesDoHistorico } from './prazos/historico.js';
 import type { CaixaDeWebhooks } from './webhooks/webhooks.controller.js';
@@ -418,6 +421,8 @@ export interface OpcoesApi {
   readonly tabelaDePrazos?: DependenciasDaTabelaDePrazos;
   /** Testes: membros que podem receber prazos (HU41), sem banco. */
   readonly responsaveisDaEquipe?: ResponsaveisDaEquipe;
+  /** Testes: resumo da publicação sem banco (HU62). */
+  readonly resumoDaPublicacao?: ResumoDaPublicacaoPorConteudo;
   /** Status da captura (HU19); nos testes, leitura em memória. */
   readonly statusDaCaptura?: {
     readonly unidade: UnidadeDeTrabalho<unknown>;
@@ -1505,6 +1510,15 @@ export class AppModule {
     };
     const provedores: Provider[] = [
       { provide: RecursosDaApi, useValue: recursos },
+      {
+        provide: RESUMO_DA_PUBLICACAO,
+        useValue:
+          opcoes.resumoDaPublicacao ??
+          ((conteudoId: string) =>
+            recursos.banco.executar((tx) =>
+              new ConsultarResumo(new ResumosPostgres()).executar(tx, conteudoId as Uuid),
+            )),
+      },
       ...provedoresDosWebhooks(
         opcoes.webhooks ?? {
           unidade: recursos.banco,
