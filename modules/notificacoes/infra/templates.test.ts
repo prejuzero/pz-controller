@@ -21,6 +21,12 @@ const PUSH: CapacidadesCanal = {
 
 const EXEMPLOS: Record<TipoDeNotificacao, unknown> = {
   'nova-intimacao': { numeroProcesso: PROCESSO, link: PORTAL, linkCiencia: CIENCIA },
+  'escalonamento-prazo': {
+    numeroProcesso: PROCESSO,
+    vencimento: '15/10/2026',
+    responsavel: 'Bruno Lima',
+    link: PORTAL,
+  },
   'lembrete-prazo': {
     numeroProcesso: PROCESSO,
     vencimento: '15/10/2026',

@@ -1,5 +1,5 @@
 import { PedidoDeRelatorio } from '@pz/contracts';
-import { err, gerarUuidV7, LocalDate, NaoEncontrado, ok, Validacao } from '@pz/kernel';
+import { err, gerarUuidV7, LocalDate, NaoEncontrado, ok, Proibido, Validacao } from '@pz/kernel';
 
 import {
   descreverFiltros,
@@ -44,7 +44,18 @@ export interface Solicitante {
   readonly tenantId: Uuid;
   readonly usuarioId: Uuid;
   readonly canal: OrigemDaAuditoria['canal'];
+  /** Administrador do escritório: exporta o histórico de qualquer prazo (HU41, RF88). */
+  readonly veTodosOsHistoricos?: boolean;
 }
+
+/**
+ * Porta: o solicitante pode ver o histórico do prazo (regra do módulo auditoria, aplicada na
+ * composição). Prazo inexistente responde `true`: a geração avisa que não encontrou.
+ */
+export type HistoricoVisivel = (
+  prazoId: string,
+  leitor: { readonly usuarioId: string; readonly veTodos: boolean },
+) => Promise<boolean>;
 
 /**
  * Pedido de relatório (HU29): valida os filtros, grava o pedido, a trilha (RF62) e o evento que o
@@ -57,15 +68,27 @@ export class SolicitarRelatorio<Transacao> {
     private readonly trilha: TrilhaDeAuditoria<Transacao>,
     private readonly outbox: Outbox<Transacao>,
     private readonly relogio: Clock,
+    private readonly historicoVisivel: HistoricoVisivel = () => Promise.resolve(true),
   ) {}
 
   async executar(
     solicitante: Solicitante,
     entrada: unknown,
-  ): Promise<Result<{ id: Uuid }, Validacao>> {
+  ): Promise<Result<{ id: Uuid }, Validacao | Proibido>> {
     const lido = PedidoDeRelatorio.esquema.safeParse(entrada);
     if (!lido.success) return err(validacao(lido.error));
     const pedido = lido.data;
+    if (pedido.tipo === 'historico-prazo') {
+      const visivel = await this.historicoVisivel(pedido.filtros.prazoId, {
+        usuarioId: solicitante.usuarioId,
+        veTodos: solicitante.veTodosOsHistoricos === true,
+      });
+      if (!visivel) {
+        return err(
+          new Proibido('historico-de-outro', 'O histórico deste prazo é do responsável por ele.'),
+        );
+      }
+    }
     if (pedido.tipo === 'agenda') {
       const de = LocalDate.analisar(pedido.filtros.de);
       const ate = LocalDate.analisar(pedido.filtros.ate);

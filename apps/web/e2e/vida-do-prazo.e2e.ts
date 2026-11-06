@@ -108,6 +108,14 @@ test('cadastra, confirma, ajusta e cumpre um prazo', async ({ page }) => {
   // O motivo aparece no detalhe e, desde a HU35, também no histórico (o que mudou).
   await expect(page.getByText('o despacho fixou dez dias', { exact: true })).toBeVisible();
 
+  // Delegação (HU41): a titular passa o prazo à colaboradora do seed; as datas não mudam.
+  await page.getByRole('button', { name: 'Delegar' }).click();
+  const delegar = page.getByRole('dialog');
+  await delegar.getByRole('combobox', { name: 'Novo responsável' }).click();
+  await page.getByRole('option', { name: 'Colaboradora Demonstração' }).click();
+  await delegar.getByRole('button', { name: 'Delegar' }).click();
+  await expect(page.getByText('Prazo delegado.')).toBeVisible();
+
   await page.getByRole('button', { name: 'Marcar como cumprido' }).click();
   await expect(page.getByText('Prazo marcado como cumprido.')).toBeVisible();
   await expect(page.getByText('Cumpridos', { exact: true })).toBeVisible();
@@ -115,7 +123,13 @@ test('cadastra, confirma, ajusta e cumpre um prazo', async ({ page }) => {
   // Histórico (HU35): todo o ciclo de vida, em ordem, e o PDF verificável pelo pipeline da HU29.
   await page.reload();
   const historico = page.getByRole('region', { name: 'Histórico' });
-  for (const evento of ['Prazo sugerido', 'Prazo confirmado', 'Prazo ajustado', 'Prazo cumprido'])
+  for (const evento of [
+    'Prazo sugerido',
+    'Prazo confirmado',
+    'Prazo ajustado',
+    'Prazo delegado',
+    'Prazo cumprido',
+  ])
     await expect(historico.getByText(evento, { exact: true }).first()).toBeVisible();
   await semViolacoes(page);
   await historico.getByRole('button', { name: 'Exportar histórico (PDF verificável)' }).click();

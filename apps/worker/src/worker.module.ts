@@ -1040,6 +1040,12 @@ export class WorkerModule {
             notificarDoBanco(relogio, protecao),
             ambiente.PORTAL_URL,
             relogio,
+            // Escalonamento (HU41, RF79): administradores ativos do escritório.
+            {
+              administradores: (tx) =>
+                new UsuariosComPermissaoPostgres().listar(tx, 'usuarios:gerir'),
+              nome: (tx, id) => new NomesDosUsuariosPostgres().nomeDe(tx, id),
+            },
           ),
       },
       {

@@ -18,6 +18,7 @@ import {
   sha256,
   TrilhaPostgres,
   VerificarHistorico,
+  podeVerHistoricoDoPrazo,
 } from '@pz/auditoria';
 import { Buscar, ConsultarAgenda } from '@pz/busca';
 import {
@@ -218,6 +219,7 @@ import {
   ConsultarRelatorios,
   RelatoriosPostgres,
   SolicitarRelatorio,
+  type HistoricoVisivel,
   type RepositorioDeRelatorios,
 } from '@pz/relatorios';
 import { ConsultarSituacao, VerificadorHttp, VerificadorTcp } from '@pz/saude';
@@ -568,6 +570,8 @@ interface DependenciasDosRelatorios {
   readonly trilha: TrilhaDeAuditoria<unknown>;
   readonly outbox: Outbox<unknown>;
   readonly armazenamento: ArmazenamentoArquivos;
+  /** Escopo do histórico (HU41, RF88); sem ele (testes), todos veem. */
+  readonly historicoVisivel?: HistoricoVisivel;
 }
 
 /** Relatórios (HU29): pedido e consulta na API; a geração é do worker (fila relatorios). */
@@ -577,7 +581,14 @@ function provedoresDosRelatorios(d: DependenciasDosRelatorios): Provider[] {
       provide: SolicitarRelatorio,
       inject: [RELOGIO],
       useFactory: (r: Clock) =>
-        new SolicitarRelatorio(d.unidade, d.relatorios, d.trilha, d.outbox, r),
+        new SolicitarRelatorio(
+          d.unidade,
+          d.relatorios,
+          d.trilha,
+          d.outbox,
+          r,
+          ...(d.historicoVisivel === undefined ? [] : [d.historicoVisivel]),
+        ),
     },
     {
       provide: ConsultarRelatorios,
@@ -659,8 +670,10 @@ function historicoDoBanco(banco: Banco): DependenciasDoHistorico {
     unidade: banco,
     repositorio: new HistoricoPostgres(),
     fontes: {
-      prazoExiste: async (id) =>
-        (await banco.executar((tx) => prazos.buscar(tx, id))) !== undefined,
+      responsavelDoPrazo: async (id) => {
+        const prazo = await banco.executar((tx) => prazos.buscar(tx, id));
+        return prazo === undefined ? undefined : { responsavelId: prazo.estado.responsavelId };
+      },
       notificacoesDoPrazo: (id) => banco.executar((tx) => notificacoes.idsDoPrazo(tx, id)),
       nomes: (ids) =>
         banco.executar(async (tx) => {
@@ -1827,6 +1840,15 @@ export class AppModule {
           trilha: new TrilhaPostgres(),
           outbox: new OutboxPostgres(),
           armazenamento: arquivosDoAmbiente(opcoes.ambiente),
+          historicoVisivel: async (prazoId, leitor) => {
+            const prazo = await recursos.banco.executar((tx) =>
+              new PrazosPostgres().buscar(tx, prazoId as Uuid),
+            );
+            // A regra é do módulo auditoria (RF88); prazo inexistente a geração avisa.
+            return (
+              prazo === undefined || podeVerHistoricoDoPrazo(leitor, prazo.estado.responsavelId)
+            );
+          },
         },
       ),
       ...provedoresDoHistorico(opcoes.historico ?? historicoDoBanco(recursos.banco)),

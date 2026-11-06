@@ -29,7 +29,11 @@ export class HistoricoController {
     @Req() requisicao: RequisicaoAutenticada,
     @Param('id') id: string,
   ): Promise<HistoricoDoPrazo> {
-    return this.historico(autenticacao(requisicao).sessao.tenantId, validar(z.uuid(), id) as Uuid);
+    const { sessao, permissoes } = autenticacao(requisicao);
+    return this.historico(sessao.tenantId, validar(z.uuid(), id) as Uuid, {
+      usuarioId: sessao.usuarioId,
+      veTodos: permissoes.has('usuarios:gerir'),
+    });
   }
 
   @Get('verificacoes/:codigo')

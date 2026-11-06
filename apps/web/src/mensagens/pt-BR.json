@@ -809,7 +809,8 @@
       "processo": "Processo",
       "ciencia": "Ciência",
       "origem": "Origem",
-      "situacao": "Situação"
+      "situacao": "Situação",
+      "responsavel": "Responsável"
     },
     "semData": "Sem data sugerida",
     "manual": "Definida manualmente",
@@ -969,12 +970,14 @@
         "prazos_prazo-ajustado": "Prazo ajustado",
         "prazos_prazo-cumprido": "Prazo cumprido",
         "prazos_prazo-cancelado": "Prazo cancelado",
+        "prazos_prazo-delegado": "Prazo delegado",
         "prazos_prazo-recalculado": "Prazo recalculado",
         "prazos_prazo-vencido": "Prazo vencido",
         "ciencia_ciencia-confirmada": "Ciência confirmada",
         "notificacoes_notificacao-rejeitada": "E-mail não entregue"
       }
-    }
+    },
+    "semResponsavel": "Sem responsável"
   },
   "dashboard": {
     "titulo": "Dashboard",

@@ -230,6 +230,27 @@ describe('relatórios (HU29)', () => {
     expect(pendente.ok && pendente.valor).toMatchObject({ situacao: 'pendente', url: null });
   });
 
+  it('histórico de prazo fora do escopo do solicitante é recusado (HU41, RF88)', async () => {
+    const leitores: unknown[] = [];
+    const comEscopo = new SolicitarRelatorio(outbox, repo, trilha, outbox, relogio, (_id, l) => {
+      leitores.push(l);
+      return Promise.resolve(l.veTodos);
+    });
+    const pedido = {
+      tipo: 'historico-prazo',
+      formato: 'pdf',
+      filtros: { prazoId: '01a10e00-0000-7000-8000-00000000f0f1' },
+    };
+    const negado = await comEscopo.executar(solicitante, pedido);
+    expect(!negado.ok && negado.erro.codigo).toBe('historico-de-outro');
+    const admin = await comEscopo.executar({ ...solicitante, veTodosOsHistoricos: true }, pedido);
+    expect(admin.ok).toBe(true);
+    expect(leitores).toEqual([
+      { usuarioId: USUARIO, veTodos: false },
+      { usuarioId: USUARIO, veTodos: true },
+    ]);
+  });
+
   it('recusa pedido inválido: tipo, formato, filtro desconhecido e agenda fora do limite', async () => {
     for (const corpo of [
       { tipo: 'outro', formato: 'pdf', filtros: {} },

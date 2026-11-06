@@ -33,6 +33,18 @@ export interface AgendaDoPrazo {
   ): Promise<readonly { readonly antecedencia: number; readonly data: LocalDate }[]>;
 }
 
+/** Porta: administradores ativos do escritório e o nome do responsável (identidade, HU41). */
+export interface EquipeDoEscalonamento<Transacao> {
+  administradores(transacao: Transacao): Promise<readonly Uuid[]>;
+  nome(transacao: Transacao, usuarioId: Uuid): Promise<string | undefined>;
+}
+
+/**
+ * Escalonamento (HU41, RF79; decisão do usuário em 06/11/2026): no lembrete de 1 dia útil antes
+ * do vencimento, com a ciência pendente, os administradores do escritório também são avisados.
+ */
+export const ANTECEDENCIA_DO_ESCALONAMENTO = 1;
+
 /** Porta: número do processo para o e-mail (cadastro, pela API pública dele). */
 export type NumeroDoProcesso = (processoId: Uuid) => Promise<string | undefined>;
 
@@ -159,6 +171,7 @@ export class DispararLembretes<Transacao> {
     private readonly notificar: Notificar<Transacao>,
     private readonly urlDoPortal: string,
     private readonly relogio: Clock,
+    private readonly equipe?: EquipeDoEscalonamento<Transacao>,
   ) {}
 
   async executar(): Promise<Record<DesfechoDoLembrete, number>> {
@@ -211,7 +224,37 @@ export class DispararLembretes<Transacao> {
     });
     // Dados que o template recusa são defeito: nada falha em silêncio (o job vai para a DLQ).
     if (!r.ok) throw r.erro;
+    if (l.antecedencia === ANTECEDENCIA_DO_ESCALONAMENTO && prazo.statusCiencia === 'pendente') {
+      await this.#escalonar(tx, l, numeroProcesso);
+    }
     return 'enviado';
+  }
+
+  /** Avisa os administradores (menos o próprio responsável), uma vez por prazo e vencimento. */
+  async #escalonar(tx: Transacao, l: LembreteAgendado, numeroProcesso: string): Promise<void> {
+    if (this.equipe === undefined) return;
+    const administradores = (await this.equipe.administradores(tx)).filter(
+      (id) => id !== l.usuarioId,
+    );
+    if (administradores.length === 0) return;
+    const responsavel = (await this.equipe.nome(tx, l.usuarioId)) ?? 'responsável';
+    for (const usuarioId of administradores) {
+      const r = await this.notificar.executar(tx, {
+        tipo: 'escalonamento-prazo',
+        tenantId: l.tenantId,
+        usuarioId,
+        prazoId: l.prazoId,
+        // O lembrete da véspera pode disparar duas vezes (8h e 14h): o aviso sai uma.
+        janela: `escalonamento:${l.vencimento.paraIso()}`,
+        dados: {
+          numeroProcesso,
+          vencimento: dataBr(l.vencimento),
+          responsavel,
+          link: new URL(`/prazos/${l.prazoId}`, this.urlDoPortal).toString(),
+        },
+      });
+      if (!r.ok) throw r.erro;
+    }
   }
 }
 

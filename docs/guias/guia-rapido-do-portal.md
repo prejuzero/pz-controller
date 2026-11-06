@@ -106,6 +106,7 @@ Se o calendário mudar (um feriado novo, por exemplo) ou a comarca do processo f
 - **Configurações → Segurança:** verificação em duas etapas, sessões ativas e últimos acessos.
 - **Configurações → Privacidade:** documentos aceitos, exportação dos seus dados e encerramento da conta.
 - **Delegar um prazo:** no detalhe do prazo, o administrador do escritório usa **Delegar** para passá-lo a outro membro. As datas não mudam e os lembretes passam a ir para o novo responsável. No filtro do topo, **Responsável → Meus** mostra só os seus.
+- **Acompanhar a equipe:** a lista de prazos mostra o responsável e a ciência de cada um; use o recorte **Sem ciência** e o filtro **Responsável**. Faltando 1 dia útil sem ciência, os administradores do escritório recebem um aviso por e-mail. O histórico de um prazo é visível para o responsável e para os administradores.
 - **Configurações → Equipe:** convide advogados e colaboradores por e-mail (o link vale 7 dias), defina os perfis e desative quem saiu. Quem criou a conta é o administrador da equipe.
 - **Configurações → Integrações:** acesso de outros sistemas à API (identificador e segredo, só leitura) e webhooks, que avisam o sistema do escritório a cada evento. O segredo aparece uma única vez. Passo a passo técnico em [api-publica-para-integradores.md](api-publica-para-integradores.md).
 
@@ -137,10 +138,11 @@ Localmente existem duas contas de curadoria de teste: `curadoria1@prejuzero.loca
 
 Senha de todas: `demonstracao local 2026`. O 2FA é ativado no primeiro acesso.
 
-| Conta                                                      | Para quê                                                  |
-| ---------------------------------------------------------- | --------------------------------------------------------- |
-| `demonstracao@prejuzero.local`                             | Advogado do escritório de demonstração                    |
-| `curadoria1@prejuzero.local`, `curadoria2@prejuzero.local` | Curadoria da tabela de prazos e do calendário             |
-| `admin@prejuzero.local`                                    | Painel do administrador (filas, integrações, escritórios) |
+| Conta                                                      | Para quê                                                         |
+| ---------------------------------------------------------- | ---------------------------------------------------------------- |
+| `demonstracao@prejuzero.local`                             | Titular (advogado e administrador) do escritório de demonstração |
+| `colaboradora@prejuzero.local`                             | Colaboradora do mesmo escritório (recebe prazos delegados)       |
+| `curadoria1@prejuzero.local`, `curadoria2@prejuzero.local` | Curadoria da tabela de prazos e do calendário                    |
+| `admin@prejuzero.local`                                    | Painel do administrador (filas, integrações, escritórios)        |
 
 > Ao validar com a OAB real da curadora, o banco local passa a guardar publicações reais. Elas ficam só na máquina local: não vão para o repositório, para cards ou para prints compartilhados.

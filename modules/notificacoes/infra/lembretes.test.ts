@@ -167,6 +167,69 @@ describe('lembretes escalonados (HU31)', () => {
     expect(enviados()).toHaveLength(3);
   });
 
+  it('véspera útil sem ciência avisa os administradores uma vez, menos o responsável (HU41, RF79)', async () => {
+    const CHEFE = gerarUuidV7();
+    const comEquipe = (administradores: string[]) =>
+      new DispararLembretes(
+        outbox,
+        (_t, trabalho) => trabalho(),
+        outbox,
+        lembretes,
+        agenda,
+        () => Promise.resolve('0000001-09.2030.8.09.0001'),
+        notificar(),
+        PORTAL,
+        relogio,
+        {
+          administradores: () => Promise.resolve(administradores as never),
+          nome: (_tx, id) => Promise.resolve(id === ANA ? 'Ana Fictícia' : undefined),
+        },
+      );
+    const escalonados = () => notificacoes.todas().filter((n) => n.tipo === 'escalonamento-prazo');
+    await programarAgora();
+    // Até a véspera útil (dia 11, feriado no dia 12): 5 e 2 dias antes não escalonam.
+    relogio.definir(Instant.deIso('2026-11-10T18:00:00.000Z'));
+    await comEquipe([CHEFE, ANA]).executar();
+    expect(escalonados()).toEqual([]);
+    // Véspera às 8h e 14h: um aviso só, para o chefe (a responsável já recebe o lembrete).
+    relogio.definir(Instant.deIso('2026-11-11T18:00:00.000Z'));
+    await comEquipe([CHEFE, ANA]).executar();
+    const esperado: Record<string, string> = {
+      numeroProcesso: '0000001-09.2030.8.09.0001',
+      vencimento: '13/11/2026',
+      responsavel: 'Ana Fictícia',
+      link: `${PORTAL}/prazos/${PRAZO}`,
+    };
+    expect(escalonados().map((n) => [n.usuarioId, n.dados])).toEqual([[CHEFE, esperado]]);
+  });
+
+  it('com ciência confirmada ou sem outro administrador, não escalona', async () => {
+    const comEquipe = (administradores: string[]) =>
+      new DispararLembretes(
+        outbox,
+        (_t, trabalho) => trabalho(),
+        outbox,
+        lembretes,
+        agenda,
+        () => Promise.resolve('0000001-09.2030.8.09.0001'),
+        notificar(),
+        PORTAL,
+        relogio,
+        {
+          administradores: () => Promise.resolve(administradores as never),
+          nome: () => Promise.resolve(undefined),
+        },
+      );
+    await programarAgora();
+    relogio.definir(Instant.deIso('2026-11-11T12:00:00.000Z'));
+    // Só a própria responsável administra: ninguém mais a avisar.
+    await comEquipe([ANA]).executar();
+    relogio.definir(Instant.deIso('2026-11-11T18:00:00.000Z'));
+    prazo = { ...atual(), statusCiencia: 'confirmada' };
+    await comEquipe([gerarUuidV7()]).executar();
+    expect(notificacoes.todas().filter((n) => n.tipo === 'escalonamento-prazo')).toEqual([]);
+  });
+
   it('prazo sumido ou com outro responsável: cancela; sem número do processo, avisa assim mesmo', async () => {
     await programarAgora();
     relogio.definir(Instant.deIso('2026-11-05T11:00:00.000Z'));
