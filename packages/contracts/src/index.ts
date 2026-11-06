@@ -376,7 +376,13 @@ export type { EsquemaNomeado, MetodoHttp, Rota, StatusDeErro } from './rota.js';
 export { consultarSituacao, ROTAS_SAUDE, SituacaoDaApi } from './saude/index.js';
 export { receberWebhook, ROTAS_WEBHOOKS, WebhookAceito } from './webhooks/index.js';
 export {
+  AppOAuthCriado,
   AssinaturaDeWebhookCriada,
+  AutorizacaoOAuthConcedida,
+  autorizarClienteOAuth,
+  descreverAutorizacaoOAuth,
+  DescricaoDaAutorizacaoOAuth,
+  PedidoDeAutorizacaoOAuth,
   AssinaturasDeWebhook,
   ClienteDeIntegracaoCriado,
   ClientesDeIntegracao,
@@ -392,10 +398,12 @@ export {
   listarEntregasDeWebhook,
   listarEscoposDeIntegracao,
   listarEventosDeWebhook,
+  PedidoDeAppOAuth,
   PedidoDeAssinaturaDeWebhook,
   PedidoDeClienteDeIntegracao,
   PedidoDeTokenOAuth,
   reenviarEntregaDeWebhook,
+  registrarAppOAuth,
   registrarAssinaturaDeWebhook,
   registrarClienteDeIntegracao,
   revogarClienteDeIntegracao,

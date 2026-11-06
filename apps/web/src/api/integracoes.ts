@@ -3,6 +3,17 @@ import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { chaves } from './chaves';
 import { exigir, type ClienteApi } from './cliente';
 
+/** Pedido de autorização como a tela o lê da URL: só os parâmetros presentes. */
+export interface PedidoDeAutorizacaoOAuth {
+  response_type: string;
+  client_id: string;
+  redirect_uri: string;
+  code_challenge: string;
+  code_challenge_method: string;
+  scope?: string;
+  state?: string;
+}
+
 /** Integrações do escritório (HU49): clientes da API e webhooks de saída. */
 export const consultasIntegracoes = (api: ClienteApi) => ({
   escopos: () =>
@@ -26,6 +37,14 @@ export const consultasIntegracoes = (api: ClienteApi) => ({
     queryOptions({
       queryKey: chaves.integracoes.webhooks(),
       queryFn: ({ signal }) => exigir(api.GET('/v1/integracoes/webhooks', { signal })),
+    }),
+  /** Tela de consentimento: o que o app pede, conferido pela API (HU49). */
+  autorizacao: (pedido: PedidoDeAutorizacaoOAuth) =>
+    queryOptions({
+      queryKey: chaves.integracoes.autorizacao(pedido),
+      queryFn: ({ signal }) =>
+        exigir(api.GET('/v1/oauth/autorizacao', { params: { query: pedido }, signal })),
+      retry: false,
     }),
   entregas: () =>
     queryOptions({
@@ -51,6 +70,15 @@ export const mutacoesIntegracoes = (api: ClienteApi, cache: QueryClient) => {
       mutationFn: (pedido: { nome: string; escopos: string[] }) =>
         exigir(api.POST('/v1/integracoes/clientes', { body: pedido })),
       onSuccess: invalidar(chaves.integracoes.clientes()),
+    },
+    registrarApp: {
+      mutationFn: (pedido: { nome: string; escopos: string[]; redirectUris: string[] }) =>
+        exigir(api.POST('/v1/integracoes/apps', { body: pedido })),
+      onSuccess: invalidar(chaves.integracoes.clientes()),
+    },
+    autorizar: {
+      mutationFn: (pedido: PedidoDeAutorizacaoOAuth) =>
+        exigir(api.POST('/v1/oauth/autorizacao', { body: pedido })),
     },
     revogarCliente: {
       mutationFn: (id: string) =>

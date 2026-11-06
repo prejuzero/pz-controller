@@ -1,14 +1,21 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { PedidoDeAssinaturaDeWebhook, PedidoDeClienteDeIntegracao } from '@pz/contracts';
+import {
+  PedidoDeAppOAuth,
+  PedidoDeAssinaturaDeWebhook,
+  PedidoDeClienteDeIntegracao,
+} from '@pz/contracts';
 import {
   avisar,
   Botao,
   Campo,
+  classesEntrada,
+  cn,
   Dialogo,
   EstadoCarregando,
   EstadoVazio,
+  EnvoltorioCampo,
   FecharDialogo,
   SeloStatus,
   TabelaDados,
@@ -27,6 +34,7 @@ import {
   useEscoposDeIntegracao,
   useEventosDeWebhook,
   useReenviarEntrega,
+  useRegistrarApp,
   useRegistrarCliente,
   useRegistrarWebhook,
   useRevogarCliente,
@@ -55,8 +63,13 @@ export function Integracoes() {
       </div>
       <Secao
         titulo={t('clientes.titulo')}
-        descricao={t('clientes.descricao')}
-        acao={<NovoCliente />}
+        descricao={`${t('clientes.descricao')} ${t('apps.descricao')}`}
+        acao={
+          <div className="flex flex-wrap gap-2">
+            <NovoApp />
+            <NovoCliente />
+          </div>
+        }
       >
         <Clientes />
       </Secao>
@@ -122,6 +135,11 @@ function Clientes() {
   if (clientes.data === undefined) return <EstadoCarregando />;
   const colunas: ColunaTabela<Cliente>[] = [
     { accessorKey: 'nome', header: t('clientes.colunas.nome') },
+    {
+      accessorKey: 'tipo',
+      header: t('clientes.colunas.tipo'),
+      cell: ({ row }) => t(`clientes.tipos.${row.original.tipo}`),
+    },
     {
       id: 'escopos',
       header: t('clientes.colunas.escopos'),
@@ -295,6 +313,115 @@ function NovoCliente() {
           />
           <Botao type="submit" carregando={registrar.isPending}>
             {t('clientes.criar')}
+          </Botao>
+        </form>
+      )}
+    </Dialogo>
+  );
+}
+
+const EsquemaDoApp = PedidoDeAppOAuth.esquema;
+type PedidoDeApp = z.infer<typeof EsquemaDoApp>;
+
+/** Lista de endereços de retorno: um por linha. */
+const linhas = (valor: unknown) =>
+  typeof valor === 'string'
+    ? valor
+        .split('\n')
+        .map((linha) => linha.trim())
+        .filter((linha) => linha !== '')
+    : valor;
+
+/** App público (Authorization Code + PKCE): sem segredo, com endereços de retorno. */
+function NovoApp() {
+  const t = useTranslations('integracoes');
+  const tv = useTranslations('validacao');
+  const escopos = useEscoposDeIntegracao();
+  const registrar = useRegistrarApp();
+  const [aberto, setAberto] = useState(false);
+  const [criado, setCriado] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<PedidoDeApp>({
+    resolver: zodResolver(EsquemaDoApp),
+    defaultValues: { nome: '', escopos: [], redirectUris: [] },
+  });
+  const erro = (campo: FieldError | undefined) => campo && tv(chaveValidacao(campo.type));
+  const enviar = handleSubmit((pedido) => {
+    registrar.mutate(pedido, {
+      onSuccess: (r) => {
+        setCriado(r.cliente.id);
+        reset();
+      },
+    });
+  });
+  return (
+    <Dialogo
+      aberto={aberto}
+      aoMudarAberto={(valor) => {
+        setAberto(valor);
+        if (!valor) setCriado(null);
+      }}
+      gatilho={
+        <Botao variante="secundaria">
+          <Plus className="size-4" aria-hidden />
+          {t('apps.novo')}
+        </Botao>
+      }
+      titulo={criado === null ? t('apps.novo') : t('apps.criado')}
+    >
+      {criado !== null ? (
+        <div className="space-y-3">
+          <p className="text-sm">{t('apps.semSegredo')}</p>
+          <p className="text-sm font-medium">{t('apps.id')}</p>
+          <code className="block break-all rounded bg-superficie-elevada p-2 text-xs">
+            {criado}
+          </code>
+        </div>
+      ) : escopos.data === undefined ? (
+        <EstadoCarregando />
+      ) : (
+        <form method="post" noValidate onSubmit={(e) => void enviar(e)} className="grid gap-4">
+          <Campo
+            rotulo={t('apps.nome')}
+            ajuda={t('apps.ajudaNome')}
+            obrigatorio
+            maxLength={100}
+            erro={erro(errors.nome)}
+            {...register('nome')}
+          />
+          <Opcoes
+            legenda={t('apps.escopos')}
+            opcoes={escopos.data.itens.map((e) => ({
+              valor: e.escopo,
+              rotulo: e.escopo,
+              descricao: e.descricao,
+            }))}
+            erro={errors.escopos === undefined ? undefined : t('clientes.escoposErro')}
+            registrar={register('escopos')}
+          />
+          <EnvoltorioCampo
+            rotulo={t('apps.retornos')}
+            ajuda={t('apps.ajudaRetornos')}
+            obrigatorio
+            erro={errors.redirectUris === undefined ? undefined : t('apps.retornosErro')}
+          >
+            {({ id, descricao, invalido }) => (
+              <textarea
+                id={id}
+                rows={3}
+                className={cn(classesEntrada, 'h-auto py-2 font-mono text-xs')}
+                aria-describedby={descricao}
+                aria-invalid={invalido || undefined}
+                {...register('redirectUris', { setValueAs: linhas })}
+              />
+            )}
+          </EnvoltorioCampo>
+          <Botao type="submit" carregando={registrar.isPending}>
+            {t('apps.criar')}
           </Botao>
         </form>
       )}

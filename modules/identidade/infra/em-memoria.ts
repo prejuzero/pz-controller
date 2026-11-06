@@ -5,6 +5,7 @@ import { PERFIS_PADRAO } from '../domain/perfis.js';
 import { hashDoToken, segredoConfere } from './tokens.js';
 
 import type { RepositorioDeTenantsAdministrados } from '../application/administracao-de-tenants.js';
+import type { ArmazemDeCodigos, DadosDoCodigo } from '../application/autorizacao-oauth.js';
 import type { RepositorioDePerfis } from '../application/autorizacao.js';
 import type {
   ClienteAutenticado,
@@ -243,6 +244,14 @@ export class DispositivosEmMemoria implements RepositorioDeDispositivos {
     this.#dispositivos.set(id, { ...d, revogadaEm: em });
     return Promise.resolve(true);
   }
+
+  revogarDoCliente(clienteOAuthId: Uuid, em: Instant): Promise<Uuid[]> {
+    const abertos = [...this.#dispositivos.values()].filter(
+      (d) => d.clienteOAuthId === clienteOAuthId && d.revogadaEm === undefined,
+    );
+    for (const d of abertos) this.#dispositivos.set(d.id, { ...d, revogadaEm: em });
+    return Promise.resolve(abertos.map((d) => d.id));
+  }
 }
 
 export class RenovacoesEmMemoria implements ArmazemDeRenovacoes {
@@ -348,12 +357,24 @@ export class TenantsEmMemoria
 
 /** Clientes OAuth em memória (HU49), para testes das apps; guarda o segredo como hash. */
 export class ClientesOAuthEmMemoria implements RepositorioDeClientesOAuth {
-  readonly #clientes = new Map<string, { cliente: ClienteOAuth; hash: string }>();
+  readonly #clientes = new Map<string, { cliente: ClienteOAuth; hash: string | null }>();
   tenantsSuspensos = new Set<string>();
 
-  registrar(cliente: ClienteOAuth, segredo: string): Promise<void> {
-    this.#clientes.set(cliente.id, { cliente, hash: hashDoToken(segredo) });
+  registrar(cliente: ClienteOAuth, segredo: string | null): Promise<void> {
+    this.#clientes.set(cliente.id, {
+      cliente,
+      hash: segredo === null ? null : hashDoToken(segredo),
+    });
     return Promise.resolve();
+  }
+
+  buscar(id: Uuid): Promise<ClienteOAuth | undefined> {
+    return Promise.resolve(this.#clientes.get(id)?.cliente);
+  }
+
+  localizar(id: Uuid): Promise<ClienteAutenticado | undefined> {
+    const atual = this.#clientes.get(id);
+    return Promise.resolve(atual === undefined ? undefined : this.#autenticado(atual.cliente));
   }
 
   listar(): Promise<ClienteOAuth[]> {
@@ -370,17 +391,23 @@ export class ClientesOAuthEmMemoria implements RepositorioDeClientesOAuth {
 
   autenticar(id: Uuid, segredo: string): Promise<ClienteAutenticado | undefined> {
     const atual = this.#clientes.get(id);
-    if (atual === undefined || !segredoConfere(segredo, atual.hash)) {
+    const hash = atual?.hash ?? null;
+    if (atual === undefined || hash === null || !segredoConfere(segredo, hash)) {
       return Promise.resolve(undefined);
     }
-    const { cliente } = atual;
-    return Promise.resolve({
+    return Promise.resolve(this.#autenticado(atual.cliente));
+  }
+
+  #autenticado(cliente: ClienteOAuth): ClienteAutenticado {
+    return {
       tenantId: cliente.tenantId,
       usuarioId: cliente.usuarioId,
+      tipo: cliente.tipo,
+      redirectUris: cliente.redirectUris,
       escopos: cliente.escopos,
       revogado: cliente.revogadoEm !== undefined,
       tenantSuspenso: this.tenantsSuspensos.has(cliente.tenantId),
-    });
+    };
   }
 
   registrarUso(id: Uuid, agora: Instant): Promise<void> {
@@ -389,5 +416,21 @@ export class ClientesOAuthEmMemoria implements RepositorioDeClientesOAuth {
       this.#clientes.set(id, { ...atual, cliente: { ...atual.cliente, ultimoUso: agora } });
     }
     return Promise.resolve();
+  }
+}
+
+/** Códigos de autorização OAuth em memória (HU49): uso único. */
+export class CodigosEmMemoria implements ArmazemDeCodigos {
+  readonly #codigos = new Map<string, DadosDoCodigo>();
+
+  emitir(codigo: string, dados: DadosDoCodigo): Promise<void> {
+    this.#codigos.set(codigo, dados);
+    return Promise.resolve();
+  }
+
+  consumir(codigo: string): Promise<DadosDoCodigo | undefined> {
+    const dados = this.#codigos.get(codigo);
+    this.#codigos.delete(codigo);
+    return Promise.resolve(dados);
   }
 }

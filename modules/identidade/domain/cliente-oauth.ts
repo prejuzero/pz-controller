@@ -43,3 +43,40 @@ export function escoposDoToken(
   const pedidos = [...new Set(pedido.trim().split(/\s+/))];
   return pedidos.every((p) => doCliente.includes(p)) ? pedidos : undefined;
 }
+
+/** `confidencial`: integrador com segredo (Client Credentials); `publico`: app sem segredo (PKCE). */
+export type TipoDeClienteOAuth = 'confidencial' | 'publico';
+
+const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+/**
+ * Endereços de retorno de um cliente público (OAuth 2.1, seção 2.3.1; RFC 8252 para apps
+ * nativos): HTTPS, ou HTTP só no loopback; sem fragmento; de 1 a 5. A comparação no pedido de
+ * autorização é por igualdade exata.
+ */
+export function enderecosDeRetorno(uris: readonly string[]): Result<string[], Validacao> {
+  const unicos = [...new Set(uris.map((u) => u.trim()))];
+  const problema = (mensagem: string) => err(new Validacao([{ campo: 'redirectUris', mensagem }]));
+  if (unicos.length === 0 || unicos.length > 5) {
+    return problema('Informe de 1 a 5 endereços de retorno.');
+  }
+  for (const uri of unicos) {
+    let url: URL;
+    try {
+      url = new URL(uri);
+    } catch {
+      return problema(`Endereço inválido: ${uri}.`);
+    }
+    const seguro =
+      url.protocol === 'https:' || (url.protocol === 'http:' && LOOPBACK.has(url.hostname));
+    if (!seguro) return problema(`Use HTTPS (HTTP só em localhost): ${uri}.`);
+    if (url.hash !== '' || uri.includes('#')) return problema(`Sem fragmento (#): ${uri}.`);
+    if (url.username !== '' || url.password !== '') {
+      return problema(`Sem usuário e senha no endereço: ${uri}.`);
+    }
+  }
+  return ok(unicos);
+}
+
+/** `code_challenge` e `code_verifier` do PKCE (RFC 7636, seção 4.1): 43 a 128 caracteres. */
+export const FORMATO_PKCE = /^[A-Za-z0-9._~-]{43,128}$/;

@@ -127,6 +127,8 @@ export interface Dispositivo {
   readonly criadoEm: Instant;
   readonly ultimoUso: Instant;
   readonly revogadaEm?: Instant;
+  /** Sessão nascida de uma autorização OAuth (HU49): revogar o cliente revoga a sessão. */
+  readonly clienteOAuthId?: Uuid;
 }
 
 /** Sessões de dispositivo no tenant do contexto (RLS). */
@@ -138,12 +140,17 @@ export interface RepositorioDeDispositivos {
   registrarUso(id: Uuid, em: Instant): Promise<void>;
   /** false se não existe (para este usuário) ou já estava revogado. */
   revogar(id: Uuid, usuarioId: Uuid, em: Instant): Promise<boolean>;
+  /** Revoga as sessões abertas de um cliente OAuth (tenant do contexto); devolve os ids. */
+  revogarDoCliente(clienteOAuthId: Uuid, em: Instant): Promise<Uuid[]>;
 }
 
 export interface DadosDaRenovacao {
   readonly dispositivoId: Uuid;
   readonly usuarioId: Uuid;
   readonly tenantId: Uuid;
+  /** Autorização OAuth (HU49): o token só renova para o mesmo cliente e nos mesmos escopos. */
+  readonly clienteOAuthId?: Uuid;
+  readonly escopos?: readonly string[];
 }
 
 export type ResultadoDaRenovacao =

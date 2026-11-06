@@ -1049,6 +1049,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/integracoes/apps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Registra um app público (Authorization Code + PKCE), sem segredo. */
+        post: operations["registrarAppOAuth"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/integracoes/clientes": {
         parameters: {
             query?: never;
@@ -1321,6 +1338,24 @@ export interface paths {
         post?: never;
         /** Remove uma OAB suplementar do monitoramento (a principal não sai). */
         delete: operations["removerOab"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/oauth/autorizacao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Confere o pedido de autorização e descreve o que o app pede (tela de consentimento). */
+        get: operations["descreverAutorizacaoOAuth"];
+        put?: never;
+        /** O usuário permite: emite o código (uso único) e devolve o endereço de retorno. */
+        post: operations["autorizarClienteOAuth"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2023,6 +2058,24 @@ export interface components {
             /** @description Por que ficou sem ato seguro (ex.: ia-desligada). */
             motivo: string | null;
         };
+        AppOAuthCriado: {
+            cliente: {
+                /**
+                 * Format: uuid
+                 * @description O `client_id`.
+                 */
+                id: string;
+                nome: string;
+                /** @enum {string} */
+                tipo: "confidencial" | "publico";
+                redirectUris: string[];
+                escopos: string[];
+                /** Format: date-time */
+                criadoEm: string;
+                ultimoUso: string | null;
+                revogadoEm: string | null;
+            };
+        };
         AssinaturaDeWebhookCriada: {
             assinatura: {
                 /** Format: uuid */
@@ -2054,6 +2107,10 @@ export interface components {
                 codigo: string;
                 nome: string;
             }[];
+        };
+        AutorizacaoOAuthConcedida: {
+            /** @description Retorno do app com `code` e `state`. */
+            redirecionarPara: string;
         };
         AvisosDeEntrega: {
             /** @description E-mails do usuário que rejeitaram mensagens (bounce) ou marcaram spam: não recebem notificações até serem trocados ou liberados pelo suporte. */
@@ -2122,6 +2179,9 @@ export interface components {
                  */
                 id: string;
                 nome: string;
+                /** @enum {string} */
+                tipo: "confidencial" | "publico";
+                redirectUris: string[];
                 escopos: string[];
                 /** Format: date-time */
                 criadoEm: string;
@@ -2146,6 +2206,9 @@ export interface components {
                  */
                 id: string;
                 nome: string;
+                /** @enum {string} */
+                tipo: "confidencial" | "publico";
+                redirectUris: string[];
                 escopos: string[];
                 /** Format: date-time */
                 criadoEm: string;
@@ -2242,6 +2305,18 @@ export interface components {
         Credenciais: {
             email: string;
             senha: string;
+        };
+        DescricaoDaAutorizacaoOAuth: {
+            cliente: {
+                /** Format: uuid */
+                id: string;
+                nome: string;
+            };
+            redirectUri: string;
+            escopos: {
+                escopo: string;
+                descricao: string;
+            }[];
         };
         DestinoPushRegistrado: {
             /** Format: uuid */
@@ -2823,6 +2898,12 @@ export interface components {
         PedidoDeAnalise: {
             texto: string;
         };
+        PedidoDeAppOAuth: {
+            nome: string;
+            escopos: string[];
+            /** @description HTTPS, ou HTTP em localhost; comparados por igualdade exata. */
+            redirectUris: string[];
+        };
         PedidoDeAssinatura: {
             plano?: string | null;
             /**
@@ -2836,6 +2917,16 @@ export interface components {
             url: string;
             descricao: string;
             eventos: string[];
+        };
+        PedidoDeAutorizacaoOAuth: {
+            response_type: string;
+            /** Format: uuid */
+            client_id: string;
+            redirect_uri: string;
+            scope?: string;
+            state?: string;
+            code_challenge: string;
+            code_challenge_method: string;
         };
         PedidoDeBuscaRapida: {
             texto: string;
@@ -3262,13 +3353,17 @@ export interface components {
             sinonimos?: string[];
         };
         PedidoDeTokenOAuth: {
-            /** @constant */
-            grant_type: "client_credentials";
+            /** @enum {string} */
+            grant_type: "client_credentials" | "authorization_code" | "refresh_token";
             /** Format: uuid */
             client_id?: string;
             client_secret?: string;
             /** @description Escopos separados por espaço. */
             scope?: string;
+            code?: string;
+            redirect_uri?: string;
+            code_verifier?: string;
+            refresh_token?: string;
         };
         PedidoDeTokensDeDispositivo: {
             /** @enum {string} */
@@ -3757,6 +3852,8 @@ export interface components {
             /** @description Segundos (15 min). */
             expires_in: number;
             scope: string;
+            /** @description Só nos grants do app público: uso único; reutilizar revoga a sessão. */
+            refresh_token?: string;
         };
         TokensDeDispositivo: {
             /** Format: uuid */
@@ -8423,6 +8520,66 @@ export interface operations {
             };
         };
     };
+    registrarAppOAuth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeAppOAuth"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppOAuthCriado"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
     listarClientesDeIntegracao: {
         parameters: {
             query?: never;
@@ -9653,6 +9810,130 @@ export interface operations {
             };
             /** @description Regra de negócio violada. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    descreverAutorizacaoOAuth: {
+        parameters: {
+            query: {
+                response_type: string;
+                client_id: string;
+                redirect_uri: string;
+                scope?: string;
+                state?: string;
+                code_challenge: string;
+                code_challenge_method: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DescricaoDaAutorizacaoOAuth"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    autorizarClienteOAuth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeAutorizacaoOAuth"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutorizacaoOAuthConcedida"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
