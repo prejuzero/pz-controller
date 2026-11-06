@@ -35,9 +35,14 @@ export class NotificacoesEmMemoria implements RepositorioDeNotificacoes<Transaca
     return [...this.#porId.values()];
   }
 
+  /** Chaves já pedidas, inclusive na transação em curso (como o ON CONFLICT do banco). */
+  readonly #chaves = new Set<string>();
+
   inserir(tx: TransacaoEmMemoria, notificacao: Notificacao): Promise<boolean> {
-    if (this.todas().some((n) => n.chave === notificacao.estado.chave))
+    const { chave } = notificacao.estado;
+    if (this.#chaves.has(chave) || this.todas().some((n) => n.chave === chave))
       return Promise.resolve(false);
+    this.#chaves.add(chave);
     tx.aoConfirmar(() => this.#porId.set(notificacao.id, notificacao.estado));
     return Promise.resolve(true);
   }

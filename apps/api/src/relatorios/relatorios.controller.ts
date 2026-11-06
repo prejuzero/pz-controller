@@ -26,12 +26,13 @@ export class RelatoriosController {
     @Req() requisicao: RequisicaoAutenticada,
     @Body() corpo: unknown,
   ): Promise<RelatorioSolicitado> {
-    const { sessao } = autenticacao(requisicao);
+    const { sessao, permissoes } = autenticacao(requisicao);
     const r = await this.solicitar.executar(
       {
         tenantId: sessao.tenantId,
         usuarioId: sessao.usuarioId,
         canal: sessao.dispositivoId === undefined ? 'portal' : 'app',
+        veTodosOsHistoricos: permissoes.has('usuarios:gerir'),
       },
       corpo,
     );

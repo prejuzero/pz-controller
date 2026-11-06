@@ -34,6 +34,7 @@ export {
   EmitirHistoricoVerificavel,
   MAXIMO_DO_HISTORICO,
   VerificarHistorico,
+  podeVerHistoricoDoPrazo,
 } from './application/historico.js';
 export type {
   AlvoDoHistorico,
@@ -41,6 +42,7 @@ export type {
   NoTenantDoHistorico,
   RepositorioDoHistorico,
   ResultadoDaVerificacaoPublica,
+  LeitorDoHistorico,
 } from './application/historico.js';
 export { codigoDeVerificacao, lerCodigo } from './domain/verificacao.js';
 export { HistoricoPostgres } from './infra/historico-postgres.js';

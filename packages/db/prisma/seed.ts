@@ -31,6 +31,8 @@ const TENANT_DEMONSTRACAO = '01a10e00-0000-7000-8000-00000000d001';
 const USUARIO_DEMONSTRACAO = '01a10e00-0000-7000-8000-00000000d002';
 const ADVOGADO_DEMONSTRACAO = '01a10e00-0000-7000-8000-00000000d003';
 const OAB_DEMONSTRACAO = '01a10e00-0000-7000-8000-00000000d004';
+// Colaboradora FICTÍCIA do escritório (HU41): recebe prazos delegados.
+const USUARIO_COLABORADORA = '01a10e00-0000-7000-8000-00000000d005';
 // Plataforma FICTÍCIA: dois curadores (HU13/HU15, aprovação por quatro olhos) e um administrador
 // (HU39, painel da plataforma).
 const TENANT_PLATAFORMA = '01a10e00-0000-7000-8000-00000000c001';
@@ -120,6 +122,21 @@ try {
   );
   await cliente.query('UPDATE usuario SET senha_hash = $2 WHERE id = $1 AND senha_hash IS NULL', [
     USUARIO_DEMONSTRACAO,
+    await hashArgon2id(SENHA),
+  ]);
+  await cliente.query(
+    `INSERT INTO usuario (id, tenant_id, nome, email, email_verificado_em)
+     VALUES ($1, $2, 'Colaboradora Demonstração', 'colaboradora@prejuzero.local', now())
+     ON CONFLICT (id) DO NOTHING`,
+    [USUARIO_COLABORADORA, TENANT_DEMONSTRACAO],
+  );
+  await cliente.query(
+    `INSERT INTO usuario_perfil (tenant_id, usuario_id, perfil) VALUES ($1, $2, 'colaborador')
+     ON CONFLICT DO NOTHING`,
+    [TENANT_DEMONSTRACAO, USUARIO_COLABORADORA],
+  );
+  await cliente.query('UPDATE usuario SET senha_hash = $2 WHERE id = $1 AND senha_hash IS NULL', [
+    USUARIO_COLABORADORA,
     await hashArgon2id(SENHA),
   ]);
   await cliente.query(

@@ -9,6 +9,7 @@ export {
 } from './application/relatorios.js';
 export type {
   ArquivoGerado,
+  HistoricoVisivel,
   PedidoDeArquivo,
   RelatorioListado,
   ResultadoDaGeracao,

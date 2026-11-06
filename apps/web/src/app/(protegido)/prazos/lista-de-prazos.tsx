@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
-import { useBuscaDePrazos, usePrazos } from '../../../api/hooks';
+import { useBuscaDePrazos, usePrazos, useResponsaveis } from '../../../api/hooks';
 import { STATUS_DO_PRAZO } from '../../../api/prazos';
 import { campos } from '../../../filtro-global';
 import { formatarDataCivil } from '../../../i18n/formatar';
@@ -45,6 +45,12 @@ export function ListaDePrazos({ status: inicial, recorte: doCard }: Props) {
   const [aba, setAba] = useState<StatusDoPrazo>(inicial ?? 'a-confirmar');
   const [recorte, setRecorte] = useState(doCard);
   const filtro = useFiltroGlobal();
+  // Nome de quem responde por cada prazo (HU41, RF80): o titular acompanha a ciência da equipe.
+  const responsaveis = useResponsaveis();
+  const nomeDe = (id: string | null) =>
+    id === null
+      ? t('semResponsavel')
+      : (responsaveis.data?.itens.find((m) => m.usuarioId === id)?.nome ?? t('semResponsavel'));
   const { de, ate } = filtro;
   const daLista = campos(filtro, DO_RECORTE);
   // A aba é a busca de prazos pela situação (HU28/HU29): mesma ordem da lista, sem data por
@@ -122,6 +128,11 @@ export function ListaDePrazos({ status: inicial, recorte: doCard }: Props) {
           {row.original.jurisdicao.tribunal ?? t('colunas.processo')}
         </Link>
       ),
+    },
+    {
+      id: 'responsavel',
+      header: t('colunas.responsavel'),
+      cell: ({ row }) => nomeDe(row.original.responsavelId),
     },
     {
       id: 'ciencia',

@@ -1,4 +1,4 @@
-import { NaoEncontrado, Validacao } from '@pz/kernel';
+import { NaoEncontrado, Proibido, Validacao } from '@pz/kernel';
 import { describe, expect, it } from 'vitest';
 
 import { historicoDoPrazo } from '../prazos/historico.js';
@@ -14,9 +14,16 @@ const TENANT = '01a10e00-0000-7000-8000-0000000a0001' as Uuid;
 const PRAZO = '01a10e00-0000-7000-8000-0000000a0002' as Uuid;
 const NOTIFICACAO = '01a10e00-0000-7000-8000-0000000a0003' as Uuid;
 const USUARIO = '01a10e00-0000-7000-8000-0000000a0004';
-const requisicao = {
-  autenticacao: { sessao: { usuarioId: USUARIO, tenantId: TENANT } },
-} as unknown as RequisicaoAutenticada;
+const OUTRO_PRAZO = '01a10e00-0000-7000-8000-0000000a0005' as Uuid;
+const leitor = (permissoes: string[]) =>
+  ({
+    autenticacao: {
+      sessao: { usuarioId: USUARIO, tenantId: TENANT },
+      permissoes: new Set(permissoes),
+    },
+  }) as unknown as RequisicaoAutenticada;
+// Responsável pelo PRAZO (vê o histórico dele sem ser administrador).
+const requisicao = leitor(['prazos:ler']);
 const evento = (sequencia: number, usuarioId: string | null): EventoDoHistorico => ({
   sequencia,
   tipo: 'prazos.prazo-confirmado',
@@ -34,7 +41,14 @@ const evento = (sequencia: number, usuarioId: string | null): EventoDoHistorico 
 describe('histórico do prazo (HU35)', () => {
   const alvosPedidos: unknown[] = [];
   const historico = historicoDoPrazo({
-    prazoExiste: (id) => Promise.resolve(id === PRAZO),
+    responsavelDoPrazo: (id) =>
+      Promise.resolve(
+        id === PRAZO
+          ? { responsavelId: USUARIO }
+          : id === OUTRO_PRAZO
+            ? { responsavelId: 'outro' }
+            : undefined,
+      ),
     notificacoesDoPrazo: () => Promise.resolve([NOTIFICACAO]),
     eventos: (_tenant, alvos) => {
       alvosPedidos.push(alvos);
@@ -74,6 +88,16 @@ describe('histórico do prazo (HU35)', () => {
     ).rejects.toThrow(NaoEncontrado);
     // O id é validado antes de chegar ao módulo (erro síncrono).
     expect(() => controller.consultarHistoricoDoPrazo(requisicao, 'x')).toThrow(Validacao);
+  });
+
+  it('escopo (HU41, RF88): prazo de outro só para o administrador do escritório', async () => {
+    await expect(controller.consultarHistoricoDoPrazo(requisicao, OUTRO_PRAZO)).rejects.toThrow(
+      Proibido,
+    );
+    const admin = leitor(['prazos:ler', 'usuarios:gerir']);
+    await expect(controller.consultarHistoricoDoPrazo(admin, OUTRO_PRAZO)).resolves.toMatchObject({
+      itens: expect.any(Array) as unknown,
+    });
   });
 
   it('verificação pública devolve o resultado do módulo', async () => {

@@ -194,3 +194,20 @@ export class VerificarHistorico<Transacao> {
     );
   }
 }
+
+/** Quem consulta o histórico: o usuário e se ele vê o de todos (administrador do escritório). */
+export interface LeitorDoHistorico {
+  readonly usuarioId: string;
+  readonly veTodos: boolean;
+}
+
+/**
+ * Escopo do histórico do prazo (HU41, RF88): o administrador do escritório vê o de todos; os
+ * demais, só o dos prazos sob a responsabilidade deles. Prazo sem responsável: só o administrador.
+ */
+export function podeVerHistoricoDoPrazo(
+  leitor: LeitorDoHistorico,
+  responsavelId: string | null,
+): boolean {
+  return leitor.veTodos || (responsavelId !== null && responsavelId === leitor.usuarioId);
+}

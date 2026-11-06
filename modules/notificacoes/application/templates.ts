@@ -129,6 +129,41 @@ export const TEMPLATES = {
       texto: `Um prazo vence em ${d.vencimento}. Confira no PrejuZero.`,
     }),
   }),
+  /** Escalonamento (HU41, RF79): a véspera útil sem ciência avisa os administradores. */
+  'escalonamento-prazo': definir({
+    versao: 1,
+    dados: z
+      .object({
+        numeroProcesso: NumeroDoProcesso,
+        vencimento: Data,
+        responsavel: z.string().min(1).max(200),
+        link: LinkDoPortal,
+      })
+      .strict(),
+    email: (d) => ({
+      assunto: `Sem ciência: prazo do processo ${d.numeroProcesso} vence em ${d.vencimento}`,
+      titulo: 'Prazo sem ciência',
+      previa: `O prazo vence em ${d.vencimento} e ainda está sem ciência.`,
+      corpo: [
+        paragrafo(
+          'O prazo do processo ',
+          destaque(d.numeroProcesso),
+          ' vence em ',
+          destaque(d.vencimento),
+          ' e o responsável, ',
+          destaque(d.responsavel),
+          ', ainda não confirmou a ciência.',
+        ),
+        paragrafo('Você recebe este aviso como administrador do escritório.'),
+      ],
+      acoes: acoes(d.link),
+      link: d.link,
+    }),
+    minimo: (d) => ({
+      assunto: 'Prazo sem ciência',
+      texto: `Um prazo vence em ${d.vencimento} e ainda está sem ciência. Confira no PrejuZero.`,
+    }),
+  }),
   'resumo-diario': definir({
     // v2 (HU31): vencem hoje, próximos 7 dias, sem ciência e intimações novas.
     versao: 2,

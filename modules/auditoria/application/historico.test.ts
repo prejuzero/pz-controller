@@ -5,7 +5,12 @@ import { describe, expect, it } from 'vitest';
 
 import { calcularHash, HASH_GENESE } from '../domain/cadeia.js';
 
-import { ConsultarHistorico, EmitirHistoricoVerificavel, VerificarHistorico } from './historico.js';
+import {
+  ConsultarHistorico,
+  EmitirHistoricoVerificavel,
+  podeVerHistoricoDoPrazo,
+  VerificarHistorico,
+} from './historico.js';
 
 import type { RepositorioDoHistorico, Verificacao } from './historico.js';
 import type { RegistroEncadeado } from '../domain/cadeia.js';
@@ -132,5 +137,17 @@ describe('histórico do prazo (HU35)', () => {
       situacao: 'divergente',
       motivo: 'registro ausente na trilha',
     });
+  });
+});
+
+describe('escopo do histórico do prazo (HU41, RF88)', () => {
+  it('administrador vê todos; os demais, só os seus; sem responsável, só o administrador', () => {
+    const admin = { usuarioId: 'a', veTodos: true };
+    const ana = { usuarioId: 'ana', veTodos: false };
+    expect(podeVerHistoricoDoPrazo(admin, 'outro')).toBe(true);
+    expect(podeVerHistoricoDoPrazo(admin, null)).toBe(true);
+    expect(podeVerHistoricoDoPrazo(ana, 'ana')).toBe(true);
+    expect(podeVerHistoricoDoPrazo(ana, 'outro')).toBe(false);
+    expect(podeVerHistoricoDoPrazo(ana, null)).toBe(false);
   });
 });

@@ -14,6 +14,7 @@ export const TIPOS_DE_NOTIFICACAO = [
   'fonte-degradada',
   'fonte-restabelecida',
   'conferencia-painel',
+  'escalonamento-prazo',
 ] as const;
 export type TipoDeNotificacao = (typeof TIPOS_DE_NOTIFICACAO)[number];
 export type Canal = (typeof CANAIS)[number];
