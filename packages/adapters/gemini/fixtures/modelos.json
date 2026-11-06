@@ -1,0 +1,5 @@
+{
+  "models": [
+    { "name": "models/gemini-3.5-flash", "supportedGenerationMethods": ["generateContent"] }
+  ]
+}

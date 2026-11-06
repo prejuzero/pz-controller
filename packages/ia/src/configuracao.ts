@@ -74,3 +74,25 @@ export type ConfiguracaoDaTarefa = z.infer<typeof Tarefa>;
 export function lerConfiguracaoDasTarefas(bruta: unknown): ConfiguracaoDasTarefas {
   return ConfiguracaoDasTarefas.parse(bruta);
 }
+
+/**
+ * Mesma configuração, com todas as tarefas num único provedor e modelo (ADR-022): o provedor
+ * alternativo da validação local. O arquivo versionado não muda; o preço entra na tabela para o
+ * custo do painel não ficar sem estimativa.
+ */
+export function comProvedorAlternativo(
+  base: ConfiguracaoDasTarefas,
+  alternativo: { provedor: string; modelo: string; preco: PrecoDoModelo; fonteDoPreco: string },
+): ConfiguracaoDasTarefas {
+  return lerConfiguracaoDasTarefas({
+    ...base,
+    fonteDosPrecos: `${base.fonteDosPrecos}; ${alternativo.fonteDoPreco}`,
+    precos: { ...base.precos, [alternativo.modelo]: alternativo.preco },
+    tarefas: Object.fromEntries(
+      Object.entries(base.tarefas).map(([nome, tarefa]) => [
+        nome,
+        { ...tarefa, modelos: [{ provedor: alternativo.provedor, modelo: alternativo.modelo }] },
+      ]),
+    ),
+  });
+}

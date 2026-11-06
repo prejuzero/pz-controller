@@ -1,0 +1,23 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          { "text": "Raciocínio FICTÍCIO omitido.", "thought": true },
+          { "text": "{\"tipoAto\":\"contestacao\",\"confianca\":0.93}" }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 380,
+    "candidatesTokenCount": 14,
+    "thoughtsTokenCount": 92,
+    "totalTokenCount": 486
+  },
+  "modelVersion": "gemini-3.6-flash",
+  "responseId": "resposta-ficticia"
+}

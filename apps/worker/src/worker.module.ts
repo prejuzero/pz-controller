@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { DiscoveryModule } from '@nestjs/core';
 import { DESCRITOR_ANTHROPIC, ProvedorIaAnthropic } from '@pz/adapter-anthropic';
 import { DESCRITOR_DJEN, FontePublicacoesDjen } from '@pz/adapter-djen';
+import { DESCRITOR_GEMINI, ProvedorIaGemini } from '@pz/adapter-gemini';
 import { ArmazenamentoS3 } from '@pz/adapter-s3';
 import { criarProvedorEmailSes, DESCRITOR_SES, WebhooksSes } from '@pz/adapter-ses';
 import { DESCRITOR_SMTP, ProvedorEmailSmtp } from '@pz/adapter-smtp';
@@ -60,7 +61,7 @@ import {
   TaxonomiaPostgres,
 } from '@pz/classificacao';
 import { Banco, BancoSistema, executarNoTenant, OutboxPostgres } from '@pz/db';
-import { configuracaoPadrao, PlataformaIa, promptsPadrao } from '@pz/ia';
+import { comProvedorAlternativo, configuracaoPadrao, PlataformaIa, promptsPadrao } from '@pz/ia';
 import {
   EmailsDosUsuariosPostgres,
   EnviarAvisosDeSeguranca,
@@ -382,8 +383,67 @@ function fonteDoAmbiente(
 }
 
 /**
+ * Provedor de IA do ambiente: Anthropic (padrão do produto) ou, só na validação local com dados
+ * fictícios, o Gemini (ADR-022). Nenhum dos dois: `undefined` e a IA fica desligada.
+ */
+export function provedorIaDoAmbiente(
+  ambiente: Pick<
+    AmbienteWorker,
+    'ANTHROPIC_API_KEY' | 'GEMINI_API_KEY' | 'GEMINI_MODELO' | 'IA_DADOS_FICTICIOS'
+  >,
+):
+  | { tipo: 'anthropic'; chave: string }
+  | { tipo: 'gemini'; chave: string; modelo: string }
+  | undefined {
+  if (ambiente.ANTHROPIC_API_KEY !== undefined) {
+    return { tipo: 'anthropic', chave: ambiente.ANTHROPIC_API_KEY };
+  }
+  if (ambiente.GEMINI_API_KEY === undefined) {
+    logger.warn('sem chave de IA: classificação por IA desligada (só regras rápidas)');
+    return undefined;
+  }
+  if (ambiente.IA_DADOS_FICTICIOS !== 'sim') {
+    // Plano gratuito pode treinar com o conteúdo: sem a declaração, não liga (CLAUDE.md, 11).
+    logger.warn(
+      'GEMINI_API_KEY sem IA_DADOS_FICTICIOS=sim: Gemini não ligado (só com dados fictícios)',
+    );
+    return undefined;
+  }
+  logger.warn(
+    { modelo: ambiente.GEMINI_MODELO },
+    'IA pelo Gemini (ADR-022): só para validação local com dados fictícios',
+  );
+  return { tipo: 'gemini', chave: ambiente.GEMINI_API_KEY, modelo: ambiente.GEMINI_MODELO };
+}
+
+/** Adaptador e configuração das tarefas do provedor escolhido (ADR-022 no caso do Gemini). */
+export function planoDeIa(
+  escolhido: NonNullable<ReturnType<typeof provedorIaDoAmbiente>>,
+  relogio: Clock,
+) {
+  if (escolhido.tipo === 'anthropic') {
+    return {
+      descritor: DESCRITOR_ANTHROPIC,
+      criar: () => new ProvedorIaAnthropic({ chave: escolhido.chave }, relogio),
+      configuracao: configuracaoPadrao(),
+    };
+  }
+  return {
+    descritor: DESCRITOR_GEMINI,
+    criar: () => new ProvedorIaGemini({ chave: escolhido.chave }, relogio),
+    configuracao: comProvedorAlternativo(configuracaoPadrao(), {
+      provedor: DESCRITOR_GEMINI.id,
+      modelo: escolhido.modelo,
+      // Chave gratuita e limitada: sem custo; o orçamento de tokens continua valendo.
+      preco: { entrada: 0, saida: 0, cacheLido: 0 },
+      fonteDoPreco: 'Gemini: chave gratuita da validação local (ADR-022)',
+    }),
+  };
+}
+
+/**
  * Classificador por IA (HU21) pela plataforma de IA (ADR-016) e pelo registro de adaptadores
- * (ADR-005). Sem ANTHROPIC_API_KEY, desligado: as publicações sem regra ficam "a confirmar".
+ * (ADR-005). Sem provedor configurado, desligado: as publicações sem regra ficam "a confirmar".
  */
 function iaDoAmbiente(
   ambiente: AmbienteWorker,
@@ -392,21 +452,19 @@ function iaDoAmbiente(
   relogio: Clock,
   registros: RegistroDeAdaptadores[],
 ): ClassificadorIa | undefined {
-  const chave = ambiente.ANTHROPIC_API_KEY;
-  if (chave === undefined) {
-    logger.warn('ANTHROPIC_API_KEY ausente: classificação por IA desligada (só regras rápidas)');
-    return undefined;
-  }
+  const escolhido = provedorIaDoAmbiente(ambiente);
+  if (escolhido === undefined) return undefined;
+  const { descritor, criar, configuracao } = planoDeIa(escolhido, relogio);
   const registro = new RegistroDeAdaptadores(
-    { padrao: { 'provedor-ia': DESCRITOR_ANTHROPIC.id } },
+    { padrao: { 'provedor-ia': descritor.id } },
     { relogio },
   );
-  registro.registrar(DESCRITOR_ANTHROPIC, () => new ProvedorIaAnthropic({ chave }, relogio));
+  registro.registrar(descritor, criar);
   registro.validar();
   registros.push(registro);
   const plataforma = new PlataformaIa(
-    configuracaoPadrao(),
-    new Map([[DESCRITOR_ANTHROPIC.id, registro.obter('provedor-ia')]]),
+    configuracao,
+    new Map([[descritor.id, registro.obter('provedor-ia')]]),
     {
       // No Redis: compartilhado entre workers e preservado no reinício.
       contador: new ContadorDeUsoDeIaRedis(redis),
