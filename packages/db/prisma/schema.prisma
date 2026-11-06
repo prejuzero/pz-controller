@@ -54,6 +54,8 @@ model Tenant {
   acessos                Acesso[]
   dispositivos           SessaoDispositivo[]
   clientesOauth          ClienteOauth[]
+  assinaturasWebhook     AssinaturaWebhook[]
+  entregasWebhook        EntregaWebhook[]
   perfis                 UsuarioPerfil[]
   auditoria              EventoAuditoria[]
   verificacao            AuditoriaVerificacao?
@@ -240,6 +242,51 @@ model ClienteOauth {
 
   @@index([tenantId])
   @@map("cliente_oauth")
+}
+
+/// Assinatura de webhook de saída (HU49): eventos públicos para o endereço do escritório.
+model AssinaturaWebhook {
+  id             String    @id @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  url            String
+  descricao      String
+  eventos        String[]
+  segredoCifrado String    @map("segredo_cifrado")
+  criadoPor      String    @map("criado_por") @db.Uuid
+  desativadaEm   DateTime? @map("desativada_em") @db.Timestamptz(6)
+  criadoEm       DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm   DateTime  @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  entregas EntregaWebhook[]
+
+  @@unique([tenantId, id])
+  @@map("assinatura_webhook")
+}
+
+/// Entrega de um evento a uma assinatura (HU49): uma por (assinatura, evento).
+model EntregaWebhook {
+  id           String    @id @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  assinaturaId String    @map("assinatura_id") @db.Uuid
+  eventoId     String    @map("evento_id") @db.Uuid
+  tipo         String
+  ocorridoEm   DateTime  @map("ocorrido_em") @db.Timestamptz(6)
+  dados        Json
+  situacao     String    @default("pendente")
+  tentativas   Int       @default(0)
+  ultimoStatus Int?      @map("ultimo_status")
+  ultimoErro   String?   @map("ultimo_erro")
+  entregueEm   DateTime? @map("entregue_em") @db.Timestamptz(6)
+  criadoEm     DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime  @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  tenant     Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  assinatura AssinaturaWebhook @relation(fields: [tenantId, assinaturaId], references: [tenantId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([assinaturaId, eventoId])
+  @@index([tenantId, criadoEm(sort: Desc)])
+  @@map("entrega_webhook")
 }
 
 /// Trilha de auditoria imutável (HU08, ADR-006): só INSERT, cadeia SHA-256 por tenant.

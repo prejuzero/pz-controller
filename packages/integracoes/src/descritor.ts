@@ -7,6 +7,7 @@ export const NOMES_PORTAS = [
   'provedor-email',
   'provedor-ia',
   'armazenamento-arquivos',
+  'entregador-webhook',
 ] as const;
 export const NomePorta = z.enum(NOMES_PORTAS);
 export type NomePorta = z.infer<typeof NomePorta>;

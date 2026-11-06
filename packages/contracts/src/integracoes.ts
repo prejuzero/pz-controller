@@ -118,10 +118,169 @@ export const revogarClienteDeIntegracao = definirRota({
   erros: [404],
 });
 
+/**
+ * Corpo de todo webhook de saída (ADR-023). Só identificadores em `dados`; o integrador consulta
+ * o resto pela API. Assinatura em `PrejuZero-Assinatura: t=<segundos>,v1=<HMAC-SHA256 hex de
+ * "t.corpo">`; `PrejuZero-Evento-Id` repete `id` para deduplicar.
+ */
+export const CorpoDoWebhook = nomear(
+  'CorpoDoWebhook',
+  z.object({
+    id: z.uuid(),
+    tipo: z.string(),
+    versao: z.literal(1),
+    ocorridoEm: z.iso.datetime(),
+    dados: z.record(z.string(), z.string().nullable()),
+  }),
+);
+export type CorpoDoWebhook = z.infer<typeof CorpoDoWebhook.esquema>;
+
+export const EventosDeWebhook = nomear(
+  'EventosDeWebhook',
+  z.object({ itens: z.array(z.object({ tipo: z.string(), descricao: z.string() })) }),
+);
+export type EventosDeWebhook = z.infer<typeof EventosDeWebhook.esquema>;
+
+const AssinaturaDeWebhookBase = z.object({
+  id: z.uuid(),
+  url: z.string(),
+  descricao: z.string(),
+  eventos: z.array(z.string()),
+  criadoEm: z.iso.datetime(),
+  desativadaEm: z.iso.datetime().nullable(),
+});
+
+export const AssinaturasDeWebhook = nomear(
+  'AssinaturasDeWebhook',
+  z.object({ itens: z.array(AssinaturaDeWebhookBase) }),
+);
+export type AssinaturasDeWebhook = z.infer<typeof AssinaturasDeWebhook.esquema>;
+
+export const PedidoDeAssinaturaDeWebhook = nomear(
+  'PedidoDeAssinaturaDeWebhook',
+  z.object({
+    url: z.string().min(1).max(2000).describe('HTTPS (HTTP só no ambiente local).'),
+    descricao: z.string().trim().min(1).max(100),
+    eventos: z.array(z.string().max(64)).min(1).max(20),
+  }),
+);
+
+export const AssinaturaDeWebhookCriada = nomear(
+  'AssinaturaDeWebhookCriada',
+  z.object({
+    assinatura: AssinaturaDeWebhookBase,
+    segredo: z.string().describe('Segredo do HMAC: mostrado só agora; guarde em local seguro.'),
+  }),
+);
+export type AssinaturaDeWebhookCriada = z.infer<typeof AssinaturaDeWebhookCriada.esquema>;
+
+const EntregaDeWebhookBase = z.object({
+  id: z.uuid(),
+  assinaturaId: z.uuid(),
+  eventoId: z.uuid(),
+  tipo: z.string(),
+  situacao: z.enum(['pendente', 'entregue', 'falhou']),
+  tentativas: z.int().nonnegative(),
+  ultimoStatus: z.int().nullable(),
+  ultimoErro: z.string().nullable(),
+  criadoEm: z.iso.datetime(),
+  entregueEm: z.iso.datetime().nullable(),
+});
+
+export const EntregaDeWebhook = nomear('EntregaDeWebhook', EntregaDeWebhookBase);
+export type EntregaDeWebhook = z.infer<typeof EntregaDeWebhook.esquema>;
+
+export const EntregasDeWebhook = nomear(
+  'EntregasDeWebhook',
+  z.object({ itens: z.array(EntregaDeWebhookBase) }),
+);
+export type EntregasDeWebhook = z.infer<typeof EntregasDeWebhook.esquema>;
+
+export const listarEventosDeWebhook = definirRota({
+  id: 'listarEventosDeWebhook',
+  metodo: 'get',
+  caminho: '/v1/integracoes/webhooks/eventos',
+  resumo: 'Eventos que um webhook pode assinar.',
+  tag: 'integracoes',
+  resposta: { status: 200, corpo: EventosDeWebhook },
+});
+
+export const listarAssinaturasDeWebhook = definirRota({
+  id: 'listarAssinaturasDeWebhook',
+  metodo: 'get',
+  caminho: '/v1/integracoes/webhooks',
+  resumo: 'Webhooks de saída do escritório.',
+  tag: 'integracoes',
+  resposta: { status: 200, corpo: AssinaturasDeWebhook },
+});
+
+export const registrarAssinaturaDeWebhook = definirRota({
+  id: 'registrarAssinaturaDeWebhook',
+  metodo: 'post',
+  caminho: '/v1/integracoes/webhooks',
+  resumo: 'Registra um webhook de saída e devolve o segredo do HMAC uma única vez.',
+  tag: 'integracoes',
+  corpo: PedidoDeAssinaturaDeWebhook,
+  resposta: { status: 201, corpo: AssinaturaDeWebhookCriada },
+});
+
+export const desativarAssinaturaDeWebhook = definirRota({
+  id: 'desativarAssinaturaDeWebhook',
+  metodo: 'delete',
+  caminho: '/v1/integracoes/webhooks/{id}',
+  resumo: 'Desativa o webhook: novos eventos deixam de ser enviados.',
+  tag: 'integracoes',
+  parametrosDeCaminho: z.object({ id: z.uuid() }),
+  resposta: { status: 204, corpo: null },
+  erros: [404],
+});
+
+export const testarAssinaturaDeWebhook = definirRota({
+  id: 'testarAssinaturaDeWebhook',
+  metodo: 'post',
+  caminho: '/v1/integracoes/webhooks/{id}/testar',
+  resumo: 'Envia um evento `webhook.teste` ao endereço do webhook.',
+  tag: 'integracoes',
+  parametrosDeCaminho: z.object({ id: z.uuid() }),
+  resposta: { status: 202, corpo: EntregaDeWebhook },
+  erros: [404, 409],
+});
+
+export const listarEntregasDeWebhook = definirRota({
+  id: 'listarEntregasDeWebhook',
+  metodo: 'get',
+  caminho: '/v1/integracoes/webhooks/entregas',
+  resumo: 'Entregas recentes (inclui as que falharam), mais novas primeiro.',
+  tag: 'integracoes',
+  consulta: z.object({
+    assinaturaId: z.uuid().optional(),
+    limite: z.coerce.number().int().min(1).max(200).optional(),
+  }),
+  resposta: { status: 200, corpo: EntregasDeWebhook },
+});
+
+export const reenviarEntregaDeWebhook = definirRota({
+  id: 'reenviarEntregaDeWebhook',
+  metodo: 'post',
+  caminho: '/v1/integracoes/webhooks/entregas/{id}/reenviar',
+  resumo: 'Reenvia uma entrega que falhou.',
+  tag: 'integracoes',
+  parametrosDeCaminho: z.object({ id: z.uuid() }),
+  resposta: { status: 204, corpo: null },
+  erros: [404, 409],
+});
+
 export const ROTAS_INTEGRACOES = [
   emitirTokenOAuth,
   listarEscoposDeIntegracao,
   listarClientesDeIntegracao,
   registrarClienteDeIntegracao,
   revogarClienteDeIntegracao,
+  listarEventosDeWebhook,
+  listarAssinaturasDeWebhook,
+  registrarAssinaturaDeWebhook,
+  desativarAssinaturaDeWebhook,
+  testarAssinaturaDeWebhook,
+  listarEntregasDeWebhook,
+  reenviarEntregaDeWebhook,
 ] as const;

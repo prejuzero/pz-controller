@@ -26,6 +26,7 @@ import {
 } from '@pz/prazos';
 import { AplicarRetencao, EfetivarEncerramentos } from '@pz/privacidade';
 import { GerarRelatorio, RemoverArquivosExpirados } from '@pz/relatorios';
+import { EntregarWebhook } from '@pz/webhooks';
 
 import { recifrarCamposJob } from '../cadastro/jobs.js';
 import {
@@ -68,6 +69,7 @@ import {
   efetivarEncerramentosJob,
 } from '../privacidade/jobs.js';
 import { gerarRelatorioJob, removerArquivosExpiradosJob } from '../relatorios/jobs.js';
+import { entregarWebhookJob } from '../webhooks/jobs.js';
 
 import {
   AGENDAMENTOS,
@@ -131,6 +133,7 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     @Inject(RemoverArquivosExpirados)
     private readonly expirados: RemoverArquivosExpirados<unknown>,
     @Inject(RemoverAnexosAntigos) private readonly anexos: RemoverAnexosAntigos<unknown>,
+    @Inject(EntregarWebhook) private readonly webhooks: EntregarWebhook<unknown>,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -237,6 +240,20 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     this.filas.registrar(removerAnexosAntigosJob, async () => {
       logger.info(await this.anexos.executar(), 'anexos antigos dos envios removidos');
     });
+    // Webhooks de saída (HU49): a falha passageira lança e a fila tenta de novo; esgotada, a
+    // entrega vira falha na tela (reenvio manual).
+    this.filas.registrar(
+      entregarWebhookJob,
+      async ({ entregaId, tenantId }) => {
+        const desfecho = await this.webhooks.executar(entregaId as Uuid);
+        logger.info({ entregaId, tenantId, desfecho }, 'webhook processado');
+      },
+      {
+        aoEsgotar: async ({ entregaId }, erro) => {
+          await this.webhooks.esgotar(entregaId as Uuid, erro.message);
+        },
+      },
+    );
     // Envio manual (HU32): gera o anexo e pede a notificação; falha esperada fica na trilha.
     this.filas.registrar(prepararEnvioJob, async ({ tenantId, envio }) => {
       const resultado = await this.envios.executar({

@@ -1,0 +1,27 @@
+{
+  "name": "@pz/adapter-webhook-http",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Adaptador EntregadorWebhook por HTTP(S), sem seguir redirecionamentos e sem rede interna (ADR-023).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint --max-warnings=0 .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@pz/integracoes": "workspace:*",
+    "@pz/kernel": "workspace:*"
+  },
+  "devDependencies": {
+    "@pz/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "@vitest/coverage-v8": "5.0.5",
+    "eslint": "10.13.0",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  }
+}

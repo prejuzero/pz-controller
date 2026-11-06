@@ -216,6 +216,17 @@ import {
   ListarVersoesDosDocumentos,
   PublicarDocumentoLegal,
 } from '@pz/termos';
+import {
+  AssinaturasDeWebhookPostgres,
+  CriptografiaNode,
+  DesativarAssinatura,
+  EntregasDeWebhookPostgres,
+  ListarAssinaturas,
+  ListarEntregas,
+  ReenviarEntrega,
+  RegistrarAssinatura,
+  TestarAssinatura,
+} from '@pz/webhooks';
 import { Redis } from 'ioredis';
 
 import { AdminController } from './admin/admin.controller.js';
@@ -246,6 +257,7 @@ import { GuardaDeAcesso } from './http/acesso.js';
 import { GuardaDeLimite, JanelaRedis, LimiteDoTenant } from './http/limite.js';
 import { FiltroDeProblemas } from './http/problemas.js';
 import { IntegracoesController } from './integracoes/integracoes.controller.js';
+import { WebhooksDeSaidaController } from './integracoes/webhooks-de-saida.controller.js';
 import { EnviosController } from './notificacoes/envios.controller.js';
 import { NotificacoesController } from './notificacoes/notificacoes.controller.js';
 import { recursoDoEnvioExiste } from './notificacoes/recurso-do-envio.js';
@@ -330,6 +342,7 @@ import type {
   RepositorioDeDocumentos,
   UnidadeNoTenant as UnidadeNoTenantDosTermos,
 } from '@pz/termos';
+import type { CifraDoSegredo, DependenciasDosWebhooks } from '@pz/webhooks';
 import type { Queue } from 'bullmq';
 
 export interface OpcoesApi {
@@ -367,6 +380,11 @@ export interface OpcoesApi {
   /** DLQ, banco e trilha do reprocessamento e filas do painel nos testes (sem Redis). */
   /** Calendário forense (HU13); nos testes, repositórios em memória. */
   readonly calendario?: DependenciasDoCalendario;
+  /** Testes: webhooks de saída sem banco (HU49). */
+  readonly webhooks?: Pick<
+    DependenciasDosWebhooks<unknown>,
+    'unidade' | 'assinaturas' | 'entregas' | 'trilha' | 'outbox'
+  >;
   /** Tabela de prazos (HU15); nos testes, repositórios em memória. */
   readonly tabelaDePrazos?: DependenciasDaTabelaDePrazos;
   /** Status da captura (HU19); nos testes, leitura em memória. */
@@ -1265,6 +1283,36 @@ function receptoresDoAmbiente(ambiente: AmbienteApi): ReadonlyMap<string, Recept
   return receptores;
 }
 
+/**
+ * Webhooks de saída (HU49, ADR-023): segredo do HMAC cifrado (ADR-021). Fora de produção aceita
+ * HTTP, para o receptor de teste local.
+ */
+function provedoresDosWebhooks(
+  base: NonNullable<OpcoesApi['webhooks']>,
+  cifra: CifraDoSegredo,
+  exigirHttps: boolean,
+): Provider[] {
+  const deps = (relogio: Clock): DependenciasDosWebhooks<unknown> => ({
+    ...base,
+    cifra,
+    criptografia: new CriptografiaNode(),
+    relogio,
+  });
+  const fabrica = <T>(classe: Type<T>, criar: (d: DependenciasDosWebhooks<unknown>) => T) => ({
+    provide: classe,
+    inject: [RELOGIO],
+    useFactory: (relogio: Clock) => criar(deps(relogio)),
+  });
+  return [
+    fabrica(RegistrarAssinatura, (d) => new RegistrarAssinatura(d, exigirHttps)),
+    fabrica(ListarAssinaturas, (d) => new ListarAssinaturas(d)),
+    fabrica(DesativarAssinatura, (d) => new DesativarAssinatura(d)),
+    fabrica(TestarAssinatura, (d) => new TestarAssinatura(d)),
+    fabrica(ListarEntregas, (d) => new ListarEntregas(d)),
+    fabrica(ReenviarEntrega, (d) => new ReenviarEntrega(d)),
+  ];
+}
+
 @Module({})
 export class AppModule {
   static registrar(opcoes: OpcoesApi): DynamicModule {
@@ -1376,6 +1424,17 @@ export class AppModule {
     };
     const provedores: Provider[] = [
       { provide: RecursosDaApi, useValue: recursos },
+      ...provedoresDosWebhooks(
+        opcoes.webhooks ?? {
+          unidade: recursos.banco,
+          assinaturas: new AssinaturasDeWebhookPostgres(),
+          entregas: new EntregasDeWebhookPostgres(),
+          trilha: new TrilhaPostgres(),
+          outbox: new OutboxPostgres(),
+        },
+        cifra,
+        opcoes.ambiente.NODE_ENV === 'production',
+      ),
       ...provedoresDeNotificacoes(notificacoes),
       { provide: AMBIENTE, useValue: opcoes.ambiente },
       { provide: RELOGIO, useValue: opcoes.relogio ?? new SystemClock() },
@@ -1755,6 +1814,7 @@ export class AppModule {
         OpenApiController,
         WebhooksController,
         IntegracoesController,
+        WebhooksDeSaidaController,
         ...(opcoes.controllersExtras ?? []),
       ],
       providers: provedores,

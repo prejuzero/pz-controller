@@ -5,6 +5,7 @@ import { DescritorAdaptador, NomePorta } from './descritor.js';
 import { ErroPermanente } from './erros.js';
 import { MetadadosArquivo } from './portas/armazenamento.js';
 import { EventoEntrega, ResultadoEnvio } from './portas/canal-notificacao.js';
+import { ResultadoEntregaWebhook } from './portas/entregador-webhook.js';
 import { PublicacaoCapturada } from './portas/fonte-publicacoes.js';
 import { Resiliencia } from './resiliencia.js';
 import { MonitorDeSaude } from './saude.js';
@@ -12,6 +13,7 @@ import { MonitorDeSaude } from './saude.js';
 import type { LimitadorDeTaxa } from './limitador.js';
 import type { ArmazenamentoArquivos } from './portas/armazenamento.js';
 import type { CanalNotificacao } from './portas/canal-notificacao.js';
+import type { EntregadorWebhook } from './portas/entregador-webhook.js';
 import type { FontePublicacoes } from './portas/fonte-publicacoes.js';
 import type { ProvedorEmail } from './portas/provedor-email.js';
 import type { ProvedorIA } from './portas/provedor-ia.js';
@@ -27,6 +29,7 @@ export interface MapaDePortas {
   'provedor-email': ProvedorEmail;
   'provedor-ia': ProvedorIA;
   'armazenamento-arquivos': ArmazenamentoArquivos;
+  'entregador-webhook': EntregadorWebhook;
 }
 
 interface Operacao {
@@ -60,6 +63,7 @@ const OPERACOES: Readonly<Record<NomePorta, Readonly<Record<string, Operacao>>>>
     remover: { remota: true, saida: z.undefined() },
     metadados: { remota: true, saida: MetadadosArquivo.optional() },
   },
+  'entregador-webhook': { entregar: { remota: true, saida: ResultadoEntregaWebhook } },
 };
 
 const IdAdaptador = DescritorAdaptador.shape.id;
