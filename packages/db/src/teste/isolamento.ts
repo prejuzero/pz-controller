@@ -113,7 +113,7 @@ const LINHAS_GLOBAIS: Readonly<Record<string, string>> = { perfil: 'advogado' };
  * da tabela (dados fictícios).
  */
 const COLUNAS_FIXAS: Readonly<Record<string, Record<string, unknown>>> = {
-  cliente_oauth: { escopos: ['prazos:ler'] },
+  cliente_oauth: { escopos: ['prazos:ler'], segredo_hash: 'f'.repeat(64) },
   assinatura_webhook: { eventos: ['prazo.confirmado'] },
   feriado_local: { abrangencia: 'uf', uf: 'XA' },
   advogado: {
@@ -277,6 +277,7 @@ export const TABELAS_SEM_DELETE: readonly string[] = [
   'cliente_oauth',
   'assinatura_webhook',
   'entrega_webhook',
+  'convite_membro',
   'compromisso',
   'lembrete_agendado',
   'token_ciencia',

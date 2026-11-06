@@ -11,6 +11,7 @@ import { consultasCadastro, mutacoesCadastro } from './cadastro';
 import { consultasCalendario, mutacoesCalendario } from './calendario';
 import { consultasCaptura } from './captura';
 import { mutacoesCiencia } from './ciencia';
+import { consultasEquipe, mutacoesEquipe } from './equipe';
 import { consultasHistorico } from './historico';
 import {
   consultasIntegracoes,
@@ -267,3 +268,16 @@ export const useRegistrarWebhook = () => useMutation(useMutacoesIntegracoes().re
 export const useDesativarWebhook = () => useMutation(useMutacoesIntegracoes().desativarWebhook);
 export const useTestarWebhook = () => useMutation(useMutacoesIntegracoes().testarWebhook);
 export const useReenviarEntrega = () => useMutation(useMutacoesIntegracoes().reenviarEntrega);
+
+function useMutacoesEquipe() {
+  return mutacoesEquipe(useApi(), useQueryClient());
+}
+
+// Equipe do escritório (HU41).
+export const useMembrosDaEquipe = () => useQuery(consultasEquipe(useApi()).equipe());
+export const useConvidarMembro = () => useMutation(useMutacoesEquipe().convidar);
+export const useCancelarConvite = () => useMutation(useMutacoesEquipe().cancelarConvite);
+export const useAlterarPerfis = () => useMutation(useMutacoesEquipe().alterarPerfis);
+export const useDesativarMembro = () => useMutation(useMutacoesEquipe().desativar);
+export const useDescreverConvite = () => useMutation(useMutacoesEquipe().descreverConvite);
+export const useAceitarConvite = () => useMutation(useMutacoesEquipe().aceitarConvite);

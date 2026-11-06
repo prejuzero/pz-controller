@@ -65,7 +65,9 @@ import { Banco, BancoSistema, executarNoTenant, OutboxPostgres } from '@pz/db';
 import { comProvedorAlternativo, configuracaoPadrao, PlataformaIa, promptsPadrao } from '@pz/ia';
 import {
   EmailsDosUsuariosPostgres,
+  DadosDosConvitesPostgres,
   EnviarAvisosDeSeguranca,
+  EnviarConvite,
   ExportacaoDaIdentidadePostgres,
   NomesDosUsuariosPostgres,
   RecifrarSegredosDoSegundoFator,
@@ -1169,6 +1171,18 @@ export class WorkerModule {
           new EnviarAvisosDeSeguranca(
             emailUnico(relogio),
             new EmailsDosUsuariosPostgres(),
+            new CifraVersionada(chaves, ambiente.CHAVE_CIFRAGEM),
+            ambiente.PORTAL_URL,
+          ),
+      },
+      {
+        // Convite da equipe (HU41): o link com o token vai pelo mesmo provedor de e-mail.
+        provide: EnviarConvite,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new EnviarConvite(
+            emailUnico(relogio),
+            new DadosDosConvitesPostgres(),
             new CifraVersionada(chaves, ambiente.CHAVE_CIFRAGEM),
             ambiente.PORTAL_URL,
           ),

@@ -12,6 +12,12 @@ import type {
   ClienteOAuth,
   RepositorioDeClientesOAuth,
 } from '../application/clientes-oauth.js';
+import type {
+  Convite,
+  ConviteLocalizado,
+  Membro,
+  RepositorioDaEquipe,
+} from '../application/equipe.js';
 import type { RepositorioDeTenants } from '../application/impersonacao.js';
 import type {
   ArmazemDeRenovacoes,
@@ -432,5 +438,115 @@ export class CodigosEmMemoria implements ArmazemDeCodigos {
     const dados = this.#codigos.get(codigo);
     this.#codigos.delete(codigo);
     return Promise.resolve(dados);
+  }
+}
+
+/** Equipe em memória (HU41), para testes das apps; guarda o token do convite como hash. */
+export class EquipeEmMemoria implements RepositorioDaEquipe<unknown> {
+  readonly membrosPorId = new Map<Uuid, Membro>();
+  readonly #convites = new Map<
+    Uuid,
+    { convite: Convite; hash: string; aceito: boolean; cancelado: boolean }
+  >();
+  tenantsSuspensos = new Set<string>();
+  /** Sincroniza com as credenciais (e-mail único) quando presente. */
+  constructor(private readonly credenciais?: CredenciaisEmMemoria) {}
+
+  incluir(membro: Membro): void {
+    this.membrosPorId.set(membro.usuarioId, membro);
+  }
+
+  membros(): Promise<Membro[]> {
+    return Promise.resolve([...this.membrosPorId.values()]);
+  }
+
+  convitesAbertos(_tx: unknown, agora: Instant): Promise<Convite[]> {
+    return Promise.resolve(
+      [...this.#convites.values()]
+        .filter((c) => !c.aceito && !c.cancelado && agora.ehAntesDe(c.convite.expiraEm))
+        .map((c) => c.convite),
+    );
+  }
+
+  inserirConvite(_tx: unknown, convite: Convite, token: string): Promise<boolean> {
+    const aberto = [...this.#convites.values()].some(
+      (c) =>
+        !c.aceito &&
+        !c.cancelado &&
+        c.convite.email === convite.email &&
+        convite.criadoEm.ehAntesDe(c.convite.expiraEm),
+    );
+    if (aberto) return Promise.resolve(false);
+    this.#convites.set(convite.id, {
+      convite,
+      hash: hashDoToken(token),
+      aceito: false,
+      cancelado: false,
+    });
+    return Promise.resolve(true);
+  }
+
+  cancelarConvite(_tx: unknown, id: Uuid): Promise<boolean> {
+    const c = this.#convites.get(id);
+    if (c === undefined || c.aceito || c.cancelado) return Promise.resolve(false);
+    this.#convites.set(id, { ...c, cancelado: true });
+    return Promise.resolve(true);
+  }
+
+  localizarConvite(token: string): Promise<ConviteLocalizado | undefined> {
+    const hash = hashDoToken(token);
+    const c = [...this.#convites.values()].find((x) => x.hash === hash);
+    return Promise.resolve(
+      c === undefined
+        ? undefined
+        : {
+            id: c.convite.id,
+            tenantId: c.convite.tenantId,
+            email: c.convite.email,
+            nome: c.convite.nome,
+            perfil: c.convite.perfil,
+            expiraEm: c.convite.expiraEm,
+            aberto: !c.aceito && !c.cancelado,
+            tenantSuspenso: this.tenantsSuspensos.has(c.convite.tenantId),
+          },
+    );
+  }
+
+  aceitar(
+    _tx: unknown,
+    convite: ConviteLocalizado,
+    usuario: { readonly id: Uuid; readonly senhaHash: string },
+    agora: Instant,
+  ): Promise<void> {
+    const c = this.#convites.get(convite.id);
+    if (c !== undefined) this.#convites.set(convite.id, { ...c, aceito: true });
+    this.incluir({
+      usuarioId: usuario.id,
+      nome: convite.nome,
+      email: convite.email,
+      perfis: [convite.perfil],
+      criadoEm: agora,
+      desativadoEm: null,
+    });
+    this.credenciais?.cadastrar(convite.email as Email, {
+      usuarioId: usuario.id,
+      tenantId: convite.tenantId,
+      senhaHash: usuario.senhaHash,
+      segundoFatorAtivo: false,
+    });
+    return Promise.resolve();
+  }
+
+  definirPerfis(_tx: unknown, usuarioId: Uuid, perfis: readonly string[]): Promise<void> {
+    const m = this.membrosPorId.get(usuarioId);
+    if (m !== undefined) this.membrosPorId.set(usuarioId, { ...m, perfis });
+    return Promise.resolve();
+  }
+
+  desativar(_tx: unknown, usuarioId: Uuid, agora: Instant): Promise<boolean> {
+    const m = this.membrosPorId.get(usuarioId);
+    if (m?.desativadoEm !== null) return Promise.resolve(false);
+    this.membrosPorId.set(usuarioId, { ...m, desativadoEm: agora });
+    return Promise.resolve(true);
   }
 }

@@ -105,6 +105,7 @@ Se o calendário mudar (um feriado novo, por exemplo) ou a comarca do processo f
 - **Configurações → Feriados locais:** feriados e suspensões da sua comarca que valem para o escritório.
 - **Configurações → Segurança:** verificação em duas etapas, sessões ativas e últimos acessos.
 - **Configurações → Privacidade:** documentos aceitos, exportação dos seus dados e encerramento da conta.
+- **Configurações → Equipe:** convide advogados e colaboradores por e-mail (o link vale 7 dias), defina os perfis e desative quem saiu. Quem criou a conta é o administrador da equipe.
 - **Configurações → Integrações:** acesso de outros sistemas à API (identificador e segredo, só leitura) e webhooks, que avisam o sistema do escritório a cada evento. O segredo aparece uma única vez. Passo a passo técnico em [api-publica-para-integradores.md](api-publica-para-integradores.md).
 
 ---

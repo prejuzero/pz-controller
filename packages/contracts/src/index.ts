@@ -50,6 +50,7 @@ export {
 import { ROTAS_CALENDARIO } from './calendario/index.js';
 import { ROTAS_CAPTURA } from './captura.js';
 import { ROTAS_CIENCIA } from './ciencia.js';
+import { ROTAS_EQUIPE } from './equipe.js';
 import { ROTAS_HISTORICO } from './historico.js';
 import { ROTAS_INTEGRACOES } from './integracoes.js';
 export {
@@ -376,6 +377,23 @@ export type { EsquemaNomeado, MetodoHttp, Rota, StatusDeErro } from './rota.js';
 export { consultarSituacao, ROTAS_SAUDE, SituacaoDaApi } from './saude/index.js';
 export { receberWebhook, ROTAS_WEBHOOKS, WebhookAceito } from './webhooks/index.js';
 export {
+  AceiteDeConvite,
+  aceitarConvite,
+  alterarPerfisDoMembro,
+  cancelarConvite,
+  consultarEquipe,
+  ConviteDeMembro,
+  ConviteDescrito,
+  convidarMembro,
+  descreverConvite,
+  desativarMembro,
+  EquipeDoEscritorio,
+  PedidoDeConvite,
+  PedidoDePerfisDoMembro,
+  ROTAS_EQUIPE,
+  TokenDoConvite,
+} from './equipe.js';
+export {
   AppOAuthCriado,
   AssinaturaDeWebhookCriada,
   AutorizacaoOAuthConcedida,
@@ -435,6 +453,7 @@ export const ROTAS = [
   ...ROTAS_SAUDE,
   ...ROTAS_WEBHOOKS,
   ...ROTAS_INTEGRACOES,
+  ...ROTAS_EQUIPE,
 ] as const;
 
 /** O documento OpenAPI 3.1 da API, gerado das rotas (é o que `openapi.json` guarda). */

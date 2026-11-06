@@ -26,8 +26,13 @@ export class ContasPostgres implements RepositorioDeContas<Transacao> {
       skipDuplicates: true,
     });
     if (count === 0) return false;
-    await tx.usuarioPerfil.create({
-      data: { tenantId: conta.tenantId, usuarioId: conta.usuarioId, perfil: 'advogado' },
+    // Quem cria a conta é o titular: advoga e administra a equipe (HU41, decisão de 06/11/2026).
+    await tx.usuarioPerfil.createMany({
+      data: (['advogado', 'admin_escritorio'] as const).map((perfil) => ({
+        tenantId: conta.tenantId,
+        usuarioId: conta.usuarioId,
+        perfil,
+      })),
     });
     return true;
   }

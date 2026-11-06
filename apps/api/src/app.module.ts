@@ -83,7 +83,15 @@ import {
   AtivarSegundoFator,
   Autenticar,
   AcessosPostgres,
+  AceitarConvite,
+  AlterarPerfisDoMembro,
   AutorizarCliente,
+  CancelarConvite,
+  ConvidarMembro,
+  DescreverConvite,
+  DesativarMembro,
+  EquipePostgres,
+  ListarEquipe,
   ClientesOAuthPostgres,
   CodigosRedis,
   desafioPkce,
@@ -248,6 +256,7 @@ import { ProcessosController } from './cadastro/processos.controller.js';
 import { CalendarioController } from './calendario/calendario.controller.js';
 import { CapturaController } from './captura/captura.controller.js';
 import { CienciaController } from './ciencia/ciencia.controller.js';
+import { EquipeController } from './equipe/equipe.controller.js';
 import {
   AMBIENTE,
   HISTORICO_DO_PRAZO,
@@ -313,8 +322,10 @@ import type {
   Email,
   DependenciasDaImpersonacao,
   RepositorioDeTenantsAdministrados,
-  ArmazemDeRenovacoes,
   ArmazemDeCodigos,
+  ArmazemDeRenovacoes,
+  DependenciasDaEquipe,
+  HasherDeSenha,
   RepositorioDeClientesOAuth,
   RepositorioDeDispositivos,
   ArmazemDeRedefinicoes,
@@ -373,6 +384,11 @@ export interface OpcoesApi {
     readonly dispositivos?: RepositorioDeDispositivos;
     readonly clientesOAuth?: RepositorioDeClientesOAuth;
     readonly codigosOAuth?: ArmazemDeCodigos;
+    /** Testes: equipe sem banco (HU41). */
+    readonly equipe?: Pick<
+      DependenciasDaEquipe<unknown>,
+      'unidade' | 'equipe' | 'trilha' | 'outbox'
+    >;
     readonly renovacoes?: ArmazemDeRenovacoes;
     readonly perfis?: RepositorioDePerfis;
     /** Banco, tenants e trilha da impersonação (o resto vem da composição). */
@@ -1320,6 +1336,35 @@ function provedoresDosWebhooks(
   ];
 }
 
+/** Equipe do escritório (HU41): convites, perfis e desativação. */
+function provedoresDaEquipe(
+  base: Omit<DependenciasDaEquipe<unknown>, 'relogio'>,
+  extra: {
+    hasher: HasherDeSenha;
+    sessoes: ArmazemDeSessoes;
+    dispositivos: RepositorioDeDispositivos;
+    renovacoes: ArmazemDeRenovacoes;
+  },
+): Provider[] {
+  const fabrica = <T>(classe: Type<T>, criar: (d: DependenciasDaEquipe<unknown>) => T) => ({
+    provide: classe,
+    inject: [RELOGIO],
+    useFactory: (relogio: Clock) => criar({ ...base, relogio }),
+  });
+  return [
+    fabrica(ListarEquipe, (d) => new ListarEquipe(d)),
+    fabrica(ConvidarMembro, (d) => new ConvidarMembro(d)),
+    fabrica(CancelarConvite, (d) => new CancelarConvite(d)),
+    fabrica(AlterarPerfisDoMembro, (d) => new AlterarPerfisDoMembro(d)),
+    fabrica(DescreverConvite, (d) => new DescreverConvite(d)),
+    fabrica(AceitarConvite, (d) => new AceitarConvite(d, extra.hasher, noTenantDoBanco)),
+    fabrica(
+      DesativarMembro,
+      (d) => new DesativarMembro(d, extra.sessoes, extra.dispositivos, extra.renovacoes),
+    ),
+  ];
+}
+
 @Module({})
 export class AppModule {
   static registrar(opcoes: OpcoesApi): DynamicModule {
@@ -1533,6 +1578,20 @@ export class AppModule {
             relogio,
           ),
       },
+      ...provedoresDaEquipe(
+        {
+          ...(opcoes.identidade?.equipe ?? {
+            unidade: recursos.banco,
+            equipe: new EquipePostgres(recursos.banco),
+            trilha: new TrilhaPostgres(),
+            outbox: new OutboxPostgres(),
+          }),
+          credenciais,
+          tokens,
+          cifra,
+        },
+        { hasher, sessoes, dispositivos, renovacoes },
+      ),
       {
         provide: DescreverAutorizacao,
         inject: [ConsultarPermissoes],
@@ -1866,6 +1925,7 @@ export class AppModule {
         WebhooksController,
         IntegracoesController,
         WebhooksDeSaidaController,
+        EquipeController,
         ...(opcoes.controllersExtras ?? []),
       ],
       providers: provedores,
