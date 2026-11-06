@@ -64,6 +64,7 @@ export const chaves = {
     todas: ['prazos'] as const,
     lista: (filtros: object) => [...chaves.prazos.todas, 'lista', filtros] as const,
     detalhe: (id: string) => [...chaves.prazos.todas, 'detalhe', id] as const,
+    responsaveis: () => [...chaves.prazos.todas, 'responsaveis'] as const,
   },
   /** Indicadores dos prazos: invalidados junto com `prazos.todas` (mesmo prefixo). */
   dashboard: {

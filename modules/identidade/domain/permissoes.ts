@@ -12,6 +12,10 @@ export const CATALOGO_DE_PERMISSOES = {
   'prazos:ler': { descricao: 'Consultar prazos e a memória de cálculo.', leitura: true },
   'prazos:confirmar': { descricao: 'Confirmar prazos sugeridos.', leitura: false },
   'prazos:ajustar': { descricao: 'Ajustar a data de um prazo, com justificativa.', leitura: false },
+  'prazos:distribuir': {
+    descricao: 'Delegar prazos a outros membros da equipe (HU41).',
+    leitura: false,
+  },
   'processos:ler': { descricao: 'Consultar processos e clientes.', leitura: true },
   'processos:gerir': {
     descricao: 'Cadastrar processos e clientes e marcar sigilo e cobertura.',

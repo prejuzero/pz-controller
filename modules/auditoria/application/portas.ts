@@ -32,6 +32,7 @@ export const TIPOS_DE_AUDITORIA = [
   'prazos.prazo-ajustado',
   'prazos.prazo-cumprido',
   'prazos.prazo-cancelado',
+  'prazos.prazo-delegado',
   'prazos.prazo-vencido',
   'prazos.compromisso-agendado',
   'prazos.compromisso-cancelado',

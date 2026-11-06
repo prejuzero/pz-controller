@@ -763,6 +763,24 @@ describe('perfis e permissões no PostgreSQL (HU07)', () => {
     expect(await listar(TENANT_B)).toEqual([BIA]);
     // ANA (colaboradora) não administra a equipe; BIA é de outro tenant.
     expect(await listar(TENANT_A)).toEqual([]);
+    // Membros ativos com a permissão, com o nome (responsáveis por prazos, HU41).
+    const membros = () =>
+      executarNoTenant(TENANT_B, () =>
+        banco.executar((tx) => usuarios.membros(tx, 'usuarios:gerir')),
+      );
+    expect(await membros()).toEqual([{ usuarioId: BIA, nome: 'Bia' }]);
+    await executarNoTenant(TENANT_B, () =>
+      banco.executar((tx) =>
+        tx.usuario.update({ where: { id: BIA }, data: { desativadoEm: new Date() } }),
+      ),
+    );
+    expect(await membros()).toEqual([]);
+    expect(await listar(TENANT_B)).toEqual([]);
+    await executarNoTenant(TENANT_B, () =>
+      banco.executar((tx) =>
+        tx.usuario.update({ where: { id: BIA }, data: { desativadoEm: null } }),
+      ),
+    );
   });
 
   it.each(['admin_plataforma', 'curador'])(

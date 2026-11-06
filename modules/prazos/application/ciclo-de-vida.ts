@@ -160,6 +160,36 @@ export class CancelarPrazo<Transacao> {
   }
 }
 
+export const EntradaDeDelegacao = z.object({ versao: Versao, responsavelId: z.uuid() }).strict();
+
+/** Porta: o usuário é membro ativo do escritório e pode receber prazos (identidade). */
+export type ResponsavelElegivel = (usuarioId: Uuid) => Promise<boolean>;
+
+/**
+ * POST /v1/prazos/{id}/delegar (HU41): o administrador passa o prazo a outro membro ativo. Só o
+ * responsável muda; trilha e PrazoDelegado (os lembretes seguem o novo responsável).
+ */
+export class DelegarPrazo<Transacao> {
+  constructor(
+    private readonly deps: DependenciasDoCiclo<Transacao>,
+    private readonly elegivel: ResponsavelElegivel,
+  ) {}
+
+  async executar(autor: AutorNoPrazo, id: Uuid, entrada: unknown) {
+    const dados = EntradaDeDelegacao.safeParse(entrada);
+    if (!dados.success) return err(validacao(dados.error));
+    const responsavelId = dados.data.responsavelId as Uuid;
+    if (!(await this.elegivel(responsavelId))) {
+      return err(
+        new NaoEncontrado('responsavel-inexistente', 'Membro não encontrado ou desativado.'),
+      );
+    }
+    return alterarPrazo(this.deps, id, dados.data.versao, autor, 'prazos.prazo-delegado', (p) =>
+      p.delegar(responsavelId, autor.usuarioId, this.deps.relogio),
+    );
+  }
+}
+
 /**
  * POST /v1/prazos/{id}/ajustar (HU24): ato, ramo ou dias recalculam pelo motor a partir da
  * entrada guardada; vencimento informado fica "definido manualmente". Sempre com motivo.

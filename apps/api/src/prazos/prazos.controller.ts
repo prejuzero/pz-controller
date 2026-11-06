@@ -5,6 +5,7 @@ import {
   ConsultarTabelaDePrazos,
   LinkDoDocumento,
   CancelarPrazo,
+  DelegarPrazo,
   ConfirmarPrazo,
   ConsultarPrazo,
   CumprirPrazo,
@@ -13,10 +14,18 @@ import {
 import { z } from 'zod';
 
 import { autenticacao, validar } from '../auth/auth.controller.js';
+import { RESPONSAVEIS_DA_EQUIPE } from '../fichas.js';
 import { RequerPermissao } from '../http/acesso.js';
 
+import type { ResponsaveisDaEquipe } from '../fichas.js';
 import type { RequisicaoAutenticada } from '../http/acesso.js';
-import type { AtosDaTaxonomia, DetalheDoPrazo, PaginaDePrazos, Prazo } from '@pz/contracts';
+import type {
+  AtosDaTaxonomia,
+  DetalheDoPrazo,
+  PaginaDePrazos,
+  Prazo,
+  ResponsaveisDaEquipe as ResponsaveisDaEquipeContrato,
+} from '@pz/contracts';
 import type { Uuid } from '@pz/kernel';
 import type { AutorDoCadastro, AutorNoPrazo } from '@pz/prazos';
 
@@ -63,6 +72,8 @@ export class PrazosController {
     @Inject(CancelarPrazo) private readonly cancelar: CancelarPrazo<unknown>,
     @Inject(CadastrarPrazoManual) private readonly cadastrar: CadastrarPrazoManual<unknown>,
     @Inject(LinkDoDocumento) private readonly documento: LinkDoDocumento<unknown>,
+    @Inject(DelegarPrazo) private readonly delegar: DelegarPrazo<unknown>,
+    @Inject(RESPONSAVEIS_DA_EQUIPE) private readonly responsaveis: ResponsaveisDaEquipe,
   ) {}
 
   @Get(':id/documento')
@@ -102,6 +113,13 @@ export class PrazosController {
     const r = await this.listar.executar(consulta);
     if (!r.ok) throw r.erro;
     return r.valor;
+  }
+
+  /** Quem pode ser responsável (HU41): para o filtro e para delegar. Antes de `:id`. */
+  @Get('responsaveis')
+  @RequerPermissao('prazos:ler')
+  async listarResponsaveis(): Promise<ResponsaveisDaEquipeContrato> {
+    return { itens: await this.responsaveis() };
   }
 
   @Get(':id')
@@ -154,6 +172,18 @@ export class PrazosController {
     @Body() corpo: unknown,
   ): Promise<Prazo> {
     return this.#resultado(this.cumprir.executar(autor(requisicao), idDe(id), corpo));
+  }
+
+  /** Delega a outro membro ativo (HU41): quem distribui é o administrador do escritório. */
+  @Post(':id/delegar')
+  @RequerPermissao('prazos:distribuir')
+  @HttpCode(200)
+  async delegarPrazo(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Param('id') id: string,
+    @Body() corpo: unknown,
+  ): Promise<Prazo> {
+    return this.#resultado(this.delegar.executar(autor(requisicao), idDe(id), corpo));
   }
 
   @Post(':id/cancelar')

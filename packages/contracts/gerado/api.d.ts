@@ -1635,6 +1635,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/prazos/{id}/delegar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Delega o prazo a outro membro ativo da equipe (HU41); só o responsável muda. */
+        post: operations["delegarPrazo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/prazos/{id}/documento": {
         parameters: {
             query?: never;
@@ -1680,6 +1697,23 @@ export interface paths {
         put?: never;
         /** Prévia do ajuste: o novo cálculo do motor, sem gravar. */
         post: operations["simularAjustePrazo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/prazos/responsaveis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Membros ativos da equipe que podem ser responsáveis por prazos (HU41). */
+        get: operations["listarResponsaveis"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3185,6 +3219,12 @@ export interface components {
             /** @description Teor revisado pelo curador. */
             teorAnonimizado?: string;
         };
+        PedidoDeDelegacao: {
+            /** @description Versão lida: outra gravação no meio dá 409. */
+            versao: number;
+            /** Format: uuid */
+            responsavelId: string;
+        };
         PedidoDeDestinoPush: {
             /** @enum {string} */
             plataforma: "ios" | "android" | "web";
@@ -3799,6 +3839,13 @@ export interface components {
         };
         Relatorios: {
             itens: components["schemas"]["Relatorio"][];
+        };
+        ResponsaveisDaEquipe: {
+            itens: {
+                /** Format: uuid */
+                usuarioId: string;
+                nome: string;
+            }[];
         };
         ResultadoDaBuscaDePrazos: {
             itens: {
@@ -11376,6 +11423,86 @@ export interface operations {
             };
         };
     };
+    delegarPrazo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeDelegacao"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prazo"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
     linkDoDocumentoDoPrazo: {
         parameters: {
             query?: never;
@@ -11572,6 +11699,53 @@ export interface operations {
             };
             /** @description Conflito com o estado atual. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarResponsaveis: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResponsaveisDaEquipe"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

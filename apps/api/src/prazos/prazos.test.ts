@@ -9,6 +9,7 @@ import type {
   CadastrarPrazoManual,
   ConsultarTabelaDePrazos,
   CancelarPrazo,
+  DelegarPrazo,
   ConfirmarPrazo,
   ConsultarPrazo,
   CumprirPrazo,
@@ -70,6 +71,8 @@ describe('PrazosController (HU24)', () => {
             id === ID ? ok({ url: 'https://x.invalid/a' }) : err(new Error('sem documento')),
           ),
       } as unknown as LinkDoDocumento<unknown>,
+      acao('delegar') as unknown as DelegarPrazo<unknown>,
+      () => Promise.resolve([{ usuarioId: USUARIO, nome: 'Membro fictício' }]),
     );
     expect(await controller.linkDoDocumento(requisicao(), ID)).toEqual({
       url: 'https://x.invalid/a',
@@ -87,6 +90,10 @@ describe('PrazosController (HU24)', () => {
     await controller.simularAjustePrazo(requisicao(), ID, { versao: 2 });
     await controller.cumprirPrazo(requisicao(), ID, { versao: 3 });
     await expect(controller.cancelarPrazo(requisicao(), ID, {})).rejects.toThrow(Conflito);
+    expect(await controller.delegarPrazo(requisicao(), ID, { versao: 4 })).toEqual({ id: ID });
+    expect(await controller.listarResponsaveis()).toEqual({
+      itens: [{ usuarioId: USUARIO, nome: 'Membro fictício' }],
+    });
     expect(chamadas).toEqual([
       ['cadastrar', { usuarioId: USUARIO, canal: 'portal', tenantId: TENANT }, { tipoAto: 'x' }],
       ['simular', { usuarioId: USUARIO, canal: 'portal', tenantId: TENANT }, { tipoAto: 'y' }],
@@ -95,6 +102,7 @@ describe('PrazosController (HU24)', () => {
       ['ajustar:simular', { usuarioId: USUARIO, canal: 'portal' }, ID, { versao: 2 }],
       ['cumprir', { usuarioId: USUARIO, canal: 'portal' }, ID, { versao: 3 }],
       ['cancelar', { usuarioId: USUARIO, canal: 'portal' }, ID, {}],
+      ['delegar', { usuarioId: USUARIO, canal: 'portal' }, ID, { versao: 4 }],
     ]);
     await expect(controller.confirmarPrazo(requisicao(), 'nao-uuid', {})).rejects.toThrow();
   });

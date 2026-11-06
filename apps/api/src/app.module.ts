@@ -102,6 +102,7 @@ import {
   RegistrarClienteOAuth,
   RevogarClienteOAuth,
   TrocarCodigoPorTokens,
+  UsuariosComPermissaoPostgres,
   ListarDispositivos,
   RegistrarDispositivo,
   RenovacoesRedis,
@@ -180,6 +181,7 @@ import {
   CadastrarTipoDeAto,
   CalcularPrazoParaProcesso,
   CancelarPrazo,
+  DelegarPrazo,
   ConfirmarPrazo,
   ConsultarPrazo,
   ConsultarTabelaDePrazos,
@@ -265,6 +267,7 @@ import {
   JANELA_DE_REQUISICOES,
   RECEPTORES_DE_WEBHOOK,
   RELOGIO,
+  RESPONSAVEIS_DA_EQUIPE,
   VERIFICADORES,
 } from './fichas.js';
 import { GuardaDeAcesso } from './http/acesso.js';
@@ -290,6 +293,7 @@ import { DocumentosLegaisController, TermosController } from './termos/termos.co
 import { WebhooksController } from './webhooks/webhooks.controller.js';
 
 import type { AmbienteApi } from './ambiente.js';
+import type { ResponsaveisDaEquipe } from './fichas.js';
 import type { JanelaDeRequisicoes } from './http/limite.js';
 import type { FontesDoHistorico } from './prazos/historico.js';
 import type { CaixaDeWebhooks } from './webhooks/webhooks.controller.js';
@@ -410,6 +414,8 @@ export interface OpcoesApi {
   >;
   /** Tabela de prazos (HU15); nos testes, repositórios em memória. */
   readonly tabelaDePrazos?: DependenciasDaTabelaDePrazos;
+  /** Testes: membros que podem receber prazos (HU41), sem banco. */
+  readonly responsaveisDaEquipe?: ResponsaveisDaEquipe;
   /** Status da captura (HU19); nos testes, leitura em memória. */
   readonly statusDaCaptura?: {
     readonly unidade: UnidadeDeTrabalho<unknown>;
@@ -810,6 +816,7 @@ function provedoresDaTabelaDePrazos(d: DependenciasDaTabelaDePrazos): Provider[]
 function provedoresDosPrazos(
   d: DependenciasDaTabelaDePrazos,
   arquivos: ArmazenamentoArquivos,
+  responsaveis: ResponsaveisDaEquipe,
 ): Provider[] {
   const prazos = new PrazosPostgres();
   const analisarTexto = new AnalisarTexto({
@@ -991,6 +998,14 @@ function provedoresDosPrazos(
     comRelogio(ConfirmarPrazo, (r) => new ConfirmarPrazo(deps(r))),
     comRelogio(CumprirPrazo, (r) => new CumprirPrazo(deps(r))),
     comRelogio(CancelarPrazo, (r) => new CancelarPrazo(deps(r))),
+    { provide: RESPONSAVEIS_DA_EQUIPE, useValue: responsaveis },
+    comRelogio(
+      DelegarPrazo,
+      (r) =>
+        new DelegarPrazo(deps(r), async (usuarioId) =>
+          (await responsaveis()).some((m) => m.usuarioId === usuarioId),
+        ),
+    ),
     {
       provide: CadastrarPrazoManual,
       inject: [RELOGIO, ConsultarProcesso, ConsultarDiasNaoUteis, ConsultarAnosSemCalendario],
@@ -1844,7 +1859,15 @@ export class AppModule {
         },
       ),
       ...provedoresDaTabelaDePrazos(tabelaDePrazos),
-      ...provedoresDosPrazos(tabelaDePrazos, arquivosDoAmbiente(opcoes.ambiente)),
+      ...provedoresDosPrazos(
+        tabelaDePrazos,
+        arquivosDoAmbiente(opcoes.ambiente),
+        opcoes.responsaveisDaEquipe ??
+          (() =>
+            recursos.banco.executar((tx) =>
+              new UsuariosComPermissaoPostgres().membros(tx, 'prazos:ler'),
+            )),
+      ),
       {
         // Catálogo de ferramentas de IA (HU59): leitura pelas APIs públicas, auditada no tenant.
         provide: CatalogoDeFerramentas,

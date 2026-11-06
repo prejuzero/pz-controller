@@ -49,3 +49,7 @@ Módulo prazos, gerado por `pnpm gen:module` no desenho hexagonal (ADR-001).
 - `CadastrarPrazoManual` (`POST /v1/prazos`, prévia em `/v1/prazos/simular`): a data é do motor. Com `vencimentoConfirmado` igual ao da prévia, o prazo nasce pendente (o autor confirmou no mesmo ato, com trilha das duas etapas); data diferente dá 409; sem ela, "a confirmar".
 - Compromissos (`compromisso`, RLS, sem DELETE): audiência e reunião com data e hora (com fuso) e lembretes em minutos antes; agendar e cancelar (com motivo) com trilha e eventos `CompromissoAgendado`/`CompromissoCancelado` (os lembretes são da HU31).
 - Cadastro assistido por texto (`POST /v1/assistente/analisar`, módulo classificacao): sugere ato e prazo citado pelo mesmo pipeline, sem gravar; a data vem do motor quando o advogado calcula.
+
+## Delegação (HU41)
+
+`POST /v1/prazos/{id}/delegar` (`prazos:distribuir`, do administrador do escritório) passa o prazo a outro membro ativo (`GET /v1/prazos/responsaveis`). Só o responsável muda: datas, status e ciência ficam. A ação usa versão otimista e vai para a trilha (`prazos.prazo-delegado`); o `PrazoDelegado` reprograma os lembretes para o novo responsável.

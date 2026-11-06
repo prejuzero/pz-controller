@@ -52,6 +52,12 @@ export class ConsumidorDosLembretes {
     return this.#programar(tx, evento, DoPrazo.parse(evento.payload).prazoId as Uuid);
   }
 
+  /** Delegado (HU41): os lembretes passam ao novo responsável. */
+  @Consome('PrazoDelegado', { versao: 1 })
+  delegado(tx: Transacao, evento: EventoDominio): Promise<void> {
+    return this.#programar(tx, evento, DoPrazo.parse(evento.payload).prazoId as Uuid);
+  }
+
   @Consome('PrazoRecalculado', { versao: 1 })
   recalculado(tx: Transacao, evento: EventoDominio): Promise<void> {
     return this.#programar(tx, evento, DoPrazo.parse(evento.payload).prazoId as Uuid);

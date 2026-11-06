@@ -17,6 +17,7 @@ import { BuscarPrazos } from '../application/busca.js';
 import {
   AjustarPrazo,
   ConfirmarPrazo,
+  DelegarPrazo,
   CumprirPrazo,
   ListarPrazos,
   MarcarPrazosVencidos,
@@ -442,6 +443,44 @@ describe('ciclo de vida no PostgreSQL (HU24, PZ-171)', () => {
     expect(comProcesso.ok && comProcesso.valor.itens.map((i) => i.id)).toContain(prazo.id);
     const semProcessos = await doCliente([]);
     expect(semProcessos.ok && semProcessos.valor.itens).toEqual([]);
+  });
+
+  it('delega: responsável gravado no banco, trilha e PrazoDelegado; lista pelo novo (HU41)', async () => {
+    const deps = {
+      unidade: banco,
+      prazos: new PrazosPostgres(),
+      trilha: new TrilhaPostgres(),
+      outbox: new OutboxPostgres(),
+      relogio: relogio(),
+    };
+    const BIA = '01a10e00-0000-7000-8000-0000000f0d02' as Uuid;
+    const prazo = await prazoNovo(ESCRITORIO, PROCESSO_GO);
+    const noEscritorio = <T>(t: () => Promise<T>) => executarNoTenant(ESCRITORIO, t);
+    const r = await noEscritorio(() =>
+      new DelegarPrazo(deps, (id) => Promise.resolve(id === BIA)).executar(quem, prazo.id, {
+        versao: 1,
+        responsavelId: BIA,
+      }),
+    );
+    expect(r.ok && r.valor).toMatchObject({ responsavelId: BIA, versao: 2 });
+    const [linha] = await doTenant(ESCRITORIO, (tx) =>
+      tx.prazo.findMany({ where: { id: prazo.id }, select: { responsavelId: true } }),
+    );
+    expect(linha?.responsavelId).toBe(BIA);
+    const trilha = await doTenant(ESCRITORIO, (tx) =>
+      tx.eventoAuditoria.findMany({
+        where: { entidadeId: prazo.id, tipo: 'prazos.prazo-delegado' },
+      }),
+    );
+    expect(trilha).toHaveLength(1);
+    const eventos = await doTenant(ESCRITORIO, (tx) =>
+      tx.eventoDominio.findMany({ where: { agregadoId: prazo.id, tipo: 'PrazoDelegado' } }),
+    );
+    expect(eventos).toHaveLength(1);
+    const daBia = await noEscritorio(() =>
+      new ListarPrazos(banco, new PrazosPostgres(), relogio()).executar({ responsavelId: BIA }),
+    );
+    expect(daBia.ok && daBia.valor.itens.map((i) => i.id)).toContain(prazo.id);
   });
 
   it('um prazo por publicação no tenant (índice único) e job de vencidos', async () => {

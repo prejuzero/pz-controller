@@ -254,6 +254,10 @@ export {
 export {
   ajustarPrazo,
   cancelarPrazo,
+  delegarPrazo,
+  listarResponsaveis,
+  PedidoDeDelegacao,
+  ResponsaveisDaEquipe,
   confirmarPrazo,
   consultarPrazo,
   cumprirPrazo,

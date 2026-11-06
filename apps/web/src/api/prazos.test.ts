@@ -68,6 +68,8 @@ describe('prazos (HU24)', () => {
     await consultas
       .agenda({ de: '2026-11-01', ate: '2026-11-30', tribunal: 'TJGO' })
       .queryFn?.(sinal as never);
+    await consultas.responsaveis().queryFn?.(sinal as never);
+    await m.delegar.mutationFn({ id: ID, versao: 5, responsavelId: ID });
     await m.confirmar.onSuccess();
     expect(cache.getQueryState(chaves.prazos.detalhe(ID))?.isInvalidated).toBe(true);
     expect(rotas).toEqual([
@@ -94,6 +96,8 @@ describe('prazos (HU24)', () => {
       'GET /v1/dashboard/proximos-prazos?limite=10',
       'GET /v1/dashboard/resumo?tribunal=TJGO',
       'GET /v1/agenda?de=2026-11-01&ate=2026-11-30&tribunal=TJGO',
+      'GET /v1/prazos/responsaveis',
+      `POST /v1/prazos/${ID}/delegar {"versao":5,"responsavelId":"${ID}"}`,
     ]);
   });
 });

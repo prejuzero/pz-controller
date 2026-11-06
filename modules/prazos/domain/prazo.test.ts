@@ -250,3 +250,44 @@ describe('máquina de estados do prazo (HU24)', () => {
     ).toBe(false);
   });
 });
+
+describe('delegação do prazo (HU41)', () => {
+  const ANA = '01a10e00-0000-7000-8000-00000000d001' as Uuid;
+  const BIA = '01a10e00-0000-7000-8000-00000000d002' as Uuid;
+  const ADMIN = '01a10e00-0000-7000-8000-00000000d003' as Uuid;
+
+  it('troca o responsável, mantém status e datas, sobe a versão e emite PrazoDelegado', () => {
+    const prazo = Prazo.sugerir(novo({ responsavelId: ANA }), TENANT, relogio);
+    prazo.retirarEventos();
+    const antes = prazo.estado;
+    expect(prazo.delegar(BIA, ADMIN, relogio).ok).toBe(true);
+    expect(prazo.estado).toMatchObject({
+      responsavelId: BIA,
+      status: 'a-confirmar',
+      calculo: antes.calculo,
+      versaoOtimista: antes.versaoOtimista + 1,
+    });
+    expect(prazo.retirarEventos().map((e) => [e.tipo, e.payload])).toEqual([
+      [
+        'PrazoDelegado',
+        {
+          prazoId: prazo.id,
+          processoId: novo().processoId,
+          responsavelAnterior: ANA,
+          responsavelNovo: BIA,
+          usuarioId: ADMIN,
+        },
+      ],
+    ]);
+  });
+
+  it('recusa o mesmo responsável e prazo fechado', () => {
+    const prazo = Prazo.sugerir(novo({ responsavelId: ANA }), TENANT, relogio);
+    const mesmo = prazo.delegar(ANA, ADMIN, relogio);
+    expect(!mesmo.ok && mesmo.erro.codigo).toBe('mesmo-responsavel');
+    prazo.cancelar('motivo fictício longo', ADMIN, relogio);
+    const fechado = prazo.delegar(BIA, ADMIN, relogio);
+    expect(!fechado.ok && fechado.erro.codigo).not.toBe('mesmo-responsavel');
+    expect(prazo.estado.responsavelId).toBe(ANA);
+  });
+});

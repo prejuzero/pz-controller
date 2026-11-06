@@ -332,6 +332,26 @@ export class Prazo extends AggregateRoot {
     return true;
   }
 
+  /**
+   * Delega o prazo a outro membro da equipe (HU41): só o responsável muda. Datas, status e ciência
+   * ficam; os lembretes passam a ir para o novo responsável (consumidor do PrazoDelegado).
+   */
+  delegar(responsavelId: Uuid, usuarioId: Uuid, relogio: Clock): Result<void, Conflito> {
+    const anterior = this.#estado.responsavelId;
+    if (anterior === responsavelId) {
+      return err(new Conflito('mesmo-responsavel', 'O prazo já é deste responsável.'));
+    }
+    const r = this.#transicao(['a-confirmar', 'pendente'], this.#estado.status, { responsavelId });
+    if (r.ok) {
+      this.#evento('PrazoDelegado', relogio, {
+        responsavelAnterior: anterior,
+        responsavelNovo: responsavelId,
+        usuarioId,
+      });
+    }
+    return r;
+  }
+
   cancelar(motivo: string, usuarioId: Uuid, relogio: Clock): Result<void, Conflito> {
     const r = this.#transicao(['a-confirmar', 'pendente'], 'cancelado', { motivoAjuste: motivo });
     if (r.ok) this.#evento('PrazoCancelado', relogio, { motivo, usuarioId });
