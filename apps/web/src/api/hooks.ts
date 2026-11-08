@@ -158,6 +158,9 @@ export const useClientes = () => useQuery(consultasProcessos(useApi()).clientes(
 export const useEquipe = () => useQuery(consultasProcessos(useApi()).equipe());
 export const useCadastrarProcesso = () => useMutation(useMutacoesProcessos().cadastrar);
 export const useImportarProcessos = () => useMutation(useMutacoesProcessos().importar);
+export const useNomesMonitorados = () => useQuery(consultasProcessos(useApi()).nomesMonitorados());
+export const useAdicionarNomeMonitorado = () => useMutation(useMutacoesProcessos().adicionarNome);
+export const useRemoverNomeMonitorado = () => useMutation(useMutacoesProcessos().removerNome);
 export const useImportacaoDeProcessos = (id: string | null) => {
   const consultas = consultasProcessos(useApi());
   return useQuery({ ...consultas.importacao(id ?? ''), enabled: id !== null });
@@ -180,6 +183,8 @@ export const useResumoDaPublicacao = (id: string) =>
   useQuery(consultasPublicacoes(useApi()).resumo(id));
 export const useMarcarPublicacaoLida = () =>
   useMutation(mutacoesPublicacoes(useApi(), useQueryClient()).marcarLida);
+export const useConferirPublicacao = () =>
+  useMutation(mutacoesPublicacoes(useApi(), useQueryClient()).conferir);
 
 /** Status da captura (HU19): faixa do topo e página de cobertura; só com `publicacoes:ler`. */
 export function useStatusDaCaptura() {

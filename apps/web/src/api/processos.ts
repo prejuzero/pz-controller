@@ -74,6 +74,12 @@ export const consultasProcessos = (api: ClienteApi) => ({
       queryKey: chaves.processos.conferencias(),
       queryFn: ({ signal }) => exigir(api.GET('/v1/conferencias', { signal })),
     }),
+  /** Nomes do escritório monitorados na captura (HU42). */
+  nomesMonitorados: () =>
+    queryOptions({
+      queryKey: chaves.nomesMonitorados,
+      queryFn: ({ signal }) => exigir(api.GET('/v1/escritorio/nomes-monitorados', { signal })),
+    }),
   /** Andamento da importação por CSV (HU42): consulta a cada 2 s até o worker concluir. */
   importacao: (id: string) =>
     queryOptions({
@@ -98,6 +104,16 @@ export const mutacoesProcessos = (api: ClienteApi, cache: QueryClient) => {
         exigir(api.POST('/v1/processos/importacoes', { body })),
     },
     importacaoConcluida: invalidarProcessos,
+    adicionarNome: {
+      mutationFn: (nome: string) =>
+        exigir(api.POST('/v1/escritorio/nomes-monitorados', { body: { nome } })),
+      onSuccess: () => cache.invalidateQueries({ queryKey: chaves.nomesMonitorados }),
+    },
+    removerNome: {
+      mutationFn: (id: string) =>
+        exigir(api.DELETE('/v1/escritorio/nomes-monitorados/{id}', caminho(id))),
+      onSuccess: () => cache.invalidateQueries({ queryKey: chaves.nomesMonitorados }),
+    },
     cadastrar: {
       mutationFn: (pedido: PedidoDeProcesso) =>
         exigir(api.POST('/v1/processos', { body: semIndefinidos(pedido) })),

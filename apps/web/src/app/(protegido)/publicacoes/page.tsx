@@ -17,10 +17,10 @@ export default async function PaginaPublicacoes({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   // O card "novas publicações" do dashboard (HU26) abre a lista já filtrada.
-  const { novas } = await searchParams;
+  const { novas, conferir } = await searchParams;
   return (
     <SePermitido permissao="publicacoes:ler" alternativa={<AcessoNegado />}>
-      <Publicacoes somenteNovas={novas === 'true'} />
+      <Publicacoes somenteNovas={novas === 'true'} somenteConferir={conferir === 'true'} />
     </SePermitido>
   );
 }
