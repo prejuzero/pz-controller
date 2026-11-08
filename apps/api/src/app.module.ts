@@ -261,6 +261,7 @@ import { Redis } from 'ioredis';
 import { AdminController } from './admin/admin.controller.js';
 import { CuradoriaDaClassificacaoController } from './admin/curadoria.controller.js';
 import { catalogoDeFerramentas } from './assistente/catalogo.js';
+import { FerramentasDeIaController } from './assistente/ferramentas.controller.js';
 import { HistoricoController } from './auditoria/historico.controller.js';
 import { AuthController } from './auth/auth.controller.js';
 import { ContextoDoUsuario } from './auth/contexto-do-usuario.js';
@@ -439,6 +440,8 @@ export interface OpcoesApi {
   readonly responsaveisDaEquipe?: ResponsaveisDaEquipe;
   /** Testes: resumo da publicação sem banco (HU62). */
   readonly resumoDaPublicacao?: ResumoDaPublicacaoPorConteudo;
+  /** Testes: catálogo de ferramentas de IA sem banco (HU60). */
+  readonly catalogoDeFerramentas?: CatalogoDeFerramentas;
   /** Status da captura (HU19); nos testes, leitura em memória. */
   readonly statusDaCaptura?: {
     readonly unidade: UnidadeDeTrabalho<unknown>;
@@ -2021,6 +2024,7 @@ export class AppModule {
           cadastrarPrazo: CadastrarPrazoManual<unknown>,
           consultarPrazo: ConsultarPrazo<unknown>,
         ) =>
+          opcoes.catalogoDeFerramentas ??
           catalogoDeFerramentas({
             buscar,
             consultarProcesso,
@@ -2061,6 +2065,7 @@ export class AppModule {
       module: AppModule,
       controllers: [
         AuthController,
+        FerramentasDeIaController,
         AdminController,
         CalendarioController,
         TabelaPrazosController,

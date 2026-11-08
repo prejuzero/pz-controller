@@ -6473,6 +6473,160 @@
         }
       }
     },
+    "/v1/ia/ferramentas": {
+      "get": {
+        "operationId": "listarFerramentasDeIa",
+        "summary": "Ferramentas de IA (só leitura) que o usuário pode usar, para assistentes externos como o servidor MCP (HU60).",
+        "tags": [
+          "ia"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FerramentasDeIa"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ia/ferramentas/{nome}": {
+      "post": {
+        "operationId": "executarFerramentaDeIa",
+        "summary": "Executa uma ferramenta de leitura do catálogo, no escritório do usuário, com auditoria.",
+        "tags": [
+          "ia"
+        ],
+        "parameters": [
+          {
+            "name": "nome",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]*$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeFerramentaDeIa"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoDeFerramentaDeIa"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições excedido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/integracoes/apps": {
       "post": {
         "operationId": "registrarAppOAuth",
@@ -15121,6 +15275,48 @@
         ],
         "additionalProperties": false
       },
+      "FerramentasDeIa": {
+        "type": "object",
+        "properties": {
+          "itens": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "nome": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_]*$"
+                },
+                "descricao": {
+                  "type": "string"
+                },
+                "entrada": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {},
+                  "description": "JSON Schema dos argumentos."
+                }
+              },
+              "required": [
+                "nome",
+                "descricao",
+                "entrada"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "aviso": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "itens",
+          "aviso"
+        ],
+        "additionalProperties": false
+      },
       "FiltrosBusca": {
         "type": "object",
         "properties": {
@@ -17522,6 +17718,23 @@
         },
         "required": [
           "escopo"
+        ],
+        "additionalProperties": false
+      },
+      "PedidoDeFerramentaDeIa": {
+        "type": "object",
+        "properties": {
+          "argumentos": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {},
+            "description": "Argumentos validados pelo schema da ferramenta; o escritório nunca vem daqui."
+          }
+        },
+        "required": [
+          "argumentos"
         ],
         "additionalProperties": false
       },
@@ -20067,6 +20280,22 @@
         "required": [
           "linhas",
           "importacaoId"
+        ],
+        "additionalProperties": false
+      },
+      "ResultadoDeFerramentaDeIa": {
+        "type": "object",
+        "properties": {
+          "resultado": {
+            "description": "Saída da ferramenta, no formato do endpoint correspondente."
+          },
+          "aviso": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resultado",
+          "aviso"
         ],
         "additionalProperties": false
       },
