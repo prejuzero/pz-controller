@@ -1,5 +1,6 @@
 import type {
   ConteudoRegistrado,
+  DecisaoDaConferencia,
   NovoDestinatario,
   PublicacaoParaRegistrar,
   RepositorioDePublicacoes,
@@ -33,9 +34,29 @@ export class PublicacoesPostgres implements RepositorioDePublicacoes<Transacao> 
           conteudoCapturadoEm: d.capturadoEm,
           processoId: d.processoId,
           oabId: d.oabId,
+          conferencia: d.conferencia,
         },
       ],
       skipDuplicates: true,
+    });
+    return count === 1;
+  }
+
+  async conferir(
+    tx: Transacao,
+    tenantId: Uuid,
+    conteudoId: Uuid,
+    d: DecisaoDaConferencia,
+  ): Promise<boolean> {
+    const { count } = await tx.publicacaoDestinatario.updateMany({
+      where: { tenantId, conteudoId, conferencia: 'pendente' },
+      data: {
+        conferencia: d.conferencia,
+        processoId: d.processoId,
+        oabId: d.oabId,
+        conferidaEm: new Date(d.em.epochMs),
+        conferidaPor: d.por,
+      },
     });
     return count === 1;
   }

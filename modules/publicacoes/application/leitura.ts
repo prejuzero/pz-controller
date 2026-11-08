@@ -27,6 +27,10 @@ const Consulta = z.object({
   de: z.iso.date().optional(),
   ate: z.iso.date().optional(),
   processoId: z.uuid().optional(),
+  conferir: z
+    .enum(['true', 'false'])
+    .transform((v) => v === 'true')
+    .optional(),
   cursor: z.string().max(100).optional(),
   limite: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -44,7 +48,7 @@ export class ListarPublicacoes<Transacao> {
   async executar(consulta: unknown): Promise<Result<Pagina<PublicacaoDoTenant>, Validacao>> {
     const dados = Consulta.safeParse(consulta);
     if (!dados.success) return err(validacao(dados.error));
-    const { cursor, limite, novas, de, ate, processoId } = dados.data;
+    const { cursor, limite, novas, de, ate, processoId, conferir } = dados.data;
     let antesDe: Uuid | undefined;
     if (cursor !== undefined) {
       const id = z.uuid().safeParse(Buffer.from(cursor, 'base64url').toString('utf8'));
@@ -59,6 +63,7 @@ export class ListarPublicacoes<Transacao> {
         ...(de === undefined ? {} : { de }),
         ...(ate === undefined ? {} : { ate }),
         ...(processoId === undefined ? {} : { processoId: processoId as Uuid }),
+        ...(conferir === undefined ? {} : { conferir }),
         ...(antesDe === undefined ? {} : { antesDe }),
       }),
     );

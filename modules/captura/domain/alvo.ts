@@ -1,6 +1,8 @@
+import { nomeMonitoradoCanonico, TAMANHO_DO_NOME_MONITORADO } from '@pz/kernel';
+
 import type { Instant, LocalDate, Uuid } from '@pz/kernel';
 
-export const TIPOS_DE_ALVO = ['oab', 'processo'] as const;
+export const TIPOS_DE_ALVO = ['oab', 'processo', 'nome'] as const;
 export type TipoDeAlvo = (typeof TIPOS_DE_ALVO)[number];
 
 export interface JanelaDaCaptura {
@@ -20,6 +22,16 @@ export function valorDoProcesso(numeroCnj: string): string {
   const digitos = numeroCnj.replace(/\D/g, '');
   if (digitos.length !== 20) throw new RangeError('Número CNJ deve ter 20 dígitos.');
   return digitos;
+}
+
+/** Valor canônico de um nome monitorado (HU42), a mesma forma que o cadastro grava. */
+export function valorDoNome(nome: string): string {
+  const valor = nomeMonitoradoCanonico(nome);
+  if (valor === undefined) {
+    const { minimo, maximo } = TAMANHO_DO_NOME_MONITORADO;
+    throw new RangeError(`Nome deve ter de ${String(minimo)} a ${String(maximo)} caracteres.`);
+  }
+  return valor;
 }
 
 /**

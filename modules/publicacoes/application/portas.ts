@@ -26,6 +26,18 @@ export interface NovoDestinatario {
   readonly capturadoEm: Date;
   readonly processoId: Uuid | null;
   readonly oabId: Uuid | null;
+  /** `pendente`: chegou só pelo nome do escritório (HU42) e espera o advogado conferir. */
+  readonly conferencia: 'pendente' | null;
+}
+
+/** Decisão da conferência de uma publicação capturada só pelo nome (HU42). */
+export interface DecisaoDaConferencia {
+  readonly conferencia: 'confirmada' | 'descartada';
+  readonly processoId: Uuid | null;
+  readonly oabId: Uuid | null;
+  /** Nulo quando a mesma publicação chegou depois por OAB ou processo (confirmação automática). */
+  readonly por: Uuid | null;
+  readonly em: Instant;
 }
 
 /** Porta: conteúdo global (pela função do banco) e destinatários do tenant da transação. */
@@ -36,6 +48,13 @@ export interface RepositorioDePublicacoes<Transacao> {
   ): Promise<ConteudoRegistrado>;
   /** `false` se o tenant já tinha recebido o conteúdo (idempotente). */
   registrarDestinatario(transacao: Transacao, destinatario: NovoDestinatario): Promise<boolean>;
+  /** Só se ainda pendente (corrida entre duas decisões): `false` se já conferida ou inexistente. */
+  conferir(
+    transacao: Transacao,
+    tenantId: Uuid,
+    conteudoId: Uuid,
+    decisao: DecisaoDaConferencia,
+  ): Promise<boolean>;
 }
 
 /** Porta: processo do número no tenant, criado se não existe (módulo cadastro na composição). */
@@ -58,6 +77,8 @@ export interface PublicacaoDoTenant {
   readonly lidaPor: Uuid | null;
   readonly siglaTribunal: string | null;
   readonly tipoComunicacao: string | null;
+  /** Só nas capturadas pelo nome (HU42); as descartadas não são lidas. */
+  readonly conferencia: 'pendente' | 'confirmada' | null;
 }
 
 export interface FiltroDePublicacoes {
@@ -65,6 +86,8 @@ export interface FiltroDePublicacoes {
   readonly de?: string;
   readonly ate?: string;
   readonly processoId?: Uuid;
+  /** true: só as que esperam conferência (HU42). */
+  readonly conferir?: boolean;
   /** Lista do mais novo para o mais antigo; o cursor é o último id da página anterior. */
   readonly antesDe?: Uuid;
   readonly limite: number;

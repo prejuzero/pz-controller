@@ -5,6 +5,7 @@ import {
   ClientesEmMemoria,
   COLUNAS_DA_IMPORTACAO,
   ImportacoesEmMemoria,
+  NomesMonitoradosEmMemoria,
   ProcessosEmMemoria,
 } from '@pz/cadastro';
 import { EventosGlobaisEmMemoria, FeriadosLocaisEmMemoria } from '@pz/calendario';
@@ -120,6 +121,7 @@ beforeAll(async () => {
           processos,
           clientes: new ClientesEmMemoria(processos),
           importacoes: new ImportacoesEmMemoria(),
+          nomes: new NomesMonitoradosEmMemoria(),
         };
       })(),
       trilha: {
@@ -157,7 +159,9 @@ describe('cadastro pela API (HU11)', () => {
     expect(invalido.statusCode).toBe(400);
 
     // Sessão do advogado recém-cadastrado (o login e o 2FA são da identidade).
+    // Titular: também administra o escritório (HU41), o que os nomes monitorados exigem (HU42).
     perfis.atribuir(usuarioId, 'advogado');
+    perfis.atribuir(usuarioId, 'admin_escritorio');
     token = randomBytes(32).toString('base64url');
     await sessoes.gravar(token, {
       id: gerarUuidV7(),
@@ -270,6 +274,30 @@ describe('importação de processos por CSV pela API (HU42)', () => {
 
   it('o contrato e o módulo aceitam as mesmas colunas', () => {
     expect(COLUNAS_DA_IMPORTACAO_DE_PROCESSOS).toEqual(COLUNAS_DA_IMPORTACAO);
+  });
+});
+
+describe('nomes monitorados pela API (HU42)', () => {
+  it('adiciona, lista, recusa repetido e remove', async () => {
+    // Nome FICTÍCIO.
+    const criado = await pedir('POST', '/v1/escritorio/nomes-monitorados', {
+      nome: 'Sociedade Fictícia de Advogados',
+    });
+    expect(criado.statusCode).toBe(201);
+    const { id } = criado.json<{ id: string }>();
+    expect(
+      (
+        await pedir('POST', '/v1/escritorio/nomes-monitorados', {
+          nome: 'SOCIEDADE FICTÍCIA DE ADVOGADOS',
+        })
+      ).statusCode,
+    ).toBe(409);
+    expect((await pedir('GET', '/v1/escritorio/nomes-monitorados')).json()).toMatchObject({
+      itens: [{ id, nome: 'Sociedade Fictícia de Advogados' }],
+    });
+    expect(tipos).toContain('cadastro.nome-monitorado-adicionado');
+    expect((await pedir('DELETE', `/v1/escritorio/nomes-monitorados/${id}`)).statusCode).toBe(204);
+    expect((await pedir('DELETE', `/v1/escritorio/nomes-monitorados/${id}`)).statusCode).toBe(404);
   });
 });
 

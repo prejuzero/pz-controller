@@ -32,5 +32,7 @@ export type PublicacaoCapturada = z.infer<typeof PublicacaoCapturada>;
 export interface FontePublicacoes {
   buscarPorOab(oab: Oab, janela: JanelaDeBusca): Promise<PublicacaoCapturada[]>;
   buscarPorProcesso(numeroCnj: NumeroCnj, janela: JanelaDeBusca): Promise<PublicacaoCapturada[]>;
+  /** Por nome da parte (HU42): pode trazer homônimos; quem consome trata como "a conferir". */
+  buscarPorNome(nome: string, janela: JanelaDeBusca): Promise<PublicacaoCapturada[]>;
   saude(): Promise<SaudeAdaptador>;
 }

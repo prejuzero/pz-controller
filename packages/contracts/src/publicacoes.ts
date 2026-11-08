@@ -20,6 +20,12 @@ export const PublicacaoDoTenant = nomear(
     recebidaEm: Instante,
     capturadoEm: Instante.describe('Instante da captura, gravado pelo banco (prova).'),
     lidaEm: Instante.nullable().describe('Primeira leitura no escritório: indício, não ciência.'),
+    conferencia: z
+      .enum(['pendente', 'confirmada'])
+      .nullable()
+      .describe(
+        'Só nas capturadas pelo nome do escritório (HU42): pendente até o advogado confirmar que é do escritório (pode ser homônimo); sem processo nem prazo enquanto pendente.',
+      ),
   }),
 );
 export type PublicacaoDoTenant = z.infer<typeof PublicacaoDoTenant.esquema>;
@@ -41,6 +47,10 @@ export const listarPublicacoes = definirRota({
     de: DataCivil.optional().describe('Disponibilização a partir de.'),
     ate: DataCivil.optional().describe('Disponibilização até.'),
     processoId: Uuid.optional(),
+    conferir: z
+      .enum(['true', 'false'])
+      .optional()
+      .describe('true: só as capturadas pelo nome que esperam conferência (HU42).'),
   }),
   resposta: { status: 200, corpo: PaginaDePublicacoes },
 });
@@ -100,9 +110,33 @@ export const marcarPublicacaoLida = definirRota({
   erros: [404],
 });
 
+export const PedidoDeConferenciaDaPublicacao = nomear(
+  'PedidoDeConferenciaDaPublicacao',
+  z.object({
+    decisao: z
+      .enum(['confirmar', 'descartar'])
+      .describe(
+        'confirmar: é do escritório (cria o processo e segue para o prazo); descartar: homônimo, sai da lista.',
+      ),
+  }),
+);
+
+export const conferirPublicacao = definirRota({
+  id: 'conferirPublicacao',
+  metodo: 'post',
+  caminho: '/v1/publicacoes/{id}/conferencia',
+  resumo: 'Confirma ou descarta uma publicação capturada só pelo nome do escritório (HU42).',
+  tag: 'publicacoes',
+  parametrosDeCaminho: z.object({ id: Uuid }),
+  corpo: PedidoDeConferenciaDaPublicacao,
+  resposta: { status: 204, corpo: null },
+  erros: [404, 409],
+});
+
 export const ROTAS_PUBLICACOES = [
   listarPublicacoes,
   consultarPublicacao,
   marcarPublicacaoLida,
   consultarResumoDaPublicacao,
+  conferirPublicacao,
 ] as const;

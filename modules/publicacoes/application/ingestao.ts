@@ -8,7 +8,7 @@ const EventoDaCaptura = z.object({
   tenantId: z.uuid(),
   payload: z.object({
     alvoId: z.uuid(),
-    tipo: z.enum(['oab', 'processo']),
+    tipo: z.enum(['oab', 'processo', 'nome']),
     referencias: z.array(z.uuid()).min(1),
     fonte: z.string().min(1),
     publicacoes: z.array(
@@ -37,6 +37,10 @@ export interface ResultadoDaIngestao {
  * Cada publicação registra o conteúdo global uma vez (PublicacaoNova só para conteúdo novo, que
  * segue para a classificação) e o destinatário do tenant, com o processo encontrado ou criado
  * (PublicacaoRecebida). Repetir o evento não duplica nada. Nenhuma IA aqui.
+ *
+ * Por nome do escritório (HU42; decisão do usuário em 08/11/2026): pode ser homônimo, então o
+ * destinatário fica "pendente", sem processo e sem PublicacaoRecebida (nem prazo) até o advogado
+ * confirmar. Se a mesma publicação chega depois por OAB ou processo, a confirmação é automática.
  */
 export class IngerirCaptura<Transacao> {
   constructor(
@@ -78,19 +82,32 @@ export class IngerirCaptura<Transacao> {
           }),
         );
       }
+      const peloNome = payload.tipo === 'nome';
       const processoId =
         payload.tipo === 'processo'
           ? referencia
-          : numero === null
+          : peloNome || numero === null
             ? null
             : await this.obterOuCriarProcesso(tenant, numero);
-      const recebida = await this.publicacoes.registrarDestinatario(transacao, {
+      const oabId = payload.tipo === 'oab' ? referencia : null;
+      const registrada = await this.publicacoes.registrarDestinatario(transacao, {
         tenantId: tenant,
         conteudoId: conteudo.conteudoId,
         capturadoEm: conteudo.capturadoEm,
         processoId,
-        oabId: payload.tipo === 'oab' ? referencia : null,
+        oabId,
+        conferencia: peloNome ? 'pendente' : null,
       });
+      const recebida = peloNome
+        ? false
+        : registrada ||
+          (await this.publicacoes.conferir(transacao, tenant, conteudo.conteudoId, {
+            conferencia: 'confirmada',
+            processoId,
+            oabId,
+            por: null,
+            em: this.relogio.agora(),
+          }));
       if (recebida) {
         recebidas++;
         eventos.push(

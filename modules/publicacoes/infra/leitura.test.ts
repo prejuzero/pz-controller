@@ -36,6 +36,7 @@ const pub = (id: Uuid): PublicacaoDoTenant => ({
   lidaPor: null,
   siglaTribunal: null,
   tipoComunicacao: null,
+  conferencia: null,
 });
 
 class Leitura implements RepositorioDeLeitura<TransacaoEmMemoria> {

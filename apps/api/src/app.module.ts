@@ -35,6 +35,11 @@ import {
   ConsultarImportacaoDeProcessos,
   ImportacoesPostgres,
   ImportarProcessos,
+  AdicionarNomeMonitorado,
+  ListarNomesMonitorados,
+  NomesMonitoradosPostgres,
+  ObterOuCriarProcesso,
+  RemoverNomeMonitorado,
   ConferenciasPostgres,
   ConsultarCliente,
   ConsultarConferencias,
@@ -213,8 +218,10 @@ import {
   SolicitarExportacao,
 } from '@pz/privacidade';
 import {
+  ConferirPublicacao,
   ConsultarPublicacao,
   LeituraPostgres,
+  PublicacoesPostgres,
   BuscarPublicacoes,
   ContarPublicacoesNovas,
   ListarPublicacoes,
@@ -320,6 +327,7 @@ import type {
   RepositorioDeClientes,
   RepositorioDeConferencias,
   RepositorioDeImportacoes,
+  RepositorioDeNomesMonitorados,
   RepositorioDeProcessos,
   UnidadeNoTenant,
 } from '@pz/cadastro';
@@ -365,7 +373,11 @@ import type {
 } from '@pz/notificacoes';
 import type { RepositorioDaTabela, RepositorioDeTiposDeAto } from '@pz/prazos';
 import type { RepositorioDeEncerramentos, RepositorioDeExportacoes } from '@pz/privacidade';
-import type { RepositorioDeLeitura } from '@pz/publicacoes';
+import type {
+  ObterOuCriarProcessoNoTenant,
+  RepositorioDeLeitura,
+  RepositorioDePublicacoes,
+} from '@pz/publicacoes';
 import type { VerificadorDeDependencia } from '@pz/saude';
 import type {
   RepositorioDeAceites,
@@ -547,6 +559,12 @@ interface DependenciasDasPublicacoes {
   readonly unidade: UnidadeDeTrabalho<unknown>;
   readonly leitura: RepositorioDeLeitura<unknown>;
   readonly trilha: TrilhaDeAuditoria<unknown>;
+  /** Conferência das capturadas pelo nome (HU42): destinatários, processo e outbox. */
+  readonly conferencia: (relogio: Clock) => {
+    readonly publicacoes: RepositorioDePublicacoes<unknown>;
+    readonly obterProcesso: ObterOuCriarProcessoNoTenant;
+    readonly outbox: Outbox<unknown>;
+  };
 }
 
 /** Leitura das publicações do escritório (HU18). */
@@ -560,6 +578,22 @@ function provedoresDasPublicacoes(d: DependenciasDasPublicacoes): Provider[] {
       provide: MarcarComoLida,
       inject: [RELOGIO],
       useFactory: (r: Clock) => new MarcarComoLida(d.unidade, d.leitura, d.trilha, r),
+    },
+    {
+      provide: ConferirPublicacao,
+      inject: [RELOGIO],
+      useFactory: (r: Clock) => {
+        const c = d.conferencia(r);
+        return new ConferirPublicacao(
+          d.unidade,
+          d.leitura,
+          c.publicacoes,
+          c.obterProcesso,
+          d.trilha,
+          c.outbox,
+          r,
+        );
+      },
     },
   ];
 }
@@ -1138,6 +1172,8 @@ interface DependenciasDoCadastro {
   readonly conferencias?: RepositorioDeConferencias<unknown>;
   /** Importação de processos por CSV (HU42); padrão: PostgreSQL. */
   readonly importacoes?: RepositorioDeImportacoes<unknown>;
+  /** Nomes monitorados (HU42); padrão: PostgreSQL. */
+  readonly nomes?: RepositorioDeNomesMonitorados<unknown>;
 }
 
 /** Casos de uso do cadastro (HU11), ligados aos mesmos repositórios. */
@@ -1188,6 +1224,32 @@ function provedoresDoCadastro(criar: (relogio: Clock) => DependenciasDoCadastro)
           d.unidade,
           d.processos,
           d.importacoes ?? new ImportacoesPostgres(),
+          d.trilha,
+          d.outbox,
+          r,
+        ),
+    ),
+    caso(
+      ListarNomesMonitorados,
+      (d) => new ListarNomesMonitorados(d.unidade, d.nomes ?? new NomesMonitoradosPostgres()),
+    ),
+    caso(
+      AdicionarNomeMonitorado,
+      (d, r) =>
+        new AdicionarNomeMonitorado(
+          d.unidade,
+          d.nomes ?? new NomesMonitoradosPostgres(),
+          d.trilha,
+          d.outbox,
+          r,
+        ),
+    ),
+    caso(
+      RemoverNomeMonitorado,
+      (d, r) =>
+        new RemoverNomeMonitorado(
+          d.unidade,
+          d.nomes ?? new NomesMonitoradosPostgres(),
           d.trilha,
           d.outbox,
           r,
@@ -1858,6 +1920,28 @@ export class AppModule {
           unidade: recursos.banco,
           leitura: new LeituraPostgres(),
           trilha: new TrilhaPostgres(),
+          conferencia: (relogio) => {
+            // O processo da publicação confirmada vem do cadastro, como na ingestão (HU18).
+            const obterOuCriar = new ObterOuCriarProcesso(
+              {
+                executar: (tenantId, trabalho) =>
+                  executarNoTenant(tenantId, () => recursos.banco.executar(trabalho)),
+              },
+              new ProcessosPostgres(relogio),
+              new TrilhaPostgres(),
+              new OutboxPostgres(),
+              relogio,
+            );
+            return {
+              publicacoes: new PublicacoesPostgres(),
+              outbox: new OutboxPostgres(),
+              obterProcesso: async (tenantId, numeroCnj) => {
+                const r = await obterOuCriar.executar(tenantId, numeroCnj);
+                if (!r.ok) throw r.erro;
+                return r.valor.processoId;
+              },
+            };
+          },
         },
       ),
       ...provedoresDaPrivacidade(

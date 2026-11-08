@@ -56,6 +56,10 @@ class FonteFalsa implements FontePublicacoes {
     this.chamadas.push(`processo ${numero}`);
     return Promise.resolve([publicacao]);
   }
+  buscarPorNome(nome: string) {
+    this.chamadas.push(`nome ${nome}`);
+    return Promise.resolve([publicacao]);
+  }
   saude() {
     return Promise.resolve({ estado: 'operacional' as const, verificadoEm: relogio.agora() });
   }
@@ -122,6 +126,33 @@ describe('assinaturas (HU17)', () => {
     await expect(
       emTx((tx) => manter.oabAdicionada(tx, { tenantId: 'x', payload: {} })),
     ).rejects.toThrow();
+  });
+});
+
+describe('nomes monitorados (HU42)', () => {
+  it('o mesmo nome em dois escritórios é um alvo só; a remoção tira só a assinatura', async () => {
+    const nome = (tenantId: string, grafia: string, nomeId = gerarUuidV7()) => ({
+      tenantId,
+      payload: { nomeId, nome: grafia },
+    });
+    const daA = nome(TENANT_A, 'Sociedade Fictícia de Advogados');
+    await emTx((tx) => manter.nomeAdicionado(tx, daA));
+    await emTx((tx) =>
+      manter.nomeAdicionado(tx, nome(TENANT_B, ' SOCIEDADE  fictícia DE ADVOGADOS')),
+    );
+    expect(repo.alvos.size).toBe(1);
+    expect(repo.alvo('nome', 'SOCIEDADE FICTÍCIA DE ADVOGADOS')).toBeDefined();
+    await emTx((tx) => manter.nomeRemovido(tx, daA));
+    expect(repo.assinaturas.map((a) => a.tenantId)).toEqual([TENANT_B]);
+
+    const [plano] = await planejar.executar();
+    await executar.executar(plano);
+    expect(fonte.chamadas).toEqual(['nome SOCIEDADE FICTÍCIA DE ADVOGADOS']);
+    expect(outbox.pendentes().at(-1)).toMatchObject({
+      tipo: 'CapturaConcluida',
+      tenantId: TENANT_B,
+      payload: { tipo: 'nome' },
+    });
   });
 });
 

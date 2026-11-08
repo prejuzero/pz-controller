@@ -22,7 +22,7 @@ export const executarCapturaJob = definirJob({
   dados: z
     .object({
       alvoId: z.uuid(),
-      tipo: z.enum(['oab', 'processo']),
+      tipo: z.enum(['oab', 'processo', 'nome']),
       valor: z.string().min(1),
       inicio: z.iso.date(),
       fim: z.iso.date(),

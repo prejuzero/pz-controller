@@ -46,6 +46,7 @@ const fonte: FontePublicacoes = {
           },
         ]),
   buscarPorProcesso: () => Promise.resolve([]),
+  buscarPorNome: () => Promise.resolve([]),
   saude: () => Promise.resolve({ estado: 'operacional', verificadoEm: relogio.agora() }),
 };
 

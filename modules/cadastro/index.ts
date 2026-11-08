@@ -66,6 +66,7 @@ export { AdvogadosEmMemoria } from './infra/em-memoria.js';
 export {
   ClientesEmMemoria,
   ImportacoesEmMemoria,
+  NomesMonitoradosEmMemoria,
   ProcessosEmMemoria,
 } from './infra/processos-em-memoria.js';
 export {
@@ -83,6 +84,15 @@ export type {
 export type { ImportacaoDeProcessos, RepositorioDeImportacoes } from './application/portas.js';
 export { COLUNAS_DA_IMPORTACAO, MAXIMO_DE_LINHAS_DA_IMPORTACAO } from './domain/importacao.js';
 export { ImportacoesPostgres } from './infra/importacoes-postgres.js';
+export {
+  AdicionarNomeMonitorado,
+  ListarNomesMonitorados,
+  MAXIMO_DE_NOMES_MONITORADOS,
+  RemoverNomeMonitorado,
+} from './application/nomes.js';
+export type { NomeListado } from './application/nomes.js';
+export type { NomeMonitorado, RepositorioDeNomesMonitorados } from './application/portas.js';
+export { NomesMonitoradosPostgres } from './infra/nomes-postgres.js';
 export { ClientesPostgres, ProcessosPostgres } from './infra/processos-postgres.js';
 export { ExportacaoDoCadastroPostgres } from './infra/exportacao-postgres.js';
 export {
