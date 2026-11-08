@@ -157,6 +157,13 @@ export const useProcesso = (id: string) => useQuery(consultasProcessos(useApi())
 export const useClientes = () => useQuery(consultasProcessos(useApi()).clientes());
 export const useEquipe = () => useQuery(consultasProcessos(useApi()).equipe());
 export const useCadastrarProcesso = () => useMutation(useMutacoesProcessos().cadastrar);
+export const useImportarProcessos = () => useMutation(useMutacoesProcessos().importar);
+export const useImportacaoDeProcessos = (id: string | null) => {
+  const consultas = consultasProcessos(useApi());
+  return useQuery({ ...consultas.importacao(id ?? ''), enabled: id !== null });
+};
+/** Atualiza a lista de processos depois que o worker conclui a importação. */
+export const useAoConcluirImportacao = () => useMutacoesProcessos().importacaoConcluida;
 export const useAtualizarProcesso = () => useMutation(useMutacoesProcessos().atualizar);
 export const useAlterarCobertura = () => useMutation(useMutacoesProcessos().alterarCobertura);
 export const useConferencias = () => useQuery(consultasProcessos(useApi()).conferencias());

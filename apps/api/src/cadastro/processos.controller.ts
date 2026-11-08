@@ -19,7 +19,9 @@ import {
   CadastrarCliente,
   CadastrarProcesso,
   ConsultarCliente,
+  ConsultarImportacaoDeProcessos,
   ConsultarProcesso,
+  ImportarProcessos,
   ListarClientes,
   ListarProcessos,
   RemoverCliente,
@@ -30,7 +32,14 @@ import { autenticacao, validar } from '../auth/auth.controller.js';
 import { RequerPermissao } from '../http/acesso.js';
 
 import type { RequisicaoAutenticada } from '../http/acesso.js';
-import type { AutorNoTenant, ClienteListado, Pagina, ProcessoListado } from '@pz/cadastro';
+import type {
+  AutorNoTenant,
+  ClienteListado,
+  ImportacaoConsultada,
+  Pagina,
+  ProcessoListado,
+  ResultadoDaImportacao,
+} from '@pz/cadastro';
 import type { Uuid } from '@pz/kernel';
 
 function autorDe(requisicao: RequisicaoAutenticada): AutorNoTenant {
@@ -59,12 +68,36 @@ export class ProcessosController {
     @Inject(CadastrarCliente) private readonly cadastrarCliente: CadastrarCliente<unknown>,
     @Inject(AtualizarCliente) private readonly atualizarCliente: AtualizarCliente<unknown>,
     @Inject(RemoverCliente) private readonly removerCliente: RemoverCliente<unknown>,
+    @Inject(ImportarProcessos) private readonly importarProcessos: ImportarProcessos<unknown>,
+    @Inject(ConsultarImportacaoDeProcessos)
+    private readonly consultarImportacao: ConsultarImportacaoDeProcessos<unknown>,
   ) {}
 
   @Get('processos')
   @RequerPermissao('processos:ler')
   async processos(@Query() consulta: unknown): Promise<Pagina<ProcessoListado>> {
     const r = await this.listarProcessos.executar(consulta);
+    if (!r.ok) throw r.erro;
+    return r.valor;
+  }
+
+  /** Importação por CSV (HU42): prévia ou pedido; o worker cadastra em segundo plano. */
+  @Post('processos/importacoes')
+  @RequerPermissao('processos:gerir')
+  @HttpCode(200)
+  async importar(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Body() corpo: unknown,
+  ): Promise<ResultadoDaImportacao> {
+    const r = await this.importarProcessos.executar(autorDe(requisicao), corpo);
+    if (!r.ok) throw r.erro;
+    return r.valor;
+  }
+
+  @Get('processos/importacoes/:id')
+  @RequerPermissao('processos:gerir')
+  async importacao(@Param('id') id: string): Promise<ImportacaoConsultada> {
+    const r = await this.consultarImportacao.executar(idDe(id));
     if (!r.ok) throw r.erro;
     return r.valor;
   }

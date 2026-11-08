@@ -397,7 +397,24 @@
       "registrarConferencia": "Registrar a conferência do painel deste processo:"
     },
     "cancelar": "Cancelar",
-    "irConferencias": "Conferências de painel"
+    "irConferencias": "Conferências de painel",
+    "importar": {
+      "abrir": "Importar planilha",
+      "titulo": "Importar processos por planilha",
+      "descricao": "Arquivo CSV (separador ; ou ,) com até 1.000 processos. Só a coluna numeroCnj é obrigatória; orgao, comarca e sigiloso (sim/não) são opcionais. Nada é gravado antes da validação.",
+      "modelo": "Baixar planilha modelo",
+      "arquivo": "Arquivo CSV",
+      "conteudo": "Conteúdo do CSV",
+      "validar": "Validar",
+      "importar": "{total, plural, one {Importar # processo} other {Importar # processos}}",
+      "resumo": "{validas, plural, one {# processo novo} other {# processos novos}}, {jaCadastrados, plural, one {# já cadastrado (será ignorado)} other {# já cadastrados (serão ignorados)}} e {invalidas, plural, one {# linha com problema} other {# linhas com problema}}.",
+      "nadaNovo": "Todos os processos do arquivo já estão no monitoramento.",
+      "comProblemas": "Corrija as linhas abaixo e valide de novo. Nada foi gravado.",
+      "linha": "Linha {linha}",
+      "emAndamento": "Importando os processos. Você pode fechar esta janela depois que terminar.",
+      "concluida": "{criados, plural, one {# processo cadastrado} other {# processos cadastrados}}{jaExistiam, plural, =0 {} one {; # já existia} other {; # já existiam}}. Eles já estão no monitoramento.",
+      "fechar": "Fechar"
+    }
   },
   "clientes": {
     "titulo": "Clientes",

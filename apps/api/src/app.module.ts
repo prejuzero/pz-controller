@@ -32,6 +32,9 @@ import {
   CadastrarCliente,
   CadastrarProcesso,
   ClientesPostgres,
+  ConsultarImportacaoDeProcessos,
+  ImportacoesPostgres,
+  ImportarProcessos,
   ConferenciasPostgres,
   ConsultarCliente,
   ConsultarConferencias,
@@ -316,6 +319,7 @@ import type {
   RepositorioDeAdvogados,
   RepositorioDeClientes,
   RepositorioDeConferencias,
+  RepositorioDeImportacoes,
   RepositorioDeProcessos,
   UnidadeNoTenant,
 } from '@pz/cadastro';
@@ -1132,6 +1136,8 @@ interface DependenciasDoCadastro {
   readonly outbox: Outbox<unknown>;
   /** Conferência de painel (HU36); padrão: PostgreSQL. */
   readonly conferencias?: RepositorioDeConferencias<unknown>;
+  /** Importação de processos por CSV (HU42); padrão: PostgreSQL. */
+  readonly importacoes?: RepositorioDeImportacoes<unknown>;
 }
 
 /** Casos de uso do cadastro (HU11), ligados aos mesmos repositórios. */
@@ -1174,6 +1180,23 @@ function provedoresDoCadastro(criar: (relogio: Clock) => DependenciasDoCadastro)
     caso(
       CadastrarProcesso,
       (d, r) => new CadastrarProcesso(d.unidade, d.processos, d.clientes, d.trilha, d.outbox, r),
+    ),
+    caso(
+      ImportarProcessos,
+      (d, r) =>
+        new ImportarProcessos(
+          d.unidade,
+          d.processos,
+          d.importacoes ?? new ImportacoesPostgres(),
+          d.trilha,
+          d.outbox,
+          r,
+        ),
+    ),
+    caso(
+      ConsultarImportacaoDeProcessos,
+      (d) =>
+        new ConsultarImportacaoDeProcessos(d.unidade, d.importacoes ?? new ImportacoesPostgres()),
     ),
     caso(
       AtualizarProcesso,

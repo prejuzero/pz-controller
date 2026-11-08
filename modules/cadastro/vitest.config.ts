@@ -8,5 +8,6 @@ export default criarConfigVitest({
     'infra/advogados-postgres.ts',
     'infra/processos-postgres.ts',
     'infra/conferencias-postgres.ts',
+    'infra/importacoes-postgres.ts',
   ],
 });

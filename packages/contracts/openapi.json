@@ -10578,6 +10578,161 @@
         }
       }
     },
+    "/v1/processos/importacoes": {
+      "post": {
+        "operationId": "importarProcessos",
+        "summary": "Valida uma planilha CSV de processos (prévia) e, se tudo estiver certo, pede a importação.",
+        "tags": [
+          "processos"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeImportacaoDeProcessos"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoDaImportacaoDeProcessos"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/processos/importacoes/{id}": {
+      "get": {
+        "operationId": "consultarImportacaoDeProcessos",
+        "summary": "Andamento de uma importação de processos do escritório.",
+        "tags": [
+          "processos"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportacaoDeProcessos"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/publicacoes": {
       "get": {
         "operationId": "listarPublicacoes",
@@ -14893,6 +15048,81 @@
         ],
         "additionalProperties": false
       },
+      "ImportacaoDeProcessos": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "situacao": {
+            "type": "string",
+            "enum": [
+              "pendente",
+              "concluida"
+            ]
+          },
+          "total": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Processos novos no pedido."
+          },
+          "criados": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "jaExistiam": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Cadastrados por outro caminho entre a prévia e o processamento."
+          },
+          "solicitadaEm": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "concluidaEm": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "situacao",
+          "total",
+          "criados",
+          "jaExistiam",
+          "solicitadaEm",
+          "concluidaEm"
+        ],
+        "additionalProperties": false
+      },
       "LinhaDoTempo": {
         "type": "object",
         "properties": {
@@ -16945,6 +17175,27 @@
           "somentePrevia": {
             "default": true,
             "description": "true: só valida; false: grava se tudo for válido.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "csv",
+          "somentePrevia"
+        ],
+        "additionalProperties": false
+      },
+      "PedidoDeImportacaoDeProcessos": {
+        "type": "object",
+        "properties": {
+          "csv": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000000,
+            "description": "CSV (separador ; ou ,), até 1.000 processos. Cabeçalho com numeroCnj e, se quiser, orgao, comarca e sigiloso (sim/não)."
+          },
+          "somentePrevia": {
+            "default": true,
+            "description": "true: só valida; false: grava o pedido se nenhuma linha tiver problema.",
             "type": "boolean"
           }
         },
@@ -19322,6 +19573,85 @@
           "linhas",
           "tiposNovos",
           "propostos"
+        ],
+        "additionalProperties": false
+      },
+      "ResultadoDaImportacaoDeProcessos": {
+        "type": "object",
+        "properties": {
+          "linhas": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "linha": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Linha no arquivo (o cabeçalho é a 1)."
+                },
+                "numeroCnj": {
+                  "description": "Com a máscara do CNJ; nulo se inválido.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "situacao": {
+                  "type": "string",
+                  "enum": [
+                    "valida",
+                    "ja-cadastrado",
+                    "invalida"
+                  ],
+                  "description": "ja-cadastrado: já está no monitoramento e será ignorado."
+                },
+                "problemas": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "campo": {
+                        "type": "string"
+                      },
+                      "mensagem": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "campo",
+                      "mensagem"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "linha",
+                "numeroCnj",
+                "situacao",
+                "problemas"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "importacaoId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pedido gravado (os processos são cadastrados em segundo plano); nulo na prévia."
+          }
+        },
+        "required": [
+          "linhas",
+          "importacaoId"
         ],
         "additionalProperties": false
       },

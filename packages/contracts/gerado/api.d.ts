@@ -1893,6 +1893,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/processos/importacoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Valida uma planilha CSV de processos (prévia) e, se tudo estiver certo, pede a importação. */
+        post: operations["importarProcessos"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/processos/importacoes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Andamento de uma importação de processos do escritório. */
+        get: operations["consultarImportacaoDeProcessos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/publicacoes": {
         parameters: {
             query?: never;
@@ -2889,6 +2923,20 @@ export interface components {
                 hash: string;
             }[];
         };
+        ImportacaoDeProcessos: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            situacao: "pendente" | "concluida";
+            /** @description Processos novos no pedido. */
+            total: number;
+            criados: number | null;
+            /** @description Cadastrados por outro caminho entre a prévia e o processamento. */
+            jaExistiam: number | null;
+            /** Format: date-time */
+            solicitadaEm: string;
+            concluidaEm: string | null;
+        };
         LinhaDoTempo: {
             /** @description Um item por dia a partir de hoje, inclusive os dias sem prazo. */
             itens: {
@@ -3392,6 +3440,15 @@ export interface components {
             csv: string;
             /**
              * @description true: só valida; false: grava se tudo for válido.
+             * @default true
+             */
+            somentePrevia: boolean;
+        };
+        PedidoDeImportacaoDeProcessos: {
+            /** @description CSV (separador ; ou ,), até 1.000 processos. Cabeçalho com numeroCnj e, se quiser, orgao, comarca e sigiloso (sim/não). */
+            csv: string;
+            /**
+             * @description true: só valida; false: grava o pedido se nenhuma linha tiver problema.
              * @default true
              */
             somentePrevia: boolean;
@@ -3947,6 +4004,25 @@ export interface components {
             tiposNovos: string[];
             /** @description Rascunhos gravados (vazio na prévia); cada um ainda exige aprovação. */
             propostos: components["schemas"]["VersaoDaTabela"][];
+        };
+        ResultadoDaImportacaoDeProcessos: {
+            linhas: {
+                /** @description Linha no arquivo (o cabeçalho é a 1). */
+                linha: number;
+                /** @description Com a máscara do CNJ; nulo se inválido. */
+                numeroCnj: string | null;
+                /**
+                 * @description ja-cadastrado: já está no monitoramento e será ignorado.
+                 * @enum {string}
+                 */
+                situacao: "valida" | "ja-cadastrado" | "invalida";
+                problemas: {
+                    campo: string;
+                    mensagem: string;
+                }[];
+            }[];
+            /** @description Pedido gravado (os processos são cadastrados em segundo plano); nulo na prévia. */
+            importacaoId: string | null;
         };
         ResumoDaPublicacao: {
             /** @description null: ainda sem resumo, sem IA configurada ou em revisão. */
@@ -12614,6 +12690,133 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DiasNaoUteisDoProcesso"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    importarProcessos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeImportacaoDeProcessos"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoDaImportacaoDeProcessos"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    consultarImportacaoDeProcessos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportacaoDeProcessos"];
                 };
             };
             /** @description Entrada inválida. */

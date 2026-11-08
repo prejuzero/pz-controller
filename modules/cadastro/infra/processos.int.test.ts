@@ -11,6 +11,11 @@ import { ProcessosParaBusca } from '../application/busca.js';
 import { CadastrarCliente, ListarClientes, RemoverCliente } from '../application/clientes.js';
 import { ConsultarConferencias, RegistrarConferencia } from '../application/conferencias.js';
 import {
+  ConsultarImportacaoDeProcessos,
+  ImportarProcessos,
+  ProcessarImportacaoDeProcessos,
+} from '../application/importacao.js';
+import {
   AlterarCobertura,
   AtualizarProcesso,
   CadastrarProcesso,
@@ -20,6 +25,7 @@ import {
 } from '../application/processos.js';
 
 import { ConferenciasPostgres, TenantsComConferenciaPostgres } from './conferencias-postgres.js';
+import { ImportacoesPostgres } from './importacoes-postgres.js';
 import { ClientesPostgres, ProcessosPostgres } from './processos-postgres.js';
 
 import type { AutorNoTenant } from '../application/paginacao.js';
@@ -280,6 +286,53 @@ describe('processos e clientes no PostgreSQL (HU12)', () => {
     ).rejects.toThrow();
     await expect(
       noTenant(beto, () => banco.executar((tx) => tx.conferenciaPainel.deleteMany({}))),
+    ).rejects.toThrow();
+  });
+
+  it('importação por CSV: pedido, processamento no tenant, idempotente e isolada (HU42)', async () => {
+    const processos = new ProcessosPostgres(relogio);
+    const importacoes = new ImportacoesPostgres();
+    const trilha = new TrilhaPostgres();
+    const outbox = new OutboxPostgres();
+    const importar = new ImportarProcessos(banco, processos, importacoes, trilha, outbox, relogio);
+    const processar = new ProcessarImportacaoDeProcessos(
+      processos,
+      importacoes,
+      trilha,
+      outbox,
+      relogio,
+    );
+    const consultar = new ConsultarImportacaoDeProcessos(banco, importacoes);
+    // Números FICTÍCIOS: um novo e o NUMERO, já cadastrado no tenant da Ana.
+    const csv = `numeroCnj;comarca\n1234567-03.2025.5.02.0001;Campinas\n${NUMERO};`;
+    const r = await noTenant(ana, () => importar.executar(ana, { csv, somentePrevia: false }));
+    if (!r.ok || r.valor.importacaoId === null) throw new Error('esperava o pedido');
+    const id = r.valor.importacaoId;
+    const evento = { tenantId: ana.tenantId, payload: { importacaoId: id } };
+    for (const esperado of ['concluida', 'ja-concluida']) {
+      expect(
+        await noTenant(ana, () => banco.executar((tx) => processar.executar(tx, evento))),
+      ).toBe(esperado);
+    }
+    expect(await noTenant(ana, () => consultar.executar(id))).toMatchObject({
+      ok: true,
+      valor: { situacao: 'concluida', total: 1, criados: 1, jaExistiam: 0 },
+    });
+    expect(await noTenant(beto, () => consultar.executar(id))).toMatchObject({ ok: false });
+    const gravado = await sistema.executarComoSistema('conferir o teste', async (tx) => ({
+      processo: await tx.processo.count({
+        where: { tenantId: ana.tenantId, numeroCnj: '12345670320255020001', comarca: 'Campinas' },
+      }),
+      eventos: await tx.eventoDominio.count({
+        where: { tenantId: ana.tenantId, tipo: 'ImportacaoDeProcessosSolicitada' },
+      }),
+      trilha: await tx.eventoAuditoria.count({
+        where: { tenantId: ana.tenantId, tipo: { startsWith: 'cadastro.importacao-' } },
+      }),
+    }));
+    expect(gravado).toEqual({ processo: 1, eventos: 1, trilha: 2 });
+    await expect(
+      noTenant(ana, () => banco.executar((tx) => tx.importacaoProcesso.deleteMany({}))),
     ).rejects.toThrow();
   });
 });

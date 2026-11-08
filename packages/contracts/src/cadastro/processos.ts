@@ -292,6 +292,93 @@ export const registrarConferencia = definirRota({
   erros: [404],
 });
 
+/** Colunas aceitas na planilha (HU42); só numeroCnj é obrigatória, em qualquer ordem. */
+export const COLUNAS_DA_IMPORTACAO_DE_PROCESSOS = [
+  'numeroCnj',
+  'orgao',
+  'comarca',
+  'sigiloso',
+] as const;
+
+export const PedidoDeImportacaoDeProcessos = nomear(
+  'PedidoDeImportacaoDeProcessos',
+  z.object({
+    csv: z
+      .string()
+      .min(1)
+      .max(1_000_000)
+      .describe(
+        'CSV (separador ; ou ,), até 1.000 processos. Cabeçalho com numeroCnj e, se quiser, orgao, comarca e sigiloso (sim/não).',
+      ),
+    somentePrevia: z
+      .boolean()
+      .default(true)
+      .describe('true: só valida; false: grava o pedido se nenhuma linha tiver problema.'),
+  }),
+);
+
+export const ResultadoDaImportacaoDeProcessos = nomear(
+  'ResultadoDaImportacaoDeProcessos',
+  z.object({
+    linhas: z.array(
+      z.object({
+        linha: z.number().int().describe('Linha no arquivo (o cabeçalho é a 1).'),
+        numeroCnj: z.string().nullable().describe('Com a máscara do CNJ; nulo se inválido.'),
+        situacao: z
+          .enum(['valida', 'ja-cadastrado', 'invalida'])
+          .describe('ja-cadastrado: já está no monitoramento e será ignorado.'),
+        problemas: z.array(z.object({ campo: z.string(), mensagem: z.string() })),
+      }),
+    ),
+    importacaoId: Uuid.nullable().describe(
+      'Pedido gravado (os processos são cadastrados em segundo plano); nulo na prévia.',
+    ),
+  }),
+);
+export type ResultadoDaImportacaoDeProcessos = z.infer<
+  typeof ResultadoDaImportacaoDeProcessos.esquema
+>;
+
+export const ImportacaoDeProcessos = nomear(
+  'ImportacaoDeProcessos',
+  z.object({
+    id: Uuid,
+    situacao: z.enum(['pendente', 'concluida']),
+    total: z.number().int().describe('Processos novos no pedido.'),
+    criados: z.number().int().nullable(),
+    jaExistiam: z
+      .number()
+      .int()
+      .nullable()
+      .describe('Cadastrados por outro caminho entre a prévia e o processamento.'),
+    solicitadaEm: Instante,
+    concluidaEm: Instante.nullable(),
+  }),
+);
+export type ImportacaoDeProcessos = z.infer<typeof ImportacaoDeProcessos.esquema>;
+
+export const importarProcessos = definirRota({
+  id: 'importarProcessos',
+  metodo: 'post',
+  caminho: '/v1/processos/importacoes',
+  resumo:
+    'Valida uma planilha CSV de processos (prévia) e, se tudo estiver certo, pede a importação.',
+  tag: 'processos',
+  corpo: PedidoDeImportacaoDeProcessos,
+  resposta: { status: 200, corpo: ResultadoDaImportacaoDeProcessos },
+});
+
+export const consultarImportacaoDeProcessos = definirRota({
+  id: 'consultarImportacaoDeProcessos',
+  metodo: 'get',
+  caminho: '/v1/processos/importacoes/{id}',
+  resumo: 'Andamento de uma importação de processos do escritório.',
+  tag: 'processos',
+  parametrosDeCaminho: comId,
+  resposta: { status: 200, corpo: ImportacaoDeProcessos },
+  erros: [404],
+});
+
 export const ROTAS_PROCESSOS = [
   listarConferencias,
   registrarConferencia,
@@ -305,4 +392,6 @@ export const ROTAS_PROCESSOS = [
   cadastrarCliente,
   atualizarCliente,
   removerCliente,
+  importarProcessos,
+  consultarImportacaoDeProcessos,
 ] as const;

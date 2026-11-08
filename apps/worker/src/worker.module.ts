@@ -26,7 +26,9 @@ import {
   ConsultarConferencias,
   ConsultarProcesso,
   ExportacaoDoCadastroPostgres,
+  ImportacoesPostgres,
   ObterOuCriarProcesso,
+  ProcessarImportacaoDeProcessos,
   ProcessosPostgres,
   RecifrarCamposSensiveis,
   TenantsComConferenciaPostgres,
@@ -165,6 +167,7 @@ import {
 import { Redis } from 'ioredis';
 
 import { ConsumidorDeAuditoria } from './auditoria/consumidor.js';
+import { ConsumidorDoCadastro } from './cadastro/consumidor.js';
 import { ConsumidorDoCalendario } from './calendario/consumidor.js';
 import { alertasDaCaptura } from './captura/alertas.js';
 import { ConsumidorDaCaptura } from './captura/consumidor.js';
@@ -754,6 +757,20 @@ export class WorkerModule {
       ConsumidorDasPublicacoes,
       ConsumidorDaClassificacao,
       ConsumidorDosWebhooks,
+      ConsumidorDoCadastro,
+      {
+        // Importação de processos por CSV (HU42), na transação do consumo do evento.
+        provide: ProcessarImportacaoDeProcessos,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new ProcessarImportacaoDeProcessos(
+            new ProcessosPostgres(relogio),
+            new ImportacoesPostgres(),
+            new TrilhaPostgres(),
+            new OutboxPostgres(),
+            relogio,
+          ),
+      },
       {
         // Classificação (HU21): regras rápidas e, com chave configurada, a plataforma de IA.
         provide: ClassificarPublicacao,

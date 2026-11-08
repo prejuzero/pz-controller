@@ -63,7 +63,26 @@ export {
   EmailsAdicionaisDosAdvogadosPostgres,
 } from './infra/advogados-postgres.js';
 export { AdvogadosEmMemoria } from './infra/em-memoria.js';
-export { ClientesEmMemoria, ProcessosEmMemoria } from './infra/processos-em-memoria.js';
+export {
+  ClientesEmMemoria,
+  ImportacoesEmMemoria,
+  ProcessosEmMemoria,
+} from './infra/processos-em-memoria.js';
+export {
+  ConsultarImportacaoDeProcessos,
+  EntradaDaImportacao,
+  ImportarProcessos,
+  ProcessarImportacaoDeProcessos,
+} from './application/importacao.js';
+export type {
+  DesfechoDaImportacao,
+  ImportacaoConsultada,
+  LinhaDaPrevia,
+  ResultadoDaImportacao,
+} from './application/importacao.js';
+export type { ImportacaoDeProcessos, RepositorioDeImportacoes } from './application/portas.js';
+export { COLUNAS_DA_IMPORTACAO, MAXIMO_DE_LINHAS_DA_IMPORTACAO } from './domain/importacao.js';
+export { ImportacoesPostgres } from './infra/importacoes-postgres.js';
 export { ClientesPostgres, ProcessosPostgres } from './infra/processos-postgres.js';
 export { ExportacaoDoCadastroPostgres } from './infra/exportacao-postgres.js';
 export {
