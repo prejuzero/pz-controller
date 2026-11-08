@@ -162,3 +162,27 @@ export interface RepositorioDeImportacoes<Transacao> {
     desfecho: { readonly criados: number; readonly jaExistiam: number; readonly em: Instant },
   ): Promise<void>;
 }
+
+/** Nome do escritório monitorado na captura (HU42). */
+export interface NomeMonitorado {
+  readonly id: Uuid;
+  readonly tenantId: Uuid;
+  readonly nome: string;
+  /** Forma canônica (a do alvo da captura). */
+  readonly valor: string;
+  readonly criadoPor: Uuid;
+  readonly criadoEm: Instant;
+}
+
+/** Porta: nomes monitorados do tenant da transação (tabela `nome_monitorado`, RLS). */
+export interface RepositorioDeNomesMonitorados<Transacao> {
+  ativos(transacao: Transacao): Promise<NomeMonitorado[]>;
+  /** `false` se o nome já está ativo no tenant (índice único): não aborta a transação. */
+  inserir(transacao: Transacao, nome: NomeMonitorado): Promise<boolean>;
+  /** Marca como removido; devolve o nome se estava ativo. */
+  remover(
+    transacao: Transacao,
+    id: Uuid,
+    remocao: { readonly por: Uuid; readonly em: Instant },
+  ): Promise<NomeMonitorado | undefined>;
+}

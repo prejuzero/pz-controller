@@ -20,3 +20,8 @@ Decisões do usuário em 08/11/2026: só CSV, com prévia e gravação em segund
 - `POST /v1/processos/importacoes` (`processos:gerir`): até 1.000 linhas; cabeçalho com `numeroCnj` (obrigatória) e, em qualquer ordem, `orgao`, `comarca` e `sigiloso` (sim/não). Com `somentePrevia: true` (padrão) só valida: cada linha sai `valida`, `ja-cadastrado` (será ignorada) ou `invalida` com os problemas. Com `false` e nenhuma linha inválida, grava o pedido (`importacao_processo`, RLS), a trilha `cadastro.importacao-solicitada` e o evento `ImportacaoDeProcessosSolicitada`.
 - O worker (`ConsumidorDoCadastro`) cadastra os processos na transação do consumo, cada um com `cadastro.processo-cadastrado` e `ProcessoMonitorado` (a captura passa a monitorá-los), e conclui com `cadastro.importacao-concluida`. Repetir o evento não refaz nada; processo cadastrado por outro caminho depois da prévia conta como "já existia".
 - `GET /v1/processos/importacoes/{id}`: andamento; o portal consulta a cada 2 s até concluir.
+
+## Nomes monitorados (HU42, RF05)
+
+- `GET/POST/DELETE /v1/escritorio/nomes-monitorados` (leitura com `processos:ler`; alterar com `usuarios:gerir`, quem administra o escritório). Até 5 nomes ativos; o mesmo nome em outra grafia é recusado (forma canônica do kernel). Remover marca, não apaga.
+- Cada mudança gera trilha (`cadastro.nome-monitorado-adicionado` / `-removido`) e evento (`NomeMonitoradoAdicionado` / `NomeMonitoradoRemovido`), que a captura usa para assinar o alvo.

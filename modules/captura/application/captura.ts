@@ -8,6 +8,7 @@ import {
   proximaTentativa,
   TIPOS_DE_ALVO,
   valorDaOab,
+  valorDoNome,
   valorDoProcesso,
 } from '../domain/alvo.js';
 import { alvoPrecisaDeAlerta, aposFalhaDaFonte, aposSucessoDaFonte } from '../domain/fonte.js';
@@ -32,6 +33,10 @@ const EventoDeOab = z.object({
   tenantId: z.uuid(),
   payload: z.object({ oabId: z.uuid(), numero: z.string(), uf: z.string() }),
 });
+const EventoDeNome = z.object({
+  tenantId: z.uuid(),
+  payload: z.object({ nomeId: z.uuid(), nome: z.string() }),
+});
 const EventoDeProcesso = z.object({
   tenantId: z.uuid(),
   payload: z.object({ processoId: z.uuid(), numeroCnj: z.string() }),
@@ -39,8 +44,8 @@ const EventoDeProcesso = z.object({
 
 /**
  * Mantém alvos e assinaturas a partir do cadastro (HU17): consumidores de OabAdicionada,
- * OabRemovida e ProcessoMonitorado, na transação do evento (entrega única por consumidor). A
- * mesma OAB em N escritórios vira um alvo com N assinantes. Payload inválido lança (vai à DLQ).
+ * OabRemovida, ProcessoMonitorado e dos nomes monitorados (HU42), na transação do evento
+ * (entrega única por consumidor). A mesma OAB em N escritórios vira um alvo com N assinantes. Payload inválido lança (vai à DLQ).
  */
 export class ManterAssinaturas<Transacao> {
   constructor(
@@ -78,6 +83,23 @@ export class ManterAssinaturas<Transacao> {
       valorDoProcesso(payload.numeroCnj),
       tenantId,
       payload.processoId,
+    );
+  }
+
+  /** Nome do escritório monitorado (HU42): o mesmo nome em N escritórios é um alvo só. */
+  async nomeAdicionado(transacao: Transacao, evento: unknown): Promise<void> {
+    const { tenantId, payload } = EventoDeNome.parse(evento);
+    await this.#assinar(transacao, 'nome', valorDoNome(payload.nome), tenantId, payload.nomeId);
+  }
+
+  async nomeRemovido(transacao: Transacao, evento: unknown): Promise<void> {
+    const { tenantId, payload } = EventoDeNome.parse(evento);
+    await this.assinaturas.desassinar(
+      transacao,
+      'nome',
+      valorDoNome(payload.nome),
+      tenantId as Uuid,
+      payload.nomeId as Uuid,
     );
   }
 
@@ -283,6 +305,7 @@ export class ExecutarCaptura<Transacao> {
 
   #buscar(tipo: TipoDeAlvo, valor: string, janela: JanelaDaCaptura) {
     if (tipo === 'processo') return this.fonte.buscarPorProcesso(formatarCnj(valor), janela);
+    if (tipo === 'nome') return this.fonte.buscarPorNome(valor, janela);
     const [numero = '', uf = ''] = valor.split('/');
     return this.fonte.buscarPorOab(Oab.parse({ numero, uf }), janela);
   }

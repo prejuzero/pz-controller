@@ -19,7 +19,10 @@ import {
   CadastrarCliente,
   CadastrarProcesso,
   ConsultarCliente,
+  AdicionarNomeMonitorado,
   ConsultarImportacaoDeProcessos,
+  ListarNomesMonitorados,
+  RemoverNomeMonitorado,
   ConsultarProcesso,
   ImportarProcessos,
   ListarClientes,
@@ -36,6 +39,7 @@ import type {
   AutorNoTenant,
   ClienteListado,
   ImportacaoConsultada,
+  NomeListado,
   Pagina,
   ProcessoListado,
   ResultadoDaImportacao,
@@ -71,7 +75,41 @@ export class ProcessosController {
     @Inject(ImportarProcessos) private readonly importarProcessos: ImportarProcessos<unknown>,
     @Inject(ConsultarImportacaoDeProcessos)
     private readonly consultarImportacao: ConsultarImportacaoDeProcessos<unknown>,
+    @Inject(ListarNomesMonitorados) private readonly listarNomes: ListarNomesMonitorados<unknown>,
+    @Inject(AdicionarNomeMonitorado)
+    private readonly adicionarNome: AdicionarNomeMonitorado<unknown>,
+    @Inject(RemoverNomeMonitorado) private readonly removerNome: RemoverNomeMonitorado<unknown>,
   ) {}
+
+  /** Nomes do escritório monitorados na captura (HU42); só quem gere o escritório altera. */
+  @Get('escritorio/nomes-monitorados')
+  @RequerPermissao('processos:ler')
+  async nomesMonitorados(): Promise<{ itens: NomeListado[] }> {
+    return { itens: await this.listarNomes.executar() };
+  }
+
+  @Post('escritorio/nomes-monitorados')
+  @RequerPermissao('usuarios:gerir')
+  @HttpCode(201)
+  async adicionarNomeMonitorado(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Body() corpo: unknown,
+  ): Promise<NomeListado> {
+    const r = await this.adicionarNome.executar(autorDe(requisicao), corpo);
+    if (!r.ok) throw r.erro;
+    return r.valor;
+  }
+
+  @Delete('escritorio/nomes-monitorados/:id')
+  @RequerPermissao('usuarios:gerir')
+  @HttpCode(204)
+  async removerNomeMonitorado(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Param('id') id: string,
+  ): Promise<void> {
+    const r = await this.removerNome.executar(autorDe(requisicao), idDe(id));
+    if (!r.ok) throw r.erro;
+  }
 
   @Get('processos')
   @RequerPermissao('processos:ler')

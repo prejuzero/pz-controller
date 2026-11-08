@@ -1,5 +1,7 @@
 // API pública do módulo publicacoes (CLAUDE.md, seção 6): outros módulos e as apps só usam o que está aqui.
 export { IngerirCaptura } from './application/ingestao.js';
+export { ConferirPublicacao } from './application/conferencia.js';
+export type { ConferenteNoTenant } from './application/conferencia.js';
 export {
   BuscarPublicacoes,
   ConsultarPublicacao,
@@ -13,6 +15,7 @@ export type { LeitorNoTenant, Pagina } from './application/leitura.js';
 export type { ResultadoDaIngestao } from './application/ingestao.js';
 export type {
   ConteudoRegistrado,
+  DecisaoDaConferencia,
   NovoDestinatario,
   ObterOuCriarProcessoNoTenant,
   PublicacaoParaRegistrar,

@@ -22,6 +22,7 @@ interface Linha {
   lida_em: Date | null;
   lida_por: string | null;
   metadados: Record<string, unknown>;
+  conferencia: string | null;
 }
 
 const texto = (v: unknown) => (typeof v === 'string' ? v : null);
@@ -41,6 +42,8 @@ const publicacao = (l: Linha): PublicacaoDoTenant => ({
   lidaPor: l.lida_por as Uuid | null,
   siglaTribunal: texto(l.metadados.siglaTribunal),
   tipoComunicacao: texto(l.metadados.tipoComunicacao),
+  // CHECK da tabela garante o valor; as descartadas não chegam aqui.
+  conferencia: l.conferencia as PublicacaoDoTenant['conferencia'],
 });
 
 /** Filtro da busca como parâmetros ligados (nulo = sem filtro): consulta estática, sem SQL montado. */
@@ -57,19 +60,25 @@ function parametros(f: FiltroDaBuscaDePublicacoes) {
   };
 }
 
-/** Leitura pela view `publicacao_do_tenant` (RLS dos destinatários) e marcação de leitura. */
+/**
+ * Leitura pela view `publicacao_do_tenant` (RLS dos destinatários) e marcação de leitura. As
+ * descartadas na conferência (homônimos, HU42) ficam fora de toda leitura.
+ */
 export class LeituraPostgres implements RepositorioDeLeitura<Transacao> {
   async listar(tx: Transacao, f: FiltroDePublicacoes): Promise<PublicacaoDoTenant[]> {
     // Filtros opcionais como parâmetros (nulo = sem filtro): consulta estática, sem SQL montado.
     const novas = f.novas ?? null;
     const linhas = await tx.$queryRaw<Linha[]>`
       SELECT conteudo_id, fonte, id_externo, numero_cnj, data_disponibilizacao, teor, url_fonte,
-             processo_id, oab_id, recebida_em, capturado_em, lida_em, lida_por, metadados
+             processo_id, oab_id, recebida_em, capturado_em, lida_em, lida_por, metadados, conferencia
         FROM publicacao_do_tenant
-       WHERE (${novas}::boolean IS NULL OR (lida_em IS NULL) = ${novas}::boolean)
+       WHERE conferencia IS DISTINCT FROM 'descartada'
+         AND (${novas}::boolean IS NULL OR (lida_em IS NULL) = ${novas}::boolean)
          AND (${f.de ?? null}::date IS NULL OR data_disponibilizacao >= ${f.de ?? null}::date)
          AND (${f.ate ?? null}::date IS NULL OR data_disponibilizacao <= ${f.ate ?? null}::date)
          AND (${f.processoId ?? null}::uuid IS NULL OR processo_id = ${f.processoId ?? null}::uuid)
+         AND (${f.conferir ?? null}::boolean IS NULL
+              OR (conferencia = 'pendente') = ${f.conferir ?? null}::boolean)
          AND (${f.antesDe ?? null}::uuid IS NULL OR conteudo_id < ${f.antesDe ?? null}::uuid)
        ORDER BY conteudo_id DESC
        LIMIT ${f.limite}`;
@@ -79,8 +88,8 @@ export class LeituraPostgres implements RepositorioDeLeitura<Transacao> {
   async buscar(tx: Transacao, id: Uuid): Promise<PublicacaoDoTenant | undefined> {
     const [linha] = await tx.$queryRaw<Linha[]>`
       SELECT conteudo_id, fonte, id_externo, numero_cnj, data_disponibilizacao, teor, url_fonte,
-             processo_id, oab_id, recebida_em, capturado_em, lida_em, lida_por, metadados
-        FROM publicacao_do_tenant WHERE conteudo_id = ${id}::uuid`;
+             processo_id, oab_id, recebida_em, capturado_em, lida_em, lida_por, metadados, conferencia
+        FROM publicacao_do_tenant WHERE conteudo_id = ${id}::uuid AND conferencia IS DISTINCT FROM 'descartada'`;
     return linha === undefined ? undefined : publicacao(linha);
   }
 
@@ -93,9 +102,10 @@ export class LeituraPostgres implements RepositorioDeLeitura<Transacao> {
       f.ordem === 'asc'
         ? await tx.$queryRaw<Linha[]>`
       SELECT conteudo_id, fonte, id_externo, numero_cnj, data_disponibilizacao, teor, url_fonte,
-             processo_id, oab_id, recebida_em, capturado_em, lida_em, lida_por, metadados
+             processo_id, oab_id, recebida_em, capturado_em, lida_em, lida_por, metadados, conferencia
         FROM publicacao_do_tenant
-       WHERE (${p.processos}::uuid[] IS NULL OR processo_id = ANY(${p.processos}::uuid[]))
+       WHERE conferencia IS DISTINCT FROM 'descartada'
+         AND (${p.processos}::uuid[] IS NULL OR processo_id = ANY(${p.processos}::uuid[]))
          AND (${p.oabs}::uuid[] IS NULL OR oab_id = ANY(${p.oabs}::uuid[]))
          AND (${p.texto}::text IS NULL
               OR teor_tsv @@ websearch_to_tsquery('portugues_sem_acento', ${p.texto}::text))
@@ -107,9 +117,10 @@ export class LeituraPostgres implements RepositorioDeLeitura<Transacao> {
        LIMIT ${f.limite}`
         : await tx.$queryRaw<Linha[]>`
       SELECT conteudo_id, fonte, id_externo, numero_cnj, data_disponibilizacao, teor, url_fonte,
-             processo_id, oab_id, recebida_em, capturado_em, lida_em, lida_por, metadados
+             processo_id, oab_id, recebida_em, capturado_em, lida_em, lida_por, metadados, conferencia
         FROM publicacao_do_tenant
-       WHERE (${p.processos}::uuid[] IS NULL OR processo_id = ANY(${p.processos}::uuid[]))
+       WHERE conferencia IS DISTINCT FROM 'descartada'
+         AND (${p.processos}::uuid[] IS NULL OR processo_id = ANY(${p.processos}::uuid[]))
          AND (${p.oabs}::uuid[] IS NULL OR oab_id = ANY(${p.oabs}::uuid[]))
          AND (${p.texto}::text IS NULL
               OR teor_tsv @@ websearch_to_tsquery('portugues_sem_acento', ${p.texto}::text))
@@ -127,7 +138,8 @@ export class LeituraPostgres implements RepositorioDeLeitura<Transacao> {
     const [linha] = await tx.$queryRaw<{ n: bigint }[]>`
       SELECT count(*) AS n FROM (
         SELECT 1 FROM publicacao_do_tenant
-         WHERE (${p.processos}::uuid[] IS NULL OR processo_id = ANY(${p.processos}::uuid[]))
+         WHERE conferencia IS DISTINCT FROM 'descartada'
+           AND (${p.processos}::uuid[] IS NULL OR processo_id = ANY(${p.processos}::uuid[]))
            AND (${p.oabs}::uuid[] IS NULL OR oab_id = ANY(${p.oabs}::uuid[]))
            AND (${p.texto}::text IS NULL
                 OR teor_tsv @@ websearch_to_tsquery('portugues_sem_acento', ${p.texto}::text))
@@ -140,14 +152,16 @@ export class LeituraPostgres implements RepositorioDeLeitura<Transacao> {
   async conteudosComTexto(tx: Transacao, texto: string, limite: number): Promise<Uuid[]> {
     const linhas = await tx.$queryRaw<{ conteudo_id: string }[]>`
       SELECT conteudo_id FROM publicacao_do_tenant
-       WHERE teor_tsv @@ websearch_to_tsquery('portugues_sem_acento', ${texto}::text)
+       WHERE conferencia IS DISTINCT FROM 'descartada'
+         AND teor_tsv @@ websearch_to_tsquery('portugues_sem_acento', ${texto}::text)
        LIMIT ${limite}`;
     return linhas.map((l) => l.conteudo_id as Uuid);
   }
 
   async contarNovas(tx: Transacao): Promise<number> {
     const [linha] = await tx.$queryRaw<{ n: bigint }[]>`
-      SELECT count(*) AS n FROM publicacao_do_tenant WHERE lida_em IS NULL`;
+      SELECT count(*) AS n FROM publicacao_do_tenant
+       WHERE lida_em IS NULL AND conferencia IS DISTINCT FROM 'descartada'`;
     return Number(linha?.n ?? 0n);
   }
 

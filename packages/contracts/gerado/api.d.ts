@@ -1168,6 +1168,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/escritorio/nomes-monitorados": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Nomes do escritório monitorados na captura (até 5). */
+        get: operations["listarNomesMonitorados"];
+        put?: never;
+        /** Passa a monitorar um nome; publicações que chegarem só por ele ficam "a conferir" (homônimos). */
+        post: operations["adicionarNomeMonitorado"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/escritorio/nomes-monitorados/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Deixa de monitorar o nome; as publicações já recebidas continuam. */
+        delete: operations["removerNomeMonitorado"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/integracoes/apps": {
         parameters: {
             query?: never;
@@ -1955,6 +1990,23 @@ export interface paths {
         get: operations["consultarPublicacao"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/publicacoes/{id}/conferencia": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirma ou descarta uma publicação capturada só pelo nome do escritório (HU42). */
+        post: operations["conferirPublicacao"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2964,6 +3016,16 @@ export interface components {
             /** Format: uri */
             url: string;
         };
+        NomeMonitorado: {
+            /** Format: uuid */
+            id: string;
+            nome: string;
+            /** Format: date-time */
+            criadoEm: string;
+        };
+        NomesMonitorados: {
+            itens: components["schemas"]["NomeMonitorado"][];
+        };
         OabDoAdvogado: {
             /** Format: uuid */
             id: string;
@@ -3252,6 +3314,13 @@ export interface components {
             resultado: "sem-novidade" | "nova-intimacao";
             observacao?: string;
         };
+        PedidoDeConferenciaDaPublicacao: {
+            /**
+             * @description confirmar: é do escritório (cria o processo e segue para o prazo); descartar: homônimo, sai da lista.
+             * @enum {string}
+             */
+            decisao: "confirmar" | "descartar";
+        };
         /** @description O e-mail não entra: segue a base legal do serviço contratado. */
         PedidoDeConsentimento: {
             /** @constant */
@@ -3461,6 +3530,10 @@ export interface components {
              * @default true
              */
             somentePrevia: boolean;
+        };
+        PedidoDeNomeMonitorado: {
+            /** @description Razão social ou nome fantasia, como aparece nas publicações. */
+            nome: string;
         };
         PedidoDeOab: {
             /** @description Número de inscrição (ex.: 123456 ou 12345A). */
@@ -3881,6 +3954,8 @@ export interface components {
             capturadoEm: string;
             /** @description Primeira leitura no escritório: indício, não ciência. */
             lidaEm: string | null;
+            /** @description Só nas capturadas pelo nome do escritório (HU42): pendente até o advogado confirmar que é do escritório (pode ser homônimo); sem processo nem prazo enquanto pendente. */
+            conferencia: ("pendente" | "confirmada") | null;
         };
         RedefinicaoDeSenha: {
             /** @description Token do link enviado por e-mail. */
@@ -9301,6 +9376,196 @@ export interface operations {
             };
         };
     };
+    listarNomesMonitorados: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NomesMonitorados"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    adicionarNomeMonitorado: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeNomeMonitorado"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NomeMonitorado"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Regra de negócio violada. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    removerNomeMonitorado: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso, sem corpo. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
     registrarAppOAuth: {
         parameters: {
             query?: never;
@@ -12880,6 +13145,8 @@ export interface operations {
                 /** @description Disponibilização até. */
                 ate?: string;
                 processoId?: string;
+                /** @description true: só as capturadas pelo nome que esperam conferência (HU42). */
+                conferir?: "true" | "false";
             };
             header?: never;
             path?: never;
@@ -12983,6 +13250,84 @@ export interface operations {
             };
             /** @description Não encontrado. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    conferirPublicacao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeConferenciaDaPublicacao"];
+            };
+        };
+        responses: {
+            /** @description Sucesso, sem corpo. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

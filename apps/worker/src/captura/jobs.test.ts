@@ -23,7 +23,11 @@ describe('jobs da captura (HU17)', () => {
       fim: '2026-10-07',
     };
     expect(executarCapturaJob.dados.parse(dados)).toEqual(dados);
-    expect(() => executarCapturaJob.dados.parse({ ...dados, tipo: 'nome' })).toThrow();
+    // Nome do escritório (HU42) é alvo válido; outro tipo, não.
+    expect(
+      executarCapturaJob.dados.parse({ ...dados, tipo: 'nome', valor: 'NOME FICTÍCIO' }),
+    ).toBeDefined();
+    expect(() => executarCapturaJob.dados.parse({ ...dados, tipo: 'cpf' })).toThrow();
     expect(() => executarCapturaJob.dados.parse({ ...dados, chave: 'x' })).toThrow();
   });
 

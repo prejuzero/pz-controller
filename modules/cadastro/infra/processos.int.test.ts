@@ -16,6 +16,11 @@ import {
   ProcessarImportacaoDeProcessos,
 } from '../application/importacao.js';
 import {
+  AdicionarNomeMonitorado,
+  ListarNomesMonitorados,
+  RemoverNomeMonitorado,
+} from '../application/nomes.js';
+import {
   AlterarCobertura,
   AtualizarProcesso,
   CadastrarProcesso,
@@ -26,6 +31,7 @@ import {
 
 import { ConferenciasPostgres, TenantsComConferenciaPostgres } from './conferencias-postgres.js';
 import { ImportacoesPostgres } from './importacoes-postgres.js';
+import { NomesMonitoradosPostgres } from './nomes-postgres.js';
 import { ClientesPostgres, ProcessosPostgres } from './processos-postgres.js';
 
 import type { AutorNoTenant } from '../application/paginacao.js';
@@ -333,6 +339,42 @@ describe('processos e clientes no PostgreSQL (HU12)', () => {
     expect(gravado).toEqual({ processo: 1, eventos: 1, trilha: 2 });
     await expect(
       noTenant(ana, () => banco.executar((tx) => tx.importacaoProcesso.deleteMany({}))),
+    ).rejects.toThrow();
+  });
+
+  it('nomes monitorados: repetido no tenant, livre em outro, remoção e histórico (HU42)', async () => {
+    const nomes = new NomesMonitoradosPostgres();
+    const trilha = new TrilhaPostgres();
+    const outbox = new OutboxPostgres();
+    const adicionar = new AdicionarNomeMonitorado(banco, nomes, trilha, outbox, relogio);
+    const listar = new ListarNomesMonitorados(banco, nomes);
+    // Nome FICTÍCIO.
+    const nome = { nome: 'Sociedade Fictícia de Advogados' };
+    const r = await noTenant(ana, () => adicionar.executar(ana, nome));
+    if (!r.ok) throw r.erro;
+    expect(
+      await noTenant(ana, () =>
+        adicionar.executar(ana, { nome: 'SOCIEDADE  fictícia de advogados' }),
+      ),
+    ).toMatchObject({ ok: false, erro: { codigo: 'nome-ja-monitorado' } });
+    expect((await noTenant(beto, () => adicionar.executar(beto, nome))).ok).toBe(true);
+    expect(await noTenant(beto, () => listar.executar())).toHaveLength(1);
+
+    const remover = new RemoverNomeMonitorado(banco, nomes, trilha, outbox, relogio);
+    expect((await noTenant(beto, () => remover.executar(beto, r.valor.id))).ok).toBe(false);
+    expect((await noTenant(ana, () => remover.executar(ana, r.valor.id))).ok).toBe(true);
+    expect(await noTenant(ana, () => listar.executar())).toEqual([]);
+    // Removido, o nome pode voltar.
+    expect((await noTenant(ana, () => adicionar.executar(ana, nome))).ok).toBe(true);
+    const gravado = await sistema.executarComoSistema('conferir o teste', async (tx) => ({
+      linhas: await tx.nomeMonitorado.count({ where: { tenantId: ana.tenantId } }),
+      eventos: await tx.eventoDominio.count({
+        where: { tenantId: ana.tenantId, tipo: { startsWith: 'NomeMonitorado' } },
+      }),
+    }));
+    expect(gravado).toEqual({ linhas: 2, eventos: 3 });
+    await expect(
+      noTenant(ana, () => banco.executar((tx) => tx.nomeMonitorado.deleteMany({}))),
     ).rejects.toThrow();
   });
 });

@@ -4,8 +4,10 @@ import type {
   FiltroDeProcessos,
   FiltroDeProcessosNaBusca,
   ImportacaoDeProcessos,
+  NomeMonitorado,
   Paginacao,
   RepositorioDeImportacoes,
+  RepositorioDeNomesMonitorados,
   RepositorioDeClientes,
   RepositorioDeProcessos,
 } from '../application/portas.js';
@@ -179,5 +181,28 @@ export class ImportacoesEmMemoria implements RepositorioDeImportacoes<TransacaoE
       });
     });
     return Promise.resolve();
+  }
+}
+
+/** Nomes monitorados em memória (HU42), um tenant só. Só para testes. */
+export class NomesMonitoradosEmMemoria implements RepositorioDeNomesMonitorados<TransacaoEmMemoria> {
+  readonly linhas = new Map<Uuid, NomeMonitorado & { removido: boolean }>();
+
+  ativos(): Promise<NomeMonitorado[]> {
+    return Promise.resolve([...this.linhas.values()].filter((n) => !n.removido));
+  }
+
+  inserir(tx: TransacaoEmMemoria, nome: NomeMonitorado): Promise<boolean> {
+    const repetido = [...this.linhas.values()].some((n) => !n.removido && n.valor === nome.valor);
+    if (repetido) return Promise.resolve(false);
+    tx.aoConfirmar(() => this.linhas.set(nome.id, { ...nome, removido: false }));
+    return Promise.resolve(true);
+  }
+
+  remover(tx: TransacaoEmMemoria, id: Uuid): Promise<NomeMonitorado | undefined> {
+    const atual = this.linhas.get(id);
+    if (atual === undefined || atual.removido) return Promise.resolve(undefined);
+    tx.aoConfirmar(() => this.linhas.set(id, { ...atual, removido: true }));
+    return Promise.resolve(atual);
   }
 }

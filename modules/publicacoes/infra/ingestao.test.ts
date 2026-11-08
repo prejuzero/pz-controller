@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { IngerirCaptura } from '../application/ingestao.js';
 
 import type {
+  DecisaoDaConferencia,
   NovoDestinatario,
   PublicacaoParaRegistrar,
   RepositorioDePublicacoes,
@@ -18,7 +19,7 @@ const PROCESSO = gerarUuidV7();
 
 class Repositorio implements RepositorioDePublicacoes<TransacaoEmMemoria> {
   readonly conteudos = new Map<string, Uuid>();
-  readonly destinatarios: NovoDestinatario[] = [];
+  destinatarios: NovoDestinatario[] = [];
   registrarConteudo(_tx: TransacaoEmMemoria, p: PublicacaoParaRegistrar) {
     const chave = `${p.fonte}:${p.hashConteudo}`;
     const existente = this.conteudos.get(chave);
@@ -33,6 +34,16 @@ class Repositorio implements RepositorioDePublicacoes<TransacaoEmMemoria> {
     this.destinatarios.push(d);
     return Promise.resolve(true);
   }
+  conferir(_tx: TransacaoEmMemoria, tenantId: Uuid, conteudoId: Uuid, d: DecisaoDaConferencia) {
+    const pendente = this.destinatarios.find(
+      (x) => x.tenantId === tenantId && x.conteudoId === conteudoId && x.conferencia === 'pendente',
+    );
+    if (pendente === undefined) return Promise.resolve(false);
+    this.destinatarios = this.destinatarios.map((x) =>
+      x === pendente ? { ...x, processoId: d.processoId, oabId: d.oabId, conferencia: null } : x,
+    );
+    return Promise.resolve(true);
+  }
 }
 
 const publicacao = (hash: string, numeroCnj?: string) => ({
@@ -44,7 +55,7 @@ const publicacao = (hash: string, numeroCnj?: string) => ({
   urlFonte: 'https://exemplo.invalid/certidao',
   metadados: {},
 });
-const evento = (tipo: 'oab' | 'processo', publicacoes: unknown[]) => ({
+const evento = (tipo: 'oab' | 'processo' | 'nome', publicacoes: unknown[]) => ({
   tenantId: TENANT,
   payload: {
     alvoId: gerarUuidV7(),
@@ -110,6 +121,29 @@ describe('ingestão (HU18)', () => {
     );
     expect(criados).toEqual([]);
     expect(repo.destinatarios[0]).toMatchObject({ processoId: PROCESSO, oabId: null });
+  });
+
+  it('nome (HU42): fica pendente, sem processo nem PublicacaoRecebida; OAB depois confirma', async () => {
+    const p = publicacao('d', '1000004-06.2026.8.26.0100');
+    expect(await outbox.executar((tx) => ingerir.executar(tx, evento('nome', [p])))).toEqual({
+      novas: 1,
+      recebidas: 0,
+    });
+    expect(criados).toEqual([]);
+    expect(repo.destinatarios[0]).toMatchObject({
+      processoId: null,
+      oabId: null,
+      conferencia: 'pendente',
+    });
+    expect((await eventos()).map((x) => x.tipo)).toEqual(['PublicacaoNova']);
+    // Repetir pelo nome não muda nada; a mesma publicação pela OAB confirma sozinha.
+    await outbox.executar((tx) => ingerir.executar(tx, evento('nome', [p])));
+    expect(await outbox.executar((tx) => ingerir.executar(tx, evento('oab', [p])))).toEqual({
+      novas: 0,
+      recebidas: 1,
+    });
+    expect(repo.destinatarios[0]).toMatchObject({ processoId: PROCESSO, oabId: OAB });
+    expect((await eventos()).map((x) => x.tipo)).toContain('PublicacaoRecebida');
   });
 
   it('evento fora do formato lança (vai para a DLQ)', async () => {

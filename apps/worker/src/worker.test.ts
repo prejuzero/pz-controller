@@ -162,6 +162,8 @@ describe('@Consome e o despachante', () => {
         ['OabAdicionada@1', ['ConsumidorDaCaptura.oabAdicionada']],
         ['OabRemovida@1', ['ConsumidorDaCaptura.oabRemovida']],
         ['ProcessoMonitorado@1', ['ConsumidorDaCaptura.processoMonitorado']],
+        ['NomeMonitoradoAdicionado@1', ['ConsumidorDaCaptura.nomeAdicionado']],
+        ['NomeMonitoradoRemovido@1', ['ConsumidorDaCaptura.nomeRemovido']],
         ['SugestaoIaCorrigida@1', ['ConsumidorDeAuditoria.sugestaoIaCorrigida']],
         ['ExportacaoDeDadosSolicitada@1', ['ConsumidorDaPrivacidade.exportacaoSolicitada']],
         ['RelatorioSolicitado@1', ['ConsumidorDosRelatorios.relatorioSolicitado']],

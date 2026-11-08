@@ -379,6 +379,61 @@ export const consultarImportacaoDeProcessos = definirRota({
   erros: [404],
 });
 
+/** Nome do escritório monitorado na captura (HU42, RF05). */
+export const NomeMonitorado = nomear(
+  'NomeMonitorado',
+  z.object({ id: Uuid, nome: z.string(), criadoEm: Instante }),
+);
+export type NomeMonitorado = z.infer<typeof NomeMonitorado.esquema>;
+
+export const NomesMonitorados = nomear(
+  'NomesMonitorados',
+  z.object({ itens: z.array(NomeMonitorado.esquema) }),
+);
+
+export const PedidoDeNomeMonitorado = nomear(
+  'PedidoDeNomeMonitorado',
+  z.object({
+    nome: z
+      .string()
+      .min(5)
+      .max(150)
+      .describe('Razão social ou nome fantasia, como aparece nas publicações.'),
+  }),
+);
+
+export const listarNomesMonitorados = definirRota({
+  id: 'listarNomesMonitorados',
+  metodo: 'get',
+  caminho: '/v1/escritorio/nomes-monitorados',
+  resumo: 'Nomes do escritório monitorados na captura (até 5).',
+  tag: 'escritorio',
+  resposta: { status: 200, corpo: NomesMonitorados },
+});
+
+export const adicionarNomeMonitorado = definirRota({
+  id: 'adicionarNomeMonitorado',
+  metodo: 'post',
+  caminho: '/v1/escritorio/nomes-monitorados',
+  resumo:
+    'Passa a monitorar um nome; publicações que chegarem só por ele ficam "a conferir" (homônimos).',
+  tag: 'escritorio',
+  corpo: PedidoDeNomeMonitorado,
+  resposta: { status: 201, corpo: NomeMonitorado },
+  erros: [409, 422],
+});
+
+export const removerNomeMonitorado = definirRota({
+  id: 'removerNomeMonitorado',
+  metodo: 'delete',
+  caminho: '/v1/escritorio/nomes-monitorados/{id}',
+  resumo: 'Deixa de monitorar o nome; as publicações já recebidas continuam.',
+  tag: 'escritorio',
+  parametrosDeCaminho: comId,
+  resposta: { status: 204, corpo: null },
+  erros: [404],
+});
+
 export const ROTAS_PROCESSOS = [
   listarConferencias,
   registrarConferencia,
@@ -394,4 +449,7 @@ export const ROTAS_PROCESSOS = [
   removerCliente,
   importarProcessos,
   consultarImportacaoDeProcessos,
+  listarNomesMonitorados,
+  adicionarNomeMonitorado,
+  removerNomeMonitorado,
 ] as const;

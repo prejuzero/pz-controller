@@ -22,9 +22,10 @@ export interface CenarioFontePublicacoes {
   criarComLimiteExcedido(): FontePublicacoes;
   /** Provedor devolvendo corpo fora do formato esperado. */
   criarComRespostaInvalida(): FontePublicacoes;
-  /** OAB e processo com publicações na janela, segundo as fixtures. */
+  /** OAB, processo e nome da parte com publicações na janela, segundo as fixtures. */
   readonly oab: Oab;
   readonly numeroCnj: NumeroCnj;
+  readonly nome: string;
   readonly janela: JanelaDeBusca;
 }
 
@@ -61,6 +62,18 @@ export function verificarContratoFontePublicacoes(
       for (const publicacao of publicacoes) {
         expect(PublicacaoCapturada.parse(publicacao).numeroCnj).toBe(cenario.numeroCnj);
       }
+    });
+
+    it('por nome da parte (HU42): publicações no modelo canônico; nome sem resultado devolve vazio', async () => {
+      const fonte = cenario.criar();
+      const publicacoes = await fonte.buscarPorNome(cenario.nome, cenario.janela);
+      expect(publicacoes.length).toBeGreaterThan(0);
+      for (const publicacao of publicacoes) {
+        expect(PublicacaoCapturada.parse(publicacao).fonte).toBe(cenario.descritor.id);
+      }
+      expect(await fonte.buscarPorNome('NOME SEM PUBLICACOES NA FONTE', cenario.janela)).toEqual(
+        [],
+      );
     });
 
     it('idempotente: repetir a busca devolve os mesmos ids e hashes, sem repetição', async () => {

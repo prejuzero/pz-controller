@@ -209,9 +209,9 @@ export const CapturaConcluida = definirEvento(
   1,
   z.object({
     alvoId: z.uuid(),
-    tipo: z.enum(['oab', 'processo']),
+    tipo: z.enum(['oab', 'processo', 'nome']),
     valor: z.string().min(1),
-    /** OABs ou processos do tenant que assinam o alvo. */
+    /** OABs, processos ou nomes monitorados do tenant que assinam o alvo. */
     referencias: z.array(z.uuid()).min(1),
     janela: z.object({ inicio: z.iso.date(), fim: z.iso.date() }),
     fonte: z.string().min(1),
@@ -265,6 +265,11 @@ export const ExportacaoDeDadosSolicitada = definirEvento(
     escopo: z.enum(['titular', 'escritorio']),
   }),
 );
+
+/** Nome do escritório monitorado na captura (HU42); `nome` na forma canônica (a do alvo). */
+const PayloadDoNome = z.object({ nomeId: z.uuid(), nome: z.string().min(5).max(150) });
+export const NomeMonitoradoAdicionado = definirEvento('NomeMonitoradoAdicionado', 1, PayloadDoNome);
+export const NomeMonitoradoRemovido = definirEvento('NomeMonitoradoRemovido', 1, PayloadDoNome);
 
 /** Importação de processos por CSV pedida (HU42): o worker cadastra as linhas validadas. */
 export const ImportacaoDeProcessosSolicitada = definirEvento(
@@ -504,6 +509,8 @@ export const EVENTOS = catalogoDeEventos(
   ExportacaoDeDadosSolicitada,
   RelatorioSolicitado,
   ImportacaoDeProcessosSolicitada,
+  NomeMonitoradoAdicionado,
+  NomeMonitoradoRemovido,
   EnvioManualSolicitado,
   PublicacaoNova,
   PublicacaoClassificada,

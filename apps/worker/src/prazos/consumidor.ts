@@ -44,20 +44,20 @@ export class ConsumidorDosPrazos {
     logger.info({ conteudoId, tenants: tenants.length }, 'geração de prazos planejada');
   }
 
-  /** Chegou a um tenant depois da classificação: o job gera (ou não faz nada, se não classificada). */
+  /**
+   * Chegou a um tenant depois da classificação: o job gera (ou não faz nada, se não classificada).
+   * A chave leva o id do evento: a publicação confirmada depois da conferência pelo nome (HU42)
+   * chega por um PublicacaoRecebida novo, quando o job da classificação já rodou sem processo. O
+   * caso de uso não duplica o prazo (um por publicação no tenant).
+   */
   @Consome('PublicacaoRecebida', { versao: 1 })
   async publicacaoRecebida(_transacao: unknown, evento: EventoDominio): Promise<void> {
     const conteudoId = EventoDoConteudo.parse(evento.payload).conteudoId as Uuid;
-    await this.#gerar(conteudoId, evento.tenantId);
+    await this.#gerar(conteudoId, evento.tenantId, `${conteudoId}-${evento.tenantId}-${evento.id}`);
   }
 
-  #gerar(conteudoId: Uuid, tenantId: Uuid) {
-    return this.filas.publicar(
-      gerarPrazoJob,
-      { conteudoId, tenantId },
-      { tenantId },
-      `${conteudoId}-${tenantId}`,
-    );
+  #gerar(conteudoId: Uuid, tenantId: Uuid, chave = `${conteudoId}-${tenantId}`) {
+    return this.filas.publicar(gerarPrazoJob, { conteudoId, tenantId }, { tenantId }, chave);
   }
 
   /** Comarca corrigida (PZ-332): um job no tenant do processo; repetir o evento não duplica. */

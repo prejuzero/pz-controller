@@ -26,4 +26,15 @@ export class ConsumidorDaCaptura {
   processoMonitorado(transacao: unknown, evento: EventoDominio): Promise<void> {
     return this.assinaturas.processoMonitorado(transacao, evento);
   }
+
+  /** Nomes do escritório (HU42). */
+  @Consome('NomeMonitoradoAdicionado', { versao: 1 })
+  nomeAdicionado(transacao: unknown, evento: EventoDominio): Promise<void> {
+    return this.assinaturas.nomeAdicionado(transacao, evento);
+  }
+
+  @Consome('NomeMonitoradoRemovido', { versao: 1 })
+  nomeRemovido(transacao: unknown, evento: EventoDominio): Promise<void> {
+    return this.assinaturas.nomeRemovido(transacao, evento);
+  }
 }

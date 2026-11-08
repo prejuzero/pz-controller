@@ -102,6 +102,14 @@ export class FontePublicacoesDjen implements FontePublicacoes {
     return this.#buscar({ numeroProcesso: numeroCnj.replace(/\D/g, '') }, janela);
   }
 
+  /**
+   * Por nome da parte (HU42): o DJEN acha o nome como parte do nome do destinatário, então vêm
+   * homônimos e nomes maiores; quem consome trata o resultado como "a conferir".
+   */
+  buscarPorNome(nome: string, janela: JanelaDeBusca): Promise<PublicacaoCapturada[]> {
+    return this.#buscar({ nomeParte: nome }, janela);
+  }
+
   async saude(): Promise<SaudeAdaptador> {
     const verificadoEm = this.config.relogio.agora();
     const hoje = LocalDate.doInstante(verificadoEm, FUSO).paraIso();

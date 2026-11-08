@@ -151,6 +151,12 @@ const COLUNAS_FIXAS: Readonly<Record<string, Record<string, unknown>>> = {
     concluido_em: null,
     expira_em: null,
   },
+  nome_monitorado: {
+    valor: () => `SOCIEDADE FICTÍCIA ${String(randomInt(1e10, 1e11 - 1))}`,
+    removido_em: null,
+    removido_por: null,
+  },
+  publicacao_destinatario: { conferencia: null, conferida_em: null, conferida_por: null },
   importacao_processo: {
     linhas: [],
     situacao: 'pendente',
@@ -286,6 +292,7 @@ export const TABELAS_SEM_DELETE: readonly string[] = [
   'entrega_webhook',
   'convite_membro',
   'importacao_processo',
+  'nome_monitorado',
   'compromisso',
   'lembrete_agendado',
   'token_ciencia',

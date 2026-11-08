@@ -16,15 +16,21 @@ describe('ConsumidorDaCaptura (HU17)', () => {
       oabAdicionada: registrar('adicionada'),
       oabRemovida: registrar('removida'),
       processoMonitorado: registrar('processo'),
+      nomeAdicionado: registrar('nome'),
+      nomeRemovido: registrar('sem-nome'),
     } as unknown as ManterAssinaturas<unknown>);
     const evento = (tipo: string) => ({ tipo }) as EventoDominio;
     await consumidor.oabAdicionada('tx', evento('OabAdicionada'));
     await consumidor.oabRemovida('tx', evento('OabRemovida'));
     await consumidor.processoMonitorado('tx', evento('ProcessoMonitorado'));
+    await consumidor.nomeAdicionado('tx', evento('NomeMonitoradoAdicionado'));
+    await consumidor.nomeRemovido('tx', evento('NomeMonitoradoRemovido'));
     expect(chamadas).toEqual([
       'adicionada tx OabAdicionada',
       'removida tx OabRemovida',
       'processo tx ProcessoMonitorado',
+      'nome tx NomeMonitoradoAdicionado',
+      'sem-nome tx NomeMonitoradoRemovido',
     ]);
   });
 });

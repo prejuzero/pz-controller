@@ -48,7 +48,10 @@ const publicacao: PublicacaoDoTenant = {
   lidaPor: null,
   siglaTribunal: 'TJSP',
   tipoComunicacao: 'Intimação',
+  // Capturada pelo nome do escritório (HU42): espera conferência.
+  conferencia: 'pendente',
 };
+const conferidas: string[] = [];
 const lidas: Uuid[] = [];
 const leitura: RepositorioDeLeitura<TransacaoEmMemoria> = {
   listar: () => Promise.resolve([publicacao]),
@@ -114,6 +117,16 @@ beforeAll(async () => {
       unidade: new OutboxEmMemoria(),
       leitura: leitura,
       trilha: { registrar: (_tx, e) => Promise.resolve(void auditados.push(e.tipo)) },
+      conferencia: () => ({
+        publicacoes: {
+          registrarConteudo: () => Promise.reject(new Error('não usado')),
+          registrarDestinatario: () => Promise.reject(new Error('não usado')),
+          conferir: (_tx, _t, _id, d) =>
+            Promise.resolve(conferidas.length === 0 && conferidas.push(d.conferencia) === 1),
+        },
+        obterProcesso: () => Promise.reject(new Error('sem número, não cria processo')),
+        outbox: new OutboxEmMemoria(),
+      }),
     },
     ambiente: carregarAmbiente(esquemaApi, {
       NODE_ENV: 'test',
@@ -196,6 +209,20 @@ describe('publicações do escritório (HU18)', () => {
     );
     expect((await pedir('caio', 'GET', '/v1/publicacoes/abc')).statusCode).toBe(400);
     expect((await pedir('caio', 'GET', '/v1/publicacoes?limite=0')).statusCode).toBe(400);
+  });
+});
+
+describe('conferência da publicação capturada pelo nome (HU42)', () => {
+  it('lista com a situação, descarta uma vez e valida a decisão', async () => {
+    const lista = await pedir('caio', 'GET', '/v1/publicacoes?conferir=true');
+    expect(lista.json()).toMatchObject({ itens: [{ id: ID, conferencia: 'pendente' }] });
+    const conferir = (decisao: string) =>
+      pedir('caio', 'POST', `/v1/publicacoes/${ID}/conferencia`, { decisao });
+    expect((await conferir('descartar')).statusCode).toBe(204);
+    expect(conferidas).toEqual(['descartada']);
+    expect(auditados).toContain('publicacoes.publicacao-descartada');
+    expect((await conferir('descartar')).statusCode).toBe(409);
+    expect((await conferir('talvez')).statusCode).toBe(400);
   });
 });
 

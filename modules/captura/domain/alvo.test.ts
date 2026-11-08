@@ -7,6 +7,7 @@ import {
   janelaDaCaptura,
   proximaTentativa,
   valorDaOab,
+  valorDoNome,
   valorDoProcesso,
 } from './alvo.js';
 
@@ -22,6 +23,14 @@ describe('alvo de monitoramento (HU17)', () => {
     expect(valorDoProcesso('1000004-06.2026.8.26.0100')).toBe('10000040620268260100');
     expect(() => valorDaOab('12A', 'SP')).toThrow(RangeError);
     expect(() => valorDoProcesso('123')).toThrow(RangeError);
+  });
+
+  it('nome (HU42): espaços simples e maiúsculas; curto ou longo demais é recusado', () => {
+    expect(valorDoNome('  Sociedade   Fictícia\nde Advogados ')).toBe(
+      'SOCIEDADE FICTÍCIA DE ADVOGADOS',
+    );
+    expect(() => valorDoNome(' abc ')).toThrow(RangeError);
+    expect(() => valorDoNome('x'.repeat(151))).toThrow(RangeError);
   });
 
   it('janela: do dia anterior ao último fim capturado até hoje (sobreposição de um dia)', () => {

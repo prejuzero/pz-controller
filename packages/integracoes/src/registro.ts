@@ -47,6 +47,7 @@ const OPERACOES: Readonly<Record<NomePorta, Readonly<Record<string, Operacao>>>>
   'fonte-publicacoes': {
     buscarPorOab: { remota: true, saida: z.array(PublicacaoCapturada) },
     buscarPorProcesso: { remota: true, saida: z.array(PublicacaoCapturada) },
+    buscarPorNome: { remota: true, saida: z.array(PublicacaoCapturada) },
   },
   'canal-notificacao': {
     enviar: { remota: true, saida: ResultadoEnvio },

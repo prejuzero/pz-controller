@@ -1,5 +1,10 @@
-import { Controller, Get, HttpCode, Inject, Param, Post, Query, Req } from '@nestjs/common';
-import { ConsultarPublicacao, ListarPublicacoes, MarcarComoLida } from '@pz/publicacoes';
+import { Body, Controller, Get, HttpCode, Inject, Param, Post, Query, Req } from '@nestjs/common';
+import {
+  ConferirPublicacao,
+  ConsultarPublicacao,
+  ListarPublicacoes,
+  MarcarComoLida,
+} from '@pz/publicacoes';
 import { z } from 'zod';
 
 import { autenticacao, validar } from '../auth/auth.controller.js';
@@ -34,6 +39,7 @@ export const listada = (p: PublicacaoDoTenant): Contrato => ({
   recebidaEm: p.recebidaEm.toISOString(),
   capturadoEm: p.capturadoEm.toISOString(),
   lidaEm: p.lidaEm?.toISOString() ?? null,
+  conferencia: p.conferencia,
 });
 
 /** Publicações do escritório (HU18); a regra fica no módulo publicacoes. */
@@ -44,6 +50,7 @@ export class PublicacoesController {
     @Inject(ConsultarPublicacao) private readonly consultar: ConsultarPublicacao<unknown>,
     @Inject(MarcarComoLida) private readonly marcar: MarcarComoLida<unknown>,
     @Inject(RESUMO_DA_PUBLICACAO) private readonly resumoDe: ResumoDaPublicacaoPorConteudo,
+    @Inject(ConferirPublicacao) private readonly conferir: ConferirPublicacao<unknown>,
   ) {}
 
   /**
@@ -99,6 +106,31 @@ export class PublicacoesController {
     const r = await this.marcar.executar(
       { usuarioId: sessao.usuarioId, canal: sessao.dispositivoId === undefined ? 'portal' : 'app' },
       idDe(id),
+    );
+    if (!r.ok) throw r.erro;
+  }
+
+  /**
+   * Conferência da capturada só pelo nome (HU42): confirmar cria o processo e segue para o
+   * prazo; descartar tira das listas. Decisão humana, com trilha.
+   */
+  @Post(':id/conferencia')
+  @RequerPermissao('processos:gerir')
+  @HttpCode(204)
+  async conferirPublicacao(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Param('id') id: string,
+    @Body() corpo: unknown,
+  ): Promise<void> {
+    const { sessao } = autenticacao(requisicao);
+    const r = await this.conferir.executar(
+      {
+        tenantId: sessao.tenantId,
+        usuarioId: sessao.usuarioId,
+        canal: sessao.dispositivoId === undefined ? 'portal' : 'app',
+      },
+      idDe(id),
+      corpo,
     );
     if (!r.ok) throw r.erro;
   }

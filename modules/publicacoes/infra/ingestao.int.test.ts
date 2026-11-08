@@ -5,6 +5,7 @@ import { subirBancoDeTeste } from '@pz/db/teste';
 import { FixedClock, gerarUuidV7, Instant } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { ConferirPublicacao } from '../application/conferencia.js';
 import { IngerirCaptura } from '../application/ingestao.js';
 import {
   BuscarPublicacoes,
@@ -31,6 +32,7 @@ let postgres: BancoDeTeste;
 let banco: Banco;
 let sistema: BancoSistema;
 let ingerir: IngerirCaptura<Transacao>;
+let obterProcesso: (tenant: Uuid, numero: string) => Promise<Uuid>;
 const oabs: Record<string, Uuid> = {};
 
 const evento = (tenantId: Uuid) => ({
@@ -112,13 +114,14 @@ beforeAll(async () => {
     new OutboxPostgres(),
     relogio,
   );
+  obterProcesso = async (tenant, numero) => {
+    const r = await obterOuCriar.executar(tenant, numero);
+    if (!r.ok) throw r.erro;
+    return r.valor.processoId;
+  };
   ingerir = new IngerirCaptura(
     new PublicacoesPostgres(),
-    async (tenant, numero) => {
-      const r = await obterOuCriar.executar(tenant, numero);
-      if (!r.ok) throw r.erro;
-      return r.valor.processoId;
-    },
+    obterProcesso,
     new OutboxPostgres(),
     relogio,
     (fonte) => `${fonte}@1.0.0`,
@@ -248,5 +251,102 @@ describe('ingestão no PostgreSQL (HU18)', () => {
       item.id,
     ]);
     expect(await executarNoTenant(B, () => buscar.conteudosComTexto('inexistente'))).toEqual([]);
+  });
+
+  it('pelo nome (HU42): pendente sem processo, filtro "conferir", confirmar e descartar com trilha', async () => {
+    const pelo = (hash: string, numero: string) => ({
+      tenantId: A,
+      payload: {
+        ...evento(A).payload,
+        alvoId: gerarUuidV7(),
+        tipo: 'nome',
+        valor: 'SOCIEDADE FICTÍCIA DE ADVOGADOS',
+        referencias: [gerarUuidV7()],
+        publicacoes: [
+          {
+            ...evento(A).payload.publicacoes[0],
+            idExterno: `nome-${hash}`,
+            hashConteudo: hash.repeat(64),
+            numeroCnj: numero,
+          },
+        ],
+      },
+    });
+    const noA = <T>(trabalho: (tx: Transacao) => Promise<T>) =>
+      executarNoTenant(A, () => banco.executar(trabalho));
+    // Números FICTÍCIOS com dígito verificador válido.
+    for (const [hash, numero] of [
+      ['1', '1000005-88.2026.8.26.0100'],
+      ['2', '1000006-73.2026.8.26.0100'],
+    ] as const) {
+      expect(await noA((tx) => ingerir.executar(tx, pelo(hash, numero)))).toEqual({
+        novas: 1,
+        recebidas: 0,
+      });
+    }
+    const leitura = new LeituraPostgres();
+    const listar = new ListarPublicacoes(banco, leitura);
+    const pendentes = await executarNoTenant(A, () => listar.executar({ conferir: 'true' }));
+    if (!pendentes.ok) throw pendentes.erro;
+    expect(pendentes.valor.itens.map((p) => [p.conferencia, p.processoId])).toEqual([
+      ['pendente', null],
+      ['pendente', null],
+    ]);
+    const [segunda, primeira] = pendentes.valor.itens.map((p) => p.id);
+    if (primeira === undefined || segunda === undefined) throw new Error('sem pendentes');
+
+    const conferir = new ConferirPublicacao(
+      banco,
+      leitura,
+      new PublicacoesPostgres(),
+      obterProcesso,
+      new TrilhaPostgres(),
+      new OutboxPostgres(),
+      relogio,
+    );
+    const conferente = { tenantId: A, usuarioId: gerarUuidV7(), canal: 'portal' as const };
+    expect(
+      (
+        await executarNoTenant(A, () =>
+          conferir.executar(conferente, primeira, { decisao: 'confirmar' }),
+        )
+      ).ok,
+    ).toBe(true);
+    expect(
+      (
+        await executarNoTenant(A, () =>
+          conferir.executar(conferente, segunda, { decisao: 'descartar' }),
+        )
+      ).ok,
+    ).toBe(true);
+    // Outro escritório não confere a publicação do A (RLS).
+    expect(
+      (
+        await executarNoTenant(B, () =>
+          conferir.executar(conferente, primeira, { decisao: 'confirmar' }),
+        )
+      ).ok,
+    ).toBe(false);
+
+    const todas = await executarNoTenant(A, () => listar.executar({}));
+    if (!todas.ok) throw todas.erro;
+    const ids = todas.valor.itens.map((p) => p.id);
+    expect(ids).toContain(primeira);
+    expect(ids).not.toContain(segunda);
+    const confirmada = todas.valor.itens.find((p) => p.id === primeira);
+    expect(confirmada?.conferencia).toBe('confirmada');
+    expect(confirmada?.processoId).not.toBeNull();
+    const gravado = await sistema.executarComoSistema('conferir o teste', async (tx) => ({
+      trilha: await tx.eventoAuditoria.count({
+        where: {
+          tenantId: A,
+          tipo: { in: ['publicacoes.publicacao-confirmada', 'publicacoes.publicacao-descartada'] },
+        },
+      }),
+      recebidas: await tx.eventoDominio.count({
+        where: { tenantId: A, tipo: 'PublicacaoRecebida', agregadoId: primeira },
+      }),
+    }));
+    expect(gravado).toEqual({ trilha: 2, recebidas: 1 });
   });
 });

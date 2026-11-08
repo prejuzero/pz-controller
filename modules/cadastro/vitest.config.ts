@@ -9,5 +9,6 @@ export default criarConfigVitest({
     'infra/processos-postgres.ts',
     'infra/conferencias-postgres.ts',
     'infra/importacoes-postgres.ts',
+    'infra/nomes-postgres.ts',
   ],
 });

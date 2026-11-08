@@ -3,7 +3,11 @@ import { LocalDate, SystemClock } from '@pz/kernel';
 import { afterAll, beforeAll } from 'vitest';
 
 import { DESCRITOR_DJEN, FontePublicacoesDjen, URL_PADRAO_DJEN } from './fonte-djen.js';
-import { subirServidorDeFixtures, type ServidorDeFixtures } from './servidor-de-fixtures.js';
+import {
+  NOME_DA_FIXTURE,
+  subirServidorDeFixtures,
+  type ServidorDeFixtures,
+} from './servidor-de-fixtures.js';
 
 let servidor: ServidorDeFixtures;
 beforeAll(async () => {
@@ -32,5 +36,6 @@ verificarContratoFontePublicacoes('DJEN (fixtures gravadas)', {
   criarComRespostaInvalida: () => criar('/invalido'),
   oab: { numero: '123456', uf: 'SP' },
   numeroCnj: '1000004-06.2026.8.26.0100',
+  nome: NOME_DA_FIXTURE,
   janela: { inicio: LocalDate.de(2026, 10, 1), fim: LocalDate.de(2026, 10, 7) },
 });

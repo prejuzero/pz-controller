@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 /**
  * Servidor local que responde como a API do DJEN a partir das fixtures gravadas (respostas reais
- * de 07/10/2026, anonimizadas: nomes, OAB, números de processo, teor e links fictícios). Só para
+ * de 07/10/2026 e, por nome da parte, de 08/11/2026, anonimizadas: nomes, OAB, números de processo,
+ * teor e links fictícios). Só para
  * testes: o CI nunca acessa a rede externa. Prefixos simulam falhas: `/limite` (429 sempre),
  * `/instavel` (429 na primeira chamada, depois normal), `/fora` (503 sempre) e `/invalido`.
  */
@@ -16,6 +17,9 @@ const fixture = (nome: string) =>
     items: unknown[];
   };
 
+/** Nome da parte com publicações na fixture `nome.json`. */
+export const NOME_DA_FIXTURE = 'SOCIEDADE FICTÍCIA DE ADVOGADOS';
+
 export interface ServidorDeFixtures {
   readonly url: string;
   /** Consultas recebidas (todas, inclusive as que simulam falha): paginação, filtros e chamadas. */
@@ -26,6 +30,7 @@ export interface ServidorDeFixtures {
 export async function subirServidorDeFixtures(): Promise<ServidorDeFixtures> {
   const porOab = fixture('oab.json');
   const porProcesso = fixture('processo.json');
+  const porNome = fixture('nome.json');
   const consultas: URLSearchParams[] = [];
   let instavelJaRecusou = false;
   const servidor: Server = createServer((pedido, resposta) => {
@@ -63,7 +68,9 @@ export async function subirServidorDeFixtures(): Promise<ServidorDeFixtures> {
         ? porOab
         : q.get('numeroProcesso') === porProcessoNumero(porProcesso)
           ? porProcesso
-          : { count: 0, items: [] };
+          : q.get('nomeParte') === NOME_DA_FIXTURE
+            ? porNome
+            : { count: 0, items: [] };
     const pagina = Number(q.get('pagina') ?? '1');
     const tamanho = Number(q.get('itensPorPagina') ?? '100');
     json(200, {
