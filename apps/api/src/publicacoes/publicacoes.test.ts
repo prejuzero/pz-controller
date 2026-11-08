@@ -133,6 +133,20 @@ beforeAll(async () => {
       perfis,
     },
     janelaDeRequisicoes: { registrar: () => Promise.resolve(1) },
+    resumoDaPublicacao: (conteudoId) =>
+      Promise.resolve(
+        conteudoId === ID
+          ? {
+              situacao: 'ok' as const,
+              texto: 'Resumo FICTÍCIO.',
+              providencia: null,
+              trechos: ['Intimação FICTÍCIA.'],
+              modelo: 'modelo-ficticio',
+              versaoPrompt: 'resumir-publicacao@0.3.0',
+              motivo: null,
+            }
+          : undefined,
+      ),
     tabelaDePrazos: (() => {
       const tabela = new TabelaEmMemoria();
       return {
@@ -201,5 +215,25 @@ describe('status da captura (HU19)', () => {
         },
       ],
     });
+  });
+});
+
+describe('resumo da publicação por IA (HU62)', () => {
+  it('rotulado como IA, com os trechos; publicação de fora do escritório é 404', async () => {
+    const r = await pedir('caio', 'GET', `/v1/publicacoes/${ID}/resumo`);
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toEqual({
+      resumo: {
+        texto: 'Resumo FICTÍCIO.',
+        providencia: null,
+        trechos: ['Intimação FICTÍCIA.'],
+        geradoPorIa: true,
+        modelo: 'modelo-ficticio',
+        versaoPrompt: 'resumir-publicacao@0.3.0',
+      },
+    });
+    expect((await pedir('caio', 'GET', `/v1/publicacoes/${gerarUuidV7()}/resumo`)).statusCode).toBe(
+      404,
+    );
   });
 });

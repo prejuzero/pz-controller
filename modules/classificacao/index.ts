@@ -59,3 +59,18 @@ export type {
 } from './application/curadoria.js';
 export { CandidatosEmMemoria } from './infra/em-memoria.js';
 export { CandidatosPostgres } from './infra/candidatos-postgres.js';
+export { ConsultarResumo, ResumirPublicacao } from './application/resumir-publicacao.js';
+export type {
+  DesfechoDoResumo,
+  RepositorioDeResumos,
+  Resumidor,
+} from './application/resumir-publicacao.js';
+export { decidirResumo, trechoLiteral } from './domain/resumo.js';
+export type { RespostaDoResumo, Resumo } from './domain/resumo.js';
+export {
+  ResumidorIaPlataforma,
+  SaidaDoResumo,
+  TAREFA_DO_RESUMO,
+} from './infra/resumidor-ia-plataforma.js';
+export { ResumosPostgres } from './infra/resumos-postgres.js';
+export type { InstrucaoEmbutida } from './infra/classificador-ia-plataforma.js';

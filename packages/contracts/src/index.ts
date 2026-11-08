@@ -300,6 +300,8 @@ export {
   PaginaDePublicacoes,
   PublicacaoDoTenant,
   ROTAS_PUBLICACOES,
+  ResumoDaPublicacao,
+  consultarResumoDaPublicacao,
 } from './publicacoes.js';
 export {
   cancelarEncerramento,

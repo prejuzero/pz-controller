@@ -5,7 +5,9 @@ import type {
   RepositorioDeCandidatos,
   StatusDoCandidato,
 } from '../application/curadoria.js';
+import type { RepositorioDeResumos } from '../application/resumir-publicacao.js';
 import type { RegraRapida } from '../domain/regras.js';
+import type { Resumo } from '../domain/resumo.js';
 import type { TransacaoEmMemoria, Uuid } from '@pz/kernel';
 
 /** Regras em memória, com a mesma semântica de "vigente" do Postgres. Só para testes. */
@@ -76,5 +78,24 @@ export class CandidatosEmMemoria implements RepositorioDeCandidatos<unknown> {
         .sort((a, b) => a.id.localeCompare(b.id))
         .slice(0, filtro.limite),
     );
+  }
+}
+
+/** Resumos em memória (HU62), para testes das apps. */
+export class ResumosEmMemoria implements RepositorioDeResumos<unknown> {
+  readonly itens = new Map<string, Resumo>();
+
+  existe(_tx: unknown, conteudoId: Uuid): Promise<boolean> {
+    return Promise.resolve(this.itens.has(conteudoId));
+  }
+
+  gravar(_tx: unknown, conteudoId: Uuid, resumo: Resumo): Promise<boolean> {
+    if (this.itens.has(conteudoId)) return Promise.resolve(false);
+    this.itens.set(conteudoId, resumo);
+    return Promise.resolve(true);
+  }
+
+  buscar(_tx: unknown, conteudoId: Uuid): Promise<Resumo | undefined> {
+    return Promise.resolve(this.itens.get(conteudoId));
   }
 }

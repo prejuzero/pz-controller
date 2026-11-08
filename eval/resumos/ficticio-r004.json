@@ -1,0 +1,9 @@
+{
+  "id": "ficticio-r004",
+  "origem": "ficticio",
+  "teor": "Designo audiência de conciliação para o dia 10/05/2027, às 14h, a ser realizada por videoconferência. Intimem-se as partes.",
+  "esperado": {
+    "termos": ["audiência"],
+    "temProvidencia": true
+  }
+}

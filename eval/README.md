@@ -51,3 +51,17 @@ pnpm --filter @pz/eval avaliar-ferramentas --gravar   # chama a API e regrava
 `--gravar` usa `ANTHROPIC_API_KEY` ou, só com casos fictícios, `GEMINI_API_KEY` (ADR-022);
 `--intervalo-ms` espaça as chamadas para a cota gratuita. Só casos `real-anonimizado` contam para
 a meta de 98% e reprovam sem gravação; os fictícios exercitam o fluxo e apenas avisam.
+
+## Resumo da publicação (HU62)
+
+Casos em `resumos/*.json`: o teor e os termos que o resumo ou a providência precisam citar, e se
+há providência. O runner usa o `ResumidorIaPlataforma` e a decisão `decidirResumo` da produção:
+saída fora do schema, data no resumo ou trecho que não é cópia literal do teor contam como erro.
+
+```
+pnpm --filter @pz/eval avaliar-resumos            # reproduz as gravações (CI)
+pnpm --filter @pz/eval avaliar-resumos --gravar   # chama a API e regrava
+```
+
+A meta de 98% é **provisória** (decisão do usuário em 06/11/2026) e, como nas outras avaliações,
+só vale para casos `real-anonimizado`.

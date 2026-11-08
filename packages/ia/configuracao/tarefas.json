@@ -1,5 +1,5 @@
 {
-  "versao": "2026-11-06.1",
+  "versao": "2026-11-06.2",
   "fonteDosPrecos": "https://www.anthropic.com/pricing (consultada em 08/10/2026; cache lido = 0,1 x entrada)",
   "precos": {
     "claude-haiku-4-5": {
@@ -41,23 +41,23 @@
       "orcamentoMensalTokens": 2000000
     },
     "resumir-publicacao": {
-      "descricao": "Resume o teor de uma publicação para o advogado (sugestão identificada como IA).",
+      "descricao": "Resume o teor de uma publicação para o advogado (HU62): resumo, providência e trechos literais de evidência; identificado como IA.",
       "modelos": [
         {
           "provedor": "anthropic",
-          "modelo": "claude-haiku-4-5-20251001"
+          "modelo": "claude-haiku-4-5"
         },
         {
           "provedor": "anthropic",
           "modelo": "claude-sonnet-5-5"
         }
       ],
-      "temperatura": 0.2,
-      "maxTokensSaida": 800,
+      "temperatura": 0,
+      "maxTokensSaida": 1024,
       "cachePrompt": true,
       "lote": false,
       "saidaSemDatas": {
-        "excetoCampos": []
+        "excetoCampos": ["trechos"]
       },
       "orcamentoMensalTokens": 1000000
     },

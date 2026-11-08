@@ -50,6 +50,8 @@ jobs:
       - run: pnpm eval
       # Uso das ferramentas (HU59): a pergunta leva à ferramenta e aos argumentos certos.
       - run: pnpm --filter @pz/eval avaliar-ferramentas
+      # Resumo da publicação (HU62): trechos literais, sem datas, termos esperados.
+      - run: pnpm --filter @pz/eval avaliar-resumos
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:

@@ -39,6 +39,14 @@ export const consultasPublicacoes = (api: ClienteApi) => ({
       queryFn: ({ signal }) =>
         exigir(api.GET('/v1/publicacoes/{id}', { params: { path: { id } }, signal })),
     }),
+  /** Resumo por IA (HU62); `resumo: null` quando não há. */
+  resumo: (id: string) =>
+    queryOptions({
+      queryKey: chaves.publicacoes.resumo(id),
+      queryFn: ({ signal }) =>
+        exigir(api.GET('/v1/publicacoes/{id}/resumo', { params: { path: { id } }, signal })),
+      staleTime: 5 * 60_000,
+    }),
 });
 
 export const mutacoesPublicacoes = (api: ClienteApi, cache: QueryClient) => ({

@@ -86,6 +86,7 @@ export const chaves = {
     todas: ['publicacoes'] as const,
     lista: (filtros: object) => [...chaves.publicacoes.todas, 'lista', filtros] as const,
     detalhe: (id: string) => [...chaves.publicacoes.todas, 'detalhe', id] as const,
+    resumo: (id: string) => [...chaves.publicacoes.todas, 'resumo', id] as const,
   },
   equipe: ['equipe'] as const,
   clientes: {
