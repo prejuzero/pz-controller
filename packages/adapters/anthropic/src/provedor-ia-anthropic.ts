@@ -98,7 +98,6 @@ export function paraRequisicao(
     model: opcoes.modelo,
     max_tokens: opcoes.maxTokensSaida,
     // Só quando pedida (a classificação usa Haiku 4.5, que aceita); modelos mais novos a recusam.
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- temperatura opcional, pedida só para modelos que a aceitam.
     ...(opcoes.temperatura === undefined ? {} : { temperature: opcoes.temperatura }),
     // O bloco estável (instruções e taxonomia) vai no sistema: é o que se repete e vale cachear.
     system: [

@@ -194,7 +194,9 @@ describe('notificações no PostgreSQL (HU30)', () => {
 
     // Anexos antigos (PZ-362): o sistema lista de todos os escritórios, com o caminho quando há
     // notificação; marcar tira da lista.
-    const futuro = relogio.agora().maisMs(30 * 24 * 3_600_000);
+    // criado_em vem do relógio do banco (data real), não do relógio fixo do teste: o corte fica
+    // depois de qualquer data real, senão o teste passa a falhar com o tempo (PZ-361).
+    const futuro = Instant.deIso('2100-01-01T00:00:00Z');
     const comAnexo = await sistemaDosWebhooks.executarComoSistema('teste: anexos antigos', (tx) =>
       envios.comAnexoAte(tx, futuro, 10),
     );
