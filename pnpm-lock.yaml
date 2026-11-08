@@ -1550,8 +1550,8 @@ importers:
         specifier: workspace:*
         version: link:../../integracoes
       unpdf:
-        specifier: 2.0.1
-        version: 2.0.1
+        specifier: 2.1.0
+        version: 2.1.0
     devDependencies:
       '@pz/config':
         specifier: workspace:*
@@ -9454,8 +9454,8 @@ packages:
     resolution: {integrity: sha512-+QBBXBCvifc56fsbuxZQ6Sic3wqqc3WWaqxs58gvJrcOuN83HGTCwz3oS5phzU9LthRNE9VrJCFCLUgHeeFnfA==}
     engines: {node: '>=18'}
 
-  unpdf@2.0.1:
-    resolution: {integrity: sha512-PEbw7D4/+r/dTjZx0kDtNobjqjaVtaxS600ZnlO1SZByHbZD371Gn5kRNia+DvgjlWicbrFE2dXXR9WEbrSWaA==}
+  unpdf@2.1.0:
+    resolution: {integrity: sha512-G/Hsrm++g0EoubUhV8TDFItq6oQ+FUu9EMvIRtHUwseKXB0iJoCvaLvBGOpYUBqyvggv/XfxhYYtohL2QpE3xQ==}
     engines: {node: '>=24'}
     peerDependencies:
       '@napi-rs/canvas': ^0.1.69 || ^1.0.0
@@ -17428,7 +17428,7 @@ snapshots:
 
   unicorn-magic@0.3.0: {}
 
-  unpdf@2.0.1: {}
+  unpdf@2.1.0: {}
 
   unplugin@2.3.11:
     dependencies:
