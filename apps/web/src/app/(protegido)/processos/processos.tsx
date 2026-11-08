@@ -18,6 +18,7 @@ import { useProcessos } from '../../../api/hooks';
 import { SePermitido } from '../_casca/se-permitido';
 
 import { COBERTURAS, SeloCobertura, SeloSigilo, useNomeDoCliente } from './comum';
+import { ImportarProcessos } from './importar-processos';
 import { NovoProcesso } from './novo-processo';
 
 import type { Cobertura } from '../../../api/processos';
@@ -125,6 +126,7 @@ export function Processos() {
             {t('irClientes')}
           </Link>
           <SePermitido permissao="processos:gerir">
+            <ImportarProcessos />
             <NovoProcesso />
           </SePermitido>
         </div>

@@ -74,13 +74,30 @@ export const consultasProcessos = (api: ClienteApi) => ({
       queryKey: chaves.processos.conferencias(),
       queryFn: ({ signal }) => exigir(api.GET('/v1/conferencias', { signal })),
     }),
+  /** Andamento da importação por CSV (HU42): consulta a cada 2 s até o worker concluir. */
+  importacao: (id: string) =>
+    queryOptions({
+      queryKey: chaves.processos.importacao(id),
+      queryFn: ({ signal }) =>
+        exigir(api.GET('/v1/processos/importacoes/{id}', { params: { path: { id } }, signal })),
+      refetchInterval: (consulta) =>
+        consulta.state.data?.situacao === 'concluida' ? false : INTERVALO_DA_IMPORTACAO_MS,
+    }),
 });
+
+const INTERVALO_DA_IMPORTACAO_MS = 2_000;
 
 export const mutacoesProcessos = (api: ClienteApi, cache: QueryClient) => {
   const invalidarProcessos = () => cache.invalidateQueries({ queryKey: chaves.processos.todas });
   const invalidarClientes = () => cache.invalidateQueries({ queryKey: chaves.clientes.todas });
   const caminho = (id: string) => ({ params: { path: { id } } });
   return {
+    /** Prévia ou pedido (HU42); a lista é atualizada quando o worker conclui. */
+    importar: {
+      mutationFn: (body: { csv: string; somentePrevia: boolean }) =>
+        exigir(api.POST('/v1/processos/importacoes', { body })),
+    },
+    importacaoConcluida: invalidarProcessos,
     cadastrar: {
       mutationFn: (pedido: PedidoDeProcesso) =>
         exigir(api.POST('/v1/processos', { body: semIndefinidos(pedido) })),

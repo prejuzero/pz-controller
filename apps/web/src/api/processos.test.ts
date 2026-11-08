@@ -78,4 +78,25 @@ describe('processos (HU12)', () => {
     await mutacoes.removerCliente.onSuccess();
     expect(cache.getQueryState(chaves.clientes.lista())?.isInvalidated).toBe(true);
   });
+
+  it('importação por CSV (HU42): rotas, consulta até concluir e lista atualizada no fim', async () => {
+    const { api, cache, requisicoes, mutacoes } = montar();
+    await mutacoes.importar.mutationFn({ csv: 'numeroCnj', somentePrevia: true });
+    const consulta = consultasProcessos(api).importacao(ID);
+    await consulta.queryFn?.(sinal as never);
+    expect(requisicoes).toEqual([
+      {
+        rota: 'POST /v1/processos/importacoes',
+        corpo: '{"csv":"numeroCnj","somentePrevia":true}',
+      },
+      { rota: `GET /v1/processos/importacoes/${ID}`, corpo: '' },
+    ]);
+    const intervalo = consulta.refetchInterval as (q: unknown) => number | false;
+    expect(intervalo({ state: { data: { situacao: 'pendente' } } })).toBe(2_000);
+    expect(intervalo({ state: { data: undefined } })).toBe(2_000);
+    expect(intervalo({ state: { data: { situacao: 'concluida' } } })).toBe(false);
+    cache.setQueryData(chaves.processos.lista({}), {});
+    await mutacoes.importacaoConcluida();
+    expect(cache.getQueryState(chaves.processos.lista({}))?.isInvalidated).toBe(true);
+  });
 });

@@ -78,6 +78,7 @@ model Tenant {
   prazos                 Prazo[]
   compromissos           Compromisso[]
   relatorios             Relatorio[]
+  importacoesDeProcessos ImportacaoProcesso[]
   verificacoesHistorico  VerificacaoHistorico[]
   enviosManuais          EnvioManual[]
   conferencias           ConferenciaPainel[]
@@ -1396,6 +1397,27 @@ model Relatorio {
 
   @@index([tenantId, usuarioId, solicitadoEm(sort: Desc)])
   @@map("relatorio")
+}
+
+/// Importação de processos por CSV (HU42): as linhas validadas na prévia; o worker cadastra.
+model ImportacaoProcesso {
+  id            String    @id @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  solicitadaPor String    @map("solicitada_por") @db.Uuid
+  linhas        Json
+  situacao      String
+  total         Int
+  criados       Int?
+  jaExistiam    Int?      @map("ja_existiam")
+  solicitadaEm  DateTime  @map("solicitada_em") @db.Timestamptz(6)
+  concluidaEm   DateTime? @map("concluida_em") @db.Timestamptz(6)
+  criadoEm      DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm  DateTime  @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@map("importacao_processo")
 }
 
 /// Conferência do painel do tribunal (HU36): prova, só inserção (RLS).

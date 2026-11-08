@@ -1,7 +1,8 @@
 import type { Advogado, Oab } from '../domain/advogado.js';
 import type { Cliente } from '../domain/cliente.js';
+import type { ProcessoDaPlanilha } from '../domain/importacao.js';
 import type { Cobertura, EstadoDoProcesso, Processo } from '../domain/processo.js';
-import type { Conflito, EventoDominio, Result, Uuid, Validacao } from '@pz/kernel';
+import type { Conflito, EventoDominio, Instant, Result, Uuid, Validacao } from '@pz/kernel';
 
 /**
  * Porta: proteção de campos sensíveis (HU37, ADR-021), composta nas apps com as chaves de dados.
@@ -136,4 +137,28 @@ export interface RepositorioDeClientes<Transacao> {
   /** Só apaga sem processos vinculados. */
   remover(transacao: Transacao, id: Uuid): Promise<'ok' | 'nao-encontrado' | 'com-processos'>;
   listar(transacao: Transacao, filtro: { nome?: string }, pagina: Paginacao): Promise<Cliente[]>;
+}
+
+/** Importação de processos por CSV (HU42): as linhas validadas e o desfecho. */
+export interface ImportacaoDeProcessos {
+  readonly id: Uuid;
+  readonly tenantId: Uuid;
+  readonly solicitadaPor: Uuid;
+  readonly linhas: readonly ProcessoDaPlanilha[];
+  readonly situacao: 'pendente' | 'concluida';
+  readonly criados: number | null;
+  readonly jaExistiam: number | null;
+  readonly solicitadaEm: Instant;
+  readonly concluidaEm: Instant | null;
+}
+
+/** Porta: importações do tenant da transação (tabela `importacao_processo`, RLS). */
+export interface RepositorioDeImportacoes<Transacao> {
+  inserir(transacao: Transacao, importacao: ImportacaoDeProcessos): Promise<void>;
+  buscar(transacao: Transacao, id: Uuid): Promise<ImportacaoDeProcessos | undefined>;
+  concluir(
+    transacao: Transacao,
+    id: Uuid,
+    desfecho: { readonly criados: number; readonly jaExistiam: number; readonly em: Instant },
+  ): Promise<void>;
 }

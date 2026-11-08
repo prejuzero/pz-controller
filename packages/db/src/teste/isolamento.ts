@@ -151,6 +151,13 @@ const COLUNAS_FIXAS: Readonly<Record<string, Record<string, unknown>>> = {
     concluido_em: null,
     expira_em: null,
   },
+  importacao_processo: {
+    linhas: [],
+    situacao: 'pendente',
+    criados: null,
+    ja_existiam: null,
+    concluida_em: null,
+  },
   auditoria_dado_pessoal: {
     valor: 'FICTÍCIO',
     sal: '00',
@@ -278,6 +285,7 @@ export const TABELAS_SEM_DELETE: readonly string[] = [
   'assinatura_webhook',
   'entrega_webhook',
   'convite_membro',
+  'importacao_processo',
   'compromisso',
   'lembrete_agendado',
   'token_ciencia',

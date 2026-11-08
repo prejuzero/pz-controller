@@ -1,8 +1,15 @@
 import { randomBytes } from 'node:crypto';
 
-import { AdvogadosEmMemoria, ClientesEmMemoria, ProcessosEmMemoria } from '@pz/cadastro';
+import {
+  AdvogadosEmMemoria,
+  ClientesEmMemoria,
+  COLUNAS_DA_IMPORTACAO,
+  ImportacoesEmMemoria,
+  ProcessosEmMemoria,
+} from '@pz/cadastro';
 import { EventosGlobaisEmMemoria, FeriadosLocaisEmMemoria } from '@pz/calendario';
 import { carregarAmbiente } from '@pz/config/env';
+import { COLUNAS_DA_IMPORTACAO_DE_PROCESSOS } from '@pz/contracts';
 import {
   AcessosEmMemoria,
   CredenciaisEmMemoria,
@@ -109,7 +116,11 @@ beforeAll(async () => {
       advogados: new AdvogadosEmMemoria(r),
       ...(() => {
         const processos = new ProcessosEmMemoria(r);
-        return { processos, clientes: new ClientesEmMemoria(processos) };
+        return {
+          processos,
+          clientes: new ClientesEmMemoria(processos),
+          importacoes: new ImportacoesEmMemoria(),
+        };
       })(),
       trilha: {
         registrar: (tx, entrada) => {
@@ -229,6 +240,36 @@ describe('cadastro pela API (HU11)', () => {
   it('sem sessão, perfil e OABs exigem autenticação', async () => {
     const semSessao = await api.inject({ method: 'GET', url: '/v1/perfil' });
     expect(semSessao.statusCode).toBe(401);
+  });
+});
+
+describe('importação de processos por CSV pela API (HU42)', () => {
+  // Números FICTÍCIOS com dígito verificador conferido.
+  const csv = 'numeroCnj;comarca\n1234567-03.2025.5.02.0001;Campinas\n0000010-18.2024.4.03.6100;';
+
+  it('prévia, pedido e acompanhamento; erros no formato do contrato', async () => {
+    const previa = await pedir('POST', '/v1/processos/importacoes', { csv });
+    expect(previa.statusCode).toBe(200);
+    expect(previa.json()).toMatchObject({
+      importacaoId: null,
+      linhas: [
+        { linha: 2, situacao: 'valida' },
+        { linha: 3, situacao: 'valida' },
+      ],
+    });
+    const pedido = await pedir('POST', '/v1/processos/importacoes', { csv, somentePrevia: false });
+    const { importacaoId } = pedido.json<{ importacaoId: string }>();
+    const andamento = await pedir('GET', `/v1/processos/importacoes/${importacaoId}`);
+    expect(andamento.json()).toMatchObject({ situacao: 'pendente', total: 2, criados: null });
+    expect(tipos).toContain('cadastro.importacao-solicitada');
+    expect((await pedir('POST', '/v1/processos/importacoes', { csv: 'x\n1' })).statusCode).toBe(
+      400,
+    );
+    expect((await pedir('GET', `/v1/processos/importacoes/${gerarUuidV7()}`)).statusCode).toBe(404);
+  });
+
+  it('o contrato e o módulo aceitam as mesmas colunas', () => {
+    expect(COLUNAS_DA_IMPORTACAO_DE_PROCESSOS).toEqual(COLUNAS_DA_IMPORTACAO);
   });
 });
 

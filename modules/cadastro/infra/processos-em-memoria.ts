@@ -3,13 +3,15 @@ import { Processo } from '../domain/processo.js';
 import type {
   FiltroDeProcessos,
   FiltroDeProcessosNaBusca,
+  ImportacaoDeProcessos,
   Paginacao,
+  RepositorioDeImportacoes,
   RepositorioDeClientes,
   RepositorioDeProcessos,
 } from '../application/portas.js';
 import type { Cliente } from '../domain/cliente.js';
 import type { EstadoDoProcesso } from '../domain/processo.js';
-import type { Clock, TransacaoEmMemoria, Uuid } from '@pz/kernel';
+import type { Clock, Instant, TransacaoEmMemoria, Uuid } from '@pz/kernel';
 
 const pagina = <T extends { id: Uuid }>(itens: T[], { apos, limite }: Paginacao) =>
   itens
@@ -144,5 +146,38 @@ export class ClientesEmMemoria implements RepositorioDeClientes<TransacaoEmMemor
       (c) => nome === undefined || c.nome.toLowerCase().includes(nome),
     );
     return Promise.resolve(pagina(filtrados, paginacao));
+  }
+}
+
+/** Importações de processos em memória (HU42), visíveis só depois da confirmação. Só para testes. */
+export class ImportacoesEmMemoria implements RepositorioDeImportacoes<TransacaoEmMemoria> {
+  readonly linhas = new Map<Uuid, ImportacaoDeProcessos>();
+
+  inserir(tx: TransacaoEmMemoria, importacao: ImportacaoDeProcessos): Promise<void> {
+    tx.aoConfirmar(() => this.linhas.set(importacao.id, importacao));
+    return Promise.resolve();
+  }
+
+  buscar(_tx: TransacaoEmMemoria, id: Uuid): Promise<ImportacaoDeProcessos | undefined> {
+    return Promise.resolve(this.linhas.get(id));
+  }
+
+  concluir(
+    tx: TransacaoEmMemoria,
+    id: Uuid,
+    d: { criados: number; jaExistiam: number; em: Instant },
+  ): Promise<void> {
+    tx.aoConfirmar(() => {
+      const atual = this.linhas.get(id);
+      if (atual === undefined) throw new Error(`Importação ${id} inexistente`);
+      this.linhas.set(id, {
+        ...atual,
+        situacao: 'concluida',
+        criados: d.criados,
+        jaExistiam: d.jaExistiam,
+        concluidaEm: d.em,
+      });
+    });
+    return Promise.resolve();
   }
 }

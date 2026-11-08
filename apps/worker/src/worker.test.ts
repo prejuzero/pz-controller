@@ -165,6 +165,7 @@ describe('@Consome e o despachante', () => {
         ['SugestaoIaCorrigida@1', ['ConsumidorDeAuditoria.sugestaoIaCorrigida']],
         ['ExportacaoDeDadosSolicitada@1', ['ConsumidorDaPrivacidade.exportacaoSolicitada']],
         ['RelatorioSolicitado@1', ['ConsumidorDosRelatorios.relatorioSolicitado']],
+        ['ImportacaoDeProcessosSolicitada@1', ['ConsumidorDoCadastro.importacaoSolicitada']],
         ['EnvioManualSolicitado@1', ['ConsumidorDosEnvios.envioSolicitado']],
         ['CapturaConcluida@1', ['ConsumidorDasPublicacoes.capturaConcluida']],
         ['PublicacaoNova@1', ['ConsumidorDaClassificacao.publicacaoNova']],

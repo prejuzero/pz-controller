@@ -266,6 +266,13 @@ export const ExportacaoDeDadosSolicitada = definirEvento(
   }),
 );
 
+/** Importação de processos por CSV pedida (HU42): o worker cadastra as linhas validadas. */
+export const ImportacaoDeProcessosSolicitada = definirEvento(
+  'ImportacaoDeProcessosSolicitada',
+  1,
+  z.object({ importacaoId: z.uuid() }),
+);
+
 /** Pedido de relatório (HU29): o worker gera o arquivo na fila de relatórios. */
 export const RelatorioSolicitado = definirEvento(
   'RelatorioSolicitado',
@@ -496,6 +503,7 @@ export const EVENTOS = catalogoDeEventos(
   SugestaoIaCorrigida,
   ExportacaoDeDadosSolicitada,
   RelatorioSolicitado,
+  ImportacaoDeProcessosSolicitada,
   EnvioManualSolicitado,
   PublicacaoNova,
   PublicacaoClassificada,
