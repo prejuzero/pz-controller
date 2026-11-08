@@ -4,8 +4,10 @@ import { carregarAmbiente } from '@pz/config/env';
 import {
   AcessosEmMemoria,
   CredenciaisEmMemoria,
+  DispositivosEmMemoria,
   EquipeEmMemoria,
   PerfisEmMemoria,
+  RenovacoesEmMemoria,
   SegundoFatorEmMemoria,
   SessoesEmMemoria,
   TentativasEmMemoria,
@@ -94,6 +96,9 @@ beforeAll(async () => {
       tentativas: new TentativasEmMemoria(),
       acessos: new AcessosEmMemoria(),
       perfis,
+      // Desativar revoga dispositivos e renovações: sem Redis nem Postgres no teste unitário.
+      dispositivos: new DispositivosEmMemoria(),
+      renovacoes: new RenovacoesEmMemoria(),
       equipe: { unidade, equipe, trilha: { registrar: () => Promise.resolve() }, outbox: unidade },
     },
     janelaDeRequisicoes: { registrar: () => Promise.resolve(1) },

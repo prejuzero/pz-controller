@@ -125,7 +125,8 @@ describe('cadastro no PostgreSQL (HU11)', () => {
       eventos: await tx.eventoDominio.findMany({ where: { tenantId: ana.tenantId } }),
     }));
     expect(gravado.tenant?.tipo).toBe('autonomo');
-    expect(gravado.perfis.map((p) => p.perfil)).toEqual(['advogado']);
+    // O titular também administra a equipe (HU41, decisão do usuário em 06/11/2026).
+    expect(gravado.perfis.map((p) => p.perfil).sort()).toEqual(['admin_escritorio', 'advogado']);
     expect(gravado.trilha.map((t) => t.tipo)).toEqual(['cadastro.advogado-cadastrado']);
     const semBigInt = (_chave: string, valor: unknown) =>
       typeof valor === 'bigint' ? String(valor) : valor;
