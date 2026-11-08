@@ -13,6 +13,8 @@ export interface FiltrosPublicacoes {
   de?: string;
   ate?: string;
   processoId?: string;
+  /** Só as capturadas pelo nome que esperam conferência (HU42). */
+  conferir?: 'true';
 }
 
 /** Consultas das publicações do escritório (HU18). Os hooks em hooks.ts só as repassam. */
@@ -55,5 +57,20 @@ export const mutacoesPublicacoes = (api: ClienteApi, cache: QueryClient) => ({
     mutationFn: (id: string) =>
       exigir(api.POST('/v1/publicacoes/{id}/lida', { params: { path: { id } } })),
     onSuccess: () => cache.invalidateQueries({ queryKey: chaves.publicacoes.todas }),
+  },
+  /** Conferência da capturada pelo nome (HU42): confirmar cria o processo e leva ao prazo. */
+  conferir: {
+    mutationFn: ({ id, decisao }: { id: string; decisao: 'confirmar' | 'descartar' }) =>
+      exigir(
+        api.POST('/v1/publicacoes/{id}/conferencia', {
+          params: { path: { id } },
+          body: { decisao },
+        }),
+      ),
+    onSuccess: () =>
+      Promise.all([
+        cache.invalidateQueries({ queryKey: chaves.publicacoes.todas }),
+        cache.invalidateQueries({ queryKey: chaves.processos.todas }),
+      ]),
   },
 });

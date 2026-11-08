@@ -79,6 +79,26 @@ describe('processos (HU12)', () => {
     expect(cache.getQueryState(chaves.clientes.lista())?.isInvalidated).toBe(true);
   });
 
+  it('nomes monitorados (HU42): listar, incluir e remover, atualizando a lista', async () => {
+    const { api, cache, requisicoes, mutacoes } = montar();
+    await consultasProcessos(api)
+      .nomesMonitorados()
+      .queryFn?.(sinal as never);
+    await mutacoes.adicionarNome.mutationFn('Sociedade Fictícia');
+    await mutacoes.removerNome.mutationFn(ID);
+    expect(requisicoes).toEqual([
+      { rota: 'GET /v1/escritorio/nomes-monitorados', corpo: '' },
+      { rota: 'POST /v1/escritorio/nomes-monitorados', corpo: '{"nome":"Sociedade Fictícia"}' },
+      { rota: `DELETE /v1/escritorio/nomes-monitorados/${ID}`, corpo: '' },
+    ]);
+    cache.setQueryData(chaves.nomesMonitorados, {});
+    await mutacoes.adicionarNome.onSuccess();
+    expect(cache.getQueryState(chaves.nomesMonitorados)?.isInvalidated).toBe(true);
+    cache.setQueryData(chaves.nomesMonitorados, {});
+    await mutacoes.removerNome.onSuccess();
+    expect(cache.getQueryState(chaves.nomesMonitorados)?.isInvalidated).toBe(true);
+  });
+
   it('importação por CSV (HU42): rotas, consulta até concluir e lista atualizada no fim', async () => {
     const { api, cache, requisicoes, mutacoes } = montar();
     await mutacoes.importar.mutationFn({ csv: 'numeroCnj', somentePrevia: true });

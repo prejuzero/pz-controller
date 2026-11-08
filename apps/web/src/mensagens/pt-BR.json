@@ -270,7 +270,9 @@
     "integracoes": "Integrações",
     "integracoesDescricao": "Acesso de outros sistemas à API e avisos automáticos (webhooks).",
     "equipe": "Equipe",
-    "equipeDescricao": "Convide advogados e colaboradores e defina o que cada um pode fazer."
+    "equipeDescricao": "Convide advogados e colaboradores e defina o que cada um pode fazer.",
+    "nomesMonitorados": "Nomes monitorados",
+    "nomesMonitoradosDescricao": "Razão social e nomes do escritório buscados nas publicações."
   },
   "cadastro": {
     "titulo": "Criar conta",
@@ -661,6 +663,16 @@
       "providencia": "O que fazer:",
       "trechos": "Trechos do texto original que embasam o resumo",
       "aviso": "Sugestão da IA, sem datas. Confira sempre o teor integral abaixo: é ele que vale."
+    },
+    "conferencia": {
+      "selo": "Conferir",
+      "somente": "Só as para conferir",
+      "titulo": "Capturada pelo nome do escritório: confira",
+      "explicacao": "Esta publicação foi encontrada pelo nome do escritório, não por uma OAB ou processo monitorado. Pode ser de outra pessoa ou empresa com nome parecido. Enquanto você não confirmar, o processo não é cadastrado e nenhum prazo é calculado.",
+      "confirmar": "É do escritório",
+      "descartar": "Não é do escritório",
+      "confirmada": "Publicação confirmada. O processo e o prazo seguem o fluxo normal.",
+      "descartada": "Publicação descartada."
     }
   },
   "cobertura": {
@@ -1521,5 +1533,21 @@
     "desativarTitulo": "Desativar {nome}?",
     "desativarDescricao": "A pessoa deixa de entrar e as sessões dela caem na hora. Os prazos sob responsabilidade dela continuam no escritório.",
     "desativadoAviso": "Membro desativado."
+  },
+  "nomesMonitorados": {
+    "titulo": "Nomes monitorados",
+    "descricao": "Além das OABs, a captura procura publicações com estes nomes entre as partes. A busca acha o nome também dentro de nomes maiores, então pode trazer homônimos: o que chegar só pelo nome espera a sua conferência em Publicações, sem processo nem prazo até você confirmar.",
+    "vazio": "Nenhum nome monitorado.",
+    "desde": "Monitorado desde {quando}",
+    "limite": "O escritório já monitora {maximo} nomes, o máximo. Remova um para incluir outro.",
+    "nome": "Nome",
+    "nomeAjuda": "Como aparece nas publicações, de 5 a 150 caracteres (ex.: razão social da sociedade).",
+    "adicionar": "Monitorar nome",
+    "adicionado": "Nome incluído no monitoramento.",
+    "remover": "Remover",
+    "removerTitulo": "Deixar de monitorar \"{nome}\"?",
+    "removerDescricao": "As publicações já recebidas continuam no portal; as novas com este nome deixam de ser buscadas.",
+    "cancelar": "Cancelar",
+    "removido": "Nome removido do monitoramento."
   }
 }

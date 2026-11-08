@@ -35,14 +35,24 @@ describe('publicações (HU18)', () => {
     await lista.queryFn?.({ ...sinal, pageParam: 'c2' } as never);
     await consultas.detalhe(ID).queryFn?.(sinal as never);
     cache.setQueryData(chaves.publicacoes.detalhe(ID), {});
-    const { marcarLida } = mutacoesPublicacoes(api, cache);
+    const { marcarLida, conferir } = mutacoesPublicacoes(api, cache);
     await marcarLida.mutationFn(ID);
     await marcarLida.onSuccess();
+    // Conferência da capturada pelo nome (HU42): atualiza publicações e processos.
+    await consultas
+      .lista({ conferir: 'true' })
+      .queryFn?.({ ...sinal, pageParam: undefined } as never);
+    await conferir.mutationFn({ id: ID, decisao: 'confirmar' });
+    cache.setQueryData(chaves.processos.lista({}), {});
+    await conferir.onSuccess();
+    expect(cache.getQueryState(chaves.processos.lista({}))?.isInvalidated).toBe(true);
     expect(rotas).toEqual([
       'GET /v1/publicacoes?novas=true',
       'GET /v1/publicacoes?novas=true&cursor=c2',
       `GET /v1/publicacoes/${ID}`,
       `POST /v1/publicacoes/${ID}/lida`,
+      'GET /v1/publicacoes?conferir=true',
+      `POST /v1/publicacoes/${ID}/conferencia`,
     ]);
     expect(cache.getQueryState(chaves.publicacoes.detalhe(ID))?.isInvalidated).toBe(true);
   });

@@ -1,7 +1,7 @@
 // Seeds de desenvolvimento (`pnpm db:seed`): dados fictícios para o ambiente local, idempotentes.
 // Usa o papel pz_sistema, porque criar tenants é operação do cadastro (cliente sistema, ADR-003).
 // Nunca use dados reais de clientes aqui (CLAUDE.md, seção 3).
-import { argon2, randomBytes } from 'node:crypto';
+import { argon2, createHash, randomBytes } from 'node:crypto';
 import { promisify } from 'node:util';
 
 import { protecaoDeCampos, ProvedorChavesLocal } from '@pz/integracoes';
@@ -36,6 +36,22 @@ const USUARIO_COLABORADORA = '01a10e00-0000-7000-8000-00000000d005';
 // Plataforma FICTÍCIA: dois curadores (HU13/HU15, aprovação por quatro olhos) e um administrador
 // (HU39, painel da plataforma).
 const TENANT_PLATAFORMA = '01a10e00-0000-7000-8000-00000000c001';
+/**
+ * Publicações FICTÍCIAS capturadas só pelo nome do escritório (HU42), para conferir no portal. O
+ * seed as devolve a "pendente" a cada execução (o E2E confirma uma e descarta a outra).
+ */
+const PUBLICACOES_PELO_NOME = [
+  {
+    id: '01a10e00-0000-7000-8000-00000000d101',
+    numero: '10000058820268260100',
+    idExterno: 'seed-nome-1',
+  },
+  {
+    id: '01a10e00-0000-7000-8000-00000000d102',
+    numero: '10000067320268260100',
+    idExterno: 'seed-nome-2',
+  },
+];
 const USUARIOS_PLATAFORMA = [
   {
     id: '01a10e00-0000-7000-8000-00000000c002',
@@ -139,6 +155,29 @@ try {
     USUARIO_COLABORADORA,
     await hashArgon2id(SENHA),
   ]);
+  // Ainda no contexto do escritório de demonstração: o destinatário tem RLS forçado.
+  await cliente.query(`SELECT set_config('app.tenant_id', $1, true)`, [TENANT_DEMONSTRACAO]);
+  for (const [i, p] of PUBLICACOES_PELO_NOME.entries()) {
+    const teor = `FICTÍCIO: intimação de teste ${String(i + 1)} da parte ré ESCRITÓRIO DEMONSTRAÇÃO, capturada pelo nome. Processo ${p.numero}.`;
+    const {
+      rows: [conteudo],
+    } = await cliente.query<{ conteudo_id: string; capturado_em: Date }>(
+      `SELECT conteudo_id, capturado_em FROM pz_registrar_publicacao(
+         $1, 'djen', $2, $3, CURRENT_DATE - 1, $4, $5,
+         'https://comunicaapi.pje.jus.br/api/v1/comunicacao/ficticio/certidao',
+         '{"siglaTribunal":"TJSP","tipoComunicacao":"Intimação"}'::jsonb, 'seed')`,
+      [p.id, p.idExterno, createHash('sha256').update(teor).digest('hex'), p.numero, teor],
+    );
+    if (conteudo === undefined) throw new Error('publicação do seed não registrada');
+    await cliente.query(
+      `INSERT INTO publicacao_destinatario (tenant_id, conteudo_id, conteudo_capturado_em, conferencia)
+       VALUES ($1, $2, $3, 'pendente')
+       ON CONFLICT (tenant_id, conteudo_id) DO UPDATE
+         SET conferencia = 'pendente', processo_id = NULL, oab_id = NULL,
+             conferida_em = NULL, conferida_por = NULL, lida_em = NULL, lida_por = NULL`,
+      [TENANT_DEMONSTRACAO, conteudo.conteudo_id, conteudo.capturado_em],
+    );
+  }
   await cliente.query(
     `INSERT INTO tenant (id, nome, tipo) VALUES ($1, 'PrejuZero (curadoria local)', 'plataforma')
      ON CONFLICT (id) DO NOTHING`,

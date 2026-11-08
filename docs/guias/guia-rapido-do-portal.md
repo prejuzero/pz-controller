@@ -39,7 +39,15 @@ Você não precisa fazer nada além de ter a OAB cadastrada.
 
 Onde acompanhar: **Configurações → Cobertura** mostra a última captura de cada OAB e o que exige conferência manual.
 
+**Pelo nome do escritório (opcional):** em **Configurações → Nomes monitorados** (quem administra o escritório) cadastre até 5 nomes, como a razão social. A captura também procura publicações com esses nomes entre as partes. Como a busca acha o nome dentro de nomes maiores, pode vir homônimo: essas publicações aparecem em **Publicações** com o selo **Conferir** (há o filtro "Só as para conferir"). Abra e escolha **É do escritório** (o processo é cadastrado e o prazo segue o fluxo normal) ou **Não é do escritório** (a publicação sai das listas). Enquanto você não decide, não há processo, prazo nem lembrete.
+
 > **O que a busca automática não alcança:** processos físicos, sigilosos ou de sistemas que não publicam no DJEN. Marque-os como cobertura **parcial** ou **manual** em **Processos**. O portal passa a lembrar você de conferi-los no painel do tribunal (menu **Processos → Conferências de painel**).
+
+---
+
+## Cadastrar vários processos de uma vez
+
+Em **Processos → Importar planilha**: baixe a planilha modelo, preencha (só a coluna `numeroCnj` é obrigatória; `orgao`, `comarca` e `sigiloso` com sim/não são opcionais), salve como CSV e envie. **Validar** mostra, linha a linha, o que é novo, o que já está cadastrado (será ignorado) e o que tem problema; nada é gravado antes. Com tudo certo, **Importar** cadastra os processos em segundo plano (até 1.000 por arquivo) e a janela mostra quando terminar.
 
 ---
 

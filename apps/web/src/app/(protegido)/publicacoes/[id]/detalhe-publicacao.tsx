@@ -1,18 +1,22 @@
 'use client';
 
-import { EstadoCarregando, SeloStatus } from '@pz/ui';
-import { ArrowLeft, ExternalLink, Sparkles } from 'lucide-react';
+import { avisar, Botao, EstadoCarregando, SeloStatus } from '@pz/ui';
+import { ArrowLeft, ExternalLink, SearchCheck, Sparkles } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useEffect, useRef } from 'react';
 
 import {
+  useConferirPublicacao,
   useMarcarPublicacaoLida,
   usePublicacao,
   useResumoDaPublicacao,
 } from '../../../../api/hooks';
 import { formatarDataCivil, formatarInstante } from '../../../../i18n/formatar';
+import { AlertaFormulario } from '../../../_acesso/alerta-formulario';
 import { EnviarPorEmail } from '../../_casca/enviar-por-email';
+import { SePermitido } from '../../_casca/se-permitido';
 
 /**
  * Detalhe da publicação (HU18): teor integral, link da fonte e data de captura. Abrir registra a
@@ -57,6 +61,7 @@ export function DetalhePublicacao({ id }: { id: string }) {
           )}
         </div>
       </div>
+      {p.conferencia === 'pendente' ? <Conferencia id={p.id} /> : null}
       <EnviarPorEmail anexo={{ recurso: 'publicacao', recursoId: p.id }} />
 
       <dl className="grid gap-3 rounded-lg border border-borda p-4 sm:grid-cols-2">
@@ -151,6 +156,63 @@ function ResumoPorIa({ id }: { id: string }) {
         ))}
       </div>
       <p className="text-xs text-texto-suave">{t('aviso')}</p>
+    </section>
+  );
+}
+
+/**
+ * Capturada só pelo nome do escritório (HU42): pode ser homônimo. Até o advogado decidir, não há
+ * processo nem prazo; confirmar segue como qualquer publicação, descartar tira das listas.
+ */
+function Conferencia({ id }: { id: string }) {
+  const t = useTranslations('publicacoes.conferencia');
+  const conferir = useConferirPublicacao();
+  const router = useRouter();
+  // mutateAsync, não o callback do mutate: ao confirmar, a publicação recarrega e este bloco some
+  // antes do callback, que o React Query não chama depois de desmontar.
+  const decidir = (decisao: 'confirmar' | 'descartar') => {
+    conferir
+      .mutateAsync({ id, decisao })
+      .then(() => {
+        avisar.sucesso(t(decisao === 'confirmar' ? 'confirmada' : 'descartada'));
+        if (decisao === 'descartar') router.push('/publicacoes');
+      })
+      .catch(() => undefined); // O erro aparece no alerta do bloco (conferir.error).
+  };
+  return (
+    <section
+      className="space-y-3 rounded-lg border border-alerta bg-superficie-elevada p-4"
+      aria-labelledby="conferencia"
+    >
+      <h2 id="conferencia" className="flex items-center gap-2 text-lg font-semibold">
+        <SearchCheck className="size-5" aria-hidden />
+        {t('titulo')}
+      </h2>
+      <p className="text-sm">{t('explicacao')}</p>
+      <AlertaFormulario erro={conferir.error} seNaoAutorizado="credenciaisInvalidas" />
+      <SePermitido permissao="processos:gerir">
+        <div className="flex flex-wrap gap-2">
+          <Botao
+            carregando={conferir.isPending && conferir.variables.decisao === 'confirmar'}
+            disabled={conferir.isPending}
+            onClick={() => {
+              decidir('confirmar');
+            }}
+          >
+            {t('confirmar')}
+          </Botao>
+          <Botao
+            variante="secundaria"
+            carregando={conferir.isPending && conferir.variables.decisao === 'descartar'}
+            disabled={conferir.isPending}
+            onClick={() => {
+              decidir('descartar');
+            }}
+          >
+            {t('descartar')}
+          </Botao>
+        </div>
+      </SePermitido>
     </section>
   );
 }

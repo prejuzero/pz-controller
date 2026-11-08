@@ -32,6 +32,8 @@ export const chaves = {
     conferencias: () => [...chaves.processos.todas, 'conferencias'] as const,
     importacao: (id: string) => [...chaves.processos.todas, 'importacao', id] as const,
   },
+  /** Nomes do escritório monitorados na captura (HU42). */
+  nomesMonitorados: ['nomesMonitorados'] as const,
   tabelaPrazos: {
     todas: ['tabelaPrazos'] as const,
     tipos: () => [...chaves.tabelaPrazos.todas, 'tipos'] as const,

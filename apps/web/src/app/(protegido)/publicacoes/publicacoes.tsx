@@ -25,13 +25,21 @@ const trecho = (teor: string) =>
   teor.length > TAMANHO_TRECHO ? `${teor.slice(0, TAMANHO_TRECHO)}…` : teor;
 
 /** Publicações (HU18): lista da mais nova para a mais antiga, com as não lidas em destaque. */
-export function Publicacoes({ somenteNovas = false }: { somenteNovas?: boolean }) {
+export function Publicacoes({
+  somenteNovas = false,
+  somenteConferir = false,
+}: {
+  somenteNovas?: boolean;
+  somenteConferir?: boolean;
+}) {
   const t = useTranslations('publicacoes');
   const [novas, setNovas] = useState(somenteNovas);
+  const [conferir, setConferir] = useState(somenteConferir);
   const [de, setDe] = useState('');
   const [ate, setAte] = useState('');
   const filtros: FiltrosPublicacoes = {
     ...(novas ? { novas: 'true' as const } : {}),
+    ...(conferir ? { conferir: 'true' as const } : {}),
     ...(de === '' ? {} : { de }),
     ...(ate === '' ? {} : { ate }),
   };
@@ -54,12 +62,18 @@ export function Publicacoes({ somenteNovas = false }: { somenteNovas?: boolean }
     {
       id: 'situacao',
       header: t('colunas.situacao'),
-      cell: ({ row }) =>
-        row.original.lidaEm === null ? (
-          <SeloStatus tom="info">{t('nova')}</SeloStatus>
-        ) : (
-          <SeloStatus tom="neutro">{t('lida')}</SeloStatus>
-        ),
+      cell: ({ row }) => (
+        <span className="flex flex-wrap gap-1">
+          {row.original.lidaEm === null ? (
+            <SeloStatus tom="info">{t('nova')}</SeloStatus>
+          ) : (
+            <SeloStatus tom="neutro">{t('lida')}</SeloStatus>
+          )}
+          {row.original.conferencia === 'pendente' ? (
+            <SeloStatus tom="alerta">{t('conferencia.selo')}</SeloStatus>
+          ) : null}
+        </span>
+      ),
     },
     {
       accessorKey: 'numeroCnj',
@@ -100,6 +114,17 @@ export function Publicacoes({ somenteNovas = false }: { somenteNovas?: boolean }
             }}
           />
           {t('somenteNovas')}
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="size-4"
+            checked={conferir}
+            onChange={(evento) => {
+              setConferir(evento.target.checked);
+            }}
+          />
+          {t('conferencia.somente')}
         </label>
         <Campo
           rotulo={t('de')}
