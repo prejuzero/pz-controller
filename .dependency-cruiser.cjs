@@ -71,6 +71,16 @@ module.exports = {
       to: { path: '^(modules|apps/(?!web/)|packages/(?!ui/|design-tokens/|contracts/))' },
     },
     {
+      name: 'mcp-so-pela-api',
+      severity: 'error',
+      comment:
+        'O servidor MCP fala com o back-end só pela API /v1 e o cliente gerado: nada de módulos, banco ou IA (ADR-015, ADR-016).',
+      from: { path: '^apps/mcp/src/' },
+      to: {
+        path: '^(modules|apps/(?!mcp/)|packages/(?!contracts/|config/|observability/))',
+      },
+    },
+    {
       name: 'apps-so-pela-api-publica',
       severity: 'error',
       comment: 'apps apenas compõem módulos, pela API pública (index.ts).',

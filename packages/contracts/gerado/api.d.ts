@@ -1203,6 +1203,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/ia/ferramentas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ferramentas de IA (só leitura) que o usuário pode usar, para assistentes externos como o servidor MCP (HU60). */
+        get: operations["listarFerramentasDeIa"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ia/ferramentas/{nome}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Executa uma ferramenta de leitura do catálogo, no escritório do usuário, com auditoria. */
+        post: operations["executarFerramentaDeIa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/integracoes/apps": {
         parameters: {
             query?: never;
@@ -2904,6 +2938,17 @@ export interface components {
         FeriadosLocais: {
             itens: components["schemas"]["FeriadoLocal"][];
         };
+        FerramentasDeIa: {
+            itens: {
+                nome: string;
+                descricao: string;
+                /** @description JSON Schema dos argumentos. */
+                entrada: {
+                    [key: string]: unknown;
+                };
+            }[];
+            aviso: string;
+        };
         FiltrosBusca: {
             /** @description Com ou sem pontuação; 20 dígitos é exato, menos é parcial. */
             numeroCnj?: string;
@@ -3494,6 +3539,12 @@ export interface components {
              * @enum {string}
              */
             escopo: "titular" | "escritorio";
+        };
+        PedidoDeFerramentaDeIa: {
+            /** @description Argumentos validados pelo schema da ferramenta; o escritório nunca vem daqui. */
+            argumentos: {
+                [key: string]: unknown;
+            };
         };
         PedidoDeImpersonacao: {
             /**
@@ -4098,6 +4149,11 @@ export interface components {
             }[];
             /** @description Pedido gravado (os processos são cadastrados em segundo plano); nulo na prévia. */
             importacaoId: string | null;
+        };
+        ResultadoDeFerramentaDeIa: {
+            /** @description Saída da ferramenta, no formato do endpoint correspondente. */
+            resultado: unknown;
+            aviso: string;
         };
         ResumoDaPublicacao: {
             /** @description null: ainda sem resumo, sem IA configurada ou em revisão. */
@@ -9548,6 +9604,133 @@ export interface operations {
             };
             /** @description Não encontrado. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarFerramentasDeIa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FerramentasDeIa"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    executarFerramentaDeIa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                nome: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeFerramentaDeIa"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoDeFerramentaDeIa"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Limite de requisições excedido. */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -1,0 +1,34 @@
+{
+  "name": "@pz/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Servidor MCP do PrejuZero (HU60): expõe o catálogo de ferramentas de IA a assistentes externos, só pela API /v1.",
+  "type": "module",
+  "scripts": {
+    "build": "pz-build-app",
+    "start": "node --enable-source-maps --import ./dist/instrumentacao.js dist/main.js",
+    "dev": "node --env-file=../../.env.example --env-file-if-exists=../../.env --watch --import tsx --import ./src/instrumentacao.ts src/main.ts",
+    "lint": "eslint --max-warnings=0 .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "@pz/config": "workspace:*",
+    "@pz/contracts": "workspace:*",
+    "@pz/observability": "workspace:*",
+    "openapi-fetch": "0.17.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@vitest/coverage-v8": "5.0.5",
+    "eslint": "10.14.0",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  },
+  "files": [
+    "dist"
+  ]
+}

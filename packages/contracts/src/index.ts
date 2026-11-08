@@ -64,6 +64,7 @@ import { ROTAS_CAPTURA } from './captura.js';
 import { ROTAS_CIENCIA } from './ciencia.js';
 import { ROTAS_EQUIPE } from './equipe.js';
 import { ROTAS_HISTORICO } from './historico.js';
+import { ROTAS_IA } from './ia.js';
 import { ROTAS_INTEGRACOES } from './integracoes.js';
 export {
   CodigoDeVerificacao,
@@ -303,7 +304,17 @@ export {
   Uuid,
 } from './comum.js';
 export { formatarNumeroCnj, lerNumeroCnj, TRIBUNAIS, tribunalDoNumero } from './cnj.js';
-export { OrigemIa } from './ia.js';
+export {
+  AVISO_DAS_FERRAMENTAS,
+  executarFerramentaDeIa,
+  FerramentaDeIa,
+  FerramentasDeIa,
+  listarFerramentasDeIa,
+  OrigemIa,
+  PedidoDeFerramentaDeIa,
+  ResultadoDeFerramentaDeIa,
+  ROTAS_IA,
+} from './ia.js';
 export { consultarStatusDaCaptura, ROTAS_CAPTURA, StatusDaCaptura } from './captura.js';
 export {
   consultarPublicacao,
@@ -477,6 +488,7 @@ export const ROTAS = [
   ...ROTAS_WEBHOOKS,
   ...ROTAS_INTEGRACOES,
   ...ROTAS_EQUIPE,
+  ...ROTAS_IA,
 ] as const;
 
 /** O documento OpenAPI 3.1 da API, gerado das rotas (é o que `openapi.json` guarda). */
