@@ -9,6 +9,7 @@ import {
 import { ConsultarPermissoes } from '../application/autorizacao.js';
 import {
   EmitirTokenDeCliente,
+  RegistrarClienteDinamico,
   RegistrarClienteOAuth,
   RevogarClienteOAuth,
 } from '../application/clientes-oauth.js';
@@ -22,6 +23,7 @@ import {
   DispositivosEmMemoria,
   PerfisEmMemoria,
   PublicadorEmMemoria,
+  RegistrosDinamicosEmMemoria,
   RenovacoesEmMemoria,
   SessoesEmMemoria,
 } from './em-memoria.js';
@@ -39,6 +41,7 @@ const RETORNO = 'http://localhost:8765/retorno';
 
 function montar() {
   const clientes = new ClientesOAuthEmMemoria();
+  const registros = new RegistrosDinamicosEmMemoria();
   const sessoes = new SessoesEmMemoria();
   const dispositivos = new DispositivosEmMemoria();
   const renovacoes = new RenovacoesEmMemoria();
@@ -68,8 +71,18 @@ function montar() {
     permissoes,
     validar: new ValidarSessao(sessoes, relogio),
     registrar: new RegistrarClienteOAuth(clientes, permissoes, tokens, publicador, relogio),
-    descrever: new DescreverAutorizacao(clientes, permissoes),
-    autorizar: new AutorizarCliente(clientes, permissoes, codigos, tokens, publicador, relogio),
+    registros,
+    registrarDinamico: new RegistrarClienteDinamico(registros, relogio),
+    descrever: new DescreverAutorizacao(clientes, registros, permissoes),
+    autorizar: new AutorizarCliente(
+      clientes,
+      registros,
+      permissoes,
+      codigos,
+      tokens,
+      publicador,
+      relogio,
+    ),
     trocar: new TrocarCodigoPorTokens(
       clientes,
       codigos,
@@ -159,6 +172,7 @@ describe('Authorization Code + PKCE (HU49)', () => {
     const descricao = await m.descrever.executar(m.sessao, pedido(id));
     expect(descricao.ok && descricao.valor).toMatchObject({
       cliente: { id, nome: 'Assistente fictício' },
+      registroAutomatico: false,
       escopos: [{ escopo: 'prazos:ler' }],
     });
     const autorizado = await m.autorizar.executar(m.sessao, pedido(id));
@@ -282,5 +296,86 @@ describe('Authorization Code + PKCE (HU49)', () => {
       redirectUris: ['http://app.exemplo.invalid/cb'],
     });
     expect(!semRetorno.ok && semRetorno.erro.codigo).toBe('validacao');
+  });
+});
+
+describe('registro dinâmico de cliente (HU60, RFC 7591)', () => {
+  const RETORNO_DO_ASSISTENTE = 'https://assistente.exemplo.invalid/callback';
+
+  it('registra sem tenant, autoriza no escritório, troca e renova com o id do registro', async () => {
+    const m = montar();
+    const registrado = await m.registrarDinamico.executar({
+      nome: '  Assistente   Fictício  ',
+      redirectUris: [RETORNO_DO_ASSISTENTE],
+      metodoDeAutenticacao: 'none',
+      grants: ['authorization_code', 'refresh_token'],
+      tiposDeResposta: ['code'],
+    });
+    if (!registrado.ok) throw registrado.erro;
+    const id = registrado.valor.id;
+    expect(registrado.valor.nome).toBe('Assistente Fictício');
+    const p = pedido(id, { redirectUri: RETORNO_DO_ASSISTENTE, escopo: 'prazos:ler' });
+
+    expect(await m.descrever.executar(m.sessao, p)).toMatchObject({
+      ok: true,
+      valor: { cliente: { id, nome: 'Assistente Fictício' }, registroAutomatico: true },
+    });
+    const codigoDe = async () => {
+      const a = await m.autorizar.executar(m.sessao, p);
+      if (!a.ok) throw a.erro;
+      return new URL(a.valor.redirecionarPara).searchParams.get('code') ?? '';
+    };
+    const trocar = async (codigo: string, clienteId: Uuid = id) =>
+      m.trocar.executar({
+        codigo,
+        clienteId,
+        redirectUri: RETORNO_DO_ASSISTENTE,
+        verificador: VERIFICADOR,
+      });
+    const tokens = await trocar(await codigoDe());
+    if (!tokens.ok) throw tokens.erro;
+    // O escritório ganhou um cliente ligado ao registro; a sessão é de MCP.
+    const [doEscritorio] = await m.clientes.listar();
+    expect(doEscritorio).toMatchObject({ registroDinamicoId: id, tipo: 'publico' });
+    const [dispositivo] = await m.dispositivos.listar(m.sessao.usuarioId);
+    expect(dispositivo).toMatchObject({ tipoCliente: 'mcp', clienteOAuthId: doEscritorio?.id });
+    expect((await m.validar.executar(tokens.valor.tokenDeAcesso)).ok).toBe(true);
+
+    // Renova pelo id do registro (o que o assistente conhece), não pelo do escritório.
+    const renovado = await m.renovar.executar(tokens.valor.tokenDeRenovacao, id);
+    expect(renovado.ok).toBe(true);
+    // Segunda autorização reaproveita o mesmo cliente; o código não serve a outro client_id.
+    expect((await trocar(await codigoDe(), doEscritorio?.id)).ok).toBe(false);
+    expect(await m.clientes.listar()).toHaveLength(1);
+    // Revogar o cliente do escritório derruba a autorização dada ao assistente.
+    if (doEscritorio === undefined) throw new Error('sem cliente');
+    expect((await m.revogar.executar(m.sessao, doEscritorio.id)).ok).toBe(true);
+    expect((await m.validar.executar(tokens.valor.tokenDeAcesso)).ok).toBe(false);
+  });
+
+  it('recusa cliente confidencial, grant ou resposta fora do padrão e retorno inseguro', async () => {
+    const m = montar();
+    const base = { redirectUris: [RETORNO_DO_ASSISTENTE] };
+    for (const [pedidoInvalido, codigo] of [
+      [{ ...base, metodoDeAutenticacao: 'client_secret_basic' }, 'invalid_client_metadata'],
+      [{ ...base, grants: ['client_credentials'] }, 'invalid_client_metadata'],
+      [{ ...base, tiposDeResposta: ['token'] }, 'invalid_client_metadata'],
+      [{ redirectUris: ['http://assistente.exemplo.invalid/cb'] }, 'invalid_redirect_uri'],
+    ] as const) {
+      const r = await m.registrarDinamico.executar(pedidoInvalido);
+      expect(!r.ok && r.erro.codigo).toBe(codigo);
+    }
+    const semNome = await m.registrarDinamico.executar(base);
+    expect(semNome.ok && semNome.valor.nome).toBe('Assistente sem nome');
+    // Endereço de retorno fora do registro não passa da tela de consentimento.
+    if (!semNome.ok) throw semNome.erro;
+    expect(
+      (
+        await m.descrever.executar(
+          m.sessao,
+          pedido(semNome.valor.id, { redirectUri: 'https://outro.exemplo.invalid/cb' }),
+        )
+      ).ok,
+    ).toBe(false);
   });
 });

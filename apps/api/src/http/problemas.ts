@@ -79,6 +79,10 @@ export class FiltroDeProblemas implements ExceptionFilter {
         detail: erro.message,
         instance: instancia,
         ...(erro instanceof Validacao ? { problemas: [...erro.problemas] } : {}),
+        // Clientes OAuth leem `error` (RFC 6749, seção 5.2; RFC 7591, seção 3.2.2).
+        ...(instancia.startsWith('/v1/oauth/')
+          ? { error: erro.codigo, error_description: erro.message }
+          : {}),
       });
     }
     if (erro instanceof HttpException && erro.getStatus() < 500) {

@@ -33,6 +33,24 @@ export interface ClienteOAuth {
   readonly criadoEm: Instant;
   readonly ultimoUso?: Instant;
   readonly revogadoEm?: Instant;
+  /** Criado na autorização de um registro dinâmico (HU60): o assistente usa o id do registro. */
+  readonly registroDinamicoId?: Uuid;
+}
+
+/**
+ * Registro dinâmico de cliente (HU60, RFC 7591): global e sem acesso a nada. Só a autorização de
+ * um advogado cria, no escritório dele, o cliente público ligado ao registro.
+ */
+export interface RegistroDinamico {
+  readonly id: Uuid;
+  readonly nome: string;
+  readonly redirectUris: readonly string[];
+  readonly criadoEm: Instant;
+}
+
+export interface RepositorioDeRegistrosDinamicos {
+  registrar(registro: RegistroDinamico): Promise<void>;
+  buscar(id: Uuid): Promise<RegistroDinamico | undefined>;
 }
 
 /** O que o endpoint de token precisa do cliente (sem tenant no pedido). */
@@ -60,6 +78,11 @@ export interface RepositorioDeClientesOAuth {
   /** Sem tenant e sem segredo: o cliente público do pedido de token (o PKCE prova a posse). */
   localizar(id: Uuid): Promise<ClienteAutenticado | undefined>;
   registrarUso(id: Uuid, agora: Instant): Promise<void>;
+  /**
+   * Cliente ativo do registro dinâmico no tenant do contexto, criado na primeira autorização
+   * (corrida resolvida pelo índice único: a segunda autorização reaproveita o da primeira).
+   */
+  obterOuCriarDoRegistro(cliente: ClienteOAuth): Promise<ClienteOAuth>;
 }
 
 export interface ClienteRegistrado {
@@ -142,6 +165,61 @@ export class RegistrarClienteOAuth {
       ),
     ]);
     return ok({ cliente, segredo });
+  }
+}
+
+/** Nome máximo do cliente no registro (RFC 7591, `client_name`). */
+const MAXIMO_DO_NOME = 100;
+
+export interface PedidoDeRegistroDinamico {
+  readonly nome?: string;
+  readonly redirectUris: readonly string[];
+  readonly metodoDeAutenticacao?: string;
+  readonly grants?: readonly string[];
+  readonly tiposDeResposta?: readonly string[];
+}
+
+const registroInvalido = (mensagem: string, codigo = 'invalid_client_metadata') =>
+  new Validacao([{ campo: 'registro', mensagem }], codigo);
+
+/**
+ * Registro dinâmico (HU60, RFC 7591; decisão do usuário em 08/11/2026): só cliente público
+ * (sem segredo, PKCE), só Authorization Code e renovação, endereços de retorno HTTPS (HTTP só em
+ * localhost). O nome é o que o assistente informa: a tela de consentimento avisa que não é
+ * verificado e mostra para onde o advogado volta.
+ */
+export class RegistrarClienteDinamico {
+  constructor(
+    private readonly registros: RepositorioDeRegistrosDinamicos,
+    private readonly relogio: Clock,
+  ) {}
+
+  async executar(pedido: PedidoDeRegistroDinamico): Promise<Result<RegistroDinamico, Validacao>> {
+    if ((pedido.metodoDeAutenticacao ?? 'none') !== 'none') {
+      return err(registroInvalido('Só clientes públicos: token_endpoint_auth_method=none.'));
+    }
+    const grants = pedido.grants ?? ['authorization_code'];
+    if (!grants.every((g) => g === 'authorization_code' || g === 'refresh_token')) {
+      return err(registroInvalido('Só authorization_code e refresh_token.'));
+    }
+    if (!(pedido.tiposDeResposta ?? ['code']).every((t) => t === 'code')) {
+      return err(registroInvalido('Só response_type=code.'));
+    }
+    const enderecos = enderecosDeRetorno(pedido.redirectUris);
+    if (!enderecos.ok) {
+      return err(
+        registroInvalido(enderecos.erro.problemas[0]?.mensagem ?? '', 'invalid_redirect_uri'),
+      );
+    }
+    const nome = (pedido.nome ?? '').replace(/\s+/g, ' ').trim().slice(0, MAXIMO_DO_NOME);
+    const registro: RegistroDinamico = {
+      id: gerarUuidV7(this.relogio),
+      nome: nome === '' ? 'Assistente sem nome' : nome,
+      redirectUris: enderecos.valor,
+      criadoEm: this.relogio.agora(),
+    };
+    await this.registros.registrar(registro);
+    return ok(registro);
   }
 }
 

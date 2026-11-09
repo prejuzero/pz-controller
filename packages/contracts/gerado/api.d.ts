@@ -1549,6 +1549,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/oauth/metadados": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Endereços e capacidades do servidor de autorização (RFC 8414), para o servidor MCP. */
+        get: operations["consultarMetadadosOAuth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/oauth/registro": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Registro dinâmico de cliente (RFC 7591) para assistentes de IA: público, PKCE, só leitura e sem acesso até o advogado autorizar. */
+        post: operations["registrarClienteOAuthDinamico"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/oauth/token": {
         parameters: {
             query?: never;
@@ -2624,6 +2658,8 @@ export interface components {
                 id: string;
                 nome: string;
             };
+            /** @description O assistente se registrou sozinho (HU60): nome não verificado pelo escritório. */
+            registroAutomatico: boolean;
             redirectUri: string;
             escopos: {
                 escopo: string;
@@ -3060,6 +3096,19 @@ export interface components {
         LinkDoDocumento: {
             /** Format: uri */
             url: string;
+        };
+        MetadadosOAuth: {
+            /** Format: uri */
+            authorization_endpoint: string;
+            /** Format: uri */
+            token_endpoint: string;
+            /** Format: uri */
+            registration_endpoint: string;
+            scopes_supported: string[];
+            response_types_supported: "code"[];
+            grant_types_supported: string[];
+            code_challenge_methods_supported: "S256"[];
+            token_endpoint_auth_methods_supported: string[];
         };
         NomeMonitorado: {
             /** Format: uuid */
@@ -3654,6 +3703,14 @@ export interface components {
         PedidoDeRedefinicaoDeSenha: {
             email: string;
         };
+        PedidoDeRegistroOAuth: {
+            redirect_uris: string[];
+            client_name?: string;
+            token_endpoint_auth_method?: string;
+            grant_types?: string[];
+            response_types?: string[];
+            scope?: string;
+        };
         PedidoDeRelatorio: {
             /** @constant */
             tipo: "agenda";
@@ -3909,6 +3966,9 @@ export interface components {
                 mensagem: string;
             }[];
             requestId?: string;
+            /** @description Nas rotas /v1/oauth: o código do RFC 6749 (seção 5.2) ou do RFC 7591. */
+            error?: string;
+            error_description?: string;
         };
         ProcessoDoTenant: {
             /** Format: uuid */
@@ -4012,6 +4072,20 @@ export interface components {
             /** @description Token do link enviado por e-mail. */
             token: string;
             novaSenha: string;
+        };
+        RegistroOAuth: {
+            /** Format: uuid */
+            client_id: string;
+            /** @description Segundos desde 1970 (RFC 7591). */
+            client_id_issued_at: number;
+            client_name: string;
+            redirect_uris: string[];
+            /** @constant */
+            token_endpoint_auth_method: "none";
+            grant_types: ("authorization_code" | "refresh_token")[];
+            response_types: "code"[];
+            /** @description Escopos de leitura possíveis; o advogado concede os que tem. */
+            scope: string;
         };
         Relatorio: {
             /** Format: uuid */
@@ -11163,6 +11237,122 @@ export interface operations {
             };
             /** @description Sem permissão. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    consultarMetadadosOAuth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetadadosOAuth"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    registrarClienteOAuthDinamico: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeRegistroOAuth"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistroOAuth"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Limite de requisições excedido. */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

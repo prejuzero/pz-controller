@@ -16,6 +16,7 @@ import {
   PedidoDeAppOAuth,
   PedidoDeAutorizacaoOAuth,
   PedidoDeClienteDeIntegracao,
+  PedidoDeRegistroOAuth,
   PedidoDeTokenOAuth,
 } from '@pz/contracts';
 import {
@@ -25,6 +26,7 @@ import {
   EmitirTokenDeCliente,
   escoposOAuth,
   ListarClientesOAuth,
+  RegistrarClienteDinamico,
   RegistrarClienteOAuth,
   RenovarTokens,
   RevogarClienteOAuth,
@@ -36,9 +38,11 @@ import { criarLogger } from '@pz/observability';
 import { z } from 'zod';
 
 import { autenticacao, validar } from '../auth/auth.controller.js';
+import { AMBIENTE } from '../fichas.js';
 import { Publico, RequerPermissao } from '../http/acesso.js';
 import { LimitarPorIp } from '../http/limite.js';
 
+import type { AmbienteApi } from '../ambiente.js';
 import type { RequisicaoAutenticada } from '../http/acesso.js';
 import type {
   AppOAuthCriado,
@@ -47,6 +51,8 @@ import type {
   ClientesDeIntegracao,
   DescricaoDaAutorizacaoOAuth,
   EscoposDeIntegracao,
+  MetadadosOAuth,
+  RegistroOAuth,
   TokenOAuth,
 } from '@pz/contracts';
 import type { ClienteOAuth, PedidoDeAutorizacao, TokensDeDispositivo } from '@pz/identidade';
@@ -73,6 +79,12 @@ export function credencialBasic(
 }
 
 const iso = (instante: Instant | undefined) => instante?.paraIso() ?? null;
+
+/** Escopos que um assistente pode pedir: só os de leitura do catálogo (HU49, HU60). */
+const escoposDeLeitura = () =>
+  escoposOAuth()
+    .filter((e) => CATALOGO_DE_PERMISSOES[e.escopo].leitura)
+    .map((e) => e.escopo);
 
 function paraCliente(c: ClienteOAuth): ClientesDeIntegracao['itens'][number] {
   return {
@@ -134,7 +146,69 @@ export class IntegracoesController {
     @Inject(AutorizarCliente) private readonly autorizar: AutorizarCliente,
     @Inject(TrocarCodigoPorTokens) private readonly trocar: TrocarCodigoPorTokens,
     @Inject(RenovarTokens) private readonly renovar: RenovarTokens,
+    @Inject(RegistrarClienteDinamico) private readonly registrarDinamico: RegistrarClienteDinamico,
+    @Inject(AMBIENTE) private readonly ambiente: AmbienteApi,
   ) {}
+
+  /**
+   * Registro dinâmico (HU60, RFC 7591): público e sem acesso a nada até um advogado autorizar.
+   * Limite por IP contra registros em massa.
+   */
+  @Post('v1/oauth/registro')
+  @Publico()
+  @LimitarPorIp(10)
+  @HttpCode(201)
+  async registrarClienteDinamico(
+    @Body() corpo: unknown,
+    @Res({ passthrough: true }) resposta: FastifyReply,
+  ): Promise<RegistroOAuth> {
+    const pedido = PedidoDeRegistroOAuth.esquema.safeParse(corpo);
+    if (!pedido.success) {
+      throw new Validacao(
+        pedido.error.issues.map((p) => ({ campo: p.path.join('.'), mensagem: p.message })),
+        'invalid_client_metadata',
+      );
+    }
+    const p = pedido.data;
+    const r = await this.registrarDinamico.executar({
+      redirectUris: p.redirect_uris,
+      ...(p.client_name === undefined ? {} : { nome: p.client_name }),
+      ...(p.token_endpoint_auth_method === undefined
+        ? {}
+        : { metodoDeAutenticacao: p.token_endpoint_auth_method }),
+      ...(p.grant_types === undefined ? {} : { grants: p.grant_types }),
+      ...(p.response_types === undefined ? {} : { tiposDeResposta: p.response_types }),
+    });
+    if (!r.ok) throw r.erro;
+    void resposta.header('cache-control', 'no-store');
+    return {
+      client_id: r.valor.id,
+      client_id_issued_at: Math.floor(r.valor.criadoEm.epochMs / 1000),
+      client_name: r.valor.nome,
+      redirect_uris: [...r.valor.redirectUris],
+      token_endpoint_auth_method: 'none',
+      grant_types: ['authorization_code', 'refresh_token'],
+      response_types: ['code'],
+      scope: escoposDeLeitura().join(' '),
+    };
+  }
+
+  /** Metadados do servidor de autorização (RFC 8414), lidos pelo servidor MCP (HU60). */
+  @Get('v1/oauth/metadados')
+  @Publico()
+  metadados(): MetadadosOAuth {
+    const portal = this.ambiente.PORTAL_URL.replace(/\/$/, '');
+    return {
+      authorization_endpoint: `${portal}/oauth/autorizar`,
+      token_endpoint: `${portal}${ROTA_DE_TOKEN}`,
+      registration_endpoint: `${portal}/v1/oauth/registro`,
+      scopes_supported: escoposDeLeitura(),
+      response_types_supported: ['code'],
+      grant_types_supported: ['authorization_code', 'refresh_token', 'client_credentials'],
+      code_challenge_methods_supported: ['S256'],
+      token_endpoint_auth_methods_supported: ['none', 'client_secret_basic', 'client_secret_post'],
+    };
+  }
 
   @Post(ROTA_DE_TOKEN.slice(1))
   @Publico()

@@ -23,6 +23,13 @@ function apiFalsa(requisicao: Request): Promise<Response> {
     );
   const autorizado = requisicao.headers.get('authorization') === `Bearer ${TOKEN}`;
   if (pathname === '/v1/auth/eu') return autorizado ? json(200, {}) : json(401, {});
+  if (pathname === '/v1/oauth/metadados') {
+    return json(200, {
+      authorization_endpoint: 'https://portal.exemplo.invalid/oauth/autorizar',
+      token_endpoint: 'https://portal.exemplo.invalid/v1/oauth/token',
+      registration_endpoint: 'https://portal.exemplo.invalid/v1/oauth/registro',
+    });
+  }
   if (pathname === '/v1/ia/ferramentas') {
     return json(200, {
       itens: [
@@ -45,7 +52,13 @@ function apiFalsa(requisicao: Request): Promise<Response> {
   return json(500, {});
 }
 
-const app = criarAppMcp({ apiUrl: 'http://api.invalid', versao: 'teste', fetch: apiFalsa });
+const URL_PUBLICA = 'https://mcp.exemplo.invalid';
+const app = criarAppMcp({
+  apiUrl: 'http://api.invalid',
+  urlPublica: URL_PUBLICA,
+  versao: 'teste',
+  fetch: apiFalsa,
+});
 const BASE = 'http://mcp.invalid';
 
 async function conectar(token = TOKEN) {
@@ -103,7 +116,9 @@ describe('servidor MCP (HU60)', () => {
       new Request(`${BASE}${CAMINHO_MCP}`, { method: 'POST', body: '{}' }),
     );
     expect(semToken.status).toBe(401);
-    expect(semToken.headers.get('www-authenticate')).toBe('Bearer');
+    expect(semToken.headers.get('www-authenticate')).toBe(
+      `Bearer resource_metadata="${URL_PUBLICA}/.well-known/oauth-protected-resource"`,
+    );
     await expect(conectar('outro-token')).rejects.toThrow();
   });
 
@@ -116,6 +131,7 @@ describe('servidor MCP (HU60)', () => {
     expect(get.status).toBe(405);
     const foraDoAr = criarAppMcp({
       apiUrl: 'http://api.invalid',
+      urlPublica: URL_PUBLICA,
       versao: 'teste',
       fetch: () => Promise.resolve(new Response('{}', { status: 503 })),
     });
@@ -132,6 +148,7 @@ describe('servidor MCP (HU60)', () => {
   it('lista indisponível na API vira erro do protocolo', async () => {
     const semLista = criarAppMcp({
       apiUrl: 'http://api.invalid',
+      urlPublica: URL_PUBLICA,
       versao: 'teste',
       fetch: (r) =>
         new URL(r.url).pathname === '/v1/auth/eu'
@@ -151,6 +168,36 @@ describe('servidor MCP (HU60)', () => {
 
   it('cliente da API usa o fetch global quando não há outro', () => {
     expect(clienteDaApi('http://api.invalid', TOKEN).GET).toBeTypeOf('function');
+  });
+
+  it('descoberta OAuth: recurso protegido (RFC 9728) e servidor de autorização (RFC 8414)', async () => {
+    for (const caminho of [
+      '/.well-known/oauth-protected-resource',
+      '/.well-known/oauth-protected-resource/mcp',
+    ]) {
+      const r = await app(new Request(`${BASE}${caminho}`));
+      expect(await r.json()).toEqual({
+        resource: `${URL_PUBLICA}/mcp`,
+        authorization_servers: [URL_PUBLICA],
+        bearer_methods_supported: ['header'],
+        resource_name: 'PrejuZero',
+      });
+      expect(r.headers.get('access-control-allow-origin')).toBe('*');
+    }
+    const servidor = await app(new Request(`${BASE}/.well-known/oauth-authorization-server`));
+    expect(await servidor.json()).toMatchObject({
+      issuer: URL_PUBLICA,
+      registration_endpoint: 'https://portal.exemplo.invalid/v1/oauth/registro',
+    });
+    const foraDoAr = criarAppMcp({
+      apiUrl: 'http://api.invalid',
+      urlPublica: URL_PUBLICA,
+      versao: 'teste',
+      fetch: () => Promise.resolve(new Response('{}', { status: 503 })),
+    });
+    expect(
+      (await foraDoAr(new Request(`${BASE}/.well-known/oauth-authorization-server`))).status,
+    ).toBe(502);
   });
 
   it('ambiente: porta e API com padrões locais', () => {

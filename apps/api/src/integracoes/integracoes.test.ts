@@ -6,6 +6,7 @@ import { CABECALHO_CSRF, COOKIE_CSRF, COOKIE_SESSAO } from '@pz/contracts';
 import {
   AcessosEmMemoria,
   ClientesOAuthEmMemoria,
+  RegistrosDinamicosEmMemoria,
   CodigosEmMemoria,
   desafioPkce,
   DispositivosEmMemoria,
@@ -75,6 +76,7 @@ beforeAll(async () => {
       perfis,
       publicador,
       clientesOAuth: new ClientesOAuthEmMemoria(),
+      registrosOAuth: new RegistrosDinamicosEmMemoria(),
       codigosOAuth: new CodigosEmMemoria(),
       dispositivos: new DispositivosEmMemoria(),
       renovacoes: new RenovacoesEmMemoria(),
@@ -447,5 +449,115 @@ describe('Authorization Code + PKCE (HU49)', () => {
       payload: { nome: 'x', escopos: ['prazos:ler'], redirectUris: ['http://app.exemplo.invalid'] },
     });
     expect(retornoInvalido.statusCode).toBe(400);
+  });
+});
+
+describe('registro dinâmico e descoberta para assistentes (HU60)', () => {
+  const VERIFICADOR = 'w'.repeat(43);
+  const RETORNO = 'https://assistente.exemplo.invalid/callback';
+  const portal = () => ({
+    cookie: `${COOKIE_SESSAO}=${tokenDoAdvogado}; ${COOKIE_CSRF}=csrf-ficticio`,
+    [CABECALHO_CSRF]: 'csrf-ficticio',
+  });
+
+  it('metadados RFC 8414 apontam para o portal; só leitura e PKCE', async () => {
+    const r = await api.inject({ method: 'GET', url: '/v1/oauth/metadados' });
+    expect(r.json()).toMatchObject({
+      authorization_endpoint: 'http://localhost:3001/oauth/autorizar',
+      token_endpoint: 'http://localhost:3001/v1/oauth/token',
+      registration_endpoint: 'http://localhost:3001/v1/oauth/registro',
+      code_challenge_methods_supported: ['S256'],
+    });
+    expect(r.json<{ scopes_supported: string[] }>().scopes_supported).toContain('prazos:ler');
+  });
+
+  it('o assistente se registra, o advogado autoriza e o token renova pelo id do registro', async () => {
+    const registro = await api.inject({
+      method: 'POST',
+      url: '/v1/oauth/registro',
+      payload: {
+        client_name: 'Assistente MCP fictício',
+        redirect_uris: [RETORNO],
+        token_endpoint_auth_method: 'none',
+        grant_types: ['authorization_code', 'refresh_token'],
+        response_types: ['code'],
+      },
+    });
+    expect(registro.statusCode).toBe(201);
+    const { client_id: clientId } = registro.json<{ client_id: string }>();
+    const pedido = {
+      response_type: 'code',
+      client_id: clientId,
+      redirect_uri: RETORNO,
+      scope: 'prazos:ler',
+      code_challenge: desafioPkce(VERIFICADOR),
+      code_challenge_method: 'S256',
+      // RFC 8707: o recurso pedido pelo assistente (o servidor MCP) é aceito e ignorado.
+      resource: 'https://mcp.exemplo.invalid/mcp',
+    };
+    const descricao = await api.inject({
+      method: 'GET',
+      url: `/v1/oauth/autorizacao?${new URLSearchParams(pedido).toString()}`,
+      headers: portal(),
+    });
+    expect(descricao.json()).toMatchObject({
+      cliente: { id: clientId, nome: 'Assistente MCP fictício' },
+      registroAutomatico: true,
+    });
+    const autorizado = await api.inject({
+      method: 'POST',
+      url: '/v1/oauth/autorizacao',
+      headers: portal(),
+      payload: pedido,
+    });
+    const codigo =
+      new URL(autorizado.json<{ redirecionarPara: string }>().redirecionarPara).searchParams.get(
+        'code',
+      ) ?? '';
+    const token = await pedirToken(
+      new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: clientId,
+        code: codigo,
+        redirect_uri: RETORNO,
+        code_verifier: VERIFICADOR,
+        resource: 'https://mcp.exemplo.invalid/mcp',
+      }).toString(),
+    );
+    expect(token.statusCode).toBe(200);
+    const corpo = token.json<{ access_token: string; refresh_token: string }>();
+    expect(
+      (
+        await api.inject({
+          method: 'GET',
+          url: '/v1/teste-oauth/prazos',
+          headers: { authorization: `Bearer ${corpo.access_token}` },
+        })
+      ).statusCode,
+    ).toBe(200);
+    const renovado = await pedirToken(
+      new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: clientId,
+        refresh_token: corpo.refresh_token,
+      }).toString(),
+    );
+    expect(renovado.statusCode).toBe(200);
+  });
+
+  it('recusa registro fora do padrão com o erro do RFC 7591', async () => {
+    const r = await api.inject({
+      method: 'POST',
+      url: '/v1/oauth/registro',
+      payload: { redirect_uris: ['http://assistente.exemplo.invalid/cb'] },
+    });
+    expect(r.statusCode).toBe(400);
+    expect(r.json()).toMatchObject({ error: 'invalid_redirect_uri' });
+    const semRetorno = await api.inject({
+      method: 'POST',
+      url: '/v1/oauth/registro',
+      payload: { client_name: 'x' },
+    });
+    expect(semRetorno.json()).toMatchObject({ error: 'invalid_client_metadata' });
   });
 });

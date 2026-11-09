@@ -461,6 +461,11 @@ export {
   revogarClienteDeIntegracao,
   ROTAS_INTEGRACOES,
   testarAssinaturaDeWebhook,
+  consultarMetadadosOAuth,
+  MetadadosOAuth,
+  PedidoDeRegistroOAuth,
+  RegistroOAuth,
+  registrarClienteOAuthDinamico,
   TokenOAuth,
 } from './integracoes.js';
 

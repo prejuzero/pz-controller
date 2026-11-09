@@ -6,7 +6,12 @@ import { CATALOGO_DE_PERMISSOES } from '../domain/permissoes.js';
 import { EmissorDeTokens, VALIDADE_DO_ACESSO_MS } from './dispositivos.js';
 
 import type { ConsultarPermissoes } from './autorizacao.js';
-import type { RepositorioDeClientesOAuth } from './clientes-oauth.js';
+import type {
+  ClienteOAuth,
+  RegistroDinamico,
+  RepositorioDeClientesOAuth,
+  RepositorioDeRegistrosDinamicos,
+} from './clientes-oauth.js';
 import type { TokensDeDispositivo } from './dispositivos.js';
 import type {
   ArmazemDeRenovacoes,
@@ -31,6 +36,8 @@ export interface DadosDoCodigo {
   readonly redirectUri: string;
   readonly desafio: string;
   readonly escopos: readonly string[];
+  /** Registro dinâmico (HU60): o `client_id` que o assistente usa (o do registro). */
+  readonly clienteDoPedido?: Uuid;
 }
 
 /** Códigos de autorização: uso único (consumir apaga). */
@@ -55,6 +62,8 @@ export interface PedidoDeAutorizacao {
 
 export interface DescricaoDaAutorizacao {
   readonly cliente: { readonly id: Uuid; readonly nome: string };
+  /** Registrado sozinho pelo assistente (HU60): nome não verificado pelo escritório. */
+  readonly registroAutomatico: boolean;
   readonly redirectUri: string;
   readonly escopos: readonly { readonly escopo: string; readonly descricao: string }[];
 }
@@ -68,13 +77,34 @@ const pedidoInvalido = (mensagem: string, codigo = 'invalid_request') =>
  * escopos são de leitura, do cliente e de quem autoriza. Só no portal (sessão do navegador): um
  * token de app ou integração, ou a impersonação (só leitura), não autoriza outro app.
  */
+/** Escopos possíveis de um registro dinâmico: todos os de leitura (o advogado limita). */
+const ESCOPOS_DE_LEITURA = Object.entries(CATALOGO_DE_PERMISSOES)
+  .filter(([, p]) => p.leitura)
+  .map(([e]) => e);
+
+/** O registro visto como cliente público, só para conferir o pedido. */
+const comoCliente = (r: RegistroDinamico, sessao: Sessao): ClienteOAuth => ({
+  id: r.id,
+  tenantId: sessao.tenantId,
+  usuarioId: sessao.usuarioId,
+  nome: r.nome,
+  tipo: 'publico',
+  redirectUris: r.redirectUris,
+  escopos: ESCOPOS_DE_LEITURA,
+  criadoEm: r.criadoEm,
+});
+
 async function conferir(
   clientes: RepositorioDeClientesOAuth,
+  registros: RepositorioDeRegistrosDinamicos,
   permissoes: ConsultarPermissoes,
   sessao: Sessao,
   pedido: PedidoDeAutorizacao,
 ): Promise<
-  Result<{ descricao: DescricaoDaAutorizacao; escopos: Permissao[] }, Validacao | Proibido>
+  Result<
+    { descricao: DescricaoDaAutorizacao; escopos: Permissao[]; registro?: RegistroDinamico },
+    Validacao | Proibido
+  >
 > {
   if (
     sessao.dispositivoId !== undefined ||
@@ -83,7 +113,12 @@ async function conferir(
   ) {
     return err(new Proibido('autorizacao-so-no-portal', 'Autorize pelo portal, com sua senha.'));
   }
-  const cliente = await clientes.buscar(pedido.clienteId);
+  // Do escritório (HU49) ou, se não for, um registro dinâmico (HU60).
+  const doEscritorio = await clientes.buscar(pedido.clienteId);
+  const registro =
+    doEscritorio === undefined ? await registros.buscar(pedido.clienteId) : undefined;
+  const cliente =
+    doEscritorio ?? (registro === undefined ? undefined : comoCliente(registro, sessao));
   if (cliente?.tipo !== 'publico' || cliente.revogadoEm !== undefined) {
     return err(pedidoInvalido('Aplicativo desconhecido ou revogado.', 'invalid_client'));
   }
@@ -104,8 +139,10 @@ async function conferir(
   if (!escopos.ok) return err(pedidoInvalido(escopos.erro.message, 'invalid_scope'));
   return ok({
     escopos: escopos.valor,
+    ...(registro === undefined ? {} : { registro }),
     descricao: {
       cliente: { id: cliente.id, nome: cliente.nome },
+      registroAutomatico: registro !== undefined,
       redirectUri: pedido.redirectUri,
       escopos: escopos.valor.map((e) => ({
         escopo: e,
@@ -119,6 +156,7 @@ async function conferir(
 export class DescreverAutorizacao {
   constructor(
     private readonly clientes: RepositorioDeClientesOAuth,
+    private readonly registros: RepositorioDeRegistrosDinamicos,
     private readonly permissoes: ConsultarPermissoes,
   ) {}
 
@@ -126,7 +164,7 @@ export class DescreverAutorizacao {
     sessao: Sessao,
     pedido: PedidoDeAutorizacao,
   ): Promise<Result<DescricaoDaAutorizacao, Validacao | Proibido>> {
-    const r = await conferir(this.clientes, this.permissoes, sessao, pedido);
+    const r = await conferir(this.clientes, this.registros, this.permissoes, sessao, pedido);
     return r.ok ? ok(r.valor.descricao) : r;
   }
 }
@@ -138,6 +176,7 @@ export class DescreverAutorizacao {
 export class AutorizarCliente {
   constructor(
     private readonly clientes: RepositorioDeClientesOAuth,
+    private readonly registros: RepositorioDeRegistrosDinamicos,
     private readonly permissoes: ConsultarPermissoes,
     private readonly codigos: ArmazemDeCodigos,
     private readonly tokens: GeradorDeTokens,
@@ -149,14 +188,28 @@ export class AutorizarCliente {
     sessao: Sessao,
     pedido: PedidoDeAutorizacao,
   ): Promise<Result<{ readonly redirecionarPara: string }, Validacao | Proibido>> {
-    const r = await conferir(this.clientes, this.permissoes, sessao, pedido);
+    const r = await conferir(this.clientes, this.registros, this.permissoes, sessao, pedido);
     if (!r.ok) return r;
     const codigo = this.tokens.novoToken();
     const agora = this.relogio.agora();
+    // Registro dinâmico: o escritório ganha (ou reaproveita) o cliente ligado a ele (HU60).
+    const { registro } = r.valor;
+    const clienteId =
+      registro === undefined
+        ? pedido.clienteId
+        : (
+            await this.clientes.obterOuCriarDoRegistro({
+              ...comoCliente(registro, sessao),
+              id: gerarUuidV7(this.relogio),
+              criadoEm: agora,
+              registroDinamicoId: registro.id,
+            })
+          ).id;
     await this.codigos.emitir(
       codigo,
       {
-        clienteId: pedido.clienteId,
+        clienteId,
+        ...(registro === undefined ? {} : { clienteDoPedido: registro.id }),
         tenantId: sessao.tenantId,
         usuarioId: sessao.usuarioId,
         redirectUri: pedido.redirectUri,
@@ -171,10 +224,10 @@ export class AutorizarCliente {
         tipo: 'ClienteOAuthAutorizado',
         versao: 1,
         tenantId: sessao.tenantId,
-        agregadoId: pedido.clienteId,
+        agregadoId: clienteId,
         ocorridoEm: agora,
         payload: {
-          clienteId: pedido.clienteId,
+          clienteId,
           usuarioId: sessao.usuarioId,
           escopos: r.valor.escopos.join(' '),
         },
@@ -221,7 +274,8 @@ export class TrocarCodigoPorTokens {
   }): Promise<Result<TokensDeDispositivo, NaoAutenticado>> {
     const dados = await this.codigos.consumir(entrada.codigo);
     if (dados === undefined) return err(concessaoInvalida());
-    if (dados.clienteId !== entrada.clienteId || dados.redirectUri !== entrada.redirectUri) {
+    const doPedido = dados.clienteDoPedido ?? dados.clienteId;
+    if (doPedido !== entrada.clienteId || dados.redirectUri !== entrada.redirectUri) {
       return err(concessaoInvalida());
     }
     if (
@@ -230,24 +284,26 @@ export class TrocarCodigoPorTokens {
     ) {
       return err(concessaoInvalida());
     }
-    const cliente = await this.clientes.localizar(entrada.clienteId);
+    const cliente = await this.clientes.localizar(dados.clienteId);
     if (cliente?.tipo !== 'publico' || cliente.revogado || cliente.tenantSuspenso) {
       return err(new NaoAutenticado('invalid_client', 'Aplicativo desconhecido ou revogado.'));
     }
     const agora = this.relogio.agora();
     const dispositivoId = gerarUuidV7(this.relogio);
+    // Assistente registrado sozinho (HU60): a sessão aparece como MCP em Segurança.
+    const tipoCliente = dados.clienteDoPedido === undefined ? 'integrador' : 'mcp';
     await this.noTenant(dados.tenantId, async () => {
       await this.dispositivos.registrar({
         id: dispositivoId,
         usuarioId: dados.usuarioId,
         tenantId: dados.tenantId,
-        tipoCliente: 'integrador',
-        nome: (await this.clientes.buscar(entrada.clienteId))?.nome ?? 'Aplicativo',
+        tipoCliente,
+        nome: (await this.clientes.buscar(dados.clienteId))?.nome ?? 'Aplicativo',
         criadoEm: agora,
         ultimoUso: agora,
-        clienteOAuthId: entrada.clienteId,
+        clienteOAuthId: dados.clienteId,
       });
-      await this.clientes.registrarUso(entrada.clienteId, agora);
+      await this.clientes.registrarUso(dados.clienteId, agora);
     });
     await this.publicador.publicar(dados.tenantId, [
       {
@@ -257,15 +313,16 @@ export class TrocarCodigoPorTokens {
         tenantId: dados.tenantId,
         agregadoId: dispositivoId,
         ocorridoEm: agora,
-        payload: { dispositivoId, usuarioId: dados.usuarioId, tipoCliente: 'integrador' },
+        payload: { dispositivoId, usuarioId: dados.usuarioId, tipoCliente },
       },
     ]);
     const tokens = await this.#emissor.emitir({
       dispositivoId,
       usuarioId: dados.usuarioId,
       tenantId: dados.tenantId,
-      clienteOAuthId: entrada.clienteId,
+      clienteOAuthId: dados.clienteId,
       escopos: dados.escopos,
+      ...(dados.clienteDoPedido === undefined ? {} : { clienteDoPedido: dados.clienteDoPedido }),
     });
     return ok(tokens);
   }

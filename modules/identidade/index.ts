@@ -56,6 +56,7 @@ export {
   RenovacoesEmMemoria,
   ClientesOAuthEmMemoria,
   CodigosEmMemoria,
+  RegistrosDinamicosEmMemoria,
   EquipeEmMemoria,
 } from './infra/em-memoria.js';
 export { CriarConta } from './application/contas.js';
@@ -169,16 +170,23 @@ export { SegredosDoSegundoFatorPostgres } from './infra/segredos-postgres.js';
 export {
   EmitirTokenDeCliente,
   ListarClientesOAuth,
+  RegistrarClienteDinamico,
   RegistrarClienteOAuth,
   RevogarClienteOAuth,
 } from './application/clientes-oauth.js';
 export type {
   ClienteOAuth,
   ClienteRegistrado,
+  PedidoDeRegistroDinamico,
+  RegistroDinamico,
   RepositorioDeClientesOAuth,
+  RepositorioDeRegistrosDinamicos,
   TokenDeCliente,
 } from './application/clientes-oauth.js';
-export { ClientesOAuthPostgres } from './infra/clientes-oauth-postgres.js';
+export {
+  ClientesOAuthPostgres,
+  RegistrosDinamicosPostgres,
+} from './infra/clientes-oauth-postgres.js';
 export {
   AutorizarCliente,
   DescreverAutorizacao,

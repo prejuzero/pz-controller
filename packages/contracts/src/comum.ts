@@ -26,6 +26,11 @@ export const Problema = z.object({
     .optional()
     .describe('Problemas por campo, nos erros de validação.'),
   requestId: z.string().optional(),
+  error: z
+    .string()
+    .optional()
+    .describe('Nas rotas /v1/oauth: o código do RFC 6749 (seção 5.2) ou do RFC 7591.'),
+  error_description: z.string().optional(),
 });
 export type Problema = z.infer<typeof Problema>;
 

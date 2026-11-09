@@ -5,7 +5,9 @@ import { hashDoToken, segredoConfere } from './tokens.js';
 import type {
   ClienteAutenticado,
   ClienteOAuth,
+  RegistroDinamico,
   RepositorioDeClientesOAuth,
+  RepositorioDeRegistrosDinamicos,
 } from '../application/clientes-oauth.js';
 import type { TipoDeClienteOAuth } from '../domain/cliente-oauth.js';
 import type { Banco, Transacao } from '@pz/db';
@@ -37,6 +39,7 @@ const paraCliente = (l: LinhaDoCliente): ClienteOAuth => ({
   criadoEm: Instant.deEpochMs(l.criadoEm.getTime()),
   ...(l.ultimoUso === null ? {} : { ultimoUso: Instant.deEpochMs(l.ultimoUso.getTime()) }),
   ...(l.revogadoEm === null ? {} : { revogadoEm: Instant.deEpochMs(l.revogadoEm.getTime()) }),
+  ...(l.registroDinamicoId === null ? {} : { registroDinamicoId: l.registroDinamicoId as Uuid }),
 });
 
 const paraAutenticado = (l: LinhaDaFuncao): ClienteAutenticado => ({
@@ -69,9 +72,38 @@ export class ClientesOAuthPostgres implements RepositorioDeClientesOAuth {
           redirectUris: [...c.redirectUris],
           escopos: [...c.escopos],
           criadoEm: new Date(c.criadoEm.epochMs),
+          registroDinamicoId: c.registroDinamicoId ?? null,
         },
       }),
     );
+  }
+
+  async obterOuCriarDoRegistro(c: ClienteOAuth): Promise<ClienteOAuth> {
+    const registroDinamicoId = c.registroDinamicoId;
+    if (registroDinamicoId === undefined) throw new Error('cliente sem registro dinâmico');
+    return this.banco.executar(async (tx) => {
+      // Índice único parcial (um ativo por registro no escritório): repetido não aborta.
+      await tx.clienteOauth.createMany({
+        data: [
+          {
+            id: c.id,
+            tenantId: c.tenantId,
+            usuarioId: c.usuarioId,
+            nome: c.nome,
+            tipo: 'publico',
+            redirectUris: [...c.redirectUris],
+            escopos: [...c.escopos],
+            criadoEm: new Date(c.criadoEm.epochMs),
+            registroDinamicoId,
+          },
+        ],
+        skipDuplicates: true,
+      });
+      const linha = await tx.clienteOauth.findFirstOrThrow({
+        where: { registroDinamicoId, revogadoEm: null },
+      });
+      return paraCliente(linha);
+    });
   }
 
   async listar(): Promise<ClienteOAuth[]> {
@@ -126,5 +158,38 @@ export class ClientesOAuthPostgres implements RepositorioDeClientesOAuth {
     await this.banco.executar((tx) =>
       tx.clienteOauth.update({ where: { id }, data: { ultimoUso: new Date(agora.epochMs) } }),
     );
+  }
+}
+
+/** Registros dinâmicos (HU60): tabela global, sem tenant; o registro é público. */
+export class RegistrosDinamicosPostgres implements RepositorioDeRegistrosDinamicos {
+  constructor(private readonly banco: Banco) {}
+
+  async registrar(r: RegistroDinamico): Promise<void> {
+    await this.banco.executarSemTenant('oauth: registro dinâmico', (tx) =>
+      tx.registroOauthDinamico.create({
+        data: {
+          id: r.id,
+          nome: r.nome,
+          redirectUris: [...r.redirectUris],
+          criadoEm: new Date(r.criadoEm.epochMs),
+        },
+      }),
+    );
+  }
+
+  async buscar(id: Uuid): Promise<RegistroDinamico | undefined> {
+    if (!UUID.test(id)) return undefined;
+    const l = await this.banco.executarSemTenant('oauth: registro dinâmico', (tx) =>
+      tx.registroOauthDinamico.findUnique({ where: { id } }),
+    );
+    return l === null
+      ? undefined
+      : {
+          id: l.id as Uuid,
+          nome: l.nome,
+          redirectUris: l.redirectUris,
+          criadoEm: Instant.deEpochMs(l.criadoEm.getTime()),
+        };
   }
 }

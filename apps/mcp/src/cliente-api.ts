@@ -15,7 +15,8 @@ export function clienteDaApi(
 ): ClienteApi {
   return createClient<paths>({
     baseUrl,
-    headers: { authorization: `Bearer ${token}` },
+    // Sem token: só as rotas públicas (metadados OAuth).
+    headers: token === '' ? {} : { authorization: `Bearer ${token}` },
     ...(meuFetch === undefined ? {} : { fetch: meuFetch }),
   });
 }

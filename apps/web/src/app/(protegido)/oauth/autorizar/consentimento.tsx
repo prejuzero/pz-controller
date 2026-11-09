@@ -1,7 +1,7 @@
 'use client';
 
 import { Botao, EstadoCarregando, EstadoErro } from '@pz/ui';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldAlert, ShieldCheck } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { descreverErro } from '../../../../api/erros';
@@ -35,7 +35,7 @@ function Pedido({ pedido }: { pedido: PedidoDeAutorizacaoOAuth }) {
     );
   }
   if (descricao.data === undefined) return <EstadoCarregando />;
-  const { cliente, escopos, redirectUri } = descricao.data;
+  const { cliente, escopos, redirectUri, registroAutomatico } = descricao.data;
   const negar = () => {
     const destino = new URL(redirectUri);
     destino.searchParams.set('error', 'access_denied');
@@ -48,6 +48,16 @@ function Pedido({ pedido }: { pedido: PedidoDeAutorizacaoOAuth }) {
         <h1 className="text-2xl font-semibold">{t('pergunta', { app: cliente.nome })}</h1>
         <p className="text-texto-suave">{t('descricao')}</p>
       </div>
+      {registroAutomatico ? (
+        // Registro dinâmico (HU60): o nome veio do próprio assistente; o destino é o que vale.
+        <p
+          role="note"
+          className="flex items-start gap-2 rounded-md border border-alerta p-3 text-sm"
+        >
+          <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+          {t('registroAutomatico', { destino: new URL(redirectUri).host })}
+        </p>
+      ) : null}
       <section className="space-y-2">
         <h2 className="text-lg font-semibold">{t('poderaTitulo')}</h2>
         <ul className="space-y-2">

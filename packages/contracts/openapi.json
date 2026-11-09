@@ -8343,6 +8343,140 @@
         }
       }
     },
+    "/v1/oauth/metadados": {
+      "get": {
+        "operationId": "consultarMetadadosOAuth",
+        "summary": "Endereços e capacidades do servidor de autorização (RFC 8414), para o servidor MCP.",
+        "tags": [
+          "integracoes"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetadadosOAuth"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/oauth/registro": {
+      "post": {
+        "operationId": "registrarClienteOAuthDinamico",
+        "summary": "Registro dinâmico de cliente (RFC 7591) para assistentes de IA: público, PKCE, só leitura e sem acesso até o advogado autorizar.",
+        "tags": [
+          "integracoes"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeRegistroOAuth"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistroOAuth"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições excedido.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/oauth/token": {
       "post": {
         "operationId": "emitirTokenOAuth",
@@ -13834,6 +13968,10 @@
             ],
             "additionalProperties": false
           },
+          "registroAutomatico": {
+            "type": "boolean",
+            "description": "O assistente se registrou sozinho (HU60): nome não verificado pelo escritório."
+          },
           "redirectUri": {
             "type": "string"
           },
@@ -13859,6 +13997,7 @@
         },
         "required": [
           "cliente",
+          "registroAutomatico",
           "redirectUri",
           "escopos"
         ],
@@ -15745,6 +15884,66 @@
         },
         "required": [
           "url"
+        ],
+        "additionalProperties": false
+      },
+      "MetadadosOAuth": {
+        "type": "object",
+        "properties": {
+          "authorization_endpoint": {
+            "type": "string",
+            "format": "uri"
+          },
+          "token_endpoint": {
+            "type": "string",
+            "format": "uri"
+          },
+          "registration_endpoint": {
+            "type": "string",
+            "format": "uri"
+          },
+          "scopes_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "response_types_supported": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "const": "code"
+            }
+          },
+          "grant_types_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "code_challenge_methods_supported": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "const": "S256"
+            }
+          },
+          "token_endpoint_auth_methods_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "authorization_endpoint",
+          "token_endpoint",
+          "registration_endpoint",
+          "scopes_supported",
+          "response_types_supported",
+          "grant_types_supported",
+          "code_challenge_methods_supported",
+          "token_endpoint_auth_methods_supported"
         ],
         "additionalProperties": false
       },
@@ -18092,6 +18291,52 @@
         ],
         "additionalProperties": false
       },
+      "PedidoDeRegistroOAuth": {
+        "type": "object",
+        "properties": {
+          "redirect_uris": {
+            "minItems": 1,
+            "maxItems": 5,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "client_name": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "token_endpoint_auth_method": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "grant_types": {
+            "maxItems": 5,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 50
+            }
+          },
+          "response_types": {
+            "maxItems": 5,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 50
+            }
+          },
+          "scope": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "redirect_uris"
+        ],
+        "additionalProperties": false
+      },
       "PedidoDeRelatorio": {
         "oneOf": [
           {
@@ -19065,6 +19310,13 @@
           },
           "requestId": {
             "type": "string"
+          },
+          "error": {
+            "description": "Nas rotas /v1/oauth: o código do RFC 6749 (seção 5.2) ou do RFC 7591.",
+            "type": "string"
+          },
+          "error_description": {
+            "type": "string"
           }
         },
         "required": [
@@ -19581,6 +19833,67 @@
         "required": [
           "token",
           "novaSenha"
+        ],
+        "additionalProperties": false
+      },
+      "RegistroOAuth": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "client_id_issued_at": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Segundos desde 1970 (RFC 7591)."
+          },
+          "client_name": {
+            "type": "string"
+          },
+          "redirect_uris": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "token_endpoint_auth_method": {
+            "type": "string",
+            "const": "none"
+          },
+          "grant_types": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "authorization_code",
+                "refresh_token"
+              ]
+            }
+          },
+          "response_types": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "const": "code"
+            }
+          },
+          "scope": {
+            "type": "string",
+            "description": "Escopos de leitura possíveis; o advogado concede os que tem."
+          }
+        },
+        "required": [
+          "client_id",
+          "client_id_issued_at",
+          "client_name",
+          "redirect_uris",
+          "token_endpoint_auth_method",
+          "grant_types",
+          "response_types",
+          "scope"
         ],
         "additionalProperties": false
       },

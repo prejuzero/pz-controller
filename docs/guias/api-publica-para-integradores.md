@@ -94,3 +94,14 @@ Para assistentes de IA e aplicativos que cada advogado autoriza por si. Não tê
 5. Para renovar: `grant_type=refresh_token` com `client_id` e `refresh_token`. Cada renovação devolve um par novo, e o anterior deixa de valer. Usar de novo um `refresh_token` já trocado revoga a sessão (sinal de roubo).
 
 O advogado encerra o acesso em **Configurações → Segurança** (sessões ativas). Revogar o app em **Integrações** derruba o acesso de todos os advogados que o autorizaram.
+
+## Assistentes de IA pelo MCP (HU60)
+
+Assistentes compatíveis com o Model Context Protocol (Claude, ChatGPT, Copilot e outros) se conectam ao servidor MCP do PrejuZero, que expõe só ferramentas de leitura (prazos, publicações, processos e simulação pelo motor):
+
+1. Informe ao assistente o endereço do servidor (`https://<servidor-mcp>/mcp`).
+2. O assistente descobre o servidor de autorização (RFC 9728 e RFC 8414) e se registra sozinho (RFC 7591).
+3. O advogado entra no portal e autoriza na tela de consentimento, que avisa que o nome do assistente não é verificado e mostra o destino do retorno.
+4. Cada chamada fica na trilha (canal `mcp`), conta na cota por usuário e por cliente e traz o aviso de que as datas vêm do motor e exigem confirmação do advogado.
+
+Para desconectar: Configurações > Segurança (encerrar a sessão "Assistente de IA") ou Integrações (revogar o cliente do assistente).

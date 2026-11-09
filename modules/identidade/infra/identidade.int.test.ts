@@ -16,6 +16,7 @@ import {
 } from '../application/administracao-de-tenants.js';
 import { AutorizarCliente, TrocarCodigoPorTokens } from '../application/autorizacao-oauth.js';
 import {
+  RegistrarClienteDinamico,
   EmitirTokenDeCliente,
   RegistrarClienteOAuth,
   RevogarClienteOAuth,
@@ -44,7 +45,7 @@ import { PERMISSOES } from '../domain/permissoes.js';
 
 import { AcessosPostgres } from './acessos-postgres.js';
 import { HasherArgon2 } from './argon2.js';
-import { ClientesOAuthPostgres } from './clientes-oauth-postgres.js';
+import { ClientesOAuthPostgres, RegistrosDinamicosPostgres } from './clientes-oauth-postgres.js';
 import { CredenciaisPostgres } from './credenciais-postgres.js';
 import { CodigosRedis, DispositivosPostgres, RenovacoesRedis } from './dispositivos.js';
 import { EquipePostgres } from './equipe-postgres.js';
@@ -588,16 +589,21 @@ describe('app público OAuth com PostgreSQL e Redis (HU49)', () => {
 
     const verificador = 'v'.repeat(43);
     const autorizado = await executarNoTenant(TENANT_A, () =>
-      new AutorizarCliente(clientes, permissoes, codigos, tokens, publicador, relogio).executar(
-        sessao,
-        {
-          responseType: 'code',
-          clienteId: cliente.id,
-          redirectUri: retorno,
-          desafio: desafioPkce(verificador),
-          metodoDoDesafio: 'S256',
-        },
-      ),
+      new AutorizarCliente(
+        clientes,
+        new RegistrosDinamicosPostgres(banco),
+        permissoes,
+        codigos,
+        tokens,
+        publicador,
+        relogio,
+      ).executar(sessao, {
+        responseType: 'code',
+        clienteId: cliente.id,
+        redirectUri: retorno,
+        desafio: desafioPkce(verificador),
+        metodoDoDesafio: 'S256',
+      }),
     );
     if (!autorizado.ok) throw new Error('autorizar deveria passar');
     const codigo = new URL(autorizado.valor.redirecionarPara).searchParams.get('code') ?? '';
@@ -640,6 +646,30 @@ describe('app público OAuth com PostgreSQL e Redis (HU49)', () => {
     expect(await redis.exists(`pz:renovacao:${hashDoToken(emitidos.valor.tokenDeRenovacao)}`)).toBe(
       0,
     );
+
+    // Registro dinâmico (HU60): global, sem tenant; a autorização cria um cliente por escritório.
+    const registros = new RegistrosDinamicosPostgres(banco);
+    const registro = await new RegistrarClienteDinamico(registros, relogio).executar({
+      nome: 'Assistente MCP fictício',
+      redirectUris: ['https://assistente.exemplo.invalid/callback'],
+    });
+    if (!registro.ok) throw registro.erro;
+    expect(await registros.buscar(registro.valor.id)).toMatchObject({
+      nome: 'Assistente MCP fictício',
+    });
+    const doRegistro = (id: Uuid) =>
+      executarNoTenant(TENANT_A, () =>
+        clientes.obterOuCriarDoRegistro({
+          ...cliente,
+          id,
+          redirectUris: ['https://assistente.exemplo.invalid/callback'],
+          registroDinamicoId: registro.valor.id,
+        }),
+      );
+    const primeiro = await doRegistro(gerarUuidV7());
+    const segundo = await doRegistro(gerarUuidV7());
+    expect(segundo.id).toBe(primeiro.id);
+    expect(primeiro.registroDinamicoId).toBe(registro.valor.id);
   });
 });
 
