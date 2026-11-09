@@ -9,7 +9,8 @@ Implementado em: HU60 (PR 1: servidor e catálogo pela API; PR 2: descoberta OAu
 - **Só pela API:** o servidor não tem regra, banco nem IA. Lista e executa as ferramentas por `GET /v1/ia/ferramentas` e `POST /v1/ia/ferramentas/{nome}`, com o cliente gerado do OpenAPI e o token do próprio assistente. Escritório, usuário e permissões saem do token, na API (regra de fronteira `mcp-so-pela-api`).
 - **Só leitura:** o catálogo recusa ferramentas que alteram estado (ADR-016). Cada chamada fica na trilha (`ia.ferramenta-executada`, canal `mcp`) e conta na cota por usuário (60 por minuto) e na do cliente OAuth.
 - **Aviso sobre datas:** toda resposta leva o aviso de que as datas vêm do motor de prazos e só valem depois da confirmação do advogado.
-- **Transporte:** Streamable HTTP sem estado em `POST /mcp` (respostas em JSON). Sem token, ou com token recusado pela API, responde 401 com `WWW-Authenticate: Bearer`. `GET /health/live` para a saúde.
+- **Transporte:** Streamable HTTP sem estado em `POST /mcp` (respostas em JSON). Sem token, ou com token recusado pela API, responde 401 com `WWW-Authenticate: Bearer resource_metadata="…"`. `GET /health/live` para a saúde.
+- **Descoberta e autorização (PR 2):** `/.well-known/oauth-protected-resource` (RFC 9728) aponta este servidor como emissor; `/.well-known/oauth-authorization-server` (RFC 8414) traz os endereços da API (`GET /v1/oauth/metadados`): consentimento no portal (`/oauth/autorizar`), token e registro em `/v1/oauth/*`. O assistente se registra sozinho (`POST /v1/oauth/registro`, RFC 7591: cliente público, PKCE, só leitura); o registro não dá acesso a nada até um advogado autorizar, e a tela avisa que o nome não é verificado. Na primeira autorização, o escritório ganha um cliente ligado ao registro (revogável em Integrações); a sessão aparece como "Assistente de IA" em Configurações > Segurança, onde se encerra.
 
 ## Rodar localmente
 
@@ -17,7 +18,7 @@ Implementado em: HU60 (PR 1: servidor e catálogo pela API; PR 2: descoberta OAu
 pnpm --filter @pz/mcp dev   # MCP_PORTA (3004) e MCP_API_URL (http://127.0.0.1:3000)
 ```
 
-O token é um token de acesso OAuth da API (HU49). A conexão direta pelos assistentes, com descoberta e registro dinâmico, entra no PR 2.
+Com a pilha local (`pnpm infra:up:apps`, serviço `mcp` na porta 3004), aponte o assistente para `http://localhost:3004/mcp` (`MCP_URL_PUBLICA` define o endereço anunciado).
 
 ## Dependência
 

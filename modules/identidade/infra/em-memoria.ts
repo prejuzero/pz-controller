@@ -10,7 +10,9 @@ import type { RepositorioDePerfis } from '../application/autorizacao.js';
 import type {
   ClienteAutenticado,
   ClienteOAuth,
+  RegistroDinamico,
   RepositorioDeClientesOAuth,
+  RepositorioDeRegistrosDinamicos,
 } from '../application/clientes-oauth.js';
 import type {
   Convite,
@@ -423,6 +425,18 @@ export class ClientesOAuthEmMemoria implements RepositorioDeClientesOAuth {
     }
     return Promise.resolve();
   }
+
+  obterOuCriarDoRegistro(cliente: ClienteOAuth): Promise<ClienteOAuth> {
+    const existente = [...this.#clientes.values()].find(
+      ({ cliente: c }) =>
+        c.tenantId === cliente.tenantId &&
+        c.registroDinamicoId === cliente.registroDinamicoId &&
+        c.revogadoEm === undefined,
+    );
+    if (existente !== undefined) return Promise.resolve(existente.cliente);
+    this.#clientes.set(cliente.id, { cliente, hash: null });
+    return Promise.resolve(cliente);
+  }
 }
 
 /** Códigos de autorização OAuth em memória (HU49): uso único. */
@@ -548,5 +562,19 @@ export class EquipeEmMemoria implements RepositorioDaEquipe<unknown> {
     if (m?.desativadoEm !== null) return Promise.resolve(false);
     this.membrosPorId.set(usuarioId, { ...m, desativadoEm: agora });
     return Promise.resolve(true);
+  }
+}
+
+/** Registros dinâmicos em memória (HU60). Só para testes. */
+export class RegistrosDinamicosEmMemoria implements RepositorioDeRegistrosDinamicos {
+  readonly registros = new Map<string, RegistroDinamico>();
+
+  registrar(registro: RegistroDinamico): Promise<void> {
+    this.registros.set(registro.id, registro);
+    return Promise.resolve();
+  }
+
+  buscar(id: Uuid): Promise<RegistroDinamico | undefined> {
+    return Promise.resolve(this.registros.get(id));
   }
 }

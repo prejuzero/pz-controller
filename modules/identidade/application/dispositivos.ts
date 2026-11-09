@@ -160,7 +160,10 @@ export class RenovarTokens {
     const resultado = await this.renovacoes.consumir(tokenDeRenovacao);
     if (resultado.tipo === 'invalido') return err(renovacaoInvalida());
     const { dados } = resultado;
-    if (resultado.tipo === 'valido' && dados.clienteOAuthId !== clienteOAuthId) {
+    if (
+      resultado.tipo === 'valido' &&
+      (dados.clienteDoPedido ?? dados.clienteOAuthId) !== clienteOAuthId
+    ) {
       return err(renovacaoInvalida());
     }
     if (resultado.tipo === 'reuso') {

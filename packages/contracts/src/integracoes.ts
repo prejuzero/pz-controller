@@ -330,6 +330,9 @@ export const DescricaoDaAutorizacaoOAuth = nomear(
   'DescricaoDaAutorizacaoOAuth',
   z.object({
     cliente: z.object({ id: z.uuid(), nome: z.string() }),
+    registroAutomatico: z
+      .boolean()
+      .describe('O assistente se registrou sozinho (HU60): nome não verificado pelo escritório.'),
     redirectUri: z.string(),
     escopos: z.array(z.object({ escopo: z.string(), descricao: z.string() })),
   }),
@@ -362,6 +365,72 @@ export const autorizarClienteOAuth = definirRota({
   resposta: { status: 200, corpo: AutorizacaoOAuthConcedida },
 });
 
+/** Registro dinâmico de cliente (HU60, RFC 7591): só cliente público com PKCE. */
+export const PedidoDeRegistroOAuth = nomear(
+  'PedidoDeRegistroOAuth',
+  z.object({
+    redirect_uris: z.array(z.string().max(2000)).min(1).max(5),
+    client_name: z.string().max(200).optional(),
+    token_endpoint_auth_method: z.string().max(50).optional(),
+    grant_types: z.array(z.string().max(50)).max(5).optional(),
+    response_types: z.array(z.string().max(50)).max(5).optional(),
+    scope: z.string().max(1000).optional(),
+  }),
+);
+export type PedidoDeRegistroOAuth = z.infer<typeof PedidoDeRegistroOAuth.esquema>;
+
+export const RegistroOAuth = nomear(
+  'RegistroOAuth',
+  z.object({
+    client_id: z.uuid(),
+    client_id_issued_at: z.int().describe('Segundos desde 1970 (RFC 7591).'),
+    client_name: z.string(),
+    redirect_uris: z.array(z.string()),
+    token_endpoint_auth_method: z.literal('none'),
+    grant_types: z.array(z.enum(['authorization_code', 'refresh_token'])),
+    response_types: z.array(z.literal('code')),
+    scope: z.string().describe('Escopos de leitura possíveis; o advogado concede os que tem.'),
+  }),
+);
+export type RegistroOAuth = z.infer<typeof RegistroOAuth.esquema>;
+
+export const registrarClienteOAuthDinamico = definirRota({
+  id: 'registrarClienteOAuthDinamico',
+  metodo: 'post',
+  caminho: '/v1/oauth/registro',
+  resumo:
+    'Registro dinâmico de cliente (RFC 7591) para assistentes de IA: público, PKCE, só leitura e sem acesso até o advogado autorizar.',
+  tag: 'integracoes',
+  corpo: PedidoDeRegistroOAuth,
+  resposta: { status: 201, corpo: RegistroOAuth },
+  erros: [429],
+});
+
+/** Metadados do servidor de autorização (RFC 8414), sem o `issuer` (o do recurso, HU60). */
+export const MetadadosOAuth = nomear(
+  'MetadadosOAuth',
+  z.object({
+    authorization_endpoint: z.url(),
+    token_endpoint: z.url(),
+    registration_endpoint: z.url(),
+    scopes_supported: z.array(z.string()),
+    response_types_supported: z.array(z.literal('code')),
+    grant_types_supported: z.array(z.string()),
+    code_challenge_methods_supported: z.array(z.literal('S256')),
+    token_endpoint_auth_methods_supported: z.array(z.string()),
+  }),
+);
+export type MetadadosOAuth = z.infer<typeof MetadadosOAuth.esquema>;
+
+export const consultarMetadadosOAuth = definirRota({
+  id: 'consultarMetadadosOAuth',
+  metodo: 'get',
+  caminho: '/v1/oauth/metadados',
+  resumo: 'Endereços e capacidades do servidor de autorização (RFC 8414), para o servidor MCP.',
+  tag: 'integracoes',
+  resposta: { status: 200, corpo: MetadadosOAuth },
+});
+
 export const ROTAS_INTEGRACOES = [
   emitirTokenOAuth,
   descreverAutorizacaoOAuth,
@@ -378,4 +447,6 @@ export const ROTAS_INTEGRACOES = [
   testarAssinaturaDeWebhook,
   listarEntregasDeWebhook,
   reenviarEntregaDeWebhook,
+  registrarClienteOAuthDinamico,
+  consultarMetadadosOAuth,
 ] as const;

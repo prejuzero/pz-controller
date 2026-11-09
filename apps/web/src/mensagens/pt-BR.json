@@ -1471,7 +1471,8 @@
     "permitir": "Permitir",
     "negar": "Negar",
     "invalidoTitulo": "Pedido de autorização inválido",
-    "incompleto": "O link do aplicativo está incompleto. Volte ao aplicativo e tente de novo."
+    "incompleto": "O link do aplicativo está incompleto. Volte ao aplicativo e tente de novo.",
+    "registroAutomatico": "Este assistente se registrou sozinho: o nome acima não foi verificado pelo PrejuZero nem pelo escritório. Só permita se você mesmo iniciou a conexão e reconhece o destino {destino}."
   },
   "convite": {
     "titulo": "Aceitar convite",

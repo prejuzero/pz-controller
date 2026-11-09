@@ -153,6 +153,8 @@ export interface DadosDaRenovacao {
   /** Autorização OAuth (HU49): o token só renova para o mesmo cliente e nos mesmos escopos. */
   readonly clienteOAuthId?: Uuid;
   readonly escopos?: readonly string[];
+  /** Registro dinâmico (HU60): o assistente renova com o id do registro, não o do escritório. */
+  readonly clienteDoPedido?: Uuid;
 }
 
 export type ResultadoDaRenovacao =

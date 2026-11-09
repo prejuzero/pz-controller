@@ -97,6 +97,8 @@ import {
   AceitarConvite,
   AlterarPerfisDoMembro,
   AutorizarCliente,
+  RegistrarClienteDinamico,
+  RegistrosDinamicosPostgres,
   CancelarConvite,
   ConvidarMembro,
   DescreverConvite,
@@ -349,6 +351,7 @@ import type {
   DependenciasDaEquipe,
   HasherDeSenha,
   RepositorioDeClientesOAuth,
+  RepositorioDeRegistrosDinamicos,
   RepositorioDeDispositivos,
   ArmazemDeRedefinicoes,
   PublicadorDeEventos,
@@ -409,6 +412,8 @@ export interface OpcoesApi {
     readonly verificacoesDeEmail?: ArmazemDeRedefinicoes;
     readonly dispositivos?: RepositorioDeDispositivos;
     readonly clientesOAuth?: RepositorioDeClientesOAuth;
+    /** Registros dinâmicos de clientes OAuth (HU60). */
+    readonly registrosOAuth?: RepositorioDeRegistrosDinamicos;
     readonly codigosOAuth?: ArmazemDeCodigos;
     /** Testes: equipe sem banco (HU41). */
     readonly equipe?: Pick<
@@ -1515,6 +1520,8 @@ export class AppModule {
     const clientesOAuth =
       opcoes.identidade?.clientesOAuth ?? new ClientesOAuthPostgres(recursos.banco);
     const codigosOAuth = opcoes.identidade?.codigosOAuth ?? new CodigosRedis(recursos.redis);
+    const registrosOAuth =
+      opcoes.identidade?.registrosOAuth ?? new RegistrosDinamicosPostgres(recursos.banco);
     const perfis = opcoes.identidade?.perfis ?? new PerfisPostgres(recursos.banco);
     const tenantsPostgres = new TenantsPostgres();
     const impersonacao = opcoes.identidade?.impersonacao ?? {
@@ -1726,7 +1733,12 @@ export class AppModule {
         provide: DescreverAutorizacao,
         inject: [ConsultarPermissoes],
         useFactory: (permissoes: ConsultarPermissoes) =>
-          new DescreverAutorizacao(clientesOAuth, permissoes),
+          new DescreverAutorizacao(clientesOAuth, registrosOAuth, permissoes),
+      },
+      {
+        provide: RegistrarClienteDinamico,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) => new RegistrarClienteDinamico(registrosOAuth, relogio),
       },
       {
         provide: AutorizarCliente,
@@ -1734,6 +1746,7 @@ export class AppModule {
         useFactory: (relogio: Clock, permissoes: ConsultarPermissoes) =>
           new AutorizarCliente(
             clientesOAuth,
+            registrosOAuth,
             permissoes,
             codigosOAuth,
             tokens,

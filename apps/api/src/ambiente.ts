@@ -24,6 +24,11 @@ export const esquemaApi = esquemaBase
     TENANT_PLATAFORMA_ID: z.uuid().default('01a10e00-0000-7000-8000-00000000c001'),
     /** Fonte de publicações da captura (HU19), a mesma do worker: o status mostra a saúde dela. */
     CAPTURA_FONTE: z.enum(['djen']).default('djen'),
+    /**
+     * Endereço público do portal (HU60): tela de consentimento e rotas /v1 que os assistentes
+     * descobrem nos metadados OAuth (o portal encaminha /v1 para a API).
+     */
+    PORTAL_URL: z.url({ protocol: /^https?$/ }).default('http://localhost:3001'),
     /** Versão implantada (SHA do commit), gravada na imagem pelo build. */
     VERSAO: z.string().min(1).default('dev'),
     /**

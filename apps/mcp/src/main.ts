@@ -9,7 +9,11 @@ import { criarAppMcp } from './http.js';
 
 const logger = criarLogger('mcp');
 const ambiente = carregarAmbiente(esquemaMcp, process.env);
-const app = criarAppMcp({ apiUrl: ambiente.MCP_API_URL, versao: ambiente.VERSAO });
+const app = criarAppMcp({
+  apiUrl: ambiente.MCP_API_URL,
+  urlPublica: ambiente.MCP_URL_PUBLICA,
+  versao: ambiente.VERSAO,
+});
 
 /** Adaptador mínimo node:http ↔ Request/Response (o transporte do SDK é o padrão da web). */
 const servidor = createServer((pedido, resposta) => {

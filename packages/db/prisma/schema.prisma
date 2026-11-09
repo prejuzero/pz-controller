@@ -236,26 +236,42 @@ model SessaoDispositivo {
 
 /// Cliente OAuth 2.1 de integrador (HU49): Client Credentials, segredo só como hash, revogável.
 model ClienteOauth {
-  id           String    @id @db.Uuid
-  tenantId     String    @map("tenant_id") @db.Uuid
-  usuarioId    String    @map("usuario_id") @db.Uuid
-  nome         String
-  segredoHash  String?   @map("segredo_hash")
-  escopos      String[]
+  id                 String    @id @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  usuarioId          String    @map("usuario_id") @db.Uuid
+  nome               String
+  segredoHash        String?   @map("segredo_hash")
+  escopos            String[]
   /// `confidencial` (Client Credentials) ou `publico` (Authorization Code + PKCE).
-  tipo         String    @default("confidencial")
-  redirectUris String[]  @default([]) @map("redirect_uris")
-  ultimoUso    DateTime? @map("ultimo_uso") @db.Timestamptz(6)
-  revogadoEm   DateTime? @map("revogado_em") @db.Timestamptz(6)
-  criadoEm     DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
-  atualizadoEm DateTime  @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+  tipo               String    @default("confidencial")
+  redirectUris       String[]  @default([]) @map("redirect_uris")
+  /// Cliente criado na autorização de um registro dinâmico (HU60).
+  registroDinamicoId String?   @map("registro_dinamico_id") @db.Uuid
+  ultimoUso          DateTime? @map("ultimo_uso") @db.Timestamptz(6)
+  revogadoEm         DateTime? @map("revogado_em") @db.Timestamptz(6)
+  criadoEm           DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm       DateTime  @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  usuario      Usuario             @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
-  dispositivos SessaoDispositivo[]
+  tenant           Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  usuario          Usuario                @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  registroDinamico RegistroOauthDinamico? @relation(fields: [registroDinamicoId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  dispositivos     SessaoDispositivo[]
 
   @@index([tenantId])
   @@map("cliente_oauth")
+}
+
+/// Registro dinâmico de cliente OAuth (HU60, RFC 7591): global, sem acesso até a autorização.
+model RegistroOauthDinamico {
+  id           String   @id @db.Uuid
+  nome         String
+  redirectUris String[] @map("redirect_uris")
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  clientes ClienteOauth[]
+
+  @@map("registro_oauth_dinamico")
 }
 
 /// Convite para entrar na equipe do escritório (HU41): só o hash do token, uso único, 7 dias.

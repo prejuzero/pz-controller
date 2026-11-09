@@ -9,10 +9,15 @@ export const CAMINHO_MCP = '/mcp';
 
 export interface OpcoesDoMcp {
   readonly apiUrl: string;
+  /** Endereço público deste servidor (recurso protegido e emissor nos metadados OAuth). */
+  readonly urlPublica: string;
   readonly versao: string;
   /** Testes: a API em memória. */
   readonly fetch?: (requisicao: Request) => Promise<Response>;
 }
+
+export const METADADOS_DO_RECURSO = '/.well-known/oauth-protected-resource';
+export const METADADOS_DO_SERVIDOR = '/.well-known/oauth-authorization-server';
 
 const json = (status: number, corpo: unknown, cabecalhos: Record<string, string> = {}) =>
   new Response(JSON.stringify(corpo), {
@@ -35,16 +40,47 @@ function tokenDe(requisicao: Request): string | undefined {
  * no modo sem estado.
  */
 export function criarAppMcp(opcoes: OpcoesDoMcp): (requisicao: Request) => Promise<Response> {
+  const base = opcoes.urlPublica.replace(/\/$/, '');
+  // Metadados públicos (sem dado do escritório): qualquer origem pode ler.
+  const publico = { 'access-control-allow-origin': '*', 'cache-control': 'max-age=300' };
   return async (requisicao) => {
     const caminho = new URL(requisicao.url).pathname;
     if (caminho === '/health/live') return json(200, { estado: 'operacional' });
+    // RFC 9728: o assistente descobre aqui quem autoriza (com ou sem o caminho do recurso).
+    if (caminho === METADADOS_DO_RECURSO || caminho === `${METADADOS_DO_RECURSO}${CAMINHO_MCP}`) {
+      return json(
+        200,
+        {
+          resource: `${base}${CAMINHO_MCP}`,
+          authorization_servers: [base],
+          bearer_methods_supported: ['header'],
+          resource_name: 'PrejuZero',
+        },
+        publico,
+      );
+    }
+    // RFC 8414: emissor = este servidor; os endereços (portal e API) vêm da API.
+    if (caminho === METADADOS_DO_SERVIDOR) {
+      const { data, response } = await clienteDaApi(opcoes.apiUrl, '', opcoes.fetch).GET(
+        '/v1/oauth/metadados',
+      );
+      if (data === undefined) {
+        logger.error({ status: response.status }, 'metadados OAuth indisponíveis na API');
+        return json(502, { erro: 'API indisponível.' });
+      }
+      return json(200, { issuer: base, ...data }, publico);
+    }
     if (caminho !== CAMINHO_MCP) return json(404, { erro: 'não encontrado' });
     if (requisicao.method !== 'POST') {
       return json(405, { erro: 'Use POST (servidor sem estado).' }, { allow: 'POST' });
     }
     const token = tokenDe(requisicao);
     const naoAutorizado = () =>
-      json(401, { erro: 'Token ausente ou inválido.' }, { 'www-authenticate': 'Bearer' });
+      json(
+        401,
+        { erro: 'Token ausente ou inválido.' },
+        { 'www-authenticate': `Bearer resource_metadata="${base}${METADADOS_DO_RECURSO}"` },
+      );
     if (token === undefined) return naoAutorizado();
     const api = clienteDaApi(opcoes.apiUrl, token, opcoes.fetch);
     const { response } = await api.GET('/v1/auth/eu');
