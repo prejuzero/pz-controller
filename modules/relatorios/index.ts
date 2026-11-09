@@ -1,5 +1,25 @@
 // API pública do módulo relatorios (CLAUDE.md, seção 6): outros módulos e as apps só usam o que está aqui.
 export {
+  ConsultarFeedDaAgenda,
+  CriarFeedDaAgenda,
+  GerarAgendaIcs,
+  LerFeedDaAgenda,
+  NOME_DO_CALENDARIO,
+  RevogarFeedDaAgenda,
+} from './application/agenda.js';
+export type {
+  FeedDaAgenda,
+  FonteDaAgenda,
+  NoTenantDaAgenda,
+  RepositorioDeFeeds,
+  TokensDoFeed,
+  UsuarioDaAgenda,
+} from './application/agenda.js';
+export type { PrazoDaAgenda } from './domain/agenda.js';
+export { gerarIcs } from './domain/ics.js';
+export { FeedsPostgres, tokensDoFeed } from './infra/feeds-postgres.js';
+export { FeedsEmMemoria } from './infra/feeds-em-memoria.js';
+export {
   caminhoDoArquivo,
   ConsultarRelatorios,
   GerarArquivo,

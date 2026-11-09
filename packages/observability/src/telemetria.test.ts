@@ -8,7 +8,11 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { criarLogger } from './logger.js';
 import { registrarErroInesperado } from './metricas.js';
-import { iniciarTelemetria, LIMITES_LATENCIA_HTTP_SEGUNDOS } from './telemetria.js';
+import {
+  credencialNaUrl,
+  iniciarTelemetria,
+  LIMITES_LATENCIA_HTTP_SEGUNDOS,
+} from './telemetria.js';
 
 import type { Telemetria } from './telemetria.js';
 import type { AddressInfo } from 'node:net';
@@ -131,5 +135,13 @@ describe('iniciarTelemetria', () => {
       }),
       expect.objectContaining({ level: 'warn', msg: 'fila cheia' }),
     ]);
+  });
+});
+
+describe('credencial na URL (HU50)', () => {
+  it('o feed da agenda fica fora dos traces; as demais rotas, não', () => {
+    expect(credencialNaUrl('/v1/agenda/feed/token-ficticio')).toBe(true);
+    expect(credencialNaUrl('/v1/agenda/assinatura')).toBe(false);
+    expect(credencialNaUrl(undefined)).toBe(false);
   });
 });
