@@ -179,6 +179,13 @@ export {
   SituacaoAssinatura,
   suspenderTenant,
   TenantAdministrado,
+  ativarRegraDeClassificacao,
+  listarRegrasDeClassificacao,
+  PedidoDeRegraDeClassificacao,
+  proporRegraDeClassificacao,
+  RegraDeClassificacao,
+  RegrasDeClassificacao,
+  retirarRegraDeClassificacao,
 } from './admin/index.js';
 export {
   DispositivosDaConta,

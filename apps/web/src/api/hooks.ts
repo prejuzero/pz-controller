@@ -31,7 +31,7 @@ import { consultasProcessos, mutacoesProcessos, type FiltrosProcessos } from './
 import { consultasPublicacoes, mutacoesPublicacoes, type FiltrosPublicacoes } from './publicacoes';
 import { consultasRelatorios, mutacoesRelatorios } from './relatorios';
 import { consultasSessao, mutacoesSessao } from './sessao';
-import { consultasTabelaPrazos, mutacoesTabelaPrazos } from './tabela-prazos';
+import { consultasTabelaPrazos, mutacoesRegras, mutacoesTabelaPrazos } from './tabela-prazos';
 
 import type { ClienteApi } from './cliente';
 
@@ -104,6 +104,13 @@ function useMutacoesTabelaPrazos() {
 }
 
 export const useTiposDeAto = () => useQuery(consultasTabelaPrazos(useApi()).tiposDeAto());
+export const useRegrasDeClassificacao = () => useQuery(consultasTabelaPrazos(useApi()).regras());
+function useMutacoesRegras() {
+  return mutacoesRegras(useApi(), useQueryClient());
+}
+export const useProporRegra = () => useMutation(useMutacoesRegras().propor);
+export const useAtivarRegra = () => useMutation(useMutacoesRegras().ativar);
+export const useRetirarRegra = () => useMutation(useMutacoesRegras().retirar);
 export const useVersoesDaTabela = () => useQuery(consultasTabelaPrazos(useApi()).versoes());
 export const useCadastrarTipoDeAto = () => useMutation(useMutacoesTabelaPrazos().cadastrarTipo);
 export const useProporVersao = () => useMutation(useMutacoesTabelaPrazos().propor);

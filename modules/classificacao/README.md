@@ -50,3 +50,10 @@ providência não podem ter datas (guardrail da plataforma); os trechos de evid�
 vão para `revisao_manual` e não são exibidos; sem orçamento, nada é gravado. O portal mostra o
 resumo em `GET /v1/publicacoes/{id}/resumo`, com o selo "Gerado por IA" e os trechos citados.
 Avaliação: `pnpm --filter @pz/eval avaliar-resumos` (eval/README.md).
+
+## Curadoria das regras rápidas pelo portal (PZ-313)
+
+- Na página Prazos da curadoria (`curadoria:classificacao`): propor regra ou nova versão (código, tipo de ato da taxonomia, padrões seguros contra ReDoS, confiança), ativar a proposta de outra curadora (quatro olhos, também garantido por CHECK no banco) e retirar (todas as versões do código).
+- Vale a versão **ativa mais nova** de cada código; a proposta nasce inativa. Toda mudança fica na trilha (`classificacao.regra-proposta`, `-ativada`, `-retirada`), no tenant da curadoria.
+- API: `GET/POST /v1/admin/classificacoes/regras`, `POST …/{codigo}/{versao}/ativar`, `POST …/{codigo}/retirar`.
+- As regras reais por tipo de ato são conteúdo da curadoria (o repositório não traz regras).

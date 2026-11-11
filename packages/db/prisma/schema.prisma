@@ -471,12 +471,17 @@ model TipoAto {
 model RegraClassificacao {
   codigo       String
   versao       Int
-  tipoAto      String   @map("tipo_ato")
+  tipoAto      String    @map("tipo_ato")
   padroes      String[]
-  confianca    Decimal  @db.Decimal(3, 2)
-  ativa        Boolean  @default(true)
-  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
-  atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+  confianca    Decimal   @db.Decimal(3, 2)
+  ativa        Boolean   @default(true)
+  /// Curadoria pelo portal (PZ-313): quem propôs e quem ativou (pessoas diferentes).
+  propostaPor  String?   @map("proposta_por") @db.Uuid
+  ativadaPor   String?   @map("ativada_por") @db.Uuid
+  ativadaEm    DateTime? @map("ativada_em") @db.Timestamptz(6)
+  retiradaEm   DateTime? @map("retirada_em") @db.Timestamptz(6)
+  criadoEm     DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime  @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
   tipo TipoAto @relation(fields: [tipoAto], references: [codigo], onDelete: Restrict, onUpdate: Restrict)
 

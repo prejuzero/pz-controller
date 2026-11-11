@@ -4,7 +4,7 @@ import { chaves } from './chaves';
 import { exigir, type ClienteApi } from './cliente';
 
 import type { PedidoDeVersaoDaTabela, VersaoConsultada as VersaoDaTabela } from '@pz/contracts';
-import type { paths } from '@pz/contracts/gerado/api';
+import type { components, paths } from '@pz/contracts/gerado/api';
 
 type CorpoDaVersao =
   paths['/v1/admin/tabela-prazos']['post']['requestBody']['content']['application/json'];
@@ -90,12 +90,50 @@ export const consultasTabelaPrazos = (api: ClienteApi) => ({
       queryKey: chaves.tabelaPrazos.tipos(),
       queryFn: ({ signal }) => exigir(api.GET('/v1/admin/tabela-prazos/tipos-de-ato', { signal })),
     }),
+  /** Regras rápidas da classificação (PZ-313). */
+  regras: () =>
+    queryOptions({
+      queryKey: chaves.regrasDeClassificacao,
+      queryFn: ({ signal }) => exigir(api.GET('/v1/admin/classificacoes/regras', { signal })),
+    }),
   versoes: () =>
     queryOptions({
       queryKey: chaves.tabelaPrazos.versoes(),
       queryFn: ({ signal }) => exigir(api.GET('/v1/admin/tabela-prazos', { signal })),
     }),
 });
+
+export type PedidoDeRegra = components['schemas']['PedidoDeRegraDeClassificacao'];
+
+/** Curadoria das regras rápidas (PZ-313): propor, ativar (outra curadora) e retirar. */
+export const mutacoesRegras = (api: ClienteApi, cache: QueryClient) => {
+  const invalidar = () => cache.invalidateQueries({ queryKey: chaves.regrasDeClassificacao });
+  return {
+    propor: {
+      mutationFn: (pedido: PedidoDeRegra) =>
+        exigir(api.POST('/v1/admin/classificacoes/regras', { body: pedido })),
+      onSuccess: invalidar,
+    },
+    ativar: {
+      mutationFn: ({ codigo, versao }: { codigo: string; versao: number }) =>
+        exigir(
+          api.POST('/v1/admin/classificacoes/regras/{codigo}/{versao}/ativar', {
+            params: { path: { codigo, versao } },
+          }),
+        ),
+      onSuccess: invalidar,
+    },
+    retirar: {
+      mutationFn: (codigo: string) =>
+        exigir(
+          api.POST('/v1/admin/classificacoes/regras/{codigo}/retirar', {
+            params: { path: { codigo } },
+          }),
+        ),
+      onSuccess: invalidar,
+    },
+  };
+};
 
 export const mutacoesTabelaPrazos = (api: ClienteApi, cache: QueryClient) => {
   const invalidar = () => cache.invalidateQueries({ queryKey: chaves.tabelaPrazos.todas });

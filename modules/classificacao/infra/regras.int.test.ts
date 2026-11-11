@@ -1,13 +1,13 @@
 import { Banco, BancoSistema, executarNoTenant } from '@pz/db';
 import { subirBancoDeTeste } from '@pz/db/teste';
-import { gerarUuidV7 } from '@pz/kernel';
+import { gerarUuidV7, Instant } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { ClassificarPorRegras } from '../application/classificar.js';
 
 import { ClassificacoesPostgres } from './classificacoes-postgres.js';
 import { RevisaoManualPostgres } from './fila-de-revisao-postgres.js';
-import { RegrasPostgres } from './regras-postgres.js';
+import { CuradoriaDeRegrasPostgres, RegrasPostgres } from './regras-postgres.js';
 import { ResumosPostgres } from './resumos-postgres.js';
 import { TaxonomiaPostgres } from './taxonomia-postgres.js';
 
@@ -82,7 +82,7 @@ describe('regras rápidas no PostgreSQL (HU20)', () => {
     });
   });
 
-  it('versão publicada é imutável e não se apaga; a aplicação não escreve; só "ativa" muda', async () => {
+  it('versão publicada é imutável e não se apaga; a aplicação não escreve; só a ativação muda (PZ-313)', async () => {
     await expect(
       sistema.executarComoSistema('tentar alterar', (tx) =>
         tx.regraClassificacao.update({
@@ -96,21 +96,29 @@ describe('regras rápidas no PostgreSQL (HU20)', () => {
         tx.regraClassificacao.delete({ where: { codigo_versao: { codigo: 'r-cit', versao: 1 } } }),
       ),
     ).rejects.toThrow(/permission denied|só de inserção/);
+    // A aplicação só muda a ativação (PZ-313); o conteúdo segue imutável pelo trigger.
     await expect(
       executarNoTenant(TENANT, () =>
         banco.executar((tx) =>
           tx.regraClassificacao.update({
             where: { codigo_versao: { codigo: 'r-cit', versao: 2 } },
-            data: { ativa: false },
+            data: { padroes: ['.*'] },
           }),
         ),
       ),
     ).rejects.toThrow();
-    await sistema.executarComoSistema('retirar regra', (tx) =>
+    const vigentes = () =>
+      executarNoTenant(TENANT, () => banco.executar((tx) => new RegrasPostgres().vigentes(tx)));
+    // Desligar a versão 2 devolve a versão ativa anterior; retirar todas desliga a regra.
+    await sistema.executarComoSistema('desligar a v2', (tx) =>
       tx.regraClassificacao.update({
         where: { codigo_versao: { codigo: 'r-cit', versao: 2 } },
         data: { ativa: false },
       }),
+    );
+    expect((await vigentes()).map((r) => `${r.codigo}@${String(r.versao)}`)).toEqual(['r-cit@1']);
+    await sistema.executarComoSistema('retirar regra', (tx) =>
+      tx.regraClassificacao.updateMany({ where: { codigo: 'r-cit' }, data: { ativa: false } }),
     );
     expect(
       await executarNoTenant(TENANT, () =>
@@ -208,5 +216,42 @@ describe('regras rápidas no PostgreSQL (HU20)', () => {
     ]);
     const resto = await noTenant((tx) => fila.listar(tx, { limite: 10, apos: a }));
     expect(resto.map((i) => i.conteudoId)).toEqual([b]);
+  });
+
+  it('curadoria pelo portal (PZ-313): a aplicação propõe e ativa; o banco barra a mesma pessoa', async () => {
+    const repo = new CuradoriaDeRegrasPostgres();
+    const noTenant = <T>(t: (tx: Transacao) => Promise<T>) =>
+      executarNoTenant(TENANT, () => banco.executar(t));
+    const ana = '01a10e00-0000-7000-8000-0000000c0a01' as Uuid;
+    const bia = '01a10e00-0000-7000-8000-0000000c0a02' as Uuid;
+    const versao = await noTenant((tx) => repo.proximaVersao(tx, 'r-nova'));
+    expect(versao).toBe(1);
+    await noTenant((tx) =>
+      repo.inserir(tx, {
+        codigo: 'r-nova',
+        versao,
+        tipoAto: 'ficticio-citacao',
+        padroes: ['\\bintime-se\\b'],
+        confianca: 0.9,
+        ativa: false,
+        propostaPor: ana,
+        ativadaPor: null,
+        ativadaEm: null,
+        retiradaEm: null,
+        criadaEm: Instant.deIso('2026-11-11T12:00:00Z'),
+      }),
+    );
+    expect(await noTenant((tx) => repo.tipoAtoExiste(tx, 'ficticio-citacao'))).toBe(true);
+    await expect(
+      noTenant((tx) => repo.ativar(tx, 'r-nova', 1, ana, Instant.deIso('2026-11-11T12:00:00Z'))),
+    ).rejects.toThrow();
+    await noTenant((tx) =>
+      repo.ativar(tx, 'r-nova', 1, bia, Instant.deIso('2026-11-11T12:00:00Z')),
+    );
+    expect((await noTenant((tx) => repo.versao(tx, 'r-nova', 1)))?.ativadaPor).toBe(bia);
+    expect(
+      await noTenant((tx) => repo.retirar(tx, 'r-nova', Instant.deIso('2026-11-11T13:00:00Z'))),
+    ).toBe(1);
+    expect((await noTenant((tx) => repo.listar(tx))).some((r) => r.codigo === 'r-nova')).toBe(true);
   });
 });

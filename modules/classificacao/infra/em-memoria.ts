@@ -16,19 +16,19 @@ export class RegrasEmMemoria implements RepositorioDeRegras<TransacaoEmMemoria> 
 
   vigentes(): Promise<RegraRapida[]> {
     const ultima = new Map<string, RegraRapida & { readonly ativa?: boolean }>();
+    // A versão ativa mais nova de cada código (PZ-313).
     for (const r of this.regras) {
+      if (r.ativa === false) continue;
       if ((ultima.get(r.codigo)?.versao ?? 0) < r.versao) ultima.set(r.codigo, r);
     }
     return Promise.resolve(
-      [...ultima.values()]
-        .filter((r) => r.ativa !== false)
-        .map(({ codigo, versao, tipoAto, padroes, confianca }) => ({
-          codigo,
-          versao,
-          tipoAto,
-          padroes,
-          confianca,
-        })),
+      [...ultima.values()].map(({ codigo, versao, tipoAto, padroes, confianca }) => ({
+        codigo,
+        versao,
+        tipoAto,
+        padroes,
+        confianca,
+      })),
     );
   }
 }

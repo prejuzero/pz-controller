@@ -6,6 +6,7 @@ import { AcessoNegado } from '../_casca/acesso-negado';
 import { SePermitido } from '../_casca/se-permitido';
 
 import { ListaDePrazos } from './lista-de-prazos';
+import { RegrasDeClassificacao } from './regras-de-classificacao';
 import { TabelaDePrazos } from './tabela-de-prazos';
 
 import type { RecorteDaLista, StatusDoPrazo } from '../../../api/prazos';
@@ -37,7 +38,12 @@ export default async function PaginaPrazos({
   );
   return (
     <SePermitido permissao="curadoria:tabela-prazos" alternativa={escritorio}>
-      <TabelaDePrazos />
+      <div className="space-y-10">
+        <TabelaDePrazos />
+        <SePermitido permissao="curadoria:classificacao">
+          <RegrasDeClassificacao />
+        </SePermitido>
+      </div>
     </SePermitido>
   );
 }

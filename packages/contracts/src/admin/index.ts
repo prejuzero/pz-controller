@@ -446,7 +446,97 @@ export const exportarCasosAceitos = definirRota({
   resposta: { status: 200, corpo: CasosExportados },
 });
 
+/** Regras rápidas da classificação (PZ-313): propostas, ativadas por outra curadora, retiradas. */
+export const RegraDeClassificacao = nomear(
+  'RegraDeClassificacao',
+  z.object({
+    codigo: z.string(),
+    versao: z.int(),
+    tipoAto: z.string(),
+    padroes: z.array(z.string()),
+    confianca: z.number(),
+    situacao: z.enum(['proposta', 'ativa', 'retirada', 'substituida']),
+    propostaPor: Uuid.nullable(),
+    ativadaPor: Uuid.nullable(),
+    criadaEm: Instante,
+  }),
+);
+
+export type RegraDeClassificacao = z.infer<typeof RegraDeClassificacao.esquema>;
+
+export const RegrasDeClassificacao = nomear(
+  'RegrasDeClassificacao',
+  z.object({ itens: z.array(RegraDeClassificacao.esquema) }),
+);
+export type RegrasDeClassificacao = z.infer<typeof RegrasDeClassificacao.esquema>;
+
+export const PedidoDeRegraDeClassificacao = nomear(
+  'PedidoDeRegraDeClassificacao',
+  z.object({
+    codigo: z.string().regex(/^[a-z0-9][a-z0-9-]{1,60}$/),
+    tipoAto: z.string().min(1).max(100),
+    padroes: z
+      .array(z.string().min(1).max(300))
+      .min(1)
+      .max(20)
+      .describe(
+        'Expressões sobre o texto minúsculo e sem acento; basta uma casar. Só padrões seguros (sem repetição aninhada).',
+      ),
+    confianca: z.number().min(0).max(1),
+  }),
+);
+
+const caminhoDaRegra = z.object({
+  codigo: z.string().min(2).max(61),
+  versao: z.coerce.number().int().min(1),
+});
+
+export const listarRegrasDeClassificacao = definirRota({
+  id: 'listarRegrasDeClassificacao',
+  metodo: 'get',
+  caminho: '/v1/admin/classificacoes/regras',
+  resumo: 'Todas as versões das regras rápidas, com a situação.',
+  tag: 'curadoria',
+  resposta: { status: 200, corpo: RegrasDeClassificacao },
+});
+
+export const proporRegraDeClassificacao = definirRota({
+  id: 'proporRegraDeClassificacao',
+  metodo: 'post',
+  caminho: '/v1/admin/classificacoes/regras',
+  resumo: 'Propõe uma nova versão (inativa); outra curadora a ativa.',
+  tag: 'curadoria',
+  corpo: PedidoDeRegraDeClassificacao,
+  resposta: { status: 201, corpo: RegraDeClassificacao },
+});
+
+export const ativarRegraDeClassificacao = definirRota({
+  id: 'ativarRegraDeClassificacao',
+  metodo: 'post',
+  caminho: '/v1/admin/classificacoes/regras/{codigo}/{versao}/ativar',
+  resumo: 'Ativa a versão proposta por outra curadora (quatro olhos).',
+  tag: 'curadoria',
+  parametrosDeCaminho: caminhoDaRegra,
+  resposta: { status: 204, corpo: null },
+  erros: [404, 409],
+});
+
+export const retirarRegraDeClassificacao = definirRota({
+  id: 'retirarRegraDeClassificacao',
+  metodo: 'post',
+  caminho: '/v1/admin/classificacoes/regras/{codigo}/retirar',
+  resumo: 'Retira a regra: todas as versões do código deixam de valer.',
+  tag: 'curadoria',
+  parametrosDeCaminho: z.object({ codigo: z.string().min(2).max(61) }),
+  resposta: { status: 204, corpo: null },
+  erros: [404],
+});
+
 export const ROTAS_ADMIN = [
+  listarRegrasDeClassificacao,
+  proporRegraDeClassificacao,
+  ativarRegraDeClassificacao,
+  retirarRegraDeClassificacao,
   iniciarImpersonacao,
   encerrarImpersonacao,
   reprocessarJobMorto,

@@ -86,6 +86,8 @@ import {
   RevisaoManualPostgres,
   TaxonomiaPostgres,
   ConsultarResumo,
+  CuradoriaDasRegras,
+  CuradoriaDeRegrasPostgres,
   ResumosPostgres,
 } from '@pz/classificacao';
 import { Banco, executarNoTenant, OutboxPostgres, WebhooksPostgres } from '@pz/db';
@@ -271,6 +273,7 @@ import { Redis } from 'ioredis';
 
 import { AdminController } from './admin/admin.controller.js';
 import { CuradoriaDaClassificacaoController } from './admin/curadoria.controller.js';
+import { RegrasDaClassificacaoController } from './admin/regras.controller.js';
 import { catalogoDeFerramentas } from './assistente/catalogo.js';
 import { FerramentasDeIaController } from './assistente/ferramentas.controller.js';
 import { HistoricoController } from './auditoria/historico.controller.js';
@@ -463,6 +466,8 @@ export interface OpcoesApi {
     readonly unidade: UnidadeDeTrabalho<unknown>;
     readonly trilha: TrilhaDeAuditoria<unknown>;
   };
+  /** Testes: curadoria das regras rápidas sem banco (PZ-313). */
+  readonly curadoriaDeRegras?: CuradoriaDasRegras<unknown>;
   /** Testes: catálogo de ferramentas de IA sem banco (HU60). */
   readonly catalogoDeFerramentas?: CatalogoDeFerramentas;
   /** Status da captura (HU19); nos testes, leitura em memória. */
@@ -2049,6 +2054,19 @@ export class AppModule {
             )),
       ),
       {
+        // Regras rápidas pela curadoria (PZ-313): versões globais, auditadas no tenant da curadoria.
+        provide: CuradoriaDasRegras,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          opcoes.curadoriaDeRegras ??
+          new CuradoriaDasRegras(
+            recursos.banco,
+            new CuradoriaDeRegrasPostgres(),
+            new TrilhaPostgres(),
+            relogio,
+          ),
+      },
+      {
         // Agenda pessoal (HU50): .ics e feed privado pelas APIs públicas de busca e cadastro.
         provide: GerarAgendaIcs,
         inject: [RELOGIO, Buscar, ConsultarProcesso, ConsultarTabelaDePrazos],
@@ -2174,6 +2192,7 @@ export class AppModule {
         CienciaController,
         AssistenteController,
         CuradoriaDaClassificacaoController,
+        RegrasDaClassificacaoController,
         TermosController,
         DocumentosLegaisController,
         PrivacidadeController,
