@@ -6,6 +6,7 @@ Confirmação de ciência dos prazos, área de alto risco (CLAUDE.md, seção 15
 - **Token do link** (`infra/tokens.ts`): `v1.<tenant + 256 bits aleatórios>.<HMAC-SHA256>`, em base64url. A chave do HMAC é derivada da `CHAVE_CIFRAGEM` por HKDF, com rótulo próprio. Guarda-se só o SHA-256; vale 7 dias, uma vez só, e reemitir revoga os anteriores do mesmo prazo e usuário.
 - **Link no e-mail**: `EmitirLinkDeCiencia` roda na hora do envio da notificação (o token não fica na notificação).
 - **Confirmar**: `ConfirmarCiencia.peloLink` (POST público com o token; o GET só mostra) e `pelaSessao` (portal ou app). O mesmo núcleo grava canal, IP, user agent e horário do servidor, a trilha e `CienciaConfirmada` na mesma transação. O módulo prazos consome o evento e marca o prazo.
+- **Indícios**: o worker avança para entregue e aberto com `NotificacaoEntregue` e `NotificacaoAberta` (abertura ou clique informados pelo provedor; o SMTP local não informa). `RegistrarVisualizacao` (`POST /v1/prazos/{id}/visualizacao`, chamado pela página do prazo) avança para visualizado. Nenhum indício vira ciência.
 
 ## Ciência em lote e controle de ciência (HU34)
 

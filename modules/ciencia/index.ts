@@ -4,6 +4,7 @@ export {
   ConsultarLinkDeCiencia,
   EmitirLinkDeCiencia,
   RegistrarIndicioDeCiencia,
+  RegistrarVisualizacao,
 } from './application/ciencia.js';
 export type {
   CienciaConfirmada,

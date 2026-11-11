@@ -228,6 +228,7 @@ export const useConfirmarCienciaPeloLink = () =>
   useMutation(useMutacoesCiencia().confirmarPeloLink);
 export const useConfirmarCiencia = () => useMutation(useMutacoesCiencia().confirmar);
 export const useConfirmarCienciaEmLote = () => useMutation(useMutacoesCiencia().confirmarEmLote);
+export const useRegistrarVisualizacao = () => useMutation(useMutacoesCiencia().visualizar);
 export const useResumoDoDashboard = (filtro?: FiltroDoDashboard) =>
   useQuery(consultasPrazos(useApi()).resumo(filtro));
 /** Contagem de prazos sem ciência para a faixa e o alerta do login (HU34); só com permissão. */

@@ -196,7 +196,7 @@ describe('notificações (HU30)', () => {
       antes = outbox.pendentes().length;
     });
 
-    it('entrega e abertura gravadas uma vez; só a entrega gera evento', async () => {
+    it('entrega e abertura gravadas e publicadas uma vez cada (indícios de ciência)', async () => {
       const resumo = await aplicar([
         evento('entregue'),
         evento('entregue'),
@@ -205,7 +205,7 @@ describe('notificações (HU30)', () => {
       ]);
       expect(resumo).toEqual({ rejeicoes: [], semNotificacao: 0 });
       expect(repositorio.todas()[0]).toMatchObject({ entregueEm: em, abertaEm: em });
-      expect(novos().map((e) => e.tipo)).toEqual(['NotificacaoEntregue']);
+      expect(novos().map((e) => e.tipo)).toEqual(['NotificacaoEntregue', 'NotificacaoAberta']);
     });
 
     it('rejeição permanente: supressão, desfecho e evento uma vez, mesmo repetida', async () => {

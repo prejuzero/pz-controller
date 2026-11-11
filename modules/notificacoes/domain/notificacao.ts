@@ -67,6 +67,11 @@ export type NotificacaoEntregue = EventoDominio<
   'NotificacaoEntregue',
   { notificacaoId: Uuid; usuarioId: Uuid; canal: Canal; tipo: TipoDeNotificacao; prazoId?: Uuid }
 >;
+/** Abertura ou clique informado pelo provedor: só indício de ciência (HU33). */
+export type NotificacaoAberta = EventoDominio<
+  'NotificacaoAberta',
+  { notificacaoId: Uuid; usuarioId: Uuid; canal: Canal; tipo: TipoDeNotificacao; prazoId?: Uuid }
+>;
 export type NotificacaoRejeitada = EventoDominio<
   'NotificacaoRejeitada',
   {
@@ -78,7 +83,8 @@ export type NotificacaoRejeitada = EventoDominio<
     detalhe?: string;
   }
 >;
-type EventoDaNotificacao = NotificacaoSolicitada | NotificacaoEntregue | NotificacaoRejeitada;
+type EventoDaNotificacao =
+  NotificacaoSolicitada | NotificacaoEntregue | NotificacaoAberta | NotificacaoRejeitada;
 
 /**
  * Chave de idempotência (HU30): o mesmo tipo, prazo, destinatário, canal e janela geram uma
@@ -165,10 +171,13 @@ export class Notificacao extends AggregateRoot<EventoDaNotificacao> {
         return true;
       }
       case 'aberto':
-      case 'clicado':
+      case 'clicado': {
         if (e.abertaEm !== undefined) return false;
         this.estadoAtual = { ...e, abertaEm: desfecho.ocorridoEm };
+        const { evento, payload } = this.#base(relogio);
+        this.registrarEvento({ ...evento, tipo: 'NotificacaoAberta', payload });
         return true;
+      }
       default: {
         if (e.rejeitadaEm !== undefined) return false;
         const motivo = MOTIVOS[desfecho.tipo];

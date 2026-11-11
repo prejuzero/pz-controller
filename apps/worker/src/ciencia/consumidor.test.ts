@@ -11,7 +11,7 @@ const evento = (tipo: string, payload: unknown) =>
   ({ id: PRAZO, tipo, versao: 1, tenantId: PRAZO, payload }) as unknown as EventoDominio;
 
 describe('consumidor da ciência (HU33)', () => {
-  it('confirmação vira espelho no prazo; entrega e cumprimento são indícios', async () => {
+  it('confirmação vira espelho no prazo; entrega, abertura e cumprimento são indícios', async () => {
     const chamadas: unknown[] = [];
     const consumidor = new ConsumidorDaCiencia(
       {
@@ -31,10 +31,13 @@ describe('consumidor da ciência (HU33)', () => {
     await consumidor.confirmada(tx, evento('CienciaConfirmada', { prazoId: PRAZO }));
     await consumidor.entregue(tx, evento('NotificacaoEntregue', { prazoId: PRAZO }));
     await consumidor.entregue(tx, evento('NotificacaoEntregue', {}));
+    await consumidor.aberta(tx, evento('NotificacaoAberta', { prazoId: PRAZO }));
+    await consumidor.aberta(tx, evento('NotificacaoAberta', {}));
     await consumidor.cumprido(tx, evento('PrazoCumprido', { prazoId: PRAZO }));
     expect(chamadas).toEqual([
       ['prazo', PRAZO],
       ['indicio', 'entregue'],
+      ['indicio', 'aberto'],
       ['indicio', 'cumprido'],
     ]);
   });

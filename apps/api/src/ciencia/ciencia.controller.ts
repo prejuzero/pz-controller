@@ -1,5 +1,5 @@
 import { Body, Controller, HttpCode, Inject, Param, Post, Req } from '@nestjs/common';
-import { ConfirmarCiencia, ConsultarLinkDeCiencia } from '@pz/ciencia';
+import { ConfirmarCiencia, ConsultarLinkDeCiencia, RegistrarVisualizacao } from '@pz/ciencia';
 import { PedidoComToken, PedidoDeCienciaEmLote } from '@pz/contracts';
 import { criarLogger, registrarErro } from '@pz/observability';
 import { z } from 'zod';
@@ -31,7 +31,24 @@ export class CienciaController {
   constructor(
     @Inject(ConsultarLinkDeCiencia) private readonly consultar: ConsultarLinkDeCiencia<unknown>,
     @Inject(ConfirmarCiencia) private readonly confirmar: ConfirmarCiencia<unknown>,
+    @Inject(RegistrarVisualizacao) private readonly visualizacao: RegistrarVisualizacao<unknown>,
   ) {}
+
+  /** Indício "visualizado" (HU33): o portal avisa que abriu o prazo; nunca vira ciência. */
+  @Post('prazos/:id/visualizacao')
+  @RequerPermissao('prazos:ler')
+  @HttpCode(204)
+  async registrarVisualizacao(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Param('id') id: string,
+  ): Promise<void> {
+    const { sessao } = autenticacao(requisicao);
+    const r = await this.visualizacao.executar({
+      tenantId: sessao.tenantId,
+      prazoId: validar(z.uuid(), id) as Uuid,
+    });
+    if (!r.ok) throw r.erro;
+  }
 
   @Post('ciencia/consulta')
   @Publico()

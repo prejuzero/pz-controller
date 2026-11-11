@@ -8,6 +8,7 @@ import {
   ConsultarLinkDeCiencia,
   EmitirLinkDeCiencia,
   RegistrarIndicioDeCiencia,
+  RegistrarVisualizacao,
 } from '../application/ciencia.js';
 
 import { CienciaEmMemoria } from './em-memoria.js';
@@ -192,6 +193,20 @@ describe('ciência pela sessão e indícios (HU33)', () => {
     expect(await registrar('visualizado')).toBe('confirmado');
     expect(await registrar('cumprido')).toBe('cumprido');
     expect(repo.estados.get(PRAZO)?.confirmacao?.canal).toBe('app');
+  });
+
+  it('abrir o prazo no portal é indício "visualizado": sem ciência, auditoria ou evento', async () => {
+    const visualizar = new RegistrarVisualizacao(outbox, repo, prazos);
+    await emitir();
+    const eventos = outbox.pendentes().length;
+    const r = await visualizar.executar({ tenantId: TENANT, prazoId: PRAZO });
+    expect(r.ok).toBe(true);
+    expect(repo.estados.get(PRAZO)?.estado).toBe('visualizado');
+    expect(repo.estados.get(PRAZO)?.confirmacao).toBeUndefined();
+    expect(auditados).toHaveLength(0);
+    expect(outbox.pendentes()).toHaveLength(eventos);
+    const outro = await visualizar.executar({ tenantId: TENANT, prazoId: gerarUuidV7() });
+    expect(!outro.ok && outro.erro.codigo).toBe('prazo-inexistente');
   });
 });
 

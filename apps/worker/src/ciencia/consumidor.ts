@@ -14,8 +14,8 @@ const DoPrazo = z.object({ prazoId: z.uuid() });
 const DaEntrega = z.object({ prazoId: z.uuid().optional() });
 
 /**
- * Liga a ciência aos eventos (HU33): a confirmação vira o espelho no prazo; a entrega do e-mail
- * e o cumprimento só avançam o estado (indícios). Idempotente. Sem regra aqui.
+ * Liga a ciência aos eventos (HU33): a confirmação vira o espelho no prazo; a entrega e a
+ * abertura do e-mail e o cumprimento só avançam o estado (indícios). Idempotente. Sem regra aqui.
  */
 @Injectable()
 export class ConsumidorDaCiencia {
@@ -42,6 +42,17 @@ export class ConsumidorDaCiencia {
       tenantId: evento.tenantId,
       prazoId: prazoId as Uuid,
       estado: 'entregue',
+    });
+  }
+
+  @Consome('NotificacaoAberta', { versao: 1 })
+  async aberta(tx: Transacao, evento: EventoDominio): Promise<void> {
+    const { prazoId } = DaEntrega.parse(evento.payload);
+    if (prazoId === undefined) return;
+    await this.indicio.executar(tx, {
+      tenantId: evento.tenantId,
+      prazoId: prazoId as Uuid,
+      estado: 'aberto',
     });
   }
 

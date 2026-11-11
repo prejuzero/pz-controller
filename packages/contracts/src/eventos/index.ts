@@ -156,6 +156,9 @@ const DaNotificacao = z.object({
 /** O provedor confirmou a entrega (webhook, HU30). */
 export const NotificacaoEntregue = definirEvento('NotificacaoEntregue', 1, DaNotificacao);
 
+/** O provedor informou a abertura (ou um clique) do e-mail: só indício de ciência (HU33). */
+export const NotificacaoAberta = definirEvento('NotificacaoAberta', 1, DaNotificacao);
+
 /**
  * A notificação não chegou (HU30): endereço rejeitado (bounce), marcada como spam ou falha do
  * envio. Bounce e spam já entraram na lista de supressão; gera aviso ao usuário e ao administrador.
@@ -500,6 +503,7 @@ export const EVENTOS = catalogoDeEventos(
   ConviteDeMembroEnviado,
   NotificacaoSolicitada,
   NotificacaoEntregue,
+  NotificacaoAberta,
   NotificacaoRejeitada,
   ConsentimentoCanalAlterado,
   PreferenciasDeNotificacaoAlteradas,

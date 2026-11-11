@@ -30,4 +30,9 @@ export const mutacoesCiencia = (api: ClienteApi, cache: QueryClient) => ({
       await cache.invalidateQueries({ queryKey: chaves.prazos.todas });
     },
   },
+  /** Indício "visualizado" (HU33): avisar que o prazo foi aberto; nunca vira ciência. */
+  visualizar: {
+    mutationFn: (id: string) =>
+      exigir(api.POST('/v1/prazos/{id}/visualizacao', { params: { path: { id } } })),
+  },
 });
