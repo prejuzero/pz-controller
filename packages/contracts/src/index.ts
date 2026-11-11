@@ -193,6 +193,7 @@ export {
   emitirTokensDeDispositivo,
   listarDispositivos,
   PedidoDeRenovacao,
+  CLIENTE_OAUTH_DO_APP,
   PedidoDeTokensDeDispositivo,
   renovarTokens,
   revogarDispositivo,

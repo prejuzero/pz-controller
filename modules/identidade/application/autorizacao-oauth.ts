@@ -1,6 +1,11 @@
 import { err, gerarUuidV7, NaoAutenticado, ok, Proibido, Validacao } from '@pz/kernel';
 
-import { escoposDoCliente, escoposDoToken, FORMATO_PKCE } from '../domain/cliente-oauth.js';
+import {
+  ESCOPOS_DO_APP_ALEM_DA_LEITURA,
+  escoposDoCliente,
+  escoposDoToken,
+  FORMATO_PKCE,
+} from '../domain/cliente-oauth.js';
 import { CATALOGO_DE_PERMISSOES } from '../domain/permissoes.js';
 
 import { EmissorDeTokens, VALIDADE_DO_ACESSO_MS } from './dispositivos.js';
@@ -38,6 +43,8 @@ export interface DadosDoCodigo {
   readonly escopos: readonly string[];
   /** Registro dinâmico (HU60): o `client_id` que o assistente usa (o do registro). */
   readonly clienteDoPedido?: Uuid;
+  /** App oficial (HU65): a sessão de dispositivo nasce do tipo `mobile`. */
+  readonly appOficial?: true;
 }
 
 /** Códigos de autorização: uso único (consumir apaga). */
@@ -90,7 +97,10 @@ const comoCliente = (r: RegistroDinamico, sessao: Sessao): ClienteOAuth => ({
   nome: r.nome,
   tipo: 'publico',
   redirectUris: r.redirectUris,
-  escopos: ESCOPOS_DE_LEITURA,
+  escopos:
+    r.appOficial === true
+      ? [...ESCOPOS_DE_LEITURA, ...ESCOPOS_DO_APP_ALEM_DA_LEITURA]
+      : ESCOPOS_DE_LEITURA,
   criadoEm: r.criadoEm,
 });
 
@@ -135,14 +145,16 @@ async function conferir(
   if (pedidos === undefined) {
     return err(pedidoInvalido('Escopo não concedido ao aplicativo.', 'invalid_scope'));
   }
-  const escopos = escoposDoCliente(pedidos, await permissoes.executar(sessao));
+  const alem =
+    registro?.appOficial === true ? ESCOPOS_DO_APP_ALEM_DA_LEITURA : new Set<Permissao>();
+  const escopos = escoposDoCliente(pedidos, await permissoes.executar(sessao), alem);
   if (!escopos.ok) return err(pedidoInvalido(escopos.erro.message, 'invalid_scope'));
   return ok({
     escopos: escopos.valor,
     ...(registro === undefined ? {} : { registro }),
     descricao: {
       cliente: { id: cliente.id, nome: cliente.nome },
-      registroAutomatico: registro !== undefined,
+      registroAutomatico: registro !== undefined && registro.appOficial !== true,
       redirectUri: pedido.redirectUri,
       escopos: escopos.valor.map((e) => ({
         escopo: e,
@@ -210,6 +222,7 @@ export class AutorizarCliente {
       {
         clienteId,
         ...(registro === undefined ? {} : { clienteDoPedido: registro.id }),
+        ...(registro?.appOficial === true ? { appOficial: true as const } : {}),
         tenantId: sessao.tenantId,
         usuarioId: sessao.usuarioId,
         redirectUri: pedido.redirectUri,
@@ -290,8 +303,13 @@ export class TrocarCodigoPorTokens {
     }
     const agora = this.relogio.agora();
     const dispositivoId = gerarUuidV7(this.relogio);
-    // Assistente registrado sozinho (HU60): a sessão aparece como MCP em Segurança.
-    const tipoCliente = dados.clienteDoPedido === undefined ? 'integrador' : 'mcp';
+    // App oficial (HU65): sessão mobile. Assistente registrado sozinho (HU60): MCP.
+    const tipoCliente =
+      dados.appOficial === true
+        ? 'mobile'
+        : dados.clienteDoPedido === undefined
+          ? 'integrador'
+          : 'mcp';
     await this.noTenant(dados.tenantId, async () => {
       await this.dispositivos.registrar({
         id: dispositivoId,

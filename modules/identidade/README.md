@@ -33,6 +33,13 @@ O exemplo gerado (`Identidade`, `CriarIdentidade`, evento `IdentidadeCriado`) mo
 - **Apps públicos (Authorization Code + PKCE):** `POST /v1/integracoes/apps` registra o app sem segredo, com endereços de retorno (HTTPS, ou HTTP no loopback), comparados por igualdade exata. A tela `/oauth/autorizar` do portal confere o pedido (`GET /v1/oauth/autorizacao`) e, ao permitir (`POST`, só com a sessão do navegador e o CSRF), emite um código de uso único (60 s, só o hash no Redis). `authorization_code` confere cliente, retorno e PKCE S256, abre uma sessão de dispositivo ligada ao app e devolve acesso (15 min) e renovação rotativa. `refresh_token` só renova para o mesmo cliente. Revogar o app revoga as sessões abertas por ele. A autorização vai para a trilha (`identidade.cliente-oauth-autorizado`).
 - O endpoint de token localiza o cliente pela função restrita `pz_localizar_cliente_oauth` (papel `pz_credencial`, como o login): a api segue sem BYPASSRLS.
 
+## App oficial (HU65)
+
+- O app entra por Authorization Code + PKCE (S256) com o `client_id` fixo `CLIENTE_OAUTH_DO_APP` (`@pz/contracts`), um registro global marcado `app_oficial` criado pela migração `20261203000000_app_oficial_oauth`. Ele reaproveita o fluxo do registro dinâmico: na primeira autorização, o escritório ganha um cliente público ligado ao registro.
+- Escopos: os de leitura e `prazos:confirmar` (decisão de 11/11/2026), sempre dentro das permissões de quem autoriza. Nada de ajustar, distribuir ou administrar. Os outros registros dinâmicos seguem só na leitura.
+- Endereços de retorno: `APP_OAUTH_REDIRECT_URIS` na api (padrão `br.com.prejuzero.app:/oauth/retorno`, esquema do app em domínio reverso, RFC 8252), com comparação exata.
+- A troca do código abre uma sessão de dispositivo `mobile`. A renovação é rotativa, e reapresentar uma renovação já usada revoga a sessão inteira.
+
 ## Tenants da plataforma (HU39)
 
 - `GET /v1/admin/tenants` (cursor), `GET /v1/admin/tenants/{id}`, `PATCH .../assinatura`, `POST/DELETE .../suspensao`, todas com `admin:tenants`. Só a linha do tenant (nome, tipo, plano, assinatura, suspensão); dados de negócio só por impersonação.

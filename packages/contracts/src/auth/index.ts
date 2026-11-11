@@ -222,6 +222,12 @@ export const redefinirSenha = definirRota({
 
 const TipoCliente = z.enum(['web', 'mobile', 'mcp', 'integrador']);
 
+/**
+ * `client_id` do app oficial no OAuth 2.1 (HU65): cliente público global, criado pela migração
+ * 20261203000000_app_oficial_oauth. O app entra por Authorization Code + PKCE (S256).
+ */
+export const CLIENTE_OAUTH_DO_APP = '019a0000-0000-7000-8000-00000000a990';
+
 export const PedidoDeTokensDeDispositivo = nomear(
   'PedidoDeTokensDeDispositivo',
   z.object({ tipoCliente: TipoCliente, nomeDispositivo: z.string().min(1).max(100) }),

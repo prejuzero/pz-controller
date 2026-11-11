@@ -13,6 +13,7 @@ import type { Result } from '@pz/kernel';
 export function escoposDoCliente(
   pedidos: readonly string[],
   doUsuario: ReadonlySet<Permissao>,
+  alemDaLeitura: ReadonlySet<Permissao> = new Set(),
 ): Result<Permissao[], Validacao> {
   const unicos = [...new Set(pedidos)];
   if (unicos.length === 0) {
@@ -20,7 +21,7 @@ export function escoposDoCliente(
   }
   const problemas = unicos.flatMap((escopo) => {
     if (!ehPermissao(escopo)) return [`Escopo desconhecido: ${escopo}.`];
-    if (!CATALOGO_DE_PERMISSOES[escopo].leitura) {
+    if (!CATALOGO_DE_PERMISSOES[escopo].leitura && !alemDaLeitura.has(escopo)) {
       return [`Integrações só recebem escopos de leitura: ${escopo}.`];
     }
     if (!doUsuario.has(escopo)) return [`Você não tem a permissão ${escopo}.`];
@@ -30,6 +31,13 @@ export function escoposDoCliente(
     ? ok(unicos.filter(ehPermissao))
     : err(new Validacao(problemas.map((mensagem) => ({ campo: 'escopos', mensagem }))));
 }
+
+/**
+ * App oficial (HU65; decisão do usuário em 11/11/2026): além da leitura, só confirmar prazo e
+ * ciência, sempre com o toque explícito do advogado no app. Nada de ajustar, distribuir ou
+ * administrar.
+ */
+export const ESCOPOS_DO_APP_ALEM_DA_LEITURA: ReadonlySet<Permissao> = new Set(['prazos:confirmar']);
 
 /**
  * Escopos do token (RFC 6749, seção 3.3): sem `scope`, todos os do cliente; com ele, um

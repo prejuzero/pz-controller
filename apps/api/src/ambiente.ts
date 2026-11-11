@@ -31,6 +31,32 @@ export const esquemaApi = esquemaBase
      * descobrem nos metadados OAuth (o portal encaminha /v1 para a API).
      */
     PORTAL_URL: z.url({ protocol: /^https?$/ }).default('http://localhost:3001'),
+    /**
+     * Endereços de retorno do app oficial (HU65), separados por vírgula: esquema privado do app
+     * em domínio reverso (RFC 8252, 7.1) ou HTTPS. Comparados por igualdade exata.
+     */
+    APP_OAUTH_REDIRECT_URIS: z
+      .string()
+      .default('br.com.prejuzero.app:/oauth/retorno')
+      .transform((valor) =>
+        valor
+          .split(',')
+          .map((uri) => uri.trim())
+          .filter((uri) => uri !== ''),
+      )
+      .pipe(
+        z
+          .array(
+            z
+              .string()
+              .regex(
+                /^(?:[a-z][a-z0-9-]*(?:\.[a-z0-9-]+)+:\/[^/#\s][^#\s]*|https:\/\/[^#\s]+)$/,
+                'esquema do app em domínio reverso (ex.: br.com.prejuzero.app:/oauth/retorno) ou https',
+              ),
+          )
+          .min(1)
+          .max(5),
+      ),
     /** Versão implantada (SHA do commit), gravada na imagem pelo build. */
     VERSAO: z.string().min(1).default('dev'),
     /**

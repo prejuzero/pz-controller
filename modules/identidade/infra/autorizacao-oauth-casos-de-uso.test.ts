@@ -69,6 +69,7 @@ function montar() {
     dispositivos,
     publicador,
     permissoes,
+    perfis,
     validar: new ValidarSessao(sessoes, relogio),
     registrar: new RegistrarClienteOAuth(clientes, permissoes, tokens, publicador, relogio),
     registros,
@@ -377,5 +378,81 @@ describe('registro dinâmico de cliente (HU60, RFC 7591)', () => {
         )
       ).ok,
     ).toBe(false);
+  });
+});
+
+describe('app oficial (HU65)', () => {
+  const RETORNO_DO_APP = 'br.com.prejuzero.app:/oauth/retorno';
+
+  async function comAppOficial() {
+    const m = montar();
+    m.perfis.atribuir(m.sessao.usuarioId, 'advogado');
+    const id = gerarUuidV7();
+    await m.registros.registrar({
+      id,
+      nome: 'PrejuZero (app)',
+      redirectUris: [RETORNO_DO_APP],
+      criadoEm: relogio.agora(),
+      appOficial: true,
+    });
+    return { m, id };
+  }
+
+  it('leitura e confirmação; sessão mobile; reuso da renovação revoga a sessão', async () => {
+    const { m, id } = await comAppOficial();
+    const p = pedido(id, { redirectUri: RETORNO_DO_APP, escopo: 'prazos:ler prazos:confirmar' });
+    expect(await m.descrever.executar(m.sessao, p)).toMatchObject({
+      ok: true,
+      valor: { cliente: { id, nome: 'PrejuZero (app)' }, registroAutomatico: false },
+    });
+    const a = await m.autorizar.executar(m.sessao, p);
+    if (!a.ok) throw a.erro;
+    expect(a.valor.redirecionarPara.startsWith(`${RETORNO_DO_APP}?code=`)).toBe(true);
+    const codigo = new URL(a.valor.redirecionarPara).searchParams.get('code') ?? '';
+    const tokens = await m.trocar.executar({
+      codigo,
+      clienteId: id,
+      redirectUri: RETORNO_DO_APP,
+      verificador: VERIFICADOR,
+    });
+    if (!tokens.ok) throw tokens.erro;
+    const [dispositivo] = await m.dispositivos.listar(m.sessao.usuarioId);
+    expect(dispositivo).toMatchObject({ tipoCliente: 'mobile' });
+    const validada = await m.validar.executar(tokens.valor.tokenDeAcesso);
+    expect(validada.ok && validada.valor.escopos).toEqual(['prazos:ler', 'prazos:confirmar']);
+
+    const renovado = await m.renovar.executar(tokens.valor.tokenDeRenovacao, id);
+    if (!renovado.ok) throw renovado.erro;
+    // A renovação antiga reapresentada (token roubado): a sessão inteira cai.
+    expect((await m.renovar.executar(tokens.valor.tokenDeRenovacao, id)).ok).toBe(false);
+    expect((await m.validar.executar(renovado.valor.tokenDeAcesso)).ok).toBe(false);
+  });
+
+  it('nada além de leitura e confirmação, e só o endereço do app', async () => {
+    const { m, id } = await comAppOficial();
+    const ajustar = await m.descrever.executar(
+      m.sessao,
+      pedido(id, { redirectUri: RETORNO_DO_APP, escopo: 'prazos:ajustar' }),
+    );
+    expect(!ajustar.ok && ajustar.erro.codigo).toBe('invalid_scope');
+    const outro = await m.descrever.executar(m.sessao, pedido(id, { redirectUri: RETORNO }));
+    expect(outro.ok).toBe(false);
+    // Um assistente registrado sozinho continua só na leitura.
+    const assistente = await m.registrarDinamico.executar({
+      nome: 'Assistente fictício',
+      redirectUris: ['https://assistente.exemplo.invalid/callback'],
+      metodoDeAutenticacao: 'none',
+      grants: ['authorization_code', 'refresh_token'],
+      tiposDeResposta: ['code'],
+    });
+    if (!assistente.ok) throw assistente.erro;
+    const confirmar = await m.descrever.executar(
+      m.sessao,
+      pedido(assistente.valor.id, {
+        redirectUri: 'https://assistente.exemplo.invalid/callback',
+        escopo: 'prazos:confirmar',
+      }),
+    );
+    expect(!confirmar.ok && confirmar.erro.codigo).toBe('invalid_scope');
   });
 });
