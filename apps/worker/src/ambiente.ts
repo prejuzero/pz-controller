@@ -50,6 +50,9 @@ export const esquemaWorker = esquemaBase
     EMAIL_REMETENTE: z.string().min(3).default('PrejuZero <nao-responda@prejuzero.local>'),
     /** STARTTLS obrigatório no SMTP; só o Mailpit local usa false. */
     SMTP_EXIGIR_TLS: z.stringbool().default(true),
+    /** Piloto local: SMTP de uma conta que o escritório já tem (vazio: sem autenticação). */
+    SMTP_USUARIO: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(1).optional()),
+    SMTP_SENHA: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(1).optional()),
     /** Bucket com object lock da cópia WORM da auditoria (HU08). */
     AUDITORIA_WORM_BUCKET: z.string().min(3).default('pz-auditoria-worm'),
     /**
