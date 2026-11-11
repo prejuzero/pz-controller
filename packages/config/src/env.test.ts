@@ -7,6 +7,7 @@ import {
   esquemaBanco,
   esquemaBase,
   esquemaEmail,
+  esquemaIa,
   esquemaObservabilidade,
   esquemaRedis,
   esquemaSmtp,
@@ -143,5 +144,13 @@ describe('carregarAmbiente', () => {
     expect(() => carregarAmbiente(esquemaEmail, { SES_TOPICOS_SNS: 'qualquer' })).toThrow(
       ErroConfiguracao,
     );
+  });
+
+  it('IA: chave vazia do compose vale como ausente; padrões sem custo', () => {
+    expect(carregarAmbiente(esquemaIa, { ANTHROPIC_API_KEY: '', GEMINI_API_KEY: '' })).toEqual({
+      GEMINI_MODELO: 'gemini-3.5-flash',
+      IA_DADOS_FICTICIOS: 'nao',
+      IA_ORCAMENTO_DIARIO_USD: 20,
+    });
   });
 });

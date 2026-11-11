@@ -19,7 +19,7 @@ import type { AlteracaoDoCalendario, CacheDeDiasNaoUteis } from '@pz/calendario'
 import type { EventoDominio } from '@pz/kernel';
 import type { AddressInfo } from 'node:net';
 
-const ambiente = carregarAmbiente(esquemaWorker, {
+const AMBIENTE_BRUTO = {
   NODE_ENV: 'test',
   DATABASE_URL: 'postgresql://u:s@127.0.0.1:1/db',
   DATABASE_URL_SISTEMA: 'postgresql://u:s@127.0.0.1:1/db',
@@ -30,7 +30,8 @@ const ambiente = carregarAmbiente(esquemaWorker, {
   S3_REGION: 'us-east-1',
   VERSAO: 'abc123',
   RELAY_INTERVALO_MS: '60000',
-});
+};
+const ambiente = carregarAmbiente(esquemaWorker, AMBIENTE_BRUTO);
 const relogio = new FixedClock(Instant.deIso('2026-10-05T12:00:00Z'));
 const disponivel = { nome: 'banco', verificar: () => Promise.resolve() };
 
@@ -473,19 +474,21 @@ describe('notificações (HU30)', () => {
 describe('provedor de IA do ambiente (ADR-022)', () => {
   const sem = { GEMINI_MODELO: 'gemini-3.5-flash', IA_DADOS_FICTICIOS: 'nao' as const };
 
-  it('Anthropic tem preferência; sem chave nenhuma, a IA fica desligada', () => {
-    expect(provedorIaDoAmbiente({ ...sem, ANTHROPIC_API_KEY: 'a', GEMINI_API_KEY: 'g' })).toEqual({
+  it('SMTP do piloto: usuário e senha vazios (compose) valem como sem autenticação', () => {
+    const piloto = carregarAmbiente(esquemaWorker, {
+      ...AMBIENTE_BRUTO,
+      SMTP_USUARIO: '',
+      SMTP_SENHA: 'senha-ficticia',
+    });
+    expect(piloto.SMTP_USUARIO).toBeUndefined();
+    expect(piloto.SMTP_SENHA).toBe('senha-ficticia');
+  });
+
+  it('liga a escolha do @pz/ia ao ambiente do worker', () => {
+    expect(provedorIaDoAmbiente({ ...sem, ANTHROPIC_API_KEY: 'a' })).toEqual({
       tipo: 'anthropic',
       chave: 'a',
     });
-    expect(provedorIaDoAmbiente(sem)).toBeUndefined();
-  });
-
-  it('Gemini só liga com a declaração de dados fictícios', () => {
-    expect(provedorIaDoAmbiente({ ...sem, GEMINI_API_KEY: 'g' })).toBeUndefined();
-    expect(
-      provedorIaDoAmbiente({ ...sem, GEMINI_API_KEY: 'g', IA_DADOS_FICTICIOS: 'sim' }),
-    ).toEqual({ tipo: 'gemini', chave: 'g', modelo: 'gemini-3.5-flash' });
   });
 
   it('plano de cada provedor: Anthropic com a configuração padrão; Gemini em todas as tarefas', () => {

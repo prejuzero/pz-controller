@@ -30,3 +30,5 @@ export type {
   ExecucaoDeFerramenta,
   Ferramenta,
 } from './ferramentas.js';
+export { escolherProvedorIa } from './provedor-do-ambiente.js';
+export type { AmbienteDaIa, ProvedorIaEscolhido } from './provedor-do-ambiente.js';
