@@ -17,6 +17,7 @@ export {
   registrarJobProcessado,
   registrarPublicacaoVisivel,
   registrarRejeicaoEmail,
+  registrarRequisicaoDoCliente,
   registrarSituacaoDaFonte,
   registrarSituacaoDasFilas,
   registrarWebhookRecusado,

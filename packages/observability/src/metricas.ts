@@ -22,6 +22,7 @@ export const NOMES_METRICAS = {
   erros: 'pz.erros',
   sloPublicacaoVisivel: 'pz.slo.publicacao_visivel',
   sloEmailEnviado: 'pz.slo.email_enviado',
+  requisicoesPorCliente: 'pz.http.cliente.requisicoes',
 } as const;
 
 /**
@@ -50,6 +51,7 @@ interface Instrumentos {
   readonly erros: Counter;
   readonly sloPublicacaoVisivel: Histogram;
   readonly sloEmailEnviado: Histogram;
+  readonly requisicoesPorCliente: Counter;
 }
 
 const NOME_MEDIDOR = '@pz/observability';
@@ -104,6 +106,10 @@ function instrumentos(): Instrumentos {
         unit: 's',
         advice: { explicitBucketBoundaries: [...LIMITES_SLO_PIPELINE_SEGUNDOS] },
       }),
+      requisicoesPorCliente: medidor.createCounter(NOMES_METRICAS.requisicoesPorCliente, {
+        description:
+          'Requisições dos apps (cabeçalho X-Cliente), por plataforma, versão e se foram barradas pela versão mínima (HU63).',
+      }),
     };
     cache.set(medidor, existentes);
   }
@@ -137,6 +143,15 @@ export function registrarDivergenciaDeAuditoria(): void {
 
 export function registrarWebhookRecusado(adaptador: string): void {
   instrumentos().webhooksRecusados.add(1, { adaptador });
+}
+
+/** Requisição de um app identificado (HU63): mostra quem ainda usa versões antigas. */
+export function registrarRequisicaoDoCliente(
+  plataforma: string,
+  versao: string,
+  barrada: boolean,
+): void {
+  instrumentos().requisicoesPorCliente.add(1, { plataforma, versao, barrada: String(barrada) });
 }
 
 export function registrarRejeicaoEmail(motivo: string): void {

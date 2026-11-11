@@ -14,6 +14,7 @@ import {
   registrarDivergenciaDeAuditoria,
   registrarSituacaoDaFonte,
   registrarRejeicaoEmail,
+  registrarRequisicaoDoCliente,
   registrarWebhookRecusado,
   registrarSituacaoDasFilas,
 } from './metricas.js';
@@ -88,6 +89,7 @@ describe('catálogo de métricas', () => {
     registrarErroInesperado('captura');
     registrarJobProcessado('captura', 'sucesso', 0.2);
     registrarWebhookRecusado('ses');
+    registrarRequisicaoDoCliente('android', '1.2.0', true);
     registrarDivergenciaDeAuditoria();
     registrarSituacaoDaFonte('djen', true);
     registrarAlvoFalhando();
@@ -98,6 +100,9 @@ describe('catálogo de métricas', () => {
     ]);
     expect(pontos(metricas.get(NOMES_METRICAS.capturaAlvoFalhando))).toEqual([
       { atributos: {}, valor: 1 },
+    ]);
+    expect(pontos(metricas.get(NOMES_METRICAS.requisicoesPorCliente))).toEqual([
+      { atributos: { plataforma: 'android', versao: '1.2.0', barrada: 'true' }, valor: 1 },
     ]);
     expect(pontos(metricas.get(NOMES_METRICAS.webhooksRecusados))).toEqual([
       { atributos: { adaptador: 'ses' }, valor: 1 },

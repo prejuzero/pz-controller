@@ -1,6 +1,8 @@
 import { gerarUuidV7 } from '@pz/kernel';
 import { executarComContexto, registrarRotaHttp } from '@pz/observability';
 
+import { CABECALHO_CLIENTE, lerCliente } from './versao-do-cliente.js';
+
 import type { FastifyInstance } from 'fastify';
 
 export const CABECALHO_REQUEST_ID = 'x-request-id';
@@ -21,7 +23,10 @@ export function registrarContextoDeRequisicao(servidor: FastifyInstance): void {
     // Rota resolvida (padrão com :parametros): http.route nos traces e nas métricas por rota.
     const rota = requisicao.routeOptions.url;
     if (rota !== undefined) registrarRotaHttp(requisicao.method, rota);
-    executarComContexto({ requestId }, () => {
+    // App identificado (HU63): vai para os logs; a guarda confere a versão mínima.
+    const app = lerCliente(requisicao.headers[CABECALHO_CLIENTE]);
+    const cliente = app === undefined ? {} : { cliente: `${app.plataforma}/${app.versao}` };
+    executarComContexto({ requestId, ...cliente }, () => {
       continuar();
     });
   });

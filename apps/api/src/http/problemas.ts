@@ -28,6 +28,7 @@ const TITULOS: Readonly<Record<number, string>> = {
   413: 'Requisição grande demais.',
   415: 'Tipo de conteúdo não suportado.',
   422: 'Regra de negócio violada.',
+  426: 'Atualize o aplicativo.',
   429: 'Muitas requisições.',
   500: 'Erro inesperado. A equipe foi avisada.',
 };
@@ -39,6 +40,7 @@ const CODIGOS_HTTP: Readonly<Record<number, string>> = {
   405: 'metodo.nao-permitido',
   413: 'requisicao.grande-demais',
   415: 'conteudo.nao-suportado',
+  426: 'cliente.desatualizado',
   429: 'limite.excedido',
 };
 
@@ -87,8 +89,14 @@ export class FiltroDeProblemas implements ExceptionFilter {
     }
     if (erro instanceof HttpException && erro.getStatus() < 500) {
       const status = erro.getStatus();
+      const resposta = erro.getResponse();
+      const detalhe =
+        typeof resposta === 'object' && 'detail' in resposta && typeof resposta.detail === 'string'
+          ? { detail: resposta.detail }
+          : {};
       return problema(status, CODIGOS_HTTP[status] ?? 'requisicao.invalida', {
         instance: instancia,
+        ...detalhe,
       });
     }
     registrarErro(logger, erro, 'erro inesperado na requisição', 'api.http');
