@@ -270,3 +270,27 @@ describe('api: correlação', () => {
     ).toBe('balanceador-456');
   });
 });
+
+describe('ambiente: retorno do app oficial (HU65)', () => {
+  const base = {
+    NODE_ENV: 'test',
+    DATABASE_URL: 'postgresql://u:s@127.0.0.1:1/db',
+    REDIS_URL: 'redis://127.0.0.1:1',
+    S3_REGION: 'us-east-1',
+    CHAVE_CIFRAGEM: randomBytes(32).toString('base64'),
+  };
+
+  it('padrão no esquema do app; lista separada por vírgula; recusa esquema sem domínio reverso', () => {
+    expect(ambiente.APP_OAUTH_REDIRECT_URIS).toEqual(['br.com.prejuzero.app:/oauth/retorno']);
+    expect(
+      carregarAmbiente(esquemaApi, {
+        ...base,
+        APP_OAUTH_REDIRECT_URIS: 'br.com.exemplo.app:/retorno, https://app.exemplo.invalid/retorno',
+      }).APP_OAUTH_REDIRECT_URIS,
+    ).toEqual(['br.com.exemplo.app:/retorno', 'https://app.exemplo.invalid/retorno']);
+    for (const ruim of ['meuapp:/retorno', 'http://app.exemplo.invalid/retorno', 'javascript:/x'])
+      expect(() =>
+        carregarAmbiente(esquemaApi, { ...base, APP_OAUTH_REDIRECT_URIS: ruim }),
+      ).toThrow();
+  });
+});

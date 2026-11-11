@@ -46,6 +46,8 @@ export interface RegistroDinamico {
   readonly nome: string;
   readonly redirectUris: readonly string[];
   readonly criadoEm: Instant;
+  /** App oficial do PrejuZero (HU65): sessão `mobile` e escopo de confirmação além da leitura. */
+  readonly appOficial?: boolean;
 }
 
 export interface RepositorioDeRegistrosDinamicos {

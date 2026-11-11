@@ -1573,7 +1573,8 @@ export class AppModule {
       opcoes.identidade?.clientesOAuth ?? new ClientesOAuthPostgres(recursos.banco);
     const codigosOAuth = opcoes.identidade?.codigosOAuth ?? new CodigosRedis(recursos.redis);
     const registrosOAuth =
-      opcoes.identidade?.registrosOAuth ?? new RegistrosDinamicosPostgres(recursos.banco);
+      opcoes.identidade?.registrosOAuth ??
+      new RegistrosDinamicosPostgres(recursos.banco, opcoes.ambiente.APP_OAUTH_REDIRECT_URIS);
     const perfis = opcoes.identidade?.perfis ?? new PerfisPostgres(recursos.banco);
     const tenantsPostgres = new TenantsPostgres();
     const impersonacao = opcoes.identidade?.impersonacao ?? {

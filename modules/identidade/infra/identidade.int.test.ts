@@ -657,6 +657,17 @@ describe('app público OAuth com PostgreSQL e Redis (HU49)', () => {
     expect(await registros.buscar(registro.valor.id)).toMatchObject({
       nome: 'Assistente MCP fictício',
     });
+    // App oficial (HU65): registro fixo da migração; o retorno vem da configuração.
+    const APP = '019a0000-0000-7000-8000-00000000a990' as Uuid;
+    expect(await registros.buscar(APP)).toMatchObject({
+      nome: 'PrejuZero (app)',
+      redirectUris: ['br.com.prejuzero.app:/oauth/retorno'],
+      appOficial: true,
+    });
+    expect(
+      await new RegistrosDinamicosPostgres(banco, ['br.com.exemplo.app:/retorno']).buscar(APP),
+    ).toMatchObject({ redirectUris: ['br.com.exemplo.app:/retorno'], appOficial: true });
+    expect(await registros.buscar(registro.valor.id)).not.toHaveProperty('appOficial');
     const doRegistro = (id: Uuid) =>
       executarNoTenant(TENANT_A, () =>
         clientes.obterOuCriarDoRegistro({

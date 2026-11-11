@@ -161,9 +161,16 @@ export class ClientesOAuthPostgres implements RepositorioDeClientesOAuth {
   }
 }
 
-/** Registros dinâmicos (HU60): tabela global, sem tenant; o registro é público. */
+/**
+ * Registros dinâmicos (HU60): tabela global, sem tenant; o registro é público. O app oficial
+ * (HU65) é um registro fixo da migração; os endereços de retorno dele vêm da configuração
+ * (APP_OAUTH_REDIRECT_URIS), para trocar o esquema do app sem migração.
+ */
 export class RegistrosDinamicosPostgres implements RepositorioDeRegistrosDinamicos {
-  constructor(private readonly banco: Banco) {}
+  constructor(
+    private readonly banco: Banco,
+    private readonly retornoDoApp?: readonly string[],
+  ) {}
 
   async registrar(r: RegistroDinamico): Promise<void> {
     await this.banco.executarSemTenant('oauth: registro dinâmico', (tx) =>
@@ -188,8 +195,9 @@ export class RegistrosDinamicosPostgres implements RepositorioDeRegistrosDinamic
       : {
           id: l.id as Uuid,
           nome: l.nome,
-          redirectUris: l.redirectUris,
+          redirectUris: l.appOficial ? (this.retornoDoApp ?? l.redirectUris) : l.redirectUris,
           criadoEm: Instant.deEpochMs(l.criadoEm.getTime()),
+          ...(l.appOficial ? { appOficial: true } : {}),
         };
   }
 }
