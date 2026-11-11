@@ -1,0 +1,38 @@
+{
+  "name": "@pz/mobile",
+  "version": "0.0.0",
+  "private": true,
+  "description": "App do PrejuZero (HU63, ADR-015): React Native com Expo, falando com o back-end só pela API /v1.",
+  "main": "expo-router/entry",
+  "scripts": {
+    "dev": "expo start",
+    "lint": "eslint --max-warnings=0 .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@pz/contracts": "workspace:*",
+    "@pz/design-tokens": "workspace:*",
+    "@tanstack/react-query": "5.105.0",
+    "expo": "58.0.23",
+    "expo-constants": "58.0.15",
+    "expo-linking": "58.0.16",
+    "expo-router": "58.0.30",
+    "expo-status-bar": "58.0.4",
+    "openapi-fetch": "0.17.0",
+    "react": "19.3.1",
+    "react-native": "0.88.1",
+    "react-native-safe-area-context": "5.11.1",
+    "react-native-screens": "4.30.1"
+  },
+  "devDependencies": {
+    "@pz/config": "workspace:*",
+    "@types/react": "19.3.0",
+    "@vitest/coverage-v8": "5.0.5",
+    "eslint": "10.14.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.13.0",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  }
+}
