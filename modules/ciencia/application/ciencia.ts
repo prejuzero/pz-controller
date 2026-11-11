@@ -164,6 +164,28 @@ export class RegistrarIndicioDeCiencia<Transacao> {
   }
 }
 
+/**
+ * O prazo aberto no portal ou no app (HU33): indício "visualizado", nunca ciência. Prazo de
+ * outro escritório some pela RLS e responde como inexistente.
+ */
+export class RegistrarVisualizacao<Transacao> {
+  constructor(
+    private readonly unidade: UnidadeDeTrabalho<Transacao>,
+    private readonly ciencia: RepositorioDeCiencia<Transacao>,
+    private readonly prazos: DadosDoPrazo,
+  ) {}
+
+  async executar(p: { tenantId: Uuid; prazoId: Uuid }): Promise<Result<void, NaoEncontrado>> {
+    const prazo = await this.prazos(p.prazoId);
+    if (prazo === undefined)
+      return err(new NaoEncontrado('prazo-inexistente', 'Prazo não encontrado.'));
+    await this.unidade.executar((tx) =>
+      new RegistrarIndicioDeCiencia(this.ciencia).executar(tx, { ...p, estado: 'visualizado' }),
+    );
+    return ok(undefined);
+  }
+}
+
 export type SituacaoDoLink = 'valido' | 'usado' | 'expirado' | 'substituido' | 'invalido';
 
 /**

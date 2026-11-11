@@ -1,10 +1,10 @@
-import { Instant, NaoAutenticado, err, ok } from '@pz/kernel';
+import { Instant, NaoAutenticado, NaoEncontrado, err, ok } from '@pz/kernel';
 import { describe, expect, it } from 'vitest';
 
 import { CienciaController } from './ciencia.controller.js';
 
 import type { RequisicaoAutenticada } from '../http/acesso.js';
-import type { ConfirmarCiencia, ConsultarLinkDeCiencia } from '@pz/ciencia';
+import type { ConfirmarCiencia, ConsultarLinkDeCiencia, RegistrarVisualizacao } from '@pz/ciencia';
 import type { FastifyRequest } from 'fastify';
 
 // Só a ligação HTTP → módulo ciencia (a regra e a segurança são testadas no módulo).
@@ -48,6 +48,7 @@ describe('CienciaController (HU33)', () => {
           return Promise.resolve(ok({ prazoId, confirmadaEm: quando, jaConfirmada: true }));
         },
       } as unknown as ConfirmarCiencia<unknown>,
+      {} as unknown as RegistrarVisualizacao<unknown>,
     );
     expect(await controller.consultarLink({ token: TOKEN })).toEqual({
       situacao: 'usado',
@@ -108,6 +109,7 @@ describe('CienciaController (HU33)', () => {
           });
         },
       } as unknown as ConfirmarCiencia<unknown>,
+      {} as unknown as RegistrarVisualizacao<unknown>,
     );
     const sessao = {
       ip: '203.0.113.8',
@@ -132,5 +134,33 @@ describe('CienciaController (HU33)', () => {
         prazoIds: Array.from({ length: 201 }, () => PRAZO),
       }),
     ).rejects.toThrow();
+  });
+
+  it('visualização: o portal avisa que abriu o prazo; prazo inexistente responde 404', async () => {
+    const pedidos: unknown[] = [];
+    const controller = new CienciaController(
+      {} as unknown as ConsultarLinkDeCiencia<unknown>,
+      {} as unknown as ConfirmarCiencia<unknown>,
+      {
+        executar: (p: { prazoId: string }) => {
+          pedidos.push(p);
+          return Promise.resolve(
+            p.prazoId === PRAZO ? ok(undefined) : err(new NaoEncontrado('prazo-inexistente', 'x')),
+          );
+        },
+      } as unknown as RegistrarVisualizacao<unknown>,
+    );
+    const sessao = {
+      headers: {},
+      autenticacao: { sessao: { tenantId: 't', usuarioId: 'u' } },
+    } as unknown as RequisicaoAutenticada;
+    await controller.registrarVisualizacao(sessao, PRAZO);
+    const outro = '01a10e00-0000-7000-8000-0000000e0102';
+    await expect(controller.registrarVisualizacao(sessao, outro)).rejects.toThrow(NaoEncontrado);
+    await expect(controller.registrarVisualizacao(sessao, 'nao-uuid')).rejects.toThrow();
+    expect(pedidos).toEqual([
+      { tenantId: 't', prazoId: PRAZO },
+      { tenantId: 't', prazoId: outro },
+    ]);
   });
 });

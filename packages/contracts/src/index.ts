@@ -85,6 +85,7 @@ export {
   MAXIMO_DO_LOTE_DE_CIENCIA,
   PedidoComToken,
   PedidoDeCienciaEmLote,
+  registrarVisualizacaoDoPrazo,
   ROTAS_CIENCIA,
 } from './ciencia.js';
 import { ROTAS_NOTIFICACOES } from './notificacoes/index.js';

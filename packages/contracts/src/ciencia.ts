@@ -72,6 +72,18 @@ export const confirmarCiencia = definirRota({
   erros: [404, 409],
 });
 
+export const registrarVisualizacaoDoPrazo = definirRota({
+  id: 'registrarVisualizacaoDoPrazo',
+  metodo: 'post',
+  caminho: '/v1/prazos/{id}/visualizacao',
+  resumo:
+    'Registra que o prazo foi aberto no portal ou no app: só indício (visualizado), nunca ciência.',
+  tag: 'ciencia',
+  parametrosDeCaminho: z.object({ id: Uuid }),
+  resposta: { status: 204, corpo: null },
+  erros: [404],
+});
+
 /** Teto do lote (HU34): 200 confirmações por pedido. */
 export const MAXIMO_DO_LOTE_DE_CIENCIA = 200;
 
@@ -122,4 +134,5 @@ export const ROTAS_CIENCIA = [
   confirmarCienciaPeloLink,
   confirmarCiencia,
   confirmarCienciaEmLote,
+  registrarVisualizacaoDoPrazo,
 ] as const;

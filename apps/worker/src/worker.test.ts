@@ -205,6 +205,7 @@ describe('@Consome e o despachante', () => {
           ['ConsumidorDaCiencia.confirmada', 'ConsumidorDosWebhooks.cienciaConfirmada'],
         ],
         ['NotificacaoEntregue@1', ['ConsumidorDaCiencia.entregue']],
+        ['NotificacaoAberta@1', ['ConsumidorDaCiencia.aberta']],
         [
           'PrazoCancelado@1',
           ['ConsumidorDosLembretes.cancelado', 'ConsumidorDosWebhooks.prazoCancelado'],

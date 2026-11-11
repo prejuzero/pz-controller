@@ -52,6 +52,7 @@ export { CANAIS, chaveDeIdempotencia, TIPOS_DE_NOTIFICACAO } from './domain/noti
 export type {
   Canal,
   MotivoDeRejeicao,
+  NotificacaoAberta,
   NotificacaoEntregue,
   NotificacaoRejeitada,
   NotificacaoSolicitada,

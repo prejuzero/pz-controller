@@ -82,8 +82,13 @@ test('cadastra, confirma, ajusta e cumpre um prazo', async ({ page }) => {
   await novo.getByRole('button', { name: 'Calcular' }).click();
   await expect(novo.getByText(/Vencimento calculado:/)).toBeVisible();
   await semViolacoes(page);
+  // Abrir o detalhe registra o indício "visualizado" (HU33), que não é ciência.
+  const visualizacao = page.waitForResponse(
+    (r) => r.url().endsWith('/visualizacao') && r.request().method() === 'POST',
+  );
   await novo.getByRole('button', { name: 'Salvar prazo' }).click();
   await expect(page.getByText('Prazo cadastrado.')).toBeVisible();
+  expect((await visualizacao).status()).toBe(204);
 
   await expect(page.getByRole('button', { name: 'Abrir o PDF de origem' })).toBeVisible();
   // Sem marcar "Confirmo esta data", nasce "a confirmar"; a confirmação é um passo do advogado.

@@ -4,8 +4,9 @@ import { Botao, EstadoCarregando, SeloStatus } from '@pz/ui';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { useEffect } from 'react';
 
-import { useLinkDoDocumento, usePrazo } from '../../../../api/hooks';
+import { useLinkDoDocumento, usePrazo, useRegistrarVisualizacao } from '../../../../api/hooks';
 import { formatarDataCivil, formatarInstante } from '../../../../i18n/formatar';
 import { EnviarPorEmail } from '../../_casca/enviar-por-email';
 
@@ -37,6 +38,12 @@ const prazoNoTexto = (parametros: unknown) =>
 export function DetalhePrazo({ id }: { id: string }) {
   const t = useTranslations('prazos');
   const prazo = usePrazo(id);
+  const carregado = prazo.data !== undefined;
+  const { mutate: visualizar } = useRegistrarVisualizacao();
+  // Indício "visualizado" (HU33) uma vez por abertura, depois que o prazo aparece na tela.
+  useEffect(() => {
+    if (carregado) visualizar(id);
+  }, [carregado, id, visualizar]);
   if (prazo.data === undefined) return <EstadoCarregando />;
   const p: DetalheDoPrazo = prazo.data;
   const m = comoMemoria(p.memoria);

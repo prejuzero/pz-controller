@@ -73,7 +73,13 @@ import {
   RevogarFeriadoLocal,
 } from '@pz/calendario';
 import { ConsultarStatusDaCaptura, LeituraDoStatusPostgres } from '@pz/captura';
-import { CienciaPostgres, ConfirmarCiencia, ConsultarLinkDeCiencia, TokensHmac } from '@pz/ciencia';
+import {
+  CienciaPostgres,
+  ConfirmarCiencia,
+  ConsultarLinkDeCiencia,
+  RegistrarVisualizacao,
+  TokensHmac,
+} from '@pz/ciencia';
 import {
   AnalisarDocumento,
   AnalisarTexto,
@@ -1389,6 +1395,16 @@ function provedoresDaCiencia(d: DependenciasDaTabelaDePrazos, chave: string): Pr
           d.trilha,
           d.outbox,
           r,
+        ),
+    },
+    {
+      provide: RegistrarVisualizacao,
+      inject: [ConsultarPrazo, ConsultarProcesso],
+      useFactory: (prazos: ConsultarPrazo<unknown>, processos: ConsultarProcesso<unknown>) =>
+        new RegistrarVisualizacao(
+          d.unidade,
+          new CienciaPostgres(),
+          dadosDoPrazo(prazos, processos),
         ),
     },
   ];
