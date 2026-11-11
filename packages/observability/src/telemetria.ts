@@ -157,7 +157,10 @@ export function iniciarTelemetria(opcoes: OpcoesTelemetria): Telemetria {
     tracerProvider: provedorDeTraces,
     meterProvider: provedorDeMetricas,
     instrumentations: [
-      new HttpInstrumentation(),
+      // Rotas com credencial no caminho (feed da agenda, HU50): fora dos traces, que guardam a URL.
+      new HttpInstrumentation({
+        ignoreIncomingRequestHook: (pedido) => credencialNaUrl(pedido.url),
+      }),
       new UndiciInstrumentation(),
       new IORedisInstrumentation(),
       // SQL parametrizado nos traces (driver pg do adaptador Prisma); os valores dos parâmetros
@@ -178,4 +181,11 @@ export function iniciarTelemetria(opcoes: OpcoesTelemetria): Telemetria {
       diag.disable();
     },
   };
+}
+
+/** Caminhos que levam token na URL (as agendas não mandam cabeçalho): nunca em trace nem log. */
+const CAMINHOS_COM_CREDENCIAL = ['/v1/agenda/feed/'];
+
+export function credencialNaUrl(url: string | undefined): boolean {
+  return url !== undefined && CAMINHOS_COM_CREDENCIAL.some((c) => url.startsWith(c));
 }

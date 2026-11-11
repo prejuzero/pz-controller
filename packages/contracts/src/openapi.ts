@@ -68,12 +68,17 @@ function operacao(rota: Rota): Json {
   ]);
   const respostas: Json = {
     [String(rota.resposta.status)]:
-      rota.resposta.corpo === null
-        ? { description: 'Sucesso, sem corpo.' }
-        : {
+      rota.respostaTexto !== undefined
+        ? {
             description: 'Sucesso.',
-            content: { 'application/json': { schema: REF(rota.resposta.corpo.nome) } },
-          },
+            content: { [rota.respostaTexto]: { schema: { type: 'string' } } },
+          }
+        : rota.resposta.corpo === null
+          ? { description: 'Sucesso, sem corpo.' }
+          : {
+              description: 'Sucesso.',
+              content: { 'application/json': { schema: REF(rota.resposta.corpo.nome) } },
+            },
   };
   for (const status of [...erros].sort((a, b) => a - b)) {
     respostas[String(status)] = RESPOSTA_PROBLEMA(DESCRICAO_ERRO[status] ?? 'Erro.');

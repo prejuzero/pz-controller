@@ -30,7 +30,7 @@ export {
 export type { ContextoPropagavel, ExecucaoDeJob } from './propagacao.js';
 export { registrarRotaHttp } from './rota-http.js';
 export { MARCADOR_REMOVIDO, sanitizar, sanitizarTexto } from './sanitizacao.js';
-export { iniciarTelemetria } from './telemetria.js';
+export { credencialNaUrl, iniciarTelemetria } from './telemetria.js';
 export type { OpcoesTelemetria, Telemetria } from './telemetria.js';
 export {
   medirChamadaIa,

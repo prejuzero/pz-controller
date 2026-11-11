@@ -130,6 +130,13 @@ export {
   Relatorios,
   ROTAS_RELATORIOS,
   solicitarRelatorio,
+  AssinaturaCriada,
+  AssinaturaDaAgenda,
+  baixarAgendaIcs,
+  consultarAssinaturaDaAgenda,
+  criarAssinaturaDaAgenda,
+  lerFeedDaAgenda,
+  revogarAssinaturaDaAgenda,
 } from './relatorios.js';
 import { ROTAS_SAUDE } from './saude/index.js';
 import { ROTAS_TERMOS } from './termos.js';

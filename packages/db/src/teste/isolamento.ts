@@ -151,6 +151,10 @@ const COLUNAS_FIXAS: Readonly<Record<string, Record<string, unknown>>> = {
     concluido_em: null,
     expira_em: null,
   },
+  feed_agenda: {
+    token_hash: () => randomBytes(32).toString('hex'),
+    revogado_em: null,
+  },
   nome_monitorado: {
     valor: () => `SOCIEDADE FICTÍCIA ${String(randomInt(1e10, 1e11 - 1))}`,
     removido_em: null,
@@ -293,6 +297,7 @@ export const TABELAS_SEM_DELETE: readonly string[] = [
   'convite_membro',
   'importacao_processo',
   'nome_monitorado',
+  'feed_agenda',
   'compromisso',
   'lembrete_agendado',
   'token_ciencia',

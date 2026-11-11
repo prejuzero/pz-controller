@@ -17,3 +17,11 @@ data, hora, usuário e filtro, rodapé com página) e `RenderizadorXlsx` (ExcelJ
 como novos renderizadores (F2).
 
 O módulo não calcula datas: vencimento, início e fundamento vêm do prazo gravado pelo motor.
+
+## Agenda pessoal .ics (HU50, RF55; decisões do usuário em 09/11/2026)
+
+- **Conteúdo:** prazos abertos (pendentes e a confirmar) com vencimento, do usuário e os sem responsável. Cada um é um evento de dia inteiro no vencimento (a data é a do motor; nenhuma é calculada aqui), com o mínimo: "Prazo: <ato> (a confirmar) · <número do processo>", o aviso de que a data só vale depois de confirmada e o link do portal. Processo sigiloso vira só "Prazo (processo sigiloso)". Nada de partes, teor ou cliente (a agenda fica em servidor de terceiros).
+- **Download:** `GET /v1/agenda/prazos.ics` (`prazos:ler`).
+- **Feed privado:** `POST /v1/agenda/assinatura` cria o endereço (`https://…/v1/agenda/feed/{token}` e `webcal://…`), mostrado uma vez; criar de novo revoga o anterior; `DELETE` revoga. No banco só o hash do token (`feed_agenda`, RLS); a leitura sem sessão usa a função restrita `pz_localizar_feed_agenda` (escritório suspenso ou usuário desativado não leem). Criação e revogação ficam na trilha; cada leitura só atualiza o último acesso.
+- **Token na URL:** as agendas não mandam cabeçalho, então a rota do feed fica fora dos traces (`credencialNaUrl`, observability) e os logs usam só o padrão da rota.
+- Google e Microsoft direto (OAuth nos provedores): "Externo · adiado".

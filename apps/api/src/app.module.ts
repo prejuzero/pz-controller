@@ -231,9 +231,18 @@ import {
 } from '@pz/publicacoes';
 import {
   ConsultarRelatorios,
+  ConsultarFeedDaAgenda,
+  CriarFeedDaAgenda,
+  FeedsPostgres,
+  GerarAgendaIcs,
+  LerFeedDaAgenda,
+  RevogarFeedDaAgenda,
+  tokensDoFeed,
   RelatoriosPostgres,
   SolicitarRelatorio,
+  type FonteDaAgenda,
   type HistoricoVisivel,
+  type RepositorioDeFeeds,
   type RepositorioDeRelatorios,
 } from '@pz/relatorios';
 import { ConsultarSituacao, VerificadorHttp, VerificadorTcp } from '@pz/saude';
@@ -305,6 +314,8 @@ import { processoNoCalendario, processosDoCliente } from './prazos/processo.js';
 import { TabelaPrazosController } from './prazos/tabela-prazos.controller.js';
 import { PrivacidadeController } from './privacidade/privacidade.controller.js';
 import { PublicacoesController } from './publicacoes/publicacoes.controller.js';
+import { AgendaPessoalController } from './relatorios/agenda.controller.js';
+import { fonteDaAgenda } from './relatorios/agenda.js';
 import { RelatoriosController } from './relatorios/relatorios.controller.js';
 import { SaudeController, SondasController } from './saude/saude.controller.js';
 import { DocumentosLegaisController, TermosController } from './termos/termos.controller.js';
@@ -445,6 +456,13 @@ export interface OpcoesApi {
   readonly responsaveisDaEquipe?: ResponsaveisDaEquipe;
   /** Testes: resumo da publicação sem banco (HU62). */
   readonly resumoDaPublicacao?: ResumoDaPublicacaoPorConteudo;
+  /** Testes: agenda (HU50) sem banco. */
+  readonly agenda?: {
+    readonly feeds: RepositorioDeFeeds<unknown>;
+    readonly fonte: FonteDaAgenda;
+    readonly unidade: UnidadeDeTrabalho<unknown>;
+    readonly trilha: TrilhaDeAuditoria<unknown>;
+  };
   /** Testes: catálogo de ferramentas de IA sem banco (HU60). */
   readonly catalogoDeFerramentas?: CatalogoDeFerramentas;
   /** Status da captura (HU19); nos testes, leitura em memória. */
@@ -1596,6 +1614,9 @@ export class AppModule {
           outbox: new OutboxPostgres(),
         };
       });
+    const feedsDaAgenda = opcoes.agenda?.feeds ?? new FeedsPostgres(recursos.banco);
+    const unidadeDaAgenda = opcoes.agenda?.unidade ?? recursos.banco;
+    const trilhaDaAgenda = opcoes.agenda?.trilha ?? new TrilhaPostgres();
     const tabelaDePrazos: DependenciasDaTabelaDePrazos = opcoes.tabelaDePrazos ?? {
       unidade: recursos.banco,
       tipos: new TiposDeAtoPostgres(),
@@ -2028,6 +2049,63 @@ export class AppModule {
             )),
       ),
       {
+        // Agenda pessoal (HU50): .ics e feed privado pelas APIs públicas de busca e cadastro.
+        provide: GerarAgendaIcs,
+        inject: [RELOGIO, Buscar, ConsultarProcesso, ConsultarTabelaDePrazos],
+        useFactory: (
+          relogio: Clock,
+          buscar: Buscar,
+          consultarProcesso: ConsultarProcesso<unknown>,
+          tabela: ConsultarTabelaDePrazos<unknown>,
+        ) =>
+          new GerarAgendaIcs(
+            opcoes.agenda?.fonte ??
+              fonteDaAgenda({
+                buscar,
+                consultarProcesso,
+                tabela,
+                noTenant: (tenantId, trabalho) => noTenantDoBanco(tenantId, trabalho),
+              }),
+            relogio,
+            opcoes.ambiente.PORTAL_URL,
+          ),
+      },
+      {
+        provide: ConsultarFeedDaAgenda,
+        useFactory: () => new ConsultarFeedDaAgenda(unidadeDaAgenda, feedsDaAgenda),
+      },
+      {
+        provide: CriarFeedDaAgenda,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new CriarFeedDaAgenda(
+            unidadeDaAgenda,
+            feedsDaAgenda,
+            tokensDoFeed,
+            trilhaDaAgenda,
+            relogio,
+          ),
+      },
+      {
+        provide: RevogarFeedDaAgenda,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new RevogarFeedDaAgenda(unidadeDaAgenda, feedsDaAgenda, trilhaDaAgenda, relogio),
+      },
+      {
+        provide: LerFeedDaAgenda,
+        inject: [RELOGIO, GerarAgendaIcs],
+        useFactory: (relogio: Clock, gerar: GerarAgendaIcs) =>
+          new LerFeedDaAgenda(
+            unidadeDaAgenda,
+            feedsDaAgenda,
+            tokensDoFeed,
+            (tenantId, trabalho) => noTenantDoBanco(tenantId, trabalho),
+            gerar,
+            relogio,
+          ),
+      },
+      {
         // Catálogo de ferramentas de IA (HU59): leitura pelas APIs públicas, auditada no tenant.
         provide: CatalogoDeFerramentas,
         inject: [Buscar, ConsultarProcesso, CadastrarPrazoManual, ConsultarPrazo],
@@ -2089,6 +2167,7 @@ export class AppModule {
         BuscaController,
         AgendaController,
         RelatoriosController,
+        AgendaPessoalController,
         HistoricoController,
         EnviosController,
         ConferenciasController,

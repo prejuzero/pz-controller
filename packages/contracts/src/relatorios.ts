@@ -111,4 +111,87 @@ export const consultarRelatorio = definirRota({
   erros: [404],
 });
 
-export const ROTAS_RELATORIOS = [solicitarRelatorio, listarRelatorios, consultarRelatorio] as const;
+/** Assinatura da agenda pessoal (HU50): feed privado .ics por token, revogável. */
+export const AssinaturaDaAgenda = nomear(
+  'AssinaturaDaAgenda',
+  z.object({
+    ativa: z.boolean(),
+    criadaEm: Instante.nullable(),
+    ultimoAcesso: Instante.nullable().describe('Última vez que a agenda buscou o feed.'),
+  }),
+);
+export type AssinaturaDaAgenda = z.infer<typeof AssinaturaDaAgenda.esquema>;
+
+export const AssinaturaCriada = nomear(
+  'AssinaturaCriada',
+  z.object({
+    url: z.url().describe('Endereço https do feed (mostrado uma vez; guarde como senha).'),
+    webcal: z.string().describe('O mesmo endereço com webcal:// (abre a agenda do aparelho).'),
+    criadaEm: Instante,
+  }),
+);
+export type AssinaturaCriada = z.infer<typeof AssinaturaCriada.esquema>;
+
+export const consultarAssinaturaDaAgenda = definirRota({
+  id: 'consultarAssinaturaDaAgenda',
+  metodo: 'get',
+  caminho: '/v1/agenda/assinatura',
+  resumo: 'Situação do feed privado da agenda do usuário.',
+  tag: 'agenda',
+  resposta: { status: 200, corpo: AssinaturaDaAgenda },
+});
+
+export const criarAssinaturaDaAgenda = definirRota({
+  id: 'criarAssinaturaDaAgenda',
+  metodo: 'post',
+  caminho: '/v1/agenda/assinatura',
+  resumo:
+    'Cria o feed privado da agenda (revoga o anterior); o endereço só aparece nesta resposta.',
+  tag: 'agenda',
+  resposta: { status: 201, corpo: AssinaturaCriada },
+});
+
+export const revogarAssinaturaDaAgenda = definirRota({
+  id: 'revogarAssinaturaDaAgenda',
+  metodo: 'delete',
+  caminho: '/v1/agenda/assinatura',
+  resumo: 'Revoga o feed privado: a agenda deixa de receber os prazos.',
+  tag: 'agenda',
+  resposta: { status: 204, corpo: null },
+  erros: [404],
+});
+
+export const baixarAgendaIcs = definirRota({
+  id: 'baixarAgendaIcs',
+  metodo: 'get',
+  caminho: '/v1/agenda/prazos.ics',
+  resumo: 'Os prazos abertos do usuário em iCalendar (RFC 5545), para importar na agenda.',
+  tag: 'agenda',
+  respostaTexto: 'text/calendar',
+  resposta: { status: 200, corpo: null },
+});
+
+export const lerFeedDaAgenda = definirRota({
+  id: 'lerFeedDaAgenda',
+  metodo: 'get',
+  caminho: '/v1/agenda/feed/{token}',
+  resumo:
+    'Feed privado lido pela agenda (sem sessão): o token é a credencial. Dados mínimos (sigilo profissional).',
+  tag: 'agenda',
+  publica: true,
+  parametrosDeCaminho: z.object({ token: z.string().min(20).max(200) }),
+  respostaTexto: 'text/calendar',
+  resposta: { status: 200, corpo: null },
+  erros: [404, 429],
+});
+
+export const ROTAS_RELATORIOS = [
+  consultarAssinaturaDaAgenda,
+  criarAssinaturaDaAgenda,
+  revogarAssinaturaDaAgenda,
+  baixarAgendaIcs,
+  lerFeedDaAgenda,
+  solicitarRelatorio,
+  listarRelatorios,
+  consultarRelatorio,
+] as const;

@@ -81,6 +81,8 @@ export const TIPOS_DE_AUDITORIA = [
   'relatorios.exportacao-solicitada',
   'relatorios.exportacao-gerada',
   'relatorios.exportacao-falhou',
+  'relatorios.feed-agenda-criado',
+  'relatorios.feed-agenda-revogado',
   'notificacoes.envio-manual-solicitado',
   'notificacoes.envio-manual-falhou',
 ] as const;

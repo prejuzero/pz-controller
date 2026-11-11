@@ -4,8 +4,10 @@ import { subirBancoDeTeste } from '@pz/db/teste';
 import { FixedClock, Instant } from '@pz/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { CriarFeedDaAgenda, LerFeedDaAgenda, GerarAgendaIcs } from '../application/agenda.js';
 import { SolicitarRelatorio } from '../application/relatorios.js';
 
+import { FeedsPostgres, tokensDoFeed } from './feeds-postgres.js';
 import { RelatoriosPostgres } from './relatorios-postgres.js';
 
 import type { Transacao } from '@pz/db';
@@ -120,6 +122,61 @@ describe('RelatoriosPostgres (HU29)', () => {
       ),
     ).toEqual([]);
     expect((await noTenant(A, (tx) => repo.buscar(tx, id)))?.arquivoRemovidoEm).toBeDefined();
+    await sistema.encerrar();
+  });
+});
+
+describe('FeedsPostgres (HU50)', () => {
+  it('só o hash no banco, leitura pela função restrita, isolamento e escritório suspenso', async () => {
+    const sistema = new BancoSistema({ url: postgres.url('pz_sistema') });
+    await sistema.executarComoSistema('preparar', (tx) =>
+      tx.usuario.create({
+        data: { id: ANA, tenantId: A, nome: 'Ana (fictícia)', email: 'ana.feed@exemplo.invalid' },
+      }),
+    );
+    const feeds = new FeedsPostgres(banco);
+    const unidade = { executar: <T>(t: (tx: Transacao) => Promise<T>) => noTenant(A, t) };
+    const criar = new CriarFeedDaAgenda(
+      unidade,
+      feeds,
+      tokensDoFeed,
+      new TrilhaPostgres(),
+      relogio,
+    );
+    const { token } = await criar.executar({ tenantId: A, usuarioId: ANA, canal: 'portal' });
+    const ler = new LerFeedDaAgenda(
+      banco,
+      feeds,
+      tokensDoFeed,
+      (tenant, trabalho) => executarNoTenant(tenant, trabalho),
+      new GerarAgendaIcs(
+        { prazosAbertos: () => Promise.resolve([]) },
+        relogio,
+        'https://p.invalid',
+      ),
+      relogio,
+    );
+    const lido = await ler.executar(token);
+    expect(lido.ok && lido.valor).toContain('BEGIN:VCALENDAR');
+    const gravado = await sistema.executarComoSistema('conferir', (tx) =>
+      tx.feedAgenda.findFirstOrThrow({ where: { usuarioId: ANA } }),
+    );
+    expect(gravado.tokenHash).toBe(tokensDoFeed.hash(token));
+    expect(gravado.ultimoAcesso).not.toBeNull();
+    // Outro escritório não vê o feed (RLS).
+    expect(await noTenant(B, (tx) => feeds.ativo(tx, ANA))).toBeUndefined();
+    // Escritório suspenso: o feed para de responder.
+    await sistema.executarComoSistema('suspender', (tx) =>
+      tx.tenant.update({
+        where: { id: A },
+        data: { suspensoEm: new Date(), motivoSuspensao: 'teste fictício' },
+      }),
+    );
+    expect((await ler.executar(token)).ok).toBe(false);
+    await sistema.executarComoSistema('reativar', (tx) =>
+      tx.tenant.update({ where: { id: A }, data: { suspensoEm: null, motivoSuspensao: null } }),
+    );
+    await expect(noTenant(A, (tx) => tx.feedAgenda.deleteMany({}))).rejects.toThrow();
     await sistema.encerrar();
   });
 });
