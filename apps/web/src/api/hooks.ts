@@ -256,6 +256,12 @@ export const useAnalisarPdf = () => useMutation(useMutacoesPrazos().analisarPdf)
 export const useLinkDoDocumento = () => useMutation(useMutacoesPrazos().linkDoDocumento);
 
 /** Relatórios (HU29): lista recente (com nova consulta enquanto houver pendente) e pedido. */
+export const useAssinaturaDaAgenda = () =>
+  useQuery(consultasRelatorios(useApi()).assinaturaDaAgenda());
+export const useAssinarAgenda = () =>
+  useMutation(mutacoesRelatorios(useApi(), useQueryClient()).assinarAgenda);
+export const useRevogarAgenda = () =>
+  useMutation(mutacoesRelatorios(useApi(), useQueryClient()).revogarAgenda);
 export const useRelatorios = (ativa = true) =>
   useQuery({ ...consultasRelatorios(useApi()).lista(), enabled: ativa });
 export const useSolicitarRelatorio = () =>

@@ -272,7 +272,9 @@
     "equipe": "Equipe",
     "equipeDescricao": "Convide advogados e colaboradores e defina o que cada um pode fazer.",
     "nomesMonitorados": "Nomes monitorados",
-    "nomesMonitoradosDescricao": "Razão social e nomes do escritório buscados nas publicações."
+    "nomesMonitoradosDescricao": "Razão social e nomes do escritório buscados nas publicações.",
+    "agenda": "Agenda",
+    "agendaDescricao": "Seus prazos na agenda do celular ou do computador."
   },
   "cadastro": {
     "titulo": "Criar conta",
@@ -1550,5 +1552,26 @@
     "removerDescricao": "As publicações já recebidas continuam no portal; as novas com este nome deixam de ser buscadas.",
     "cancelar": "Cancelar",
     "removido": "Nome removido do monitoramento."
+  },
+  "agendaPessoal": {
+    "titulo": "Agenda",
+    "descricao": "Leve seus prazos abertos (e os do escritório sem responsável) para a agenda que você já usa. Cada evento mostra só o ato, a situação, o número do processo e o link para o PrejuZero; processos sigilosos aparecem só como \"Prazo (processo sigiloso)\". As datas vêm do motor de prazos e só valem depois de confirmadas no portal.",
+    "baixarTitulo": "Baixar agora",
+    "baixarDescricao": "Um arquivo .ics com os prazos de hoje, para importar uma vez. Não atualiza sozinho.",
+    "baixar": "Baixar .ics",
+    "assinarTitulo": "Assinar (atualiza sozinho)",
+    "assinarDescricao": "Um endereço privado que a agenda (Google, Apple, Outlook) consulta de tempos em tempos. Quem tiver o endereço vê esses dados mínimos: trate-o como senha e revogue se vazar.",
+    "ativa": "Assinatura criada em {quando}.",
+    "nuncaLida": "A agenda ainda não buscou os prazos.",
+    "lidaEm": "Última busca da agenda: {quando}.",
+    "copieAgora": "Copie o endereço agora: ele não aparece de novo.",
+    "endereco": "Endereço da assinatura",
+    "copiar": "Copiar endereço",
+    "copiado": "Endereço copiado.",
+    "abrirNaAgenda": "Abrir na agenda deste aparelho",
+    "gerar": "Gerar endereço",
+    "gerarNovo": "Gerar novo endereço (o atual deixa de funcionar)",
+    "revogar": "Revogar assinatura",
+    "revogada": "Assinatura revogada."
   }
 }

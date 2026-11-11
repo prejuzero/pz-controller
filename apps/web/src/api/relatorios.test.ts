@@ -40,4 +40,36 @@ describe('relatórios (HU29)', () => {
       'POST /v1/relatorios {"tipo":"agenda","formato":"pdf","filtros":{"de":"2026-11-01","ate":"2026-11-30"}}',
     ]);
   });
+
+  it('agenda (HU50): situação, assinar e revogar atualizam a situação', async () => {
+    const rotas: string[] = [];
+    const api = criarCliente({
+      baseUrl: 'http://api.local',
+      lerCookies: () => '',
+      fetch: (requisicao) => {
+        rotas.push(`${requisicao.method} ${new URL(requisicao.url).pathname}`);
+        return Promise.resolve(
+          requisicao.method === 'DELETE'
+            ? new Response(null, { status: 204 })
+            : Response.json({ ativa: false }, { status: requisicao.method === 'POST' ? 201 : 200 }),
+        );
+      },
+    });
+    const cache = new QueryClient();
+    await consultasRelatorios(api)
+      .assinaturaDaAgenda()
+      .queryFn?.({ signal: new AbortController().signal } as never);
+    const m = mutacoesRelatorios(api, cache);
+    for (const mutacao of [m.assinarAgenda, m.revogarAgenda]) {
+      cache.setQueryData(chaves.assinaturaDaAgenda, {});
+      await mutacao.mutationFn();
+      await mutacao.onSuccess();
+      expect(cache.getQueryState(chaves.assinaturaDaAgenda)?.isInvalidated).toBe(true);
+    }
+    expect(rotas).toEqual([
+      'GET /v1/agenda/assinatura',
+      'POST /v1/agenda/assinatura',
+      'DELETE /v1/agenda/assinatura',
+    ]);
+  });
 });

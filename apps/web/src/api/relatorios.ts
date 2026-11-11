@@ -17,11 +17,28 @@ export const consultasRelatorios = (api: ClienteApi) => ({
       refetchInterval: (consulta) =>
         consulta.state.data?.itens.some((r) => r.situacao === 'pendente') === true ? 4_000 : false,
     }),
+  /** Feed privado da agenda (HU50): só a situação; o endereço aparece uma vez, na criação. */
+  assinaturaDaAgenda: () =>
+    queryOptions({
+      queryKey: chaves.assinaturaDaAgenda,
+      queryFn: ({ signal }) => exigir(api.GET('/v1/agenda/assinatura', { signal })),
+    }),
 });
+
+/** Download do .ics pela sessão do navegador (mesma origem, GET sem CSRF). */
+export const ROTA_DO_ICS = '/v1/agenda/prazos.ics';
 
 export const mutacoesRelatorios = (api: ClienteApi, cache: QueryClient) => ({
   solicitar: {
     mutationFn: (pedido: PedidoDeRelatorio) => exigir(api.POST('/v1/relatorios', { body: pedido })),
     onSuccess: () => cache.invalidateQueries({ queryKey: chaves.relatorios.todas }),
+  },
+  assinarAgenda: {
+    mutationFn: () => exigir(api.POST('/v1/agenda/assinatura')),
+    onSuccess: () => cache.invalidateQueries({ queryKey: chaves.assinaturaDaAgenda }),
+  },
+  revogarAgenda: {
+    mutationFn: () => exigir(api.DELETE('/v1/agenda/assinatura')),
+    onSuccess: () => cache.invalidateQueries({ queryKey: chaves.assinaturaDaAgenda }),
   },
 });
