@@ -67,7 +67,13 @@ import {
   TaxonomiaPostgres,
 } from '@pz/classificacao';
 import { Banco, BancoSistema, executarNoTenant, OutboxPostgres } from '@pz/db';
-import { comProvedorAlternativo, configuracaoPadrao, PlataformaIa, promptsPadrao } from '@pz/ia';
+import {
+  comProvedorAlternativo,
+  configuracaoPadrao,
+  escolherProvedorIa,
+  PlataformaIa,
+  promptsPadrao,
+} from '@pz/ia';
 import {
   EmailsDosUsuariosPostgres,
   DadosDosConvitesPostgres,
@@ -225,6 +231,7 @@ import type { ProtecaoDeCampos } from '@pz/cadastro';
 import type { CacheDeDiasNaoUteis } from '@pz/calendario';
 import type { ClassificadorIa, InstrucaoEmbutida, Resumidor } from '@pz/classificacao';
 import type { Transacao } from '@pz/db';
+import type { AmbienteDaIa } from '@pz/ia';
 import type {
   ArmazenamentoArquivos,
   EntregadorWebhook,
@@ -434,39 +441,9 @@ function fonteDoAmbiente(
   return registro.obter('fonte-publicacoes');
 }
 
-/**
- * Provedor de IA do ambiente: Anthropic (padrão do produto) ou, só na validação local com dados
- * fictícios, o Gemini (ADR-022). Nenhum dos dois: `undefined` e a IA fica desligada.
- */
-export function provedorIaDoAmbiente(
-  ambiente: Pick<
-    AmbienteWorker,
-    'ANTHROPIC_API_KEY' | 'GEMINI_API_KEY' | 'GEMINI_MODELO' | 'IA_DADOS_FICTICIOS'
-  >,
-):
-  | { tipo: 'anthropic'; chave: string }
-  | { tipo: 'gemini'; chave: string; modelo: string }
-  | undefined {
-  if (ambiente.ANTHROPIC_API_KEY !== undefined) {
-    return { tipo: 'anthropic', chave: ambiente.ANTHROPIC_API_KEY };
-  }
-  if (ambiente.GEMINI_API_KEY === undefined) {
-    logger.warn('sem chave de IA: classificação por IA desligada (só regras rápidas)');
-    return undefined;
-  }
-  if (ambiente.IA_DADOS_FICTICIOS !== 'sim') {
-    // Plano gratuito pode treinar com o conteúdo: sem a declaração, não liga (CLAUDE.md, 11).
-    logger.warn(
-      'GEMINI_API_KEY sem IA_DADOS_FICTICIOS=sim: Gemini não ligado (só com dados fictícios)',
-    );
-    return undefined;
-  }
-  logger.warn(
-    { modelo: ambiente.GEMINI_MODELO },
-    'IA pelo Gemini (ADR-022): só para validação local com dados fictícios',
-  );
-  return { tipo: 'gemini', chave: ambiente.GEMINI_API_KEY, modelo: ambiente.GEMINI_MODELO };
-}
+/** Provedor de IA do ambiente (ADR-022): a escolha e a trava do Gemini ficam no @pz/ia. */
+export const provedorIaDoAmbiente = (ambiente: AmbienteDaIa) =>
+  escolherProvedorIa(ambiente, logger);
 
 /** Adaptador e configuração das tarefas do provedor escolhido (ADR-022 no caso do Gemini). */
 export function planoDeIa(

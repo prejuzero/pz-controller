@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 import { autenticacao, validar } from '../auth/auth.controller.js';
 import { RequerPermissao } from '../http/acesso.js';
+import { LimitarPorUsuario } from '../http/limite.js';
 
 import type { RequisicaoAutenticada } from '../http/acesso.js';
 import type { Classificacao } from '@pz/classificacao';
@@ -66,6 +67,9 @@ export class CompromissosController {
 
 const PedidoDeAnalise = z.object({ texto: z.string().trim().min(1).max(50_000) }).strict();
 
+/** Chamadas por minuto e usuário ao cadastro assistido: limita o custo da IA (PZ-337). */
+const ANALISES_POR_MINUTO = 20;
+
 /** Cadastro assistido (HU25): sugere ato e prazo citado do texto colado; nada é gravado. */
 @Controller('v1/assistente')
 export class AssistenteController {
@@ -76,6 +80,7 @@ export class AssistenteController {
 
   @Post('pdf')
   @RequerPermissao('prazos:ler')
+  @LimitarPorUsuario(ANALISES_POR_MINUTO, 60_000)
   @HttpCode(200)
   async analisarPdf(
     @Req() requisicao: RequisicaoAutenticada,
@@ -94,6 +99,7 @@ export class AssistenteController {
 
   @Post('analisar')
   @RequerPermissao('prazos:ler')
+  @LimitarPorUsuario(ANALISES_POR_MINUTO, 60_000)
   @HttpCode(200)
   async analisarTexto(
     @Req() requisicao: RequisicaoAutenticada,

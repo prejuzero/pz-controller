@@ -3,6 +3,7 @@ import {
   esquemaBanco,
   esquemaBase,
   esquemaEmail,
+  esquemaIa,
   esquemaObservabilidade,
   esquemaRedis,
   esquemaSmtp,
@@ -18,6 +19,7 @@ export const esquemaWorker = esquemaBase
   .extend(esquemaRedis.shape)
   .extend(esquemaArmazenamento.shape)
   .extend(esquemaSmtp.shape)
+  .extend(esquemaIa.shape)
   .extend(esquemaEmail.shape)
   .extend({
     /** Papel pz_sistema (BYPASSRLS): relay do outbox e jobs globais (ADR-003). */
@@ -73,27 +75,6 @@ export const esquemaWorker = esquemaBase
       .int()
       .min(0)
       .default(10 * 60_000),
-    /**
-     * Chave da API da Anthropic (HU21). Ausente: a IA fica desligada e as publicações que as
-     * regras rápidas não classificam ficam "a confirmar" (decisão de 08/10/2026: sem custo até
-     * validar o produto).
-     */
-    ANTHROPIC_API_KEY: z.string().min(1).optional(),
-    /**
-     * Provedor alternativo da validação local (ADR-022): Google Gemini por chave gratuita e
-     * limitada. Só liga com IA_DADOS_FICTICIOS=sim, porque o plano gratuito pode usar o conteúdo
-     * para treino e dados de clientes nunca podem ir para lá (CLAUDE.md, seção 11). A Anthropic,
-     * se configurada, tem preferência.
-     */
-    GEMINI_API_KEY: z.string().min(1).optional(),
-    GEMINI_MODELO: z.string().min(1).default('gemini-3.5-flash'),
-    /** Declaração de quem liga o Gemini: o banco local só tem dados fictícios. */
-    IA_DADOS_FICTICIOS: z.enum(['sim', 'nao']).default('nao'),
-    /**
-     * Orçamento diário de IA da plataforma em US$ (HU21), pelo custo estimado de tabela. Acima
-     * dele, alerta uma vez por dia; não bloqueia (o bloqueio é o orçamento mensal por tarefa).
-     */
-    IA_ORCAMENTO_DIARIO_USD: z.coerce.number().positive().default(20),
     /** Adaptador de FontePublicacoes (ADR-005): trocar de fonte é configuração. */
     CAPTURA_FONTE: z.enum(['djen']).default('djen'),
     /**

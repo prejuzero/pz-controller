@@ -35,6 +35,31 @@ export const esquemaRedis = z.object({
   REDIS_URL: z.url({ protocol: /^rediss?$/ }),
 });
 
+/** Provedor de IA (HU21, ADR-022), o mesmo na API (cadastro assistido) e no worker. */
+export const esquemaIa = z.object({
+  /**
+   * Chave da API da Anthropic (HU21). Ausente: a IA fica desligada e as publicações que as
+   * regras rápidas não classificam ficam "a confirmar" (decisão de 08/10/2026: sem custo até
+   * validar o produto).
+   */
+  ANTHROPIC_API_KEY: opcional(z.string().min(1)),
+  /**
+   * Provedor alternativo da validação local (ADR-022): Google Gemini por chave gratuita e
+   * limitada. Só liga com IA_DADOS_FICTICIOS=sim, porque o plano gratuito pode usar o conteúdo
+   * para treino e dados de clientes nunca podem ir para lá (CLAUDE.md, seção 11). A Anthropic,
+   * se configurada, tem preferência.
+   */
+  GEMINI_API_KEY: opcional(z.string().min(1)),
+  GEMINI_MODELO: z.string().min(1).default('gemini-3.5-flash'),
+  /** Declaração de quem liga o Gemini: o banco local só tem dados fictícios. */
+  IA_DADOS_FICTICIOS: z.enum(['sim', 'nao']).default('nao'),
+  /**
+   * Orçamento diário de IA da plataforma em US$ (HU21), pelo custo estimado de tabela. Acima
+   * dele, alerta uma vez por dia; não bloqueia (o bloqueio é o orçamento mensal por tarefa).
+   */
+  IA_ORCAMENTO_DIARIO_USD: z.coerce.number().positive().default(20),
+});
+
 export const esquemaArmazenamento = z.object({
   /** Vazio em produção na AWS; preenchido para RustFS local ou outro S3-compatível. */
   S3_ENDPOINT: z.url({ protocol: /^https?$/ }).optional(),

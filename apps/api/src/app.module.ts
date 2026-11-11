@@ -293,6 +293,7 @@ import { ProcessosController } from './cadastro/processos.controller.js';
 import { CalendarioController } from './calendario/calendario.controller.js';
 import { CapturaController } from './captura/captura.controller.js';
 import { CienciaController } from './ciencia/ciencia.controller.js';
+import { classificadorIaDoAmbiente } from './classificacao/ia.js';
 import { EquipeController } from './equipe/equipe.controller.js';
 import {
   AMBIENTE,
@@ -360,7 +361,7 @@ import type {
   RepositorioDeFeriadosLocais,
 } from '@pz/calendario';
 import type { LeituraDoStatus } from '@pz/captura';
-import type { ConsultaDaRevisaoManual } from '@pz/classificacao';
+import type { ClassificadorIa, ConsultaDaRevisaoManual } from '@pz/classificacao';
 import type { Transacao } from '@pz/db';
 import type {
   Email,
@@ -463,6 +464,8 @@ export interface OpcoesApi {
   readonly tabelaDePrazos?: DependenciasDaTabelaDePrazos;
   /** Testes: membros que podem receber prazos (HU41), sem banco. */
   readonly responsaveisDaEquipe?: ResponsaveisDaEquipe;
+  /** Testes: IA do cadastro assistido (PZ-337); `null` desliga sem ler o ambiente. */
+  readonly ia?: ClassificadorIa | null;
   /** Testes: resumo da publicação sem banco (HU62). */
   readonly resumoDaPublicacao?: ResumoDaPublicacaoPorConteudo;
   /** Testes: agenda (HU50) sem banco. */
@@ -910,12 +913,14 @@ function provedoresDosPrazos(
   d: DependenciasDaTabelaDePrazos,
   arquivos: ArmazenamentoArquivos,
   responsaveis: ResponsaveisDaEquipe,
+  ia: ClassificadorIa | undefined,
 ): Provider[] {
   const prazos = new PrazosPostgres();
   const analisarTexto = new AnalisarTexto({
     unidade: d.unidade,
     regras: new RegrasPostgres(),
     taxonomia: new TaxonomiaPostgres(),
+    ...(ia === undefined ? {} : { ia }),
   });
   const deps = (relogio: Clock) => ({
     unidade: d.unidade,
@@ -930,7 +935,7 @@ function provedoresDosPrazos(
     useFactory: criar,
   });
   return [
-    // Compromissos (HU25) e cadastro assistido por texto (regras rápidas; a IA na API é pendência).
+    // Compromissos (HU25) e cadastro assistido: regras rápidas e, com provedor, a IA (PZ-337).
     {
       provide: ListarCompromissos,
       useValue: new ListarCompromissos(d.unidade, new CompromissosPostgres()),
@@ -2068,6 +2073,15 @@ export class AppModule {
             recursos.banco.executar((tx) =>
               new UsuariosComPermissaoPostgres().membros(tx, 'prazos:ler'),
             )),
+        opcoes.ia !== undefined
+          ? (opcoes.ia ?? undefined)
+          : classificadorIaDoAmbiente(
+              opcoes.ambiente,
+              recursos.banco,
+              recursos.redis,
+              new SystemClock(),
+              [],
+            ),
       ),
       {
         // Regras rápidas pela curadoria (PZ-313): versões globais, auditadas no tenant da curadoria.
