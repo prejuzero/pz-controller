@@ -39,11 +39,15 @@ const PADROES = [
 // Falsos positivos conhecidos (PZ-155): prazo já vencido, tempo passado, pena, idade. Não são
 // prazo para a parte; descartá-los evita sugerir prazo inexistente.
 const ESGOTADO = '(?:decorrid|transcorrid|escoad|esgotad|expirad|findo|finda)';
+// PZ-323 (publicações reais do DJEN): valor de aluguel, validade de documento, restituição
+// fixada em tese ou pedida pela parte, prazo contado para trás ("até 10 dias antes") e prazo do
+// perito ou de outro auxiliar também não são prazo da parte.
 const DEPOIS_DESCARTA = new RegExp(
-  `^(?:-multa|\\s*,?\\s*(?:ja\\s+)?${ESGOTADO}|(?:\\s+e\\s+[^.;,]{1,30}?)?\\s+de\\s+(?:reclusao|detencao|prisao|idade)\\b)`,
+  `^(?:-multa|\\s*,?\\s*(?:ja\\s+)?${ESGOTADO}|(?:\\s+e\\s+[^.;,]{1,30}?)?\\s+de\\s+(?:reclusao|detencao|prisao|idade|alugue(?:l|is|res))\\b|\\s+antes\\b)`,
 );
+const AUXILIAR = '(?:perit[oa]|leiloeir[oa]|depositari[oa]|assistente\\s+tecnico)';
 const ANTES_DESCARTA = new RegExp(
-  `(?:\\bha\\s+|\\b(?:decorreu|transcorreu|escoou|esgotou|expirou)\\b[^.;]{0,20}?\\bo\\s+prazo\\s+de\\s+)$`,
+  `(?:\\bha\\s+|\\b(?:decorreu|transcorreu|escoou|esgotou|expirou)\\b[^.;]{0,20}?\\bo\\s+prazo\\s+de\\s+|\\b(?:validade|valid[oa]s?\\s+por|vigencia)\\b[^.;,]{0,15}|\\b(?:restituic|devoluc)[a-z]*\\b[^.;,]{0,20}|\\b(?:intime-se|intimem-se|notifique-se)\\s+o\\s+(?:sr\\.?\\s+)?${AUXILIAR}\\b[^.;]{0,60})$`,
 );
 
 const descartavel = (texto: string, inicio: number, fim: number): boolean =>
