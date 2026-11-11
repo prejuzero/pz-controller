@@ -369,6 +369,9 @@ function emailDoAmbiente(
           tls: false,
           exigirStartTls: ambiente.SMTP_EXIGIR_TLS,
           remetente: ambiente.EMAIL_REMETENTE,
+          ...(ambiente.SMTP_USUARIO === undefined || ambiente.SMTP_SENHA === undefined
+            ? {}
+            : { usuario: ambiente.SMTP_USUARIO, senha: ambiente.SMTP_SENHA }),
         },
         relogio,
       ),
