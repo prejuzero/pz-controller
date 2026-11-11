@@ -32,6 +32,8 @@ export const chaves = {
     conferencias: () => [...chaves.processos.todas, 'conferencias'] as const,
     importacao: (id: string) => [...chaves.processos.todas, 'importacao', id] as const,
   },
+  /** Feed privado da agenda pessoal (HU50). */
+  assinaturaDaAgenda: ['assinaturaDaAgenda'] as const,
   /** Nomes do escritório monitorados na captura (HU42). */
   nomesMonitorados: ['nomesMonitorados'] as const,
   tabelaPrazos: {

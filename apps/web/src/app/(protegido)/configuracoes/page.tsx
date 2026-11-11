@@ -21,6 +21,13 @@ export default async function PaginaConfiguracoes() {
       <ul className="divide-y divide-borda rounded-md border border-borda">
         <Item href="/configuracoes/perfil" titulo={t('perfil')} descricao={t('perfilDescricao')} />
         <Item href="/configuracoes/oabs" titulo={t('oabs')} descricao={t('oabsDescricao')} />
+        <SePermitido permissao="prazos:ler">
+          <Item
+            href="/configuracoes/agenda"
+            titulo={t('agenda')}
+            descricao={t('agendaDescricao')}
+          />
+        </SePermitido>
         <Item href={ROTA_SEGURANCA} titulo={t('seguranca')} descricao={t('segurancaDescricao')} />
         <Item
           href="/configuracoes/notificacoes"
