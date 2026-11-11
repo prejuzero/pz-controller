@@ -34,6 +34,8 @@ export const chaves = {
   },
   /** Regras rápidas da classificação (PZ-313). */
   regrasDeClassificacao: ['regrasDeClassificacao'] as const,
+  /** Revisão manual e casos candidatos da classificação (PZ-336). */
+  curadoriaClassificacao: { todas: ['curadoriaClassificacao'] as const },
   /** Feed privado da agenda pessoal (HU50). */
   assinaturaDaAgenda: ['assinaturaDaAgenda'] as const,
   /** Nomes do escritório monitorados na captura (HU42). */

@@ -11,6 +11,10 @@ import { consultasCadastro, mutacoesCadastro } from './cadastro';
 import { consultasCalendario, mutacoesCalendario } from './calendario';
 import { consultasCaptura } from './captura';
 import { mutacoesCiencia } from './ciencia';
+import {
+  consultasCuradoriaClassificacao,
+  mutacoesCuradoriaClassificacao,
+} from './curadoria-classificacao';
 import { consultasEquipe, mutacoesEquipe } from './equipe';
 import { consultasHistorico } from './historico';
 import {
@@ -105,6 +109,13 @@ function useMutacoesTabelaPrazos() {
 
 export const useTiposDeAto = () => useQuery(consultasTabelaPrazos(useApi()).tiposDeAto());
 export const useRegrasDeClassificacao = () => useQuery(consultasTabelaPrazos(useApi()).regras());
+export const useRevisaoManual = () =>
+  useQuery(consultasCuradoriaClassificacao(useApi()).revisaoManual());
+export const useCasosCandidatos = () =>
+  useQuery(consultasCuradoriaClassificacao(useApi()).candidatosPendentes());
+const useMutacoesCuradoria = () => mutacoesCuradoriaClassificacao(useApi(), useQueryClient());
+export const useDecidirCaso = () => useMutation(useMutacoesCuradoria().decidir);
+export const useExportarCasos = () => useMutation(useMutacoesCuradoria().exportar);
 function useMutacoesRegras() {
   return mutacoesRegras(useApi(), useQueryClient());
 }
