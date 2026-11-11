@@ -17,7 +17,7 @@ const NO_ALERTA = 10;
  */
 export function AlertaDeCiencia() {
   const t = useTranslations('ciencia.alerta');
-  const permitido = usePermissao('prazos:confirmar') === true;
+  const permitido = usePermissao('ciencia:confirmar') === true;
   const [fechado, setFechado] = useState(false);
   const [acabouDeEntrar] = useState(consumirEntrada);
   const prazos = usePrazos({ recorte: 'sem-ciencia' }, permitido && acabouDeEntrar);

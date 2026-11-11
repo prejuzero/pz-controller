@@ -11,6 +11,10 @@ export const CATALOGO_DE_PERMISSOES = {
   },
   'prazos:ler': { descricao: 'Consultar prazos e a memória de cálculo.', leitura: true },
   'prazos:confirmar': { descricao: 'Confirmar prazos sugeridos.', leitura: false },
+  'ciencia:confirmar': {
+    descricao: 'Confirmar a ciência de prazos (HU68), no portal ou no app.',
+    leitura: false,
+  },
   'prazos:ajustar': { descricao: 'Ajustar a data de um prazo, com justificativa.', leitura: false },
   'prazos:distribuir': {
     descricao: 'Delegar prazos a outros membros da equipe (HU41).',

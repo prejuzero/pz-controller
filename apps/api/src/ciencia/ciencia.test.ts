@@ -1,7 +1,7 @@
 import { Instant, NaoAutenticado, NaoEncontrado, err, ok } from '@pz/kernel';
 import { describe, expect, it } from 'vitest';
 
-import { CienciaController } from './ciencia.controller.js';
+import { canalDaSessao, CienciaController } from './ciencia.controller.js';
 
 import type { RequisicaoAutenticada } from '../http/acesso.js';
 import type { ConfirmarCiencia, ConsultarLinkDeCiencia, RegistrarVisualizacao } from '@pz/ciencia';
@@ -162,5 +162,14 @@ describe('CienciaController (HU33)', () => {
       { tenantId: 't', prazoId: PRAZO },
       { tenantId: 't', prazoId: outro },
     ]);
+  });
+
+  it('canal derivado da sessão (HU68): portal, app oficial (mobile) ou outro dispositivo', () => {
+    expect(canalDaSessao({})).toBe('portal');
+    expect(canalDaSessao({ dispositivoId: 'd', tipoCliente: 'mobile' })).toBe('mobile');
+    expect(canalDaSessao({ dispositivoId: 'd' })).toBe('app');
+    expect(canalDaSessao({ dispositivoId: 'd', tipoCliente: 'mcp' })).toBe('app');
+    // Sem dispositivo é a sessão do navegador, qualquer que seja o tipo declarado.
+    expect(canalDaSessao({ tipoCliente: 'mobile' })).toBe('portal');
   });
 });

@@ -155,6 +155,8 @@ export interface DadosDaRenovacao {
   readonly escopos?: readonly string[];
   /** Registro dinâmico (HU60): o assistente renova com o id do registro, não o do escritório. */
   readonly clienteDoPedido?: Uuid;
+  /** Tipo do cliente (HU68): vai para cada sessão de acesso emitida, inclusive na renovação. */
+  readonly tipoCliente?: TipoCliente;
 }
 
 export type ResultadoDaRenovacao =

@@ -25,7 +25,7 @@ export function useCienciaEmLote<P extends Prazo>(
   barra: ReactNode;
 } {
   const t = useTranslations('ciencia.lote');
-  const permitido = usePermissao('prazos:confirmar') === true;
+  const permitido = usePermissao('ciencia:confirmar') === true;
   const [marcados, setMarcados] = useState<ReadonlySet<string>>(new Set());
   const confirmar = useConfirmarCienciaEmLote();
   const elegiveis = prazos.filter(selecionavel).map((p) => p.id);

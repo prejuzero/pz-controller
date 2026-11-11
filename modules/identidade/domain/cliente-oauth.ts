@@ -33,11 +33,13 @@ export function escoposDoCliente(
 }
 
 /**
- * App oficial (HU65; decisão do usuário em 11/11/2026): além da leitura, só confirmar prazo e
- * ciência, sempre com o toque explícito do advogado no app. Nada de ajustar, distribuir ou
- * administrar.
+ * App oficial (HU65, HU68; decisões do usuário em 11/11/2026): além da leitura, só confirmar a
+ * ciência, sempre com o toque explícito do advogado no app. Confirmar a data de um prazo
+ * sugerido, ajustar, distribuir ou administrar continuam no portal.
  */
-export const ESCOPOS_DO_APP_ALEM_DA_LEITURA: ReadonlySet<Permissao> = new Set(['prazos:confirmar']);
+export const ESCOPOS_DO_APP_ALEM_DA_LEITURA: ReadonlySet<Permissao> = new Set([
+  'ciencia:confirmar',
+]);
 
 /**
  * Escopos do token (RFC 6749, seção 3.3): sem `scope`, todos os do cliente; com ele, um

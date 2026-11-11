@@ -398,9 +398,9 @@ describe('app oficial (HU65)', () => {
     return { m, id };
   }
 
-  it('leitura e confirmação; sessão mobile; reuso da renovação revoga a sessão', async () => {
+  it('leitura e ciência; sessão mobile em cada acesso; reuso da renovação revoga a sessão', async () => {
     const { m, id } = await comAppOficial();
-    const p = pedido(id, { redirectUri: RETORNO_DO_APP, escopo: 'prazos:ler prazos:confirmar' });
+    const p = pedido(id, { redirectUri: RETORNO_DO_APP, escopo: 'prazos:ler ciencia:confirmar' });
     expect(await m.descrever.executar(m.sessao, p)).toMatchObject({
       ok: true,
       valor: { cliente: { id, nome: 'PrejuZero (app)' }, registroAutomatico: false },
@@ -419,22 +419,27 @@ describe('app oficial (HU65)', () => {
     const [dispositivo] = await m.dispositivos.listar(m.sessao.usuarioId);
     expect(dispositivo).toMatchObject({ tipoCliente: 'mobile' });
     const validada = await m.validar.executar(tokens.valor.tokenDeAcesso);
-    expect(validada.ok && validada.valor.escopos).toEqual(['prazos:ler', 'prazos:confirmar']);
+    expect(validada.ok && validada.valor.escopos).toEqual(['prazos:ler', 'ciencia:confirmar']);
+    expect(validada.ok && validada.valor.tipoCliente).toBe('mobile');
 
     const renovado = await m.renovar.executar(tokens.valor.tokenDeRenovacao, id);
     if (!renovado.ok) throw renovado.erro;
+    const renovada = await m.validar.executar(renovado.valor.tokenDeAcesso);
+    expect(renovada.ok && renovada.valor.tipoCliente).toBe('mobile');
     // A renovação antiga reapresentada (token roubado): a sessão inteira cai.
     expect((await m.renovar.executar(tokens.valor.tokenDeRenovacao, id)).ok).toBe(false);
     expect((await m.validar.executar(renovado.valor.tokenDeAcesso)).ok).toBe(false);
   });
 
-  it('nada além de leitura e confirmação, e só o endereço do app', async () => {
+  it('nada além de leitura e ciência, e só o endereço do app', async () => {
     const { m, id } = await comAppOficial();
-    const ajustar = await m.descrever.executar(
-      m.sessao,
-      pedido(id, { redirectUri: RETORNO_DO_APP, escopo: 'prazos:ajustar' }),
-    );
-    expect(!ajustar.ok && ajustar.erro.codigo).toBe('invalid_scope');
+    for (const escopo of ['prazos:ajustar', 'prazos:confirmar']) {
+      const r = await m.descrever.executar(
+        m.sessao,
+        pedido(id, { redirectUri: RETORNO_DO_APP, escopo }),
+      );
+      expect(!r.ok && r.erro.codigo).toBe('invalid_scope');
+    }
     const outro = await m.descrever.executar(m.sessao, pedido(id, { redirectUri: RETORNO }));
     expect(outro.ok).toBe(false);
     // Um assistente registrado sozinho continua só na leitura.
@@ -450,7 +455,7 @@ describe('app oficial (HU65)', () => {
       m.sessao,
       pedido(assistente.valor.id, {
         redirectUri: 'https://assistente.exemplo.invalid/callback',
-        escopo: 'prazos:confirmar',
+        escopo: 'ciencia:confirmar',
       }),
     );
     expect(!confirmar.ok && confirmar.erro.codigo).toBe('invalid_scope');

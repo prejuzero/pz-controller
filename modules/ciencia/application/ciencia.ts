@@ -294,7 +294,7 @@ export class ConfirmarCiencia<Transacao> {
   }
 
   pelaSessao(
-    autor: { tenantId: Uuid; usuarioId: Uuid; canal: 'portal' | 'app' },
+    autor: { tenantId: Uuid; usuarioId: Uuid; canal: 'portal' | 'app' | 'mobile' },
     prazoId: Uuid,
     contexto: ContextoDaRequisicao,
   ): Promise<Result<ResultadoDaConfirmacao, NaoEncontrado | Conflito>> {
@@ -316,7 +316,7 @@ export class ConfirmarCiencia<Transacao> {
    * para quem chama registrar (nada falha em silêncio).
    */
   async emLote(
-    autor: { tenantId: Uuid; usuarioId: Uuid; canal: 'portal' | 'app' },
+    autor: { tenantId: Uuid; usuarioId: Uuid; canal: 'portal' | 'app' | 'mobile' },
     prazoIds: readonly Uuid[],
     contexto: ContextoDaRequisicao,
   ): Promise<ResultadoDoLote> {
