@@ -25,3 +25,14 @@ O `dev` lê `.env.example` e, se existir, o `.env` da raiz. Em produção: `pnpm
 | Sondas            | `/health/live` (processo) e `/health/ready` (banco, Redis, armazenamento)                        |
 
 **Injeção sempre com `@Inject(Token)` explícito.** O build (esbuild) e o `dev` (tsx) não emitem os metadados de tipo dos decorators; sem `@Inject`, a dependência chega `undefined`. O teste de boot (`src/boot.test.ts`) sobe o processo real e pega esse erro.
+
+## Versão mínima dos apps (HU63)
+
+Os apps enviam `X-Cliente: <plataforma>/<versão>` (ex.: `android/1.4.0`). O valor entra nos logs (`cliente`) e na métrica `pz.http.cliente.requisicoes` (plataforma, versão e se foi barrada). Abaixo da versão mínima da plataforma, a API responde `426` em problem+json (`codigo: cliente.desatualizado`). O portal não envia o cabeçalho e nunca é barrado.
+
+A versão mínima fica na tabela global `versao_minima_cliente` e a API a relê a cada minuto, sem deploy. A mudança é feita com o papel de migração:
+
+```sql
+INSERT INTO versao_minima_cliente (plataforma, versao) VALUES ('android', '1.4.0')
+ON CONFLICT (plataforma) DO UPDATE SET versao = EXCLUDED.versao, atualizado_em = now();
+```

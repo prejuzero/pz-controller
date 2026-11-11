@@ -110,6 +110,7 @@ describe('migrações', () => {
         'usuario',
         'usuario_perfil',
         'verificacao_historico',
+        'versao_minima_cliente',
         'webhook_recebido',
       ]);
 
@@ -178,6 +179,7 @@ describe('migrações', () => {
         'usuario',
         'usuario_perfil',
         'verificacao_historico',
+        'versao_minima_cliente',
         'webhook_recebido',
       ]);
     } finally {

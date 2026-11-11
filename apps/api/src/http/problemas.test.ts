@@ -41,6 +41,19 @@ describe('FiltroDeProblemas', () => {
     expect(corpo).toMatchObject({ title: 'Erro.', codigo: 'requisicao.invalida' });
   });
 
+  it('app desatualizado (HU63): 426 com o detalhe da versão mínima', () => {
+    const { status, tipo, corpo } = capturar(
+      new HttpException({ detail: 'Atualize para a 1.5.0.' }, 426),
+    );
+    expect(status).toBe(426);
+    expect(tipo).toBe('application/problem+json');
+    expect(corpo).toMatchObject({
+      status: 426,
+      codigo: 'cliente.desatualizado',
+      detail: 'Atualize para a 1.5.0.',
+    });
+  });
+
   it('exceção HTTP 5xx é tratada como erro inesperado', () => {
     const { status, tipo, corpo } = capturar(new ServiceUnavailableException('detalhe interno'));
     expect(status).toBe(500);

@@ -13,6 +13,8 @@ export interface ContextoExecucao {
   readonly impersonacaoId?: string;
   readonly jobId?: string;
   readonly fila?: string;
+  /** App que fez a requisição (cabeçalho X-Cliente, HU63), ex.: "android/1.2.0". */
+  readonly cliente?: string;
 }
 
 const armazenamento = new AsyncLocalStorage<ContextoExecucao>();

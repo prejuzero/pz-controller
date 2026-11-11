@@ -310,6 +310,11 @@ import {
 import { GuardaDeAcesso } from './http/acesso.js';
 import { GuardaDeLimite, JanelaRedis, LimiteDoTenant } from './http/limite.js';
 import { FiltroDeProblemas } from './http/problemas.js';
+import {
+  GuardaDeVersaoDoCliente,
+  VERSOES_MINIMAS,
+  versoesMinimasDoBanco,
+} from './http/versao-do-cliente.js';
 import { IntegracoesController } from './integracoes/integracoes.controller.js';
 import { WebhooksDeSaidaController } from './integracoes/webhooks-de-saida.controller.js';
 import { EnviosController } from './notificacoes/envios.controller.js';
@@ -334,6 +339,7 @@ import { WebhooksController } from './webhooks/webhooks.controller.js';
 import type { AmbienteApi } from './ambiente.js';
 import type { ResponsaveisDaEquipe, ResumoDaPublicacaoPorConteudo } from './fichas.js';
 import type { JanelaDeRequisicoes } from './http/limite.js';
+import type { VersoesMinimas } from './http/versao-do-cliente.js';
 import type { FontesDoHistorico } from './prazos/historico.js';
 import type { CaixaDeWebhooks } from './webhooks/webhooks.controller.js';
 import type { DynamicModule, Provider, Type } from '@nestjs/common';
@@ -466,6 +472,8 @@ export interface OpcoesApi {
   readonly responsaveisDaEquipe?: ResponsaveisDaEquipe;
   /** Testes: IA do cadastro assistido (PZ-337); `null` desliga sem ler o ambiente. */
   readonly ia?: ClassificadorIa | null;
+  /** Testes: versão mínima dos apps (HU63) sem banco. */
+  readonly versoesMinimas?: VersoesMinimas;
   /** Testes: resumo da publicação sem banco (HU62). */
   readonly resumoDaPublicacao?: ResumoDaPublicacaoPorConteudo;
   /** Testes: agenda (HU50) sem banco. */
@@ -2195,7 +2203,12 @@ export class AppModule {
         provide: RECEPTORES_DE_WEBHOOK,
         useValue: opcoes.receptoresDeWebhook ?? receptoresDoAmbiente(opcoes.ambiente),
       },
-      // Ordem importa: o limite por IP vem antes da autenticação.
+      {
+        provide: VERSOES_MINIMAS,
+        useValue: opcoes.versoesMinimas ?? versoesMinimasDoBanco(recursos.banco),
+      },
+      // Ordem importa: app desatualizado (HU63) e limite por IP antes da autenticação.
+      { provide: APP_GUARD, useClass: GuardaDeVersaoDoCliente },
       { provide: APP_GUARD, useClass: GuardaDeLimite },
       { provide: APP_GUARD, useClass: GuardaDeAcesso },
       { provide: APP_FILTER, useClass: FiltroDeProblemas },

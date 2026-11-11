@@ -547,6 +547,16 @@ model UsoIa {
   @@map("uso_ia")
 }
 
+/// Versão mínima de cliente por plataforma (HU63): global; abaixo dela, 426.
+model VersaoMinimaCliente {
+  plataforma   String   @id
+  versao       String
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  @@map("versao_minima_cliente")
+}
+
 model TabelaPrazo {
   id             String            @id @db.Uuid
   tipoAto        String            @map("tipo_ato")
