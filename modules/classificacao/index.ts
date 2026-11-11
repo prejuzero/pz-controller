@@ -74,3 +74,15 @@ export {
 } from './infra/resumidor-ia-plataforma.js';
 export { ResumosPostgres } from './infra/resumos-postgres.js';
 export type { InstrucaoEmbutida } from './infra/classificador-ia-plataforma.js';
+export {
+  CuradoriaDasRegras,
+  PropostaDeRegra,
+  situacoes,
+} from './application/curadoria-das-regras.js';
+export type {
+  CuradorDasRegras,
+  RepositorioDaCuradoriaDeRegras,
+  SituacaoDaRegra,
+  VersaoDaRegra,
+} from './application/curadoria-das-regras.js';
+export { CuradoriaDeRegrasPostgres } from './infra/regras-postgres.js';

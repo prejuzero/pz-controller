@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { chaves } from './chaves';
 import { criarCliente } from './cliente';
 import {
+  mutacoesRegras,
   agruparVersoes,
   consultasTabelaPrazos,
   diferencas,
@@ -111,5 +112,38 @@ describe('tabela de prazos no portal (HU15)', () => {
 
     await mutacoes.aprovar.onSuccess();
     expect(cache.getQueryState(chaves.tabelaPrazos.versoes())?.isInvalidated).toBe(true);
+  });
+
+  it('regras rápidas (PZ-313): lista, propõe, ativa e retira, atualizando a lista', async () => {
+    const rotas: string[] = [];
+    const api = criarCliente({
+      baseUrl: 'http://api.local',
+      lerCookies: () => '',
+      fetch: (requisicao) => {
+        rotas.push(`${requisicao.method} ${new URL(requisicao.url).pathname}`);
+        return Promise.resolve(
+          requisicao.url.endsWith('ativar') || requisicao.url.endsWith('retirar')
+            ? new Response(null, { status: 204 })
+            : Response.json({ itens: [] }, { status: requisicao.method === 'POST' ? 201 : 200 }),
+        );
+      },
+    });
+    const cache = new QueryClient();
+    await consultasTabelaPrazos(api)
+      .regras()
+      .queryFn?.({ signal: new AbortController().signal } as never);
+    const m = mutacoesRegras(api, cache);
+    await m.propor.mutationFn({ codigo: 'r-1', tipoAto: 'a', padroes: ['x'], confianca: 1 });
+    await m.ativar.mutationFn({ codigo: 'r-1', versao: 1 });
+    await m.retirar.mutationFn('r-1');
+    cache.setQueryData(chaves.regrasDeClassificacao, {});
+    await m.retirar.onSuccess();
+    expect(cache.getQueryState(chaves.regrasDeClassificacao)?.isInvalidated).toBe(true);
+    expect(rotas).toEqual([
+      'GET /v1/admin/classificacoes/regras',
+      'POST /v1/admin/classificacoes/regras',
+      'POST /v1/admin/classificacoes/regras/r-1/1/ativar',
+      'POST /v1/admin/classificacoes/regras/r-1/retirar',
+    ]);
   });
 });

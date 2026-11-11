@@ -1573,5 +1573,38 @@
     "gerarNovo": "Gerar novo endereço (o atual deixa de funcionar)",
     "revogar": "Revogar assinatura",
     "revogada": "Assinatura revogada."
+  },
+  "regrasDeClassificacao": {
+    "titulo": "Regras de classificação",
+    "descricao": "Regras rápidas reconhecem o tipo de ato pelo texto da publicação, antes da IA, e levam ao prazo pela tabela aprovada. Cada versão nasce proposta e só vale depois que outra curadora a ativa. Os padrões são expressões sobre o texto em minúsculas e sem acento (ex.: \\bcite-se\\b); basta um casar.",
+    "vazio": "Nenhuma regra cadastrada.",
+    "colunas": {
+      "codigo": "Código",
+      "versao": "Versão",
+      "ato": "Ato",
+      "padroes": "Padrões",
+      "confianca": "Confiança",
+      "situacao": "Situação",
+      "acoes": "Ações"
+    },
+    "situacoes": {
+      "proposta": "Proposta",
+      "ativa": "Ativa",
+      "retirada": "Retirada",
+      "substituida": "Substituída"
+    },
+    "ativar": "Ativar",
+    "suaProposta": "Sua proposta: outra curadora ativa",
+    "retirar": "Retirar",
+    "ativada": "Regra ativada.",
+    "retirada": "Regra retirada.",
+    "nova": "Propor regra ou nova versão",
+    "codigo": "Código",
+    "codigoAjuda": "Letras minúsculas, números e hífen. Use o mesmo código para propor uma nova versão.",
+    "ato": "Tipo de ato",
+    "padroes": "Padrões (um por linha)",
+    "confianca": "Confiança (0 a 1)",
+    "propor": "Propor",
+    "proposta": "Regra proposta. Peça a outra curadora para ativá-la."
   }
 }
