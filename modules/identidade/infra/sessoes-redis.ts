@@ -18,6 +18,7 @@ interface SessaoSerializada {
   dispositivoId?: string;
   expiraAte?: number;
   escopos?: string[];
+  tipoCliente?: 'web' | 'mobile' | 'mcp' | 'integrador';
   impersonacao?: {
     id: string;
     tenantId: string;
@@ -58,6 +59,7 @@ export class SessoesRedis implements ArmazemDeSessoes {
       ...(sessao.dispositivoId === undefined ? {} : { dispositivoId: sessao.dispositivoId }),
       ...(sessao.expiraAte === undefined ? {} : { expiraAte: sessao.expiraAte.epochMs }),
       ...(sessao.escopos === undefined ? {} : { escopos: [...sessao.escopos] }),
+      ...(sessao.tipoCliente === undefined ? {} : { tipoCliente: sessao.tipoCliente }),
       ...(sessao.impersonacao === undefined
         ? {}
         : {
@@ -95,6 +97,7 @@ export class SessoesRedis implements ArmazemDeSessoes {
       ...(dados.dispositivoId === undefined ? {} : { dispositivoId: dados.dispositivoId as Uuid }),
       ...(dados.expiraAte === undefined ? {} : { expiraAte: Instant.deEpochMs(dados.expiraAte) }),
       ...(dados.escopos === undefined ? {} : { escopos: dados.escopos }),
+      ...(dados.tipoCliente === undefined ? {} : { tipoCliente: dados.tipoCliente }),
       ...(dados.impersonacao === undefined
         ? {}
         : {

@@ -105,7 +105,7 @@ export type EntradaDeAuditoria = z.infer<typeof EntradaDeAuditoria>;
 
 /** Quem e por onde: vem do contexto da requisição ou do evento, nunca do cliente. */
 export interface OrigemDaAuditoria {
-  readonly canal: 'portal' | 'app' | 'mcp' | 'integrador' | 'evento' | 'sistema';
+  readonly canal: 'portal' | 'app' | 'mobile' | 'mcp' | 'integrador' | 'evento' | 'sistema';
   readonly usuarioId?: string;
   /** Quem de fato agiu, quando diferente (suporte agindo em nome do usuário). */
   readonly usuarioRealId?: string;

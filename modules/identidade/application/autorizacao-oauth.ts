@@ -340,6 +340,7 @@ export class TrocarCodigoPorTokens {
       tenantId: dados.tenantId,
       clienteOAuthId: dados.clienteId,
       escopos: dados.escopos,
+      tipoCliente,
       ...(dados.clienteDoPedido === undefined ? {} : { clienteDoPedido: dados.clienteDoPedido }),
     });
     return ok(tokens);

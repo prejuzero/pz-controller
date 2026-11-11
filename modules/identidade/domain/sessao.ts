@@ -37,6 +37,8 @@ export interface Sessao {
    * dono do cliente ainda as tiver.
    */
   readonly escopos?: readonly string[];
+  /** Tipo do cliente do dispositivo (HU68): a ciência pelo app oficial é do canal `mobile`. */
+  readonly tipoCliente?: 'web' | 'mobile' | 'mcp' | 'integrador';
   /** Administrador da plataforma acessando outro tenant (HU07); some ao vencer. */
   readonly impersonacao?: Impersonacao;
 }

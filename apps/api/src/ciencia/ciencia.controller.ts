@@ -23,6 +23,20 @@ const registrada = (r: ResultadoDaConfirmacao): CienciaRegistrada => ({
 });
 
 /**
+ * Canal da ciência pela sessão (HU68): derivado do cliente autenticado, nunca enviado por ele.
+ * Sessão do navegador = portal; app oficial (OAuth, tipo mobile) = mobile; outro dispositivo = app.
+ */
+export const canalDaSessao = (sessao: {
+  readonly dispositivoId?: string;
+  readonly tipoCliente?: string;
+}): 'portal' | 'app' | 'mobile' =>
+  sessao.dispositivoId === undefined
+    ? 'portal'
+    : sessao.tipoCliente === 'mobile'
+      ? 'mobile'
+      : 'app';
+
+/**
  * Ciência (HU33): o link do e-mail só mostra (consulta) e confirma num POST explícito; no portal
  * e no app, a mesma confirmação pela sessão. A regra fica no módulo ciencia.
  */
@@ -86,7 +100,7 @@ export class CienciaController {
   }
 
   @Post('prazos/:id/ciencia')
-  @RequerPermissao('prazos:confirmar')
+  @RequerPermissao('ciencia:confirmar')
   @HttpCode(200)
   async confirmarPelaSessao(
     @Req() requisicao: RequisicaoAutenticada,
@@ -97,7 +111,7 @@ export class CienciaController {
       {
         tenantId: sessao.tenantId,
         usuarioId: sessao.usuarioId,
-        canal: sessao.dispositivoId === undefined ? 'portal' : 'app',
+        canal: canalDaSessao(sessao),
       },
       validar(z.uuid(), id) as Uuid,
       contextoDe(requisicao),
@@ -107,7 +121,7 @@ export class CienciaController {
   }
 
   @Post('ciencia/lote')
-  @RequerPermissao('prazos:confirmar')
+  @RequerPermissao('ciencia:confirmar')
   @HttpCode(200)
   async confirmarEmLote(
     @Req() requisicao: RequisicaoAutenticada,
@@ -119,7 +133,7 @@ export class CienciaController {
       {
         tenantId: sessao.tenantId,
         usuarioId: sessao.usuarioId,
-        canal: sessao.dispositivoId === undefined ? 'portal' : 'app',
+        canal: canalDaSessao(sessao),
       },
       prazoIds as Uuid[],
       contextoDe(requisicao),

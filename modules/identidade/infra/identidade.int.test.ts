@@ -628,6 +628,11 @@ describe('app público OAuth com PostgreSQL e Redis (HU49)', () => {
       (d) => d.clienteOAuthId === cliente.id,
     );
     expect(doApp).toHaveLength(1);
+    // O tipo do cliente vai para a sessão no Redis (HU68: canal da ciência derivado dele).
+    const validada = await new ValidarSessao(sessoes, relogio).executar(
+      emitidos.valor.tokenDeAcesso,
+    );
+    expect(validada.ok && validada.valor.tipoCliente).toBe('integrador');
 
     const revogar = new RevogarClienteOAuth(
       clientes,

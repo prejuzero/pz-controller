@@ -55,6 +55,7 @@ export class EmissorDeTokens {
       dispositivoId: dados.dispositivoId,
       expiraAte: agora.maisMs(VALIDADE_DO_ACESSO_MS),
       ...(dados.escopos === undefined ? {} : { escopos: dados.escopos }),
+      ...(dados.tipoCliente === undefined ? {} : { tipoCliente: dados.tipoCliente }),
     };
     const [tokenDeAcesso, tokenDeRenovacao] = [this.tokens.novoToken(), this.tokens.novoToken()];
     const renovacaoExpiraEm = agora.maisMs(VALIDADE_DA_RENOVACAO_MS);

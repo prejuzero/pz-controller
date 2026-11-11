@@ -191,7 +191,7 @@ export const CienciaConfirmada = definirEvento(
   z.object({
     prazoId: z.uuid(),
     usuarioId: z.uuid(),
-    canal: z.enum(['email', 'portal', 'app']),
+    canal: z.enum(['email', 'portal', 'app', 'mobile']),
     confirmadaEm: z.iso.datetime(),
   }),
 );

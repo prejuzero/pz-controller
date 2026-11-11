@@ -26,6 +26,7 @@ const MOTIVO_MINIMO = 10;
 export function AcoesDoPrazo({ prazo }: { prazo: DetalheDoPrazo }) {
   const t = useTranslations('prazos.acoes');
   const podeConfirmar = usePermissao('prazos:confirmar') === true;
+  const podeDarCiencia = usePermissao('ciencia:confirmar') === true;
   const podeAjustar = usePermissao('prazos:ajustar') === true;
   const podeDistribuir = usePermissao('prazos:distribuir') === true;
   const confirmar = useConfirmarPrazo();
@@ -48,7 +49,7 @@ export function AcoesDoPrazo({ prazo }: { prazo: DetalheDoPrazo }) {
         </Botao>
       ) : null}
       {/* O prazo espelha a ciência pelo evento (assíncrono): some já no sucesso. */}
-      {podeConfirmar && prazo.statusCiencia === 'pendente' && !ciencia.isSuccess ? (
+      {podeDarCiencia && prazo.statusCiencia === 'pendente' && !ciencia.isSuccess ? (
         // Ciência (HU33): registra que o advogado viu o prazo; não muda a data nem o status.
         <Botao
           variante="secundaria"
