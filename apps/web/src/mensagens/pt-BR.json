@@ -1606,5 +1606,52 @@
     "confianca": "Confiança (0 a 1)",
     "propor": "Propor",
     "proposta": "Regra proposta. Peça a outra curadora para ativá-la."
+  },
+  "curadoriaDaClassificacao": {
+    "titulo": "Curadoria da classificação",
+    "descricao": "Publicações que nem as regras nem a IA classificaram e correções dos advogados que podem entrar no conjunto de avaliação da IA. Nada aqui define datas: a data sai sempre do motor de prazos.",
+    "revisao": {
+      "titulo": "Revisão manual",
+      "descricao": "Classificações que aguardam a curadoria. Nos escritórios, o prazo dessas publicações fica \"a confirmar\".",
+      "vazio": "Nenhuma publicação aguardando revisão."
+    },
+    "candidatos": {
+      "titulo": "Casos candidatos à avaliação",
+      "descricao": "Correções feitas pelos advogados, com o teor anonimizado. Aceite o que deve entrar no conjunto de avaliação ou descarte com o motivo.",
+      "vazio": "Nenhum caso pendente."
+    },
+    "colunas": {
+      "criadaEm": "Recebida em",
+      "motivo": "Motivo",
+      "sugestao": "Sugestão",
+      "evidencia": "Evidência",
+      "teor": "Teor anonimizado",
+      "ato": "Ato (classificado → corrigido)",
+      "dias": "Dias (citados → corrigidos)",
+      "acoes": "Ações"
+    },
+    "motivos": {
+      "saida-invalida": "Resposta da IA inválida",
+      "ia-desligada": "IA desligada",
+      "sem-orcamento": "Orçamento de IA esgotado",
+      "outro": "Sem regra nem IA"
+    },
+    "semSugestao": "Sem sugestão",
+    "semEvidencia": "Sem trecho",
+    "conferir": "Conferir",
+    "exportar": "Baixar casos aceitos (eval/casos)",
+    "aceito": "Caso aceito no conjunto de avaliação.",
+    "descartado": "Caso descartado.",
+    "decisao": {
+      "titulo": "Conferir caso",
+      "anonimizado": "Teor anonimizado",
+      "teor": "Teor",
+      "teorAjuda": "Confira a anonimização e corrija o texto se ainda houver dado pessoal.",
+      "motivo": "Motivo da decisão",
+      "motivoAjuda": "Pelo menos 10 caracteres; fica registrado na trilha.",
+      "fechar": "Fechar",
+      "descartar": "Descartar",
+      "aceitar": "Aceitar"
+    }
   }
 }

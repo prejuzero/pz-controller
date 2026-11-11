@@ -5,6 +5,7 @@ import { RECORTES_DA_LISTA, STATUS_DO_PRAZO } from '../../../api/prazos';
 import { AcessoNegado } from '../_casca/acesso-negado';
 import { SePermitido } from '../_casca/se-permitido';
 
+import { CuradoriaDaClassificacao } from './curadoria-da-classificacao';
 import { ListaDePrazos } from './lista-de-prazos';
 import { RegrasDeClassificacao } from './regras-de-classificacao';
 import { TabelaDePrazos } from './tabela-de-prazos';
@@ -42,6 +43,7 @@ export default async function PaginaPrazos({
         <TabelaDePrazos />
         <SePermitido permissao="curadoria:classificacao">
           <RegrasDeClassificacao />
+          <CuradoriaDaClassificacao />
         </SePermitido>
       </div>
     </SePermitido>
