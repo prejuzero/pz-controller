@@ -32,7 +32,7 @@ Sobe banco, filas, API, worker (captura do DJEN, lembretes e e-mails), portal e 
 O proxy usa uma CA local. Exporte-a e instale como confiável em cada computador (uma vez):
 
 ```
-infra/docker/compose.sh --profile piloto cp proxy:/data/caddy/pki/authorities/local/root.crt ./prejuzero-ca.crt
+infra/docker/compose.sh --profile apps --profile piloto cp proxy:/data/caddy/pki/authorities/local/root.crt ./prejuzero-ca.crt
 ```
 
 macOS: abra o arquivo no Acesso às Chaves e marque "Sempre confiar". Windows: instale em "Autoridades de Certificação Raiz Confiáveis".
