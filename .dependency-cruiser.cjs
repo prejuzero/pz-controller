@@ -81,6 +81,14 @@ module.exports = {
       },
     },
     {
+      name: 'mobile-so-pela-api',
+      severity: 'error',
+      comment:
+        'O app fala com o back-end só pela API /v1 e o cliente gerado: nada de módulos, motor de prazos nem design system web (ADR-015, docs/arquitetura/mobile.md).',
+      from: { path: '^apps/mobile/(app|src)/' },
+      to: { path: '^(modules|apps/(?!mobile/)|packages/(?!contracts/|design-tokens/))' },
+    },
+    {
       name: 'apps-so-pela-api-publica',
       severity: 'error',
       comment: 'apps apenas compõem módulos, pela API pública (index.ts).',

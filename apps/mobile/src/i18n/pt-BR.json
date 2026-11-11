@@ -1,0 +1,16 @@
+{
+  "app": { "nome": "PrejuZero" },
+  "entrar": {
+    "titulo": "Entrar",
+    "descricao": "O login acontece na página segura do PrejuZero, com senha e 2FA. O app nunca vê a sua senha.",
+    "botao": "Entrar com o PrejuZero"
+  },
+  "painel": {
+    "titulo": "Painel",
+    "emBreve": "Prazos e publicações chegam aqui nas próximas versões do app."
+  },
+  "atualizar": {
+    "titulo": "Atualize o aplicativo",
+    "descricao": "Esta versão não é mais aceita. Atualize pela loja para continuar."
+  }
+}
