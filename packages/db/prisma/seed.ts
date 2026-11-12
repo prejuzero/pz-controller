@@ -5,6 +5,7 @@ import { argon2, createHash, randomBytes } from 'node:crypto';
 import { promisify } from 'node:util';
 
 import { protecaoDeCampos, ProvedorChavesLocal } from '@pz/integracoes';
+import { gerarUuidV7 } from '@pz/kernel';
 import pg from 'pg';
 
 const url =
@@ -75,6 +76,48 @@ const USUARIOS_PLATAFORMA = [
 
 // Senha só do ambiente local (fictícia); troque por SENHA_DEMONSTRACAO se quiser outra.
 const SENHA = process.env.SENHA_DEMONSTRACAO ?? 'demonstracao local 2026';
+
+/** Processo FICTÍCIO da jornada do E2E (número CNJ com dígito verificador válido). */
+const NUMERO_DA_JORNADA = '1000123-64.2026.8.26.0100';
+
+/**
+ * Jornada do lançamento no E2E (HU40, PZ-233), só com SEED_JORNADA_E2E=sim: grava no outbox uma
+ * CapturaConcluida FICTÍCIA da OAB de demonstração, como se o DJEN a tivesse devolvido (o CI nunca
+ * acessa a rede). Dali em diante tudo é o fluxo real do worker: ingestão (cria o processo),
+ * classificação, prazo "a confirmar" pelo prazo citado no texto e o e-mail de nova intimação com
+ * o link de ciência. Uma publicação nova por execução (idExterno e teor únicos).
+ */
+async function jornadaDoE2e(cliente: pg.Client): Promise<void> {
+  const marca = String(Date.now());
+  const teor = `FICTÍCIO: Intime-se a parte autora para, no prazo de 15 (quinze) dias, manifestar-se sobre os documentos juntados. Jornada E2E ${marca}. Processo ${NUMERO_DA_JORNADA}.`;
+  const hoje = new Date();
+  const ontem = new Date(hoje.getTime() - 86_400_000).toISOString().slice(0, 10);
+  const payload = {
+    alvoId: gerarUuidV7(),
+    tipo: 'oab',
+    valor: '999999/SP',
+    referencias: [OAB_DEMONSTRACAO],
+    janela: { inicio: ontem, fim: hoje.toISOString().slice(0, 10) },
+    fonte: 'djen',
+    publicacoes: [
+      {
+        idExterno: `e2e-jornada-${marca}`,
+        hashConteudo: createHash('sha256').update(teor).digest('hex'),
+        dataDisponibilizacao: ontem,
+        teor,
+        numeroCnj: NUMERO_DA_JORNADA,
+        destinatarios: [{ numero: '999999', uf: 'SP' }],
+        urlFonte: 'https://comunicaapi.pje.jus.br/api/v1/comunicacao/ficticio/certidao',
+        metadados: { siglaTribunal: 'TJSP', tipoComunicacao: 'Intimação' },
+      },
+    ],
+  };
+  await cliente.query(
+    `INSERT INTO evento_dominio (id, tipo, versao, tenant_id, agregado_id, payload, ocorrido_em)
+     VALUES ($1, 'CapturaConcluida', 1, $2, $3, $4::jsonb, now())`,
+    [gerarUuidV7(), TENANT_DEMONSTRACAO, payload.alvoId, JSON.stringify(payload)],
+  );
+}
 
 /** Mesmo formato e parâmetros do HasherArgon2 do módulo identidade (PHC, OWASP). */
 async function hashArgon2id(senha: string): Promise<string> {
@@ -200,6 +243,7 @@ try {
       await hashArgon2id(SENHA),
     ]);
   }
+  if (process.env.SEED_JORNADA_E2E === 'sim') await jornadaDoE2e(cliente);
   await cliente.query('COMMIT');
   process.stdout.write(
     `Seeds aplicados (tenant ${TENANT_DEMONSTRACAO}; login demonstracao@prejuzero.local; curadoria1 e curadoria2@prejuzero.local; admin@prejuzero.local).\n`,
