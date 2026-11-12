@@ -1,4 +1,4 @@
-import { AggregateRoot, Conflito, gerarUuidV7, ok, err, Proibido, Validacao } from '@pz/kernel';
+import { AggregateRoot, Conflito, gerarUuidV7, ok, err, Validacao } from '@pz/kernel';
 
 import type {
   Clock,
@@ -8,6 +8,7 @@ import type {
   ProblemaValidacao,
   Result,
   Uuid,
+  Proibido,
 } from '@pz/kernel';
 
 /**
@@ -179,15 +180,14 @@ export class VersaoDaTabela extends AggregateRoot<TabelaPrazoAprovada> {
     return this.#estado;
   }
 
-  /** Quatro olhos: quem propôs não aprova. */
+  /**
+   * Aprovação do curador, registrada com versão (CLAUDE.md, seção 4.3). A curadora pode aprovar o
+   * que ela mesma propôs (decisão do usuário em 11/11/2026: uma curadora só); quem aprovou e
+   * quando ficam na versão e na trilha.
+   */
   aprovar(aprovador: Curador, relogio: Clock): Result<void, Proibido | Conflito> {
     if (this.#estado.status === 'aprovado') {
       return err(new Conflito('versao-ja-aprovada', 'Esta versão já foi aprovada.'));
-    }
-    if (aprovador.usuarioId === this.#estado.propostoPor) {
-      return err(
-        new Proibido('aprovacao-pelo-proponente', 'A aprovação exige outra pessoa (quatro olhos).'),
-      );
     }
     const agora = relogio.agora();
     this.#estado = {

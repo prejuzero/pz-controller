@@ -159,6 +159,12 @@ export const mutacoesTabelaPrazos = (api: ClienteApi, cache: QueryClient) => {
         exigir(api.POST('/v1/admin/tabela-prazos/{id}/aprovar', { params: { path: { id } } })),
       onSuccess: invalidar,
     },
+    /** Carga da planilha: todos os rascunhos de uma vez, cada um auditado. */
+    aprovarEmLote: {
+      mutationFn: (ids: string[]) =>
+        exigir(api.POST('/v1/admin/tabela-prazos/aprovacao-em-lote', { body: { ids } })),
+      onSuccess: invalidar,
+    },
     importar: {
       mutationFn: (body: { csv: string; somentePrevia: boolean }) =>
         exigir(api.POST('/v1/admin/tabela-prazos/importacao', { body })),

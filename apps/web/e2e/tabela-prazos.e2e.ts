@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
-import { aguardarAnimacoes, CURADOR_2, entrar, ESTADO_CURADOR, SENHA } from './apoio';
+import { aguardarAnimacoes, ESTADO_CURADOR } from './apoio';
 
 // Taxonomia e versão FICTÍCIAS, únicas por execução (o banco local persiste entre rodadas).
 const SUFIXO = String(Date.now());
@@ -34,10 +34,7 @@ async function semViolacoes(page: Page): Promise<void> {
 test.describe('curadoria da tabela de prazos (HU15)', () => {
   test.use({ storageState: ESTADO_CURADOR });
 
-  test('propõe a versão, não aprova a própria e outro curador aprova', async ({
-    page,
-    browser,
-  }) => {
+  test('propõe a versão e a própria curadora aprova', async ({ page }) => {
     await page.goto('/prazos');
     await expect(page.getByRole('heading', { level: 1, name: 'Tabela de prazos' })).toBeVisible();
     await semViolacoes(page);
@@ -69,19 +66,8 @@ test.describe('curadoria da tabela de prazos (HU15)', () => {
     const linha = await linhaDoAto(page);
     await linha.getByRole('button', { name: 'Histórico' }).click();
     const historico = page.getByRole('dialog');
-    await expect(historico.getByRole('button', { name: 'Aprovar' })).toBeDisabled();
-    await expect(historico.getByText('Quem propôs não pode aprovar')).toBeVisible();
-
-    // Quatro olhos: o segundo curador aprova.
-    const contexto = await browser.newContext({ storageState: { cookies: [], origins: [] } });
-    const outro = await contexto.newPage();
-    await outro.goto('/entrar');
-    await entrar(outro, SENHA, CURADOR_2);
-    await outro.goto('/prazos');
-    await (await linhaDoAto(outro)).getByRole('button', { name: 'Histórico' }).click();
-    await outro.getByRole('dialog').getByRole('button', { name: 'Aprovar' }).click();
-    await expect(outro.getByText('Versão aprovada.')).toBeVisible();
-    await contexto.close();
+    await historico.getByRole('button', { name: 'Aprovar' }).click();
+    await expect(page.getByText('Versão aprovada.')).toBeVisible();
 
     // A coluna "Vigente hoje" é marcada pela API na data do servidor (PZ-298).
     await page.reload();

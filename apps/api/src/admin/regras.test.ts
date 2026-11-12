@@ -113,7 +113,7 @@ afterAll(async () => {
 });
 
 describe('regras rápidas pela curadoria (PZ-313)', () => {
-  it('propõe, quatro olhos na ativação, lista a situação e retira', async () => {
+  it('propõe, a própria curadora ativa, lista a situação e retira', async () => {
     const base = '/v1/admin/classificacoes/regras';
     const criada = await pedir('ana', base, {
       codigo: 'contestacao-intime',
@@ -123,8 +123,7 @@ describe('regras rápidas pela curadoria (PZ-313)', () => {
     });
     expect(criada.statusCode).toBe(201);
     expect(criada.json()).toMatchObject({ versao: 1, situacao: 'proposta' });
-    expect((await pedir('ana', `${base}/contestacao-intime/1/ativar`)).statusCode).toBe(403);
-    expect((await pedir('bia', `${base}/contestacao-intime/1/ativar`)).statusCode).toBe(204);
+    expect((await pedir('ana', `${base}/contestacao-intime/1/ativar`)).statusCode).toBe(204);
     expect((await pedir('ana', base)).json()).toMatchObject({ itens: [{ situacao: 'ativa' }] });
     expect((await pedir('ana', `${base}/contestacao-intime/retirar`)).statusCode).toBe(204);
     expect((await pedir('ana', base)).json()).toMatchObject({ itens: [{ situacao: 'retirada' }] });

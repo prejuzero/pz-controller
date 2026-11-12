@@ -47,11 +47,10 @@ describe('EventoGlobal (HU13)', () => {
     expect(EventoGlobal.propor(conteudo({ descricao: '' }), ANA, relogio()).ok).toBe(false);
   });
 
-  it('quatro olhos: quem propôs não aprova; aprovado emite CalendarioAlterado', () => {
+  it('quem propôs pode aprovar (uma curadora só); aprovado emite CalendarioAlterado', () => {
     const evento = proposto();
-    const propria = evento.aprovar(ANA, relogio());
-    expect(!propria.ok && propria.erro.codigo).toBe('aprovacao-pelo-proponente');
-    expect(evento.aprovar(BETO, relogio()).ok).toBe(true);
+    expect(evento.aprovar(ANA, relogio()).ok).toBe(true);
+    expect(evento.estado.aprovadoPor).toBe(ANA.usuarioId);
     expect(evento.vigente).toBe(true);
     const [alterado] = evento.retirarEventos();
     expect(alterado?.tipo).toBe('CalendarioAlterado');
@@ -63,7 +62,7 @@ describe('EventoGlobal (HU13)', () => {
       abrangencia: 'nacional',
       inicio: '2030-03-10',
       fim: '2030-03-10',
-      usuarioId: BETO.usuarioId,
+      usuarioId: ANA.usuarioId,
     });
     const de_novo = evento.aprovar(ANA, relogio());
     expect(!de_novo.ok && de_novo.erro.codigo).toBe('evento-ja-aprovado');

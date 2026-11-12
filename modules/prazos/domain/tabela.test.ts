@@ -28,13 +28,15 @@ describe('VersaoDaTabela (HU15)', () => {
     expect(!r.ok && r.erro.problemas.map((p) => p.campo)).toEqual([campo]);
   });
 
-  it('quatro olhos: o próprio proponente não aprova', () => {
+  it('a curadora aprova a própria proposta (uma curadora só), com quem aprovou registrado', () => {
     const r = VersaoDaTabela.propor(conteudo(), 1, ANA, relogio());
     if (!r.ok) throw r.erro;
-    const aprovacao = r.valor.aprovar(ANA, relogio());
-    expect(!aprovacao.ok && aprovacao.erro.codigo).toBe('aprovacao-pelo-proponente');
-    expect(r.valor.estado.status).toBe('rascunho');
-    expect(r.valor.eventosPendentes()).toEqual([]);
+    expect(r.valor.aprovar(ANA, relogio()).ok).toBe(true);
+    expect(r.valor.estado).toMatchObject({
+      status: 'aprovado',
+      propostoPor: ANA.usuarioId,
+      aprovadoPor: ANA.usuarioId,
+    });
   });
 
   it('aprovada por outra pessoa, emite TabelaPrazoAprovada no tenant do aprovador', () => {

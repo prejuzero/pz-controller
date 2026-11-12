@@ -112,12 +112,11 @@ afterAll(async () => {
 });
 
 describe('calendário global pela API (HU13)', () => {
-  it('curador propõe, outro aprova (quatro olhos) e revoga com motivo', async () => {
+  it('curador propõe, aprova (inclusive a própria proposta, também em lote) e revoga com motivo', async () => {
     const proposta = await pedir('ana', 'POST', '/v1/admin/calendario', evento());
     expect(proposta.statusCode).toBe(201);
     const { id } = proposta.json<{ id: string }>();
-    expect((await pedir('ana', 'POST', `/v1/admin/calendario/${id}/aprovar`)).statusCode).toBe(403);
-    const aprovada = await pedir('beto', 'POST', `/v1/admin/calendario/${id}/aprovar`);
+    const aprovada = await pedir('ana', 'POST', `/v1/admin/calendario/${id}/aprovar`);
     expect([aprovada.statusCode, aprovada.json<{ status: string }>().status]).toEqual([
       200,
       'aprovado',
@@ -125,6 +124,18 @@ describe('calendário global pela API (HU13)', () => {
     expect((await pedir('beto', 'POST', `/v1/admin/calendario/${id}/aprovar`)).statusCode).toBe(
       409,
     );
+    // Em lote: o já aprovado volta como falha, sem derrubar o pedido.
+    const lote = await pedir('ana', 'POST', '/v1/admin/calendario/aprovacao-em-lote', {
+      ids: [id],
+    });
+    expect([lote.statusCode, lote.json()]).toEqual([
+      200,
+      { aprovados: 0, falhas: [{ id, codigo: 'evento-ja-aprovado' }] },
+    ]);
+    expect(
+      (await pedir('ana', 'POST', '/v1/admin/calendario/aprovacao-em-lote', { ids: [] }))
+        .statusCode,
+    ).toBe(400);
     const revogada = await pedir('ana', 'POST', `/v1/admin/calendario/${id}/revogar`, {
       motivo: 'ato revogado pelo tribunal',
     });
