@@ -86,11 +86,18 @@ let recalcular: RecalcularPrazosPorCalendario<TransacaoEmMemoria>;
 
 let anosSemCalendario: number[] = [];
 let comarca = 'Comarca Fictícia';
+/** Município da comarca (cadastro territorial); sem ele, a lacuna "municipio". */
+let municipioIbge: string | undefined;
 const processoNoCalendario = (ramoDoTribunal: string): ProcessoNoCalendario => ({
   ramoDoTribunal,
   anosSemCalendario: (anos) => Promise.resolve(anos.filter((a) => anosSemCalendario.includes(a))),
-  jurisdicao: { tribunal: 'TJXA', uf: 'XA', comarca },
-  lacunas: ['municipio'],
+  jurisdicao: {
+    tribunal: 'TJXA',
+    uf: 'XA',
+    ...(municipioIbge === undefined ? {} : { municipioIbge }),
+    comarca,
+  },
+  lacunas: municipioIbge === undefined ? ['municipio'] : [],
   fuso,
   diasNaoUteis: (inicio, fim) => {
     consultas.push({ inicio: inicio.paraIso(), fim: fim.paraIso() });
@@ -186,6 +193,7 @@ async function aprovar(parcial: Partial<ConteudoDaVersao> = {}) {
 beforeEach(async () => {
   dias = [];
   comarca = 'Comarca Fictícia';
+  municipioIbge = undefined;
   consultas = [];
   fuso = { fuso: 'America/Sao_Paulo', outrosFusos: false };
   outbox = new OutboxEmMemoria();
@@ -443,13 +451,16 @@ describe('recálculo por mudança de calendário (HU16, PZ-142)', () => {
   });
 
   it('feriado de outra UF, tribunal ou comarca, ou fora do intervalo, não alcança o prazo', async () => {
+    municipioIbge = '9900001';
     await criado();
     dias = [feriado('2027-03-10')];
     for (const fora of [
       { abrangencia: 'uf', uf: 'XB' },
       { abrangencia: 'tribunal', tribunal: 'TJXB' },
       { abrangencia: 'comarca', tribunal: 'TJXA', comarca: 'Outra' },
-      { abrangencia: 'municipio', uf: 'XA' },
+      { abrangencia: 'municipio', uf: 'XA', municipioIbge: '9900002' },
+      { abrangencia: 'municipio', uf: 'XA', municipioIbge: '9900001', tribunal: 'TRTX' },
+      { abrangencia: 'uf', uf: 'XA', tribunal: 'TRTX' },
       { inicio: '2027-04-01', fim: '2027-04-01' },
       { inicio: '2027-02-01', fim: '2027-02-27' },
     ]) {
@@ -457,6 +468,14 @@ describe('recálculo por mudança de calendário (HU16, PZ-142)', () => {
     }
     const daUf = await recalcular.executarLote(alteracao({ abrangencia: 'uf', uf: 'XA' }), null);
     expect(daUf).toMatchObject({ lidos: 1, alterados: 1 });
+    // Feriado municipal publicado pelo tribunal do processo, no município da comarca.
+    const doMunicipio = alteracao({
+      abrangencia: 'municipio',
+      uf: 'XA',
+      municipioIbge: '9900001',
+      tribunal: 'TJXA',
+    });
+    expect(await recalcular.executarLote(doMunicipio, null)).toMatchObject({ lidos: 1 });
   });
 
   it('pagina em lotes pelo id', async () => {
@@ -519,15 +538,18 @@ describe('recálculo por mudança de calendário (HU16, PZ-142)', () => {
   });
 
   it('lista os tenants do evento global como sistema; no local, só o do escritório', async () => {
+    municipioIbge = '9900001';
     const prazo = await criado();
     await comEstado(prazo.id, 'a-confirmar', { tenantId: OUTRO_TENANT });
     const tenants = new TenantsAfetadosPeloCalendario(outbox, prazos);
     expect(await tenants.executar(alteracao())).toEqual([TENANT, OUTRO_TENANT].sort());
     expect(await tenants.executar(alteracao({ origem: 'local' }))).toEqual([TENANT]);
-    expect(await tenants.executar(alteracao({ abrangencia: 'municipio', uf: 'XA' }))).toEqual([]);
-    expect(
-      await tenants.executar(alteracao({ origem: 'local', abrangencia: 'municipio', uf: 'XA' })),
-    ).toEqual([]);
+    const municipio = { abrangencia: 'municipio', uf: 'XA', municipioIbge: '9900001' } as const;
+    expect(await tenants.executar(alteracao(municipio))).toEqual([TENANT, OUTRO_TENANT].sort());
+    expect(await tenants.executar(alteracao({ ...municipio, municipioIbge: '9900002' }))).toEqual(
+      [],
+    );
+    expect(await tenants.executar(alteracao({ origem: 'local', ...municipio }))).toEqual([TENANT]);
   });
 
   it('recusa evento fora do contrato', () => {

@@ -2,7 +2,7 @@ import { TRIBUNAIS } from '@pz/kernel';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 
-import { jurisdicaoDoProcesso } from './jurisdicao-do-processo.js';
+import { jurisdicaoDoProcesso, normalizarMunicipio } from './jurisdicao-do-processo.js';
 
 const deUmaUf = TRIBUNAIS.filter((t) => t.ufs.length === 1);
 const deVariasUfs = TRIBUNAIS.filter((t) => t.ufs.length > 1);
@@ -54,5 +54,41 @@ describe('jurisdicaoDoProcesso (HU13)', () => {
         expect(lacunas).not.toContain('uf');
       }),
     );
+  });
+
+  it('município pelo nome da comarca, no cadastro territorial da curadoria', () => {
+    // Anápolis (GO), IBGE 5201108; tanto faz o prefixo "Comarca de", acento e caixa.
+    for (const comarca of ['Anápolis', 'Comarca de ANAPOLIS', '  anápolis ']) {
+      expect(jurisdicaoDoProcesso({ tribunal: 'TJGO', comarca })).toEqual({
+        jurisdicao: { tribunal: 'TJGO', uf: 'GO', municipioIbge: '5201108', comarca },
+        lacunas: [],
+      });
+    }
+  });
+
+  it('tribunal de várias UFs: o município achado dá também a UF', () => {
+    // Colatina (ES), subseção do TRF2 (RJ e ES), IBGE 3201506.
+    expect(
+      jurisdicaoDoProcesso({ tribunal: 'TRF2', comarca: 'Subseção Judiciária de Colatina' }),
+    ).toEqual({
+      jurisdicao: {
+        tribunal: 'TRF2',
+        uf: 'ES',
+        municipioIbge: '3201506',
+        comarca: 'Subseção Judiciária de Colatina',
+      },
+      lacunas: [],
+    });
+  });
+
+  it('comarca fora do cadastro ou de outra UF: o município fica como lacuna', () => {
+    expect(jurisdicaoDoProcesso({ tribunal: 'TJGO', comarca: 'Colatina' }).lacunas).toEqual([
+      'municipio',
+    ]);
+  });
+
+  it('normaliza como o gerador da carga', () => {
+    expect(normalizarMunicipio('  Vara do Trabalho de São   José ')).toBe('sao jose');
+    expect(normalizarMunicipio('Foro de Itaúna')).toBe('itauna');
   });
 });

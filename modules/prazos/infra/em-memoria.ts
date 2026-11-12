@@ -346,7 +346,13 @@ export class PrazosEmMemoria implements RepositorioDePrazos<TransacaoEmMemoria> 
           referencia <= alcance.fim.paraIso() &&
           !vencimento?.ehAntesDe(alcance.inicio) &&
           (alcance.abrangencia === 'nacional' ||
-            (alcance.abrangencia === 'uf' && j.uf === alcance.uf) ||
+            (alcance.abrangencia === 'uf' &&
+              j.uf === alcance.uf &&
+              (alcance.tribunal === undefined || j.tribunal === alcance.tribunal)) ||
+            (alcance.abrangencia === 'municipio' &&
+              j.municipioIbge !== undefined &&
+              j.municipioIbge === alcance.municipioIbge &&
+              (alcance.tribunal === undefined || j.tribunal === alcance.tribunal)) ||
             (alcance.abrangencia === 'tribunal' && j.tribunal === alcance.tribunal) ||
             (alcance.abrangencia === 'comarca' &&
               j.tribunal === alcance.tribunal &&

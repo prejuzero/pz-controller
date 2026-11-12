@@ -98,6 +98,7 @@ function filtroDoAlcance(alcance: AlcanceDaAlteracao) {
     inicio,
     fim,
     uf: alcance.uf ?? null,
+    municipioIbge: alcance.municipioIbge ?? null,
     tribunal: alcance.tribunal ?? null,
     comarca: alcance.comarca ?? null,
     abrangencia: alcance.abrangencia,
@@ -213,7 +214,11 @@ export class PrazosPostgres implements RepositorioDePrazos<Transacao> {
          AND (entrada_calculo->>'dataDeReferencia')::date <= ${f.fim}::date
          AND (vencimento IS NULL OR vencimento >= ${f.inicio}::date)
          AND (${f.abrangencia} = 'nacional'
-              OR (${f.abrangencia} = 'uf' AND jurisdicao->>'uf' = ${f.uf})
+              OR (${f.abrangencia} = 'uf' AND jurisdicao->>'uf' = ${f.uf}
+                  AND (${f.tribunal}::text IS NULL OR jurisdicao->>'tribunal' = ${f.tribunal}))
+              OR (${f.abrangencia} = 'municipio'
+                  AND jurisdicao->>'municipioIbge' = ${f.municipioIbge}
+                  AND (${f.tribunal}::text IS NULL OR jurisdicao->>'tribunal' = ${f.tribunal}))
               OR (${f.abrangencia} = 'tribunal' AND jurisdicao->>'tribunal' = ${f.tribunal})
               OR (${f.abrangencia} = 'comarca' AND jurisdicao->>'tribunal' = ${f.tribunal}
                   AND jurisdicao->>'comarca' = ${f.comarca}))
@@ -238,7 +243,11 @@ export class PrazosPostgres implements RepositorioDePrazos<Transacao> {
          AND (entrada_calculo->>'dataDeReferencia')::date <= ${f.fim}::date
          AND (vencimento IS NULL OR vencimento >= ${f.inicio}::date)
          AND (${f.abrangencia} = 'nacional'
-              OR (${f.abrangencia} = 'uf' AND jurisdicao->>'uf' = ${f.uf})
+              OR (${f.abrangencia} = 'uf' AND jurisdicao->>'uf' = ${f.uf}
+                  AND (${f.tribunal}::text IS NULL OR jurisdicao->>'tribunal' = ${f.tribunal}))
+              OR (${f.abrangencia} = 'municipio'
+                  AND jurisdicao->>'municipioIbge' = ${f.municipioIbge}
+                  AND (${f.tribunal}::text IS NULL OR jurisdicao->>'tribunal' = ${f.tribunal}))
               OR (${f.abrangencia} = 'tribunal' AND jurisdicao->>'tribunal' = ${f.tribunal})
               OR (${f.abrangencia} = 'comarca' AND jurisdicao->>'tribunal' = ${f.tribunal}
                   AND jurisdicao->>'comarca' = ${f.comarca}))

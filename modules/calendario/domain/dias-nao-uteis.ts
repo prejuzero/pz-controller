@@ -32,18 +32,23 @@ export interface DiaNaoUtil {
   };
 }
 
-/** O evento alcança a jurisdição? Comarca só existe dentro do seu tribunal. */
+/**
+ * O evento alcança a jurisdição? Comarca só existe dentro do seu tribunal; o feriado estadual ou
+ * municipal publicado por um tribunal vale só nos processos dele.
+ */
 export function alcanca(conteudo: ConteudoDoEvento, jurisdicao: Jurisdicao): boolean {
+  const doTribunal = conteudo.tribunal === undefined || jurisdicao.tribunal === conteudo.tribunal;
   switch (conteudo.abrangencia) {
     case 'nacional':
       return true;
     case 'uf':
-      return jurisdicao.uf !== undefined && jurisdicao.uf === conteudo.uf;
+      return jurisdicao.uf !== undefined && jurisdicao.uf === conteudo.uf && doTribunal;
     case 'municipio':
       return (
         jurisdicao.municipioIbge !== undefined &&
         jurisdicao.uf === conteudo.uf &&
-        jurisdicao.municipioIbge === conteudo.municipioIbge
+        jurisdicao.municipioIbge === conteudo.municipioIbge &&
+        doTribunal
       );
     case 'tribunal':
       return jurisdicao.tribunal !== undefined && jurisdicao.tribunal === conteudo.tribunal;

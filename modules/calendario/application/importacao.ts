@@ -32,8 +32,27 @@ export const EntradaImportacao = z
   .object({
     csv: z.string().min(1).max(1_000_000),
     somentePrevia: z.boolean().default(true),
+    /**
+     * Pula a linha igual a um evento global já cadastrado e não revogado (mesmo local, tipo,
+     * período e descrição): a carga da planilha pode rodar de novo sem duplicar.
+     */
+    ignorarRepetidos: z.boolean().default(false),
   })
   .strict();
+
+/** O que torna dois eventos o mesmo evento da carga. */
+const chaveDoEvento = (e: EventoGlobal['estado']) =>
+  [
+    e.abrangencia,
+    e.uf ?? '',
+    e.municipioIbge ?? '',
+    e.tribunal ?? '',
+    e.comarca ?? '',
+    e.tipo,
+    e.inicio.paraIso(),
+    e.fim.paraIso(),
+    e.descricao,
+  ].join('|');
 
 export interface LinhaDaPrevia {
   /** Número da linha no arquivo (o cabeçalho é a 1). */
@@ -45,6 +64,8 @@ export interface ResultadoDaImportacao {
   readonly linhas: readonly LinhaDaPrevia[];
   /** Eventos gravados como rascunho; vazio na prévia ou se alguma linha tiver problema. */
   readonly propostos: readonly EventoGlobalListado[];
+  /** Linhas puladas por já existirem (só com `ignorarRepetidos`). */
+  readonly repetidos?: number;
 }
 
 /**
@@ -106,11 +127,26 @@ export class ImportarCalendario<Transacao> {
     if (dados.data.somentePrevia || linhas.some((l) => l.problemas.length > 0)) {
       return ok({ linhas, propostos: [] });
     }
-    const propostos = eventos.map((evento) => globalListado(evento.estado));
+    const propostos: EventoGlobalListado[] = [];
+    let repetidos = 0;
     await this.unidade.executar(async (transacao) => {
-      for (const [i, evento] of eventos.entries()) {
+      const existentes = dados.data.ignorarRepetidos
+        ? new Set(
+            (await this.globais.listar(transacao, {}))
+              .filter((e) => e.estado.revogadoEm === undefined)
+              .map((e) => chaveDoEvento(e.estado)),
+          )
+        : new Set<string>();
+      for (const evento of eventos) {
+        const chave = chaveDoEvento(evento.estado);
+        if (existentes.has(chave)) {
+          repetidos += 1;
+          continue;
+        }
+        existentes.add(chave);
         await this.globais.inserir(transacao, evento);
-        const depois = propostos[i];
+        const depois = globalListado(evento.estado);
+        propostos.push(depois);
         await this.trilha.registrar(
           transacao,
           {
@@ -123,6 +159,6 @@ export class ImportarCalendario<Transacao> {
         );
       }
     });
-    return ok({ linhas, propostos });
+    return ok({ linhas, propostos, ...(dados.data.ignorarRepetidos ? { repetidos } : {}) });
   }
 }
