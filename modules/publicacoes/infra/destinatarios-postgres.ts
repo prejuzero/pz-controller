@@ -12,21 +12,23 @@ export interface DestinatarioLido {
 
 /** Destinatários de um conteúdo (ADR-014): um por tenant. */
 export class DestinatariosPostgres {
-  /** No tenant da transação (RLS). */
+  /**
+   * No tenant da transação (RLS), pela view `publicacao_do_tenant`: a aplicação não lê
+   * `publicacao_conteudo` diretamente (ADR-014; migração 20261025000000_publicacoes).
+   */
   async doConteudo(tx: Transacao, conteudoId: Uuid): Promise<DestinatarioLido | undefined> {
-    const l = await tx.publicacaoDestinatario.findFirst({
-      where: { conteudoId },
-      select: {
-        processoId: true,
-        oabId: true,
-        conteudo: { select: { dataDisponibilizacao: true } },
-      },
-    });
-    if (l === null) return undefined;
-    const d = l.conteudo.dataDisponibilizacao;
+    const [l] = await tx.$queryRaw<
+      { processo_id: string | null; oab_id: string | null; data_disponibilizacao: Date }[]
+    >`
+      SELECT processo_id, oab_id, data_disponibilizacao
+        FROM publicacao_do_tenant
+       WHERE conteudo_id = ${conteudoId}::uuid
+       LIMIT 1`;
+    if (l === undefined) return undefined;
+    const d = l.data_disponibilizacao;
     return {
-      processoId: l.processoId as Uuid | null,
-      oabId: l.oabId as Uuid | null,
+      processoId: l.processo_id as Uuid | null,
+      oabId: l.oab_id as Uuid | null,
       // Coluna DATE chega como meia-noite UTC.
       dataDisponibilizacao: LocalDate.de(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate()),
     };

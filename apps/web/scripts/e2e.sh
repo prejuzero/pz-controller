@@ -19,7 +19,8 @@ infra/docker/compose.sh exec -T postgres psql -v ON_ERROR_STOP=1 -U pz_dev -d pr
    WHERE email IN ('demonstracao@prejuzero.local', 'colaboradora@prejuzero.local', 'curadoria1@prejuzero.local',
    'curadoria2@prejuzero.local', 'admin@prejuzero.local')" \
   >/dev/null
-pnpm db:seed
+# Jornada do lançamento (PZ-233): uma intimação fictícia nova entra pelo fluxo real do worker.
+SEED_JORNADA_E2E=sim pnpm db:seed
 rm -rf apps/web/e2e/.sessao
 
 versao="$(node -p "require('$raiz/apps/web/node_modules/@playwright/test/package.json').version")"

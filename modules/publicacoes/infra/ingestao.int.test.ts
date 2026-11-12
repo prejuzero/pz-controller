@@ -14,6 +14,7 @@ import {
   MarcarComoLida,
 } from '../application/leitura.js';
 
+import { DestinatariosPostgres } from './destinatarios-postgres.js';
 import { ExportacaoDasPublicacoesPostgres } from './exportacao-postgres.js';
 import { LeituraPostgres } from './leitura-postgres.js';
 import { PublicacoesPostgres } from './publicacoes-postgres.js';
@@ -175,6 +176,17 @@ describe('ingestão no PostgreSQL (HU18)', () => {
       );
     expect(await teor(A)).toBe(conteudo.teor);
     expect(await teor(gerarUuidV7())).toBeUndefined();
+
+    // Geração do prazo (HU24, achado do E2E da jornada, PZ-233): a aplicação (pz_app) lê o
+    // destinatário com a data de disponibilização sem acessar publicacao_conteudo diretamente.
+    const destinatario = (tenant: Uuid) =>
+      executarNoTenant(tenant, () =>
+        banco.executar((tx) => new DestinatariosPostgres().doConteudo(tx, conteudo.id as Uuid)),
+      );
+    const doA = await destinatario(A);
+    expect(doA?.processoId).not.toBeNull();
+    expect(doA?.dataDisponibilizacao.paraIso()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(await destinatario(gerarUuidV7())).toBeUndefined();
   });
 
   it('leitura: lista pela view com filtros e cursor; marcar lida audita uma vez; outro tenant não vê', async () => {
