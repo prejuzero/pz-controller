@@ -7,6 +7,7 @@ Arquivos gerados por `gerar_carga.py` a partir de `../hu14-pendencias-do-curador
 | `tabela-de-prazos.csv`                                            | Tabela de prazos → Importar CSV (HU15)       | 83 versões (aba 9, linhas ativas), com contagem, dobro, cálculo, marco, onde o ato é praticado, alerta, fundamento, link (aba 4) e vigência (aba 4). |
 | `calendario-0N.csv`                                               | Calendário → Importar eventos por CSV (HU13) | 3.327 eventos (aba 5): 686 nacionais e de tribunal e 2.641 feriados estaduais e municipais publicados por um tribunal (só valem nos processos dele). |
 | `../../../modules/calendario/domain/municipios-das-comarcas.json` | (código)                                     | Município (IBGE) de cada comarca e dos feriados municipais, para achar o município do processo pelo nome da comarca.                                 |
+| `../../../modules/calendario/domain/fusos-dos-municipios.json`    | (código)                                     | Fuso do juízo de cada município das comarcas dos TJs (coluna "Fuso do juízo"; vazia = Brasília), para o fim do prazo no fuso da unidade.             |
 
 Para regerar: `python3 docs/curadoria/carga/gerar_carga.py` (requer `openpyxl`). O código do tipo de ato é o nome do ato sem acentos, em kebab-case.
 

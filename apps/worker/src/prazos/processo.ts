@@ -27,7 +27,7 @@ export function processoNoCalendario(
       ramoDoTribunal: ramo,
       jurisdicao,
       lacunas,
-      fuso: fusoDoJuizo(tribunal),
+      fuso: fusoDoJuizo(tribunal, jurisdicao.municipioIbge),
       diasNaoUteis: async (inicio, fim) =>
         (await dias.diasNaoUteis(jurisdicao, inicio, fim)).map((dia) => ({
           data: dia.data,

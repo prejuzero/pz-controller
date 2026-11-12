@@ -1,3 +1,12 @@
+import fusosDosMunicipios from './fusos-dos-municipios.json' with { type: 'json' };
+
+/**
+ * Código IBGE -> fuso do juízo, das comarcas dos TJs como a curadora cadastrou na V2 (aba 5,
+ * coluna "Fuso do juízo (se diferente de Brasília)"; vazia = Brasília). Gerado por
+ * docs/curadoria/carga/gerar_carga.py.
+ */
+const FUSOS_DOS_MUNICIPIOS: Readonly<Record<string, string>> = fusosDosMunicipios;
+
 /** Fuso de Brasília: o padrão do sistema e o dos tribunais sem fuso próprio na curadoria. */
 export const FUSO_DE_BRASILIA = 'America/Sao_Paulo';
 
@@ -34,8 +43,18 @@ export interface FusoDoJuizo {
   readonly outrosFusos: boolean;
 }
 
-/** Fuso do juízo pelo tribunal do processo. Sem tribunal conhecido, Brasília. */
-export function fusoDoJuizo(tribunal: string | null | undefined): FusoDoJuizo {
+/**
+ * Fuso do juízo (CPC, art. 213, parágrafo único; Lei 11.419/2006, art. 3º, parágrafo único). Com
+ * o município da unidade no cadastro da curadoria, o fuso dele: exato, sem aviso (o juízo fica
+ * no município, qualquer que seja o ramo). Sem ele, o do tribunal; sem tribunal conhecido,
+ * Brasília.
+ */
+export function fusoDoJuizo(
+  tribunal: string | null | undefined,
+  municipioIbge?: string,
+): FusoDoJuizo {
+  const doMunicipio = municipioIbge === undefined ? undefined : FUSOS_DOS_MUNICIPIOS[municipioIbge];
+  if (doMunicipio !== undefined) return { fuso: doMunicipio, outrosFusos: false };
   return (
     (tribunal === null || tribunal === undefined ? undefined : FUSOS[tribunal]) ?? {
       fuso: FUSO_DE_BRASILIA,
