@@ -24,6 +24,7 @@ RAIZ = Path(__file__).resolve().parents[3]
 PLANILHA = RAIZ / 'docs/curadoria/hu14-pendencias-do-curador-v2-revisado.xlsx'
 SAIDA = RAIZ / 'docs/curadoria/carga'
 MUNICIPIOS = RAIZ / 'modules/calendario/domain/municipios-das-comarcas.json'
+FUSOS = RAIZ / 'modules/calendario/domain/fusos-dos-municipios.json'
 # Prefixo do código IBGE do município -> UF (tabela de UFs do IBGE).
 UF_DO_IBGE = {
     '11': 'RO', '12': 'AC', '13': 'AM', '14': 'RR', '15': 'PA', '16': 'AP', '17': 'TO',
@@ -194,6 +195,22 @@ def municipios(livro) -> dict[str, dict[str, str]]:
     return saida
 
 
+def fusos(livro) -> dict[str, str]:
+    """Código IBGE -> fuso do juízo, das comarcas dos TJs (cadastro territorial da aba 5). A coluna
+    é "Fuso do juízo (se diferente de Brasília)": vazia, o fuso é o de Brasília."""
+    saida: dict[str, str] = {}
+    for r in livro['5. Calendário'].iter_rows(min_row=12, values_only=True):
+        abrangencia, nome, codigo_ibge, tipo = r[:4]
+        codigo = str(codigo_ibge or '').strip()
+        if abrangencia != 'comarca' or tipo != 'cadastro territorial' or not re.fullmatch(r'\d{7}', codigo):
+            continue
+        fuso = re.match(r'America/[A-Za-z_]+', str(r[8] or 'America/Sao_Paulo')).group()
+        if saida.get(codigo, fuso) != fuso:
+            raise ValueError(f'município {codigo} com dois fusos na planilha')
+        saida[codigo] = fuso
+    return dict(sorted(saida.items()))
+
+
 def main() -> None:
     livro = openpyxl.load_workbook(PLANILHA, data_only=True)
     linhas_tabela, fora_tabela = tabela(livro)
@@ -204,6 +221,9 @@ def main() -> None:
     tabela_municipios = municipios(livro)
     MUNICIPIOS.write_text(json.dumps(tabela_municipios, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     print(f'municípios das comarcas: {sum(len(v) for v in tabela_municipios.values())}')
+    tabela_fusos = fusos(livro)
+    FUSOS.write_text(json.dumps(tabela_fusos, indent=2) + '\n', encoding='utf-8')
+    print(f'fusos dos municípios: {len(tabela_fusos)}')
     print(f'tabela: {len(linhas_tabela)} linhas; fora: {len(fora_tabela)}')
     for item in fora_tabela:
         print(f'  - {item}')
