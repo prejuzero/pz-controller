@@ -29,6 +29,8 @@ export type Json =
 export interface JurisdicaoDoPrazo {
   readonly tribunal?: string;
   readonly uf?: string;
+  /** Município da comarca, pelo cadastro territorial da curadoria (código IBGE). */
+  readonly municipioIbge?: string;
   readonly comarca?: string;
   readonly lacunas: readonly string[];
 }

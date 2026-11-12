@@ -543,6 +543,7 @@ const AlteracaoRecebida = z.object({
     origem: z.enum(['global', 'local']),
     abrangencia: z.enum(['nacional', 'uf', 'municipio', 'tribunal', 'comarca']),
     uf: z.string().optional(),
+    municipioIbge: z.string().optional(),
     tribunal: z.string().optional(),
     comarca: z.string().optional(),
     inicio: Data,
@@ -568,6 +569,7 @@ export function lerAlteracaoDoCalendario(evento: unknown): AlteracaoDoCalendario
     alcance: semIndefinidos({
       abrangencia: payload.abrangencia,
       uf: payload.uf,
+      municipioIbge: payload.municipioIbge,
       tribunal: payload.tribunal,
       comarca: payload.comarca,
       inicio: payload.inicio,
@@ -614,10 +616,6 @@ export class RecalcularPrazosPorCalendario<Transacao> {
     alteracao: AlteracaoDoCalendario,
     depoisDe: Uuid | null,
   ): Promise<ResultadoDoLote> {
-    // Município não chega ao prazo: o processo não guarda o município (lacuna da jurisdição).
-    if (alteracao.alcance.abrangencia === 'municipio') {
-      return { lidos: 0, alterados: 0, vencimentosAlterados: 0, proximo: null };
-    }
     const lidos = await this.unidade.executar((transacao) =>
       this.prazos.afetados(transacao, alteracao.alcance, depoisDe, this.lote),
     );
@@ -778,8 +776,6 @@ export class TenantsAfetadosPeloCalendario<Transacao> {
   ) {}
 
   async executar(alteracao: AlteracaoDoCalendario): Promise<Uuid[]> {
-    // Município não chega ao prazo: o processo não guarda o município (lacuna da jurisdição).
-    if (alteracao.alcance.abrangencia === 'municipio') return [];
     if (alteracao.origem === 'local') return [alteracao.tenantId];
     return this.sistema.executar((transacao) =>
       this.prazos.tenantsAfetados(transacao, alteracao.alcance),

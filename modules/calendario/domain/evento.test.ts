@@ -17,11 +17,18 @@ describe('validarConteudo (HU13)', () => {
       { campo: 'comarca', mensagem: 'Obrigatório na abrangência comarca.' },
     ]);
     expect(
-      validarConteudo(conteudo({ abrangencia: 'municipio', uf: 'XX', tribunal: 'TJXX' })),
+      validarConteudo(conteudo({ abrangencia: 'municipio', uf: 'XX', comarca: 'Fictícia' })),
     ).toEqual([
       { campo: 'municipioIbge', mensagem: 'Obrigatório na abrangência municipio.' },
-      { campo: 'tribunal', mensagem: 'Não se aplica à abrangência municipio.' },
+      { campo: 'comarca', mensagem: 'Não se aplica à abrangência municipio.' },
     ]);
+    // Feriado estadual ou municipal publicado por um tribunal: o tribunal é opcional.
+    expect(validarConteudo(conteudo({ abrangencia: 'uf', uf: 'XX', tribunal: 'TJXX' }))).toEqual(
+      [],
+    );
+    expect(
+      validarConteudo(conteudo({ abrangencia: 'tribunal', tribunal: 'TJXX', uf: 'XX' })),
+    ).toEqual([{ campo: 'uf', mensagem: 'Não se aplica à abrangência tribunal.' }]);
     expect(validarConteudo(conteudo({ abrangencia: 'uf', uf: '  ' }))).toHaveLength(1);
   });
 

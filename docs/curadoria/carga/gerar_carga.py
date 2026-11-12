@@ -4,9 +4,13 @@ Uso (na raiz do repositório):
     python3 docs/curadoria/carga/gerar_carga.py
 
 Ferramenta de documentação, fora do produto: só lê a planilha assinada e escreve os CSVs que a
-curadoria importa pelas telas (prévia, rascunho e aprovação por outro curador). Nenhum dado entra
-em vigor por este script. Requer openpyxl.
+curadoria importa pelas telas ou pelo `pnpm piloto:carga` (prévia, rascunho e aprovação pela
+curadoria). Nenhum dado entra em vigor por este script. Também gera a tabela de municípios das
+comarcas (cadastro territorial da aba 5, com código IBGE) usada para achar o município do processo.
+Requer openpyxl.
 """
+
+import json
 
 import csv
 import datetime
@@ -19,6 +23,21 @@ import openpyxl
 RAIZ = Path(__file__).resolve().parents[3]
 PLANILHA = RAIZ / 'docs/curadoria/hu14-pendencias-do-curador-v2-revisado.xlsx'
 SAIDA = RAIZ / 'docs/curadoria/carga'
+MUNICIPIOS = RAIZ / 'modules/calendario/domain/municipios-das-comarcas.json'
+# Prefixo do código IBGE do município -> UF (tabela de UFs do IBGE).
+UF_DO_IBGE = {
+    '11': 'RO', '12': 'AC', '13': 'AM', '14': 'RR', '15': 'PA', '16': 'AP', '17': 'TO',
+    '21': 'MA', '22': 'PI', '23': 'CE', '24': 'RN', '25': 'PB', '26': 'PE', '27': 'AL',
+    '28': 'SE', '29': 'BA', '31': 'MG', '32': 'ES', '33': 'RJ', '35': 'SP', '41': 'PR',
+    '42': 'SC', '43': 'RS', '50': 'MS', '51': 'MT', '52': 'GO', '53': 'DF',
+}
+
+
+def normalizar(nome: str) -> str:
+    """Nome de município comparável: sem acento, minúsculo, sem o prefixo "Comarca de"."""
+    sem_acento = unicodedata.normalize('NFD', nome).encode('ascii', 'ignore').decode()
+    limpo = re.sub(r'^(comarca|foro|vara|subsecao|secao)( judiciaria)?( do trabalho)? de ', '', sem_acento.lower().strip())
+    return re.sub(r'\s+', ' ', limpo)
 LINHAS_POR_ARQUIVO = 1000
 
 COLUNAS_TABELA = [
@@ -113,7 +132,7 @@ def tabela(livro) -> tuple[list[dict], list[str]]:
 def calendario(livro) -> tuple[list[dict], dict[str, int]]:
     linhas, fora = [], {}
     for r in livro['5. Calendário'].iter_rows(min_row=11, values_only=True):
-        abrangencia, nome, _, tipo, periodo, descricao, ato, url = r[:8]
+        abrangencia, nome, codigo_ibge, tipo, periodo, descricao, ato, url = r[:8]
         if not tipo or tipo in ('Tipo', 'cadastro territorial'):
             continue
         nome = str(nome)
@@ -121,24 +140,58 @@ def calendario(livro) -> tuple[list[dict], dict[str, int]]:
             # RN02 (20/12 a 20/01) é regra do motor, por ramo: não entra no calendário.
             fora['suspensão nacional de 20/12 a 20/01 (regra do motor, RN02)'] = fora.get('suspensão nacional de 20/12 a 20/01 (regra do motor, RN02)', 0) + 1
             continue
-        if abrangencia not in ('nacional', 'tribunal') or '·' in nome:
+        inicio, _, fim = str(periodo).partition(' a ')
+        uf, municipio = '', ''
+        if abrangencia in ('UF', 'município') and '·' in nome:
+            # Feriado estadual ou municipal publicado por um tribunal ("ES · TRF2", "Colatina ·
+            # TRF2"): vale só nos processos desse tribunal naquela UF ou município.
+            local, _, publicado_por = nome.partition('·')
+            sigla = re.match(r'[A-Z]+-?\d*', publicado_por.strip()).group().replace('-', '')
+            if abrangencia == 'UF':
+                abrangencia, uf = 'uf', local.strip()
+            else:
+                abrangencia, municipio = 'municipio', str(codigo_ibge).strip()
+                uf = UF_DO_IBGE[municipio[:2]]
+        elif abrangencia not in ('nacional', 'tribunal') or '·' in nome:
             chave = {
-                'UF': 'feriado estadual publicado por um tribunal (modelo sem "tribunal + UF")',
-                'município': 'feriado municipal publicado por um tribunal (modelo sem "tribunal + município")',
-                'tribunal': 'TRF2 2º grau separado das seções (modelo sem calendário por grau)',
+                'tribunal': 'TRF2 2º grau separado das seções (o processo não informa o grau)',
                 'comarca': 'linha de exemplo da planilha (fictícia)',
             }[abrangencia]
             fora[chave] = fora.get(chave, 0) + 1
             continue
-        inicio, _, fim = str(periodo).partition(' a ')
-        sigla = '' if abrangencia == 'nacional' else re.match(r'[A-Z]+-?\d*', nome).group().replace('-', '')
+        else:
+            sigla = '' if abrangencia == 'nacional' else re.match(r'[A-Z]+-?\d*', nome).group().replace('-', '')
         linhas.append({
-            'abrangencia': abrangencia, 'uf': '', 'municipioIbge': '', 'tribunal': sigla,
+            'abrangencia': abrangencia, 'uf': uf, 'municipioIbge': municipio, 'tribunal': sigla,
             'comarca': '', 'tipo': TIPOS_DE_EVENTO[tipo], 'inicio': data_iso(inicio),
             'fim': data_iso(fim or inicio), 'descricao': str(descricao).strip()[:500],
             'atoNormativo': str(ato).strip()[:500], 'urlAto': str(url).strip().split()[0],
         })
     return linhas, fora
+
+
+def municipios(livro) -> dict[str, dict[str, str]]:
+    """UF -> nome normalizado -> código IBGE, das comarcas (cadastro territorial) e dos feriados
+    municipais da aba 5. Nome repetido na mesma UF com códigos diferentes fica de fora (ambíguo)."""
+    vistos: dict[tuple[str, str], set[str]] = {}
+    for r in livro['5. Calendário'].iter_rows(min_row=12, values_only=True):
+        abrangencia, nome, codigo_ibge, tipo = r[:4]
+        codigo = str(codigo_ibge or '').strip()
+        if not re.fullmatch(r'\d{7}', codigo) or codigo[:2] not in UF_DO_IBGE:
+            continue
+        nome = str(nome)
+        if abrangencia == 'comarca' and tipo == 'cadastro territorial' and '·' in nome:
+            local = nome.partition('·')[2]
+        elif abrangencia == 'município' and '·' in nome:
+            local = nome.partition('·')[0]
+        else:
+            continue
+        vistos.setdefault((UF_DO_IBGE[codigo[:2]], normalizar(local)), set()).add(codigo)
+    saida: dict[str, dict[str, str]] = {}
+    for (uf, nome), codigos in sorted(vistos.items()):
+        if len(codigos) == 1:
+            saida.setdefault(uf, {})[nome] = next(iter(codigos))
+    return saida
 
 
 def main() -> None:
@@ -148,6 +201,9 @@ def main() -> None:
     linhas_cal, fora_cal = calendario(livro)
     for i in range(0, len(linhas_cal), LINHAS_POR_ARQUIVO):
         escrever(f'calendario-{i // LINHAS_POR_ARQUIVO + 1:02d}.csv', COLUNAS_CALENDARIO, linhas_cal[i:i + LINHAS_POR_ARQUIVO])
+    tabela_municipios = municipios(livro)
+    MUNICIPIOS.write_text(json.dumps(tabela_municipios, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    print(f'municípios das comarcas: {sum(len(v) for v in tabela_municipios.values())}')
     print(f'tabela: {len(linhas_tabela)} linhas; fora: {len(fora_tabela)}')
     for item in fora_tabela:
         print(f'  - {item}')

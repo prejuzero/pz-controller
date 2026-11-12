@@ -69,6 +69,8 @@ export type LocalizadorDoProcesso = (processoId: Uuid) => Promise<ProcessoNoCale
 export interface AlcanceDaAlteracao {
   readonly abrangencia: 'nacional' | 'uf' | 'municipio' | 'tribunal' | 'comarca';
   readonly uf?: string;
+  readonly municipioIbge?: string;
+  /** No nível UF ou município, restringe o evento aos processos do tribunal. */
   readonly tribunal?: string;
   readonly comarca?: string;
   readonly inicio: LocalDate;

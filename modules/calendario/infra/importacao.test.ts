@@ -98,13 +98,17 @@ describe('ImportarCalendario (HU13)', () => {
 });
 
 describe('arquivo de carga da curadoria V2 (docs/curadoria/carga)', () => {
-  it('passa na prévia sem problemas', async () => {
-    const { readFileSync } = await import('node:fs');
-    const arquivo = new URL('../../../docs/curadoria/carga/calendario-01.csv', import.meta.url);
+  it('passa na prévia sem problemas, inclusive os 2.641 feriados locais por tribunal', async () => {
+    const { readFileSync, readdirSync } = await import('node:fs');
+    const pasta = new URL('../../../docs/curadoria/carga/', import.meta.url);
     const { importar } = montar();
-    const r = await importar.executar(ana, { csv: readFileSync(arquivo, 'utf8') });
-    if (!r.ok) throw r.erro;
-    expect(r.valor.linhas.filter((l) => l.problemas.length > 0)).toEqual([]);
-    expect(r.valor.linhas).toHaveLength(686);
+    let total = 0;
+    for (const nome of readdirSync(pasta).filter((a) => /^calendario-\d+\.csv$/.test(a))) {
+      const r = await importar.executar(ana, { csv: readFileSync(new URL(nome, pasta), 'utf8') });
+      if (!r.ok) throw r.erro;
+      expect(r.valor.linhas.filter((l) => l.problemas.length > 0)).toEqual([]);
+      total += r.valor.linhas.length;
+    }
+    expect(total).toBe(3327);
   });
 });

@@ -77,6 +77,14 @@ const CAMPOS_POR_ABRANGENCIA: Readonly<
   comarca: ['tribunal', 'comarca'],
 };
 const CAMPOS_DE_LOCAL = ['uf', 'municipioIbge', 'tribunal', 'comarca'] as const;
+/**
+ * Feriado estadual ou municipal publicado por um tribunal (planilha da curadoria V2, aba 5: "ES ·
+ * TRF2", "Colatina · TRF2"): com o tribunal, vale só nos processos dele naquela UF ou município.
+ */
+const OPCIONAIS_POR_ABRANGENCIA: Readonly<Partial<Record<Abrangencia, readonly string[]>>> = {
+  uf: ['tribunal'],
+  municipio: ['tribunal'],
+};
 
 /** Invariantes do conteúdo; o fundamento legal em si é responsabilidade de quem cadastra. */
 export function validarConteudo(conteudo: ConteudoDoEvento): ProblemaValidacao[] {
@@ -87,7 +95,8 @@ export function validarConteudo(conteudo: ConteudoDoEvento): ProblemaValidacao[]
     if (exigidos.includes(campo) && !preenchido) {
       problemas.push({ campo, mensagem: `Obrigatório na abrangência ${conteudo.abrangencia}.` });
     }
-    if (!exigidos.includes(campo) && conteudo[campo] !== undefined) {
+    const opcional = OPCIONAIS_POR_ABRANGENCIA[conteudo.abrangencia]?.includes(campo) === true;
+    if (!exigidos.includes(campo) && !opcional && conteudo[campo] !== undefined) {
       problemas.push({ campo, mensagem: `Não se aplica à abrangência ${conteudo.abrangencia}.` });
     }
   }

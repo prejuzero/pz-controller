@@ -2,8 +2,8 @@
 // gerados de docs/curadoria/carga (tabela de prazos e calendário) como RASCUNHOS propostos pela
 // curadora, pelos mesmos casos de uso da tela de importação (validação, tudo ou nada, auditoria).
 // Nada passa a valer aqui: a curadora confere e aprova no portal ("Aprovar todos os rascunhos").
-// Uso: pnpm piloto:carga --email <e-mail da curadora>. Rodar de novo não duplica: cada parte só é
-// carregada se ainda não houver nada dela no banco.
+// Uso: pnpm piloto:carga --email <e-mail da curadora>. Rodar de novo não duplica: a tabela só é
+// carregada se ainda não houver versão nenhuma; no calendário, cada evento já cadastrado é pulado.
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -54,10 +54,7 @@ try {
       usuarioId: curadora.id as Uuid,
       canal: 'sistema' as const,
     };
-    const [versoes, eventos] = await banco.executar(async (tx) => [
-      await tx.tabelaPrazo.count(),
-      await tx.eventoCalendario.count(),
-    ]);
+    const versoes = await banco.executar((tx) => tx.tabelaPrazo.count());
 
     if (versoes > 0) {
       process.stdout.write(`Tabela de prazos: já há ${String(versoes)} versões; nada importado.\n`);
@@ -78,22 +75,23 @@ try {
       process.stdout.write(`Tabela de prazos: ${String(r.valor.propostos.length)} rascunhos.\n`);
     }
 
-    if (eventos > 0) {
-      process.stdout.write(`Calendário: já há ${String(eventos)} eventos; nada importado.\n`);
-    } else {
-      const importar = new ImportarCalendario(banco, new EventosGlobaisPostgres(), trilha, relogio);
-      for (const arquivo of readdirSync(pasta).filter((a) => /^calendario-\d+\.csv$/.test(a))) {
-        const csv = readFileSync(join(pasta, arquivo), 'utf8');
-        const r = await importar.executar(autor, { csv, somentePrevia: false });
-        if (!r.ok) throw r.erro;
-        const ruins = comProblema(r.valor.linhas);
-        if (ruins.length > 0) {
-          throw new Error(`${arquivo} recusado (tudo ou nada):\n${descrever(ruins)}`);
-        }
-        process.stdout.write(
-          `Calendário (${arquivo}): ${String(r.valor.propostos.length)} rascunhos.\n`,
-        );
+    // Calendário linha a linha: o que já está cadastrado (de uma carga anterior) é pulado.
+    const importar = new ImportarCalendario(banco, new EventosGlobaisPostgres(), trilha, relogio);
+    for (const arquivo of readdirSync(pasta).filter((a) => /^calendario-\d+\.csv$/.test(a))) {
+      const csv = readFileSync(join(pasta, arquivo), 'utf8');
+      const r = await importar.executar(autor, {
+        csv,
+        somentePrevia: false,
+        ignorarRepetidos: true,
+      });
+      if (!r.ok) throw r.erro;
+      const ruins = comProblema(r.valor.linhas);
+      if (ruins.length > 0) {
+        throw new Error(`${arquivo} recusado (tudo ou nada):\n${descrever(ruins)}`);
       }
+      process.stdout.write(
+        `Calendário (${arquivo}): ${String(r.valor.propostos.length)} rascunhos novos; ${String(r.valor.repetidos ?? 0)} já existiam.\n`,
+      );
     }
   });
   process.stdout.write('Pronto. A curadora confere e aprova no portal: Prazos e Calendário.\n');

@@ -34,6 +34,19 @@ describe('alcanca (HU13)', () => {
     // Mesma comarca em outro tribunal não é a mesma comarca.
     [{ abrangencia: 'comarca', tribunal: 'TJXB', comarca: 'Alfa' }, AQUI, false],
     [{ abrangencia: 'comarca', tribunal: 'TJXA', comarca: 'Beta' }, AQUI, false],
+    // Feriado estadual ou municipal publicado por um tribunal: só nos processos dele.
+    [{ abrangencia: 'uf', uf: 'XA', tribunal: 'TJXA' }, AQUI, true],
+    [{ abrangencia: 'uf', uf: 'XA', tribunal: 'TRTX' }, AQUI, false],
+    [
+      { abrangencia: 'municipio', uf: 'XA', municipioIbge: '9900001', tribunal: 'TJXA' },
+      AQUI,
+      true,
+    ],
+    [
+      { abrangencia: 'municipio', uf: 'XA', municipioIbge: '9900001', tribunal: 'TRTX' },
+      AQUI,
+      false,
+    ],
   ] as const)('%j em %j → %s', (local, jurisdicao, esperado) => {
     expect(alcanca(conteudo(local), jurisdicao)).toBe(esperado);
   });

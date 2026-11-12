@@ -270,10 +270,11 @@ describe('@Consome e o despachante', () => {
       tenantId,
       agregadoId: gerarUuidV7(relogio),
       ocorridoEm: relogio.agora(),
-      // Município: o recálculo de prazos não tem o que fazer (sem fila no teste unitário).
+      // Global: o recálculo de prazos precisa do banco do sistema, fora do teste unitário (falha e
+      // vai à retentativa); o cache do calendário é invalidado mesmo assim.
       payload: {
         eventoId: gerarUuidV7(relogio),
-        origem: 'local',
+        origem: 'global',
         acao: 'incluido',
         abrangencia: 'municipio',
         uf: 'XA',
@@ -283,11 +284,10 @@ describe('@Consome e o despachante', () => {
         usuarioId: gerarUuidV7(relogio),
       },
     };
-    expect(await app.get(DespachanteDeEventos).despachar(evento)).toEqual([
-      'processado',
-      'processado',
-    ]);
-    expect(invalidacoes.at(-1)).toEqual({ origem: 'local', tenantId, anos: [2030, 2031] });
+    await expect(app.get(DespachanteDeEventos).despachar(evento)).rejects.toThrow(
+      /Can't reach database server/,
+    );
+    expect(invalidacoes.at(-1)).toEqual({ origem: 'global', tenantId, anos: [2030, 2031] });
   });
 
   it('evento sem consumidor inscrito, de outra versão ou consumidor desconhecido', async () => {

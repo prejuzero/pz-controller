@@ -37,7 +37,7 @@ pnpm piloto:carga --email <e-mail da curadora>
 ```
 
 1. O primeiro comando cria a conta de curadora (sem senha). Ela abre `https://<PILOTO_HOST>/entrar`, clica em "Esqueci minha senha", define a senha pelo e-mail e ativa o 2FA. O e-mail precisa ser diferente do que ela usar como advogada de escritório.
-2. O segundo carrega a planilha como **rascunhos** propostos por ela: 83 regras de prazo e 686 eventos do calendário. Rodar de novo não duplica nada.
+2. O segundo carrega a planilha como **rascunhos** propostos por ela: 83 regras de prazo e 3.327 eventos do calendário (feriados nacionais, de tribunal, estaduais e municipais). Rodar de novo não duplica nada: só entra o que ainda não está cadastrado.
 3. Ela entra, confere e clica em **"Aprovar todos os rascunhos"** em Prazos e em Calendário (o calendário é por ano: aprove em cada ano). A partir daí, o cálculo usa as regras dela. Cada aprovação fica na trilha de auditoria com o nome dela.
 
 ## 4. Certificado nos computadores dos advogados
@@ -57,5 +57,5 @@ macOS: abra o arquivo no Acesso às Chaves e marque "Sempre confiar". Windows: i
 ## Limites do piloto
 
 - O cálculo automático só existe para atos com regra aprovada pela curadoria; os demais ficam "a confirmar" sem data, e o advogado informa o vencimento.
-- Feriados estaduais e municipais da comarca dependem do cadastro da curadoria: confira as datas sugeridas.
+- O feriado municipal entra quando a comarca do processo está no cadastro territorial da curadoria (escreva o nome do município, ex.: "Santa Rosa"); senão, o prazo avisa "Feriado local não verificado".
 - A máquina precisa ficar ligada para a captura (6 vezes ao dia) e os lembretes.
