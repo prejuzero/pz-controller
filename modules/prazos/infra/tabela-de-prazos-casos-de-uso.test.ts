@@ -138,14 +138,22 @@ describe('fluxo de proposta e aprovação (HU15)', () => {
     expect(trilha.registros).toEqual([]);
   });
 
-  it('aprovação pelo próprio proponente é recusada, sem auditoria nem evento', async () => {
-    const r = await propor.executar(ana, proposta());
-    if (!r.ok) throw r.erro;
+  it('a própria proponente aprova; em lote, cada versão com auditoria e a falha à parte', async () => {
+    const r1 = await propor.executar(ana, proposta());
+    const r2 = await propor.executar(ana, proposta({ vigenciaInicio: '2021-01-01' }));
+    if (!r1.ok || !r2.ok) throw new Error('propor falhou');
     trilha.registros.length = 0;
-    const a = await aprovar.executar(ana, r.valor.id);
-    expect(!a.ok && a.erro.codigo).toBe('aprovacao-pelo-proponente');
-    expect(trilha.registros).toEqual([]);
-    expect(await eventosNoOutbox()).toEqual([]);
+    const inexistente = '01a10e00-0000-7000-8000-0000000000ff' as Uuid;
+    const lote = await aprovar.emLote(ana, [r1.valor.id, r2.valor.id, r1.valor.id, inexistente]);
+    expect(lote).toEqual({
+      aprovados: 2,
+      falhas: [{ id: inexistente, codigo: 'versao-inexistente' }],
+    });
+    expect(trilha.registros.map((t) => t.entrada.tipo)).toEqual([
+      'prazos.versao-da-tabela-aprovada',
+      'prazos.versao-da-tabela-aprovada',
+    ]);
+    expect(trilha.registros[0]?.origem).toMatchObject({ usuarioId: ANA.usuarioId });
   });
 
   it('aprovação por outra pessoa: auditoria com antes e depois e evento no outbox', async () => {

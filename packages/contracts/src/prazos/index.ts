@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { DataCivil, Instante, Uuid } from '../comum.js';
+import { AprovacaoEmLote, PedidoDeAprovacaoEmLote } from '../curadoria.js';
 import { definirRota, nomear } from '../rota.js';
 
 /** Tabela de prazos por ato (HU15): dado jurídico mantido só pelo curador (CLAUDE.md, seção 4). */
@@ -212,11 +213,21 @@ export const aprovarVersaoDaTabela = definirRota({
   id: 'aprovarVersaoDaTabela',
   metodo: 'post',
   caminho: '/v1/admin/tabela-prazos/{id}/aprovar',
-  resumo: 'Aprova uma versão proposta por outro curador (quatro olhos).',
+  resumo: 'Aprova uma versão proposta (a própria curadora pode aprovar; fica na trilha).',
   tag: 'tabela-prazos',
   parametrosDeCaminho: z.object({ id: Uuid }),
   resposta: { status: 200, corpo: VersaoDaTabela },
   erros: [404, 409],
+});
+
+export const aprovarVersoesEmLote = definirRota({
+  id: 'aprovarVersoesEmLote',
+  metodo: 'post',
+  caminho: '/v1/admin/tabela-prazos/aprovacao-em-lote',
+  resumo: 'Aprova vários rascunhos da tabela de uma vez (carga da planilha), cada um auditado.',
+  tag: 'tabela-prazos',
+  corpo: PedidoDeAprovacaoEmLote,
+  resposta: { status: 200, corpo: AprovacaoEmLote },
 });
 
 export const ROTAS_TABELA_PRAZOS = [
@@ -225,5 +236,6 @@ export const ROTAS_TABELA_PRAZOS = [
   listarVersoesDaTabela,
   proporVersaoDaTabela,
   aprovarVersaoDaTabela,
+  aprovarVersoesEmLote,
   importarTabelaDePrazos,
 ] as const;

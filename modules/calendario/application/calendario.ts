@@ -270,6 +270,26 @@ export class AprovarEventoDoCalendario<Transacao> {
       return ok(depois);
     });
   }
+  /**
+   * Aprovação em lote (carga da planilha da curadoria): cada item na própria transação, com o
+   * próprio registro na trilha e o próprio evento; a falha de um não impede os outros.
+   */
+  async emLote(
+    curador: AutorEmAcao,
+    ids: readonly Uuid[],
+  ): Promise<{
+    readonly aprovados: number;
+    readonly falhas: readonly { id: Uuid; codigo: string }[];
+  }> {
+    let aprovados = 0;
+    const falhas: { id: Uuid; codigo: string }[] = [];
+    for (const id of new Set(ids)) {
+      const r = await this.executar(curador, id);
+      if (r.ok) aprovados += 1;
+      else falhas.push({ id, codigo: r.erro.codigo });
+    }
+    return { aprovados, falhas };
+  }
 }
 
 export class RevogarEventoDoCalendario<Transacao> {

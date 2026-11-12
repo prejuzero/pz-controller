@@ -127,6 +127,7 @@ export const useCadastrarTipoDeAto = () => useMutation(useMutacoesTabelaPrazos()
 export const useProporVersao = () => useMutation(useMutacoesTabelaPrazos().propor);
 export const useImportarTabelaDePrazos = () => useMutation(useMutacoesTabelaPrazos().importar);
 export const useAprovarVersao = () => useMutation(useMutacoesTabelaPrazos().aprovar);
+export const useAprovarVersoesEmLote = () => useMutation(useMutacoesTabelaPrazos().aprovarEmLote);
 
 function useMutacoesCalendario() {
   return mutacoesCalendario(useApi(), useQueryClient());
@@ -138,6 +139,7 @@ export const useFeriadosLocais = (ano: number) =>
   useQuery(consultasCalendario(useApi()).locais(ano));
 export const useProporEvento = () => useMutation(useMutacoesCalendario().propor);
 export const useAprovarEvento = () => useMutation(useMutacoesCalendario().aprovar);
+export const useAprovarEventosEmLote = () => useMutation(useMutacoesCalendario().aprovarEmLote);
 export const useRevogarEvento = () => useMutation(useMutacoesCalendario().revogar);
 export const useImportarCalendario = () => useMutation(useMutacoesCalendario().importar);
 export const useCadastrarFeriadoLocal = () => useMutation(useMutacoesCalendario().cadastrarLocal);

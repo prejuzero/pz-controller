@@ -1,10 +1,10 @@
-import { Conflito, err, NaoEncontrado, ok, Proibido, Validacao } from '@pz/kernel';
+import { Conflito, err, NaoEncontrado, ok, Validacao } from '@pz/kernel';
 import { z } from 'zod';
 
 import { motivoDaRecusa } from '../domain/padrao-seguro.js';
 
 import type { OrigemDaAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
-import type { Clock, Instant, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
+import type { Clock, Instant, Result, UnidadeDeTrabalho, Uuid, Proibido } from '@pz/kernel';
 
 export type SituacaoDaRegra = 'proposta' | 'ativa' | 'retirada' | 'substituida';
 
@@ -90,8 +90,9 @@ const validacao = (erro: z.ZodError) =>
 
 /**
  * Curadoria das regras rápidas pelo portal (PZ-313). As regras classificam o ato antes da IA
- * (CLAUDE.md, seção 11) e levam ao prazo: por isso a versão proposta nasce inativa e só outra
- * curadora a ativa (quatro olhos). Toda mudança fica na trilha, no tenant da curadoria.
+ * (CLAUDE.md, seção 11) e levam ao prazo: por isso a versão proposta nasce inativa e só vale
+ * depois de ativada pela curadoria, que pode ativar a própria proposta (decisão do usuário em
+ * 11/11/2026: uma curadora só). Toda mudança fica na trilha, no tenant da curadoria.
  */
 export class CuradoriaDasRegras<Transacao> {
   constructor(
@@ -145,9 +146,6 @@ export class CuradoriaDasRegras<Transacao> {
       }
       if (regra.ativadaPor !== null) {
         return err(new Conflito('regra-ja-decidida', 'Esta versão já foi ativada ou retirada.'));
-      }
-      if (regra.propostaPor === curador.usuarioId) {
-        return err(new Proibido('quatro-olhos', 'Outra curadora precisa ativar a sua proposta.'));
       }
       await this.regras.ativar(tx, codigo, versao, curador.usuarioId, this.relogio.agora());
       await this.#auditar(tx, curador, 'classificacao.regra-ativada', regra);

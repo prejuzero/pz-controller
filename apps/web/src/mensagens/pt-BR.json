@@ -158,7 +158,7 @@
   },
   "calendario": {
     "titulo": "Calendário forense",
-    "descricaoCuradoria": "Feriados, recessos, portarias e indisponibilidades que valem para todos os escritórios. Cada evento só passa a contar depois de aprovado por outro curador.",
+    "descricaoCuradoria": "Feriados, recessos, portarias e indisponibilidades que valem para todos os escritórios. Cada evento só passa a contar depois de aprovado pela curadoria.",
     "descricaoEscritorio": "Feriados do seu escritório ficam em Configurações > Feriados locais.",
     "irFeriadosLocais": "Ir para Feriados locais",
     "ano": "Ano",
@@ -215,7 +215,7 @@
     "avisoRecalculo": "Ao salvar, os prazos afetados por este período serão recalculados e voltarão para conferência.",
     "salvar": "Salvar",
     "propor": "Propor evento",
-    "proposto": "Evento proposto. Ele vale depois da aprovação de outro curador.",
+    "proposto": "Evento proposto. Ele vale depois de aprovado.",
     "cancelar": "Cancelar",
     "aprovar": "Aprovar",
     "aprovarTitulo": "Aprovar este evento?",
@@ -447,7 +447,7 @@
   },
   "tabelaPrazos": {
     "titulo": "Tabela de prazos",
-    "descricao": "Prazo de cada tipo de ato por ramo, com o dispositivo legal e a fonte oficial. Cada versão só entra no cálculo depois de aprovada por outro curador.",
+    "descricao": "Prazo de cada tipo de ato por ramo, com o dispositivo legal e a fonte oficial. Cada versão só entra no cálculo depois de aprovada pela curadoria.",
     "novoTipo": "Novo tipo de ato",
     "novaVersao": "Propor versão",
     "vazio": "Nenhuma versão cadastrada ainda.",
@@ -472,8 +472,7 @@
     "aprovadoEm": "Aprovada em {quando}",
     "aprovar": "Aprovar",
     "aprovada": "Versão aprovada.",
-    "aprovarProprio": "Quem propôs não pode aprovar: peça a outro curador.",
-    "proposta": "Versão proposta. Ela só vale depois da aprovação de outro curador.",
+    "proposta": "Versão proposta. Ela só vale depois de aprovada.",
     "tipoCadastrado": "Tipo de ato cadastrado.",
     "propor": "Propor",
     "cadastrar": "Cadastrar",
@@ -1576,7 +1575,7 @@
   },
   "regrasDeClassificacao": {
     "titulo": "Regras de classificação",
-    "descricao": "Regras rápidas reconhecem o tipo de ato pelo texto da publicação, antes da IA, e levam ao prazo pela tabela aprovada. Cada versão nasce proposta e só vale depois que outra curadora a ativa. Os padrões são expressões sobre o texto em minúsculas e sem acento (ex.: \\bcite-se\\b); basta um casar.",
+    "descricao": "Regras rápidas reconhecem o tipo de ato pelo texto da publicação, antes da IA, e levam ao prazo pela tabela aprovada. Cada versão nasce proposta e só vale depois de ativada. Os padrões são expressões sobre o texto em minúsculas e sem acento (ex.: \\bcite-se\\b); basta um casar.",
     "vazio": "Nenhuma regra cadastrada.",
     "colunas": {
       "codigo": "Código",
@@ -1594,7 +1593,6 @@
       "substituida": "Substituída"
     },
     "ativar": "Ativar",
-    "suaProposta": "Sua proposta: outra curadora ativa",
     "retirar": "Retirar",
     "ativada": "Regra ativada.",
     "retirada": "Regra retirada.",
@@ -1605,7 +1603,7 @@
     "padroes": "Padrões (um por linha)",
     "confianca": "Confiança (0 a 1)",
     "propor": "Propor",
-    "proposta": "Regra proposta. Peça a outra curadora para ativá-la."
+    "proposta": "Regra proposta. Ative-a para valer na classificação."
   },
   "curadoriaDaClassificacao": {
     "titulo": "Curadoria da classificação",
@@ -1653,5 +1651,14 @@
       "descartar": "Descartar",
       "aceitar": "Aceitar"
     }
+  },
+  "aprovarEmLote": {
+    "botao": "Aprovar todos os rascunhos ({total})",
+    "titulo": "Aprovar todos os rascunhos",
+    "descricao": "{total, plural, one {# rascunho passa} other {# rascunhos passam}} a valer no cálculo. Cada aprovação fica registrada na trilha de auditoria com o seu nome.",
+    "cancelar": "Cancelar",
+    "confirmar": "Aprovar todos",
+    "aprovados": "{total, plural, one {# rascunho aprovado} other {# rascunhos aprovados}}.",
+    "comFalhas": "{total} aprovados; {falhas} não puderam ser aprovados (já aprovados ou removidos)."
   }
 }

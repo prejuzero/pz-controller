@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpCode, Inject, Param, Post, Query, Req } from '@nestjs/common';
+import { PedidoDeAprovacaoEmLote } from '@pz/contracts';
 import {
   AprovarVersaoDaTabela,
   CadastrarTipoDeAto,
@@ -14,6 +15,7 @@ import { RequerPermissao } from '../http/acesso.js';
 
 import type { RequisicaoAutenticada } from '../http/acesso.js';
 import type {
+  AprovacaoEmLote,
   ResultadoDaImportacaoDaTabela,
   TipoDeAto,
   TiposDeAto,
@@ -109,6 +111,18 @@ export class TabelaPrazosController {
     const r = await this.propor.executar(curadorDe(requisicao), corpo);
     if (!r.ok) throw r.erro;
     return r.valor as VersaoDaTabela;
+  }
+
+  @Post('aprovacao-em-lote')
+  @RequerPermissao('curadoria:tabela-prazos')
+  @HttpCode(200)
+  async aprovarEmLote(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Body() corpo: unknown,
+  ): Promise<AprovacaoEmLote> {
+    const { ids } = validar(PedidoDeAprovacaoEmLote.esquema, corpo);
+    const r = await this.aprovar.emLote(curadorDe(requisicao), ids as Uuid[]);
+    return { aprovados: r.aprovados, falhas: [...r.falhas] };
   }
 
   @Post(':id/aprovar')

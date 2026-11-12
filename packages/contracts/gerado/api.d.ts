@@ -27,7 +27,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Aprova um evento proposto por outro curador (quatro olhos). */
+        /** Aprova um evento proposto (a própria curadora pode aprovar; fica na trilha). */
         post: operations["aprovarEventoDoCalendario"];
         delete?: never;
         options?: never;
@@ -46,6 +46,23 @@ export interface paths {
         put?: never;
         /** Revoga um evento aprovado, com motivo auditado. */
         post: operations["revogarEventoDoCalendario"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/calendario/aprovacao-em-lote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Aprova vários rascunhos do calendário de uma vez (carga da planilha), cada um auditado. */
+        post: operations["aprovarEventosEmLote"];
         delete?: never;
         options?: never;
         head?: never;
@@ -320,8 +337,25 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Aprova uma versão proposta por outro curador (quatro olhos). */
+        /** Aprova uma versão proposta (a própria curadora pode aprovar; fica na trilha). */
         post: operations["aprovarVersaoDaTabela"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/tabela-prazos/aprovacao-em-lote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Aprova vários rascunhos da tabela de uma vez (carga da planilha), cada um auditado. */
+        post: operations["aprovarVersoesEmLote"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2526,6 +2560,15 @@ export interface components {
                 revogadoEm: string | null;
             };
         };
+        AprovacaoEmLote: {
+            aprovados: number;
+            /** @description Cada item na própria transação: a falha de um não impede os outros. */
+            falhas: {
+                /** Format: uuid */
+                id: string;
+                codigo: string;
+            }[];
+        };
         AssinaturaCriada: {
             /**
              * Format: uri
@@ -3453,6 +3496,10 @@ export interface components {
             escopos: string[];
             /** @description HTTPS, ou HTTP em localhost; comparados por igualdade exata. */
             redirectUris: string[];
+        };
+        PedidoDeAprovacaoEmLote: {
+            /** @description Rascunhos a aprovar; repetidos contam uma vez. */
+            ids: string[];
         };
         PedidoDeAssinatura: {
             plano?: string | null;
@@ -4966,6 +5013,66 @@ export interface operations {
             };
         };
     };
+    aprovarEventosEmLote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeAprovacaoEmLote"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AprovacaoEmLote"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
     importarCalendario: {
         parameters: {
             query?: never;
@@ -6172,6 +6279,66 @@ export interface operations {
             };
             /** @description Conflito com o estado atual. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    aprovarVersoesEmLote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeAprovacaoEmLote"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AprovacaoEmLote"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

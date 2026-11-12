@@ -53,6 +53,12 @@ export const mutacoesCalendario = (api: ClienteApi, cache: QueryClient) => {
         exigir(api.POST('/v1/admin/calendario/{id}/aprovar', caminho(id))),
       onSuccess: invalidar,
     },
+    /** Carga da planilha: todos os rascunhos de uma vez, cada um auditado. */
+    aprovarEmLote: {
+      mutationFn: (ids: string[]) =>
+        exigir(api.POST('/v1/admin/calendario/aprovacao-em-lote', { body: { ids } })),
+      onSuccess: invalidar,
+    },
     revogar: {
       mutationFn: ({ id, motivo }: { id: string; motivo: string }) =>
         exigir(api.POST('/v1/admin/calendario/{id}/revogar', { ...caminho(id), body: { motivo } })),

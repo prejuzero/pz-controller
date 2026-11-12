@@ -220,7 +220,7 @@ describe('calendário forense no PostgreSQL (HU13)', () => {
       }
     });
 
-    it('quatro olhos e revogação só de aprovado, também no banco', async () => {
+    it('aprovado exige quem aprovou; revogação só de aprovado, também no banco', async () => {
       const p = await naPlataforma(() =>
         propor.executar(ana, entrada({ inicio: '2033-02-01', fim: '2033-02-01' })),
       );
@@ -228,10 +228,7 @@ describe('calendário forense no PostgreSQL (HU13)', () => {
       const app = await postgres.conectar('pz_app');
       try {
         await expect(
-          app.query(
-            `UPDATE evento_calendario SET status = 'aprovado', aprovado_por = proposto_por, aprovado_em = now() WHERE id = $1`,
-            [p.valor.id],
-          ),
+          app.query(`UPDATE evento_calendario SET status = 'aprovado' WHERE id = $1`, [p.valor.id]),
         ).rejects.toThrow(/evento_calendario_aprovacao/);
         await expect(
           app.query(

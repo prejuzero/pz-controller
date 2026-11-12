@@ -117,7 +117,7 @@ const versao = {
 };
 
 describe('tabela de prazos (HU15)', () => {
-  it('curador cadastra o ato, propõe a versão e outro curador aprova (quatro olhos)', async () => {
+  it('curador cadastra o ato, propõe a versão e a aprova (inclusive a própria), também em lote', async () => {
     const tipo = await pedir('ana', 'POST', '/v1/admin/tabela-prazos/tipos-de-ato', {
       codigo: 'ficticio-contestacao',
       nome: 'FICTÍCIO: Contestação',
@@ -142,15 +142,19 @@ describe('tabela de prazos (HU15)', () => {
     const { id } = proposta.json<{ id: string }>();
     expect(proposta.json()).toMatchObject({ versao: 1, status: 'rascunho', aprovadoPor: null });
 
-    expect((await pedir('ana', 'POST', `/v1/admin/tabela-prazos/${id}/aprovar`)).statusCode).toBe(
-      403,
-    );
-    const aprovada = await pedir('beto', 'POST', `/v1/admin/tabela-prazos/${id}/aprovar`);
+    const aprovada = await pedir('ana', 'POST', `/v1/admin/tabela-prazos/${id}/aprovar`);
     expect(aprovada.statusCode).toBe(200);
     expect(aprovada.json()).toMatchObject({ status: 'aprovado' });
     expect((await pedir('beto', 'POST', `/v1/admin/tabela-prazos/${id}/aprovar`)).statusCode).toBe(
       409,
     );
+    const lote = await pedir('ana', 'POST', '/v1/admin/tabela-prazos/aprovacao-em-lote', {
+      ids: [id],
+    });
+    expect([lote.statusCode, lote.json()]).toEqual([
+      200,
+      { aprovados: 0, falhas: [{ id, codigo: 'versao-ja-aprovada' }] },
+    ]);
 
     const lista = await pedir(
       'ana',

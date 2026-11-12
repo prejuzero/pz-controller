@@ -77,15 +77,11 @@ const proposta = {
 };
 
 describe('curadoria das regras rápidas (PZ-313)', () => {
-  it('propõe inativa, outra curadora ativa (quatro olhos), nova versão substitui e retirar desliga', async () => {
+  it('propõe inativa, a curadoria ativa (inclusive a própria), nova versão substitui e retirar desliga', async () => {
     const { repo, tipos, curadoria } = montar();
     const v1 = await curadoria.propor(ana, proposta);
     expect(v1).toMatchObject({ ok: true, valor: { versao: 1, ativa: false, propostaPor: ANA } });
-    expect(await curadoria.ativar(ana, proposta.codigo, 1)).toMatchObject({
-      ok: false,
-      erro: { codigo: 'quatro-olhos' },
-    });
-    expect((await curadoria.ativar(bia, proposta.codigo, 1)).ok).toBe(true);
+    expect((await curadoria.ativar(ana, proposta.codigo, 1)).ok).toBe(true);
     expect(await curadoria.ativar(bia, proposta.codigo, 1)).toMatchObject({
       ok: false,
       erro: { codigo: 'regra-ja-decidida' },

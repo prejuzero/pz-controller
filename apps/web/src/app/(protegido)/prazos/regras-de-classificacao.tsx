@@ -22,7 +22,6 @@ import {
   useProporRegra,
   useRegrasDeClassificacao,
   useRetirarRegra,
-  useSessao,
   useTiposDeAto,
 } from '../../../api/hooks';
 import { AlertaFormulario } from '../../_acesso/alerta-formulario';
@@ -37,13 +36,12 @@ const TOM = {
 } as const;
 
 /**
- * Curadoria das regras rápidas (PZ-313): versões propostas por uma curadora e ativadas por
- * outra (quatro olhos), como a tabela de prazos. A regra é do módulo classificação, na API.
+ * Curadoria das regras rápidas (PZ-313): versões propostas e ativadas pela curadoria (a própria
+ * proponente pode ativar), como a tabela de prazos. A regra é do módulo classificação, na API.
  */
 export function RegrasDeClassificacao() {
   const t = useTranslations('regrasDeClassificacao');
   const regras = useRegrasDeClassificacao();
-  const eu = useSessao().data?.usuarioId;
   const ativar = useAtivarRegra();
   const retirar = useRetirarRegra();
 
@@ -74,9 +72,7 @@ export function RegrasDeClassificacao() {
       cell: ({ row }) => {
         const r = row.original;
         if (r.situacao === 'proposta') {
-          return r.propostaPor === eu ? (
-            <span className="text-xs text-texto-suave">{t('suaProposta')}</span>
-          ) : (
+          return (
             <Botao
               variante="secundaria"
               carregando={ativar.isPending}

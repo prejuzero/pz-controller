@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { CURADOR_2, entrar, ESTADO_CURADOR, SENHA } from './apoio';
+import { ESTADO_CURADOR } from './apoio';
 
 // Regra FICTÍCIA, única por execução (o banco local persiste entre rodadas).
 const CODIGO = `ficticia-e2e-${String(Date.now())}`;
@@ -8,7 +8,7 @@ const CODIGO = `ficticia-e2e-${String(Date.now())}`;
 test.describe('curadoria das regras rápidas (PZ-313)', () => {
   test.use({ storageState: ESTADO_CURADOR });
 
-  test('uma curadora propõe, a outra ativa e retira', async ({ page, browser }) => {
+  test('a curadora propõe, ativa a própria proposta e retira', async ({ page }) => {
     await page.goto('/prazos');
     const form = page.locator('form').filter({ hasText: 'Propor regra ou nova versão' });
     await form.getByLabel('Código').fill(CODIGO);
@@ -18,18 +18,9 @@ test.describe('curadoria das regras rápidas (PZ-313)', () => {
     await form.getByRole('button', { name: 'Propor' }).click();
     await expect(page.getByText(/Regra proposta/)).toBeVisible();
     const linha = page.getByRole('row').filter({ hasText: CODIGO });
-    await expect(linha.getByText('Sua proposta: outra curadora ativa')).toBeVisible();
-
-    const contexto = await browser.newContext({ storageState: { cookies: [], origins: [] } });
-    const outra = await contexto.newPage();
-    await outra.goto('/entrar');
-    await entrar(outra, SENHA, CURADOR_2);
-    await outra.goto('/prazos');
-    const daOutra = outra.getByRole('row').filter({ hasText: CODIGO });
-    await daOutra.getByRole('button', { name: 'Ativar' }).click();
-    await expect(daOutra.getByText('Ativa', { exact: true })).toBeVisible();
-    await daOutra.getByRole('button', { name: 'Retirar' }).click();
-    await expect(daOutra.getByText('Retirada', { exact: true })).toBeVisible();
-    await contexto.close();
+    await linha.getByRole('button', { name: 'Ativar' }).click();
+    await expect(linha.getByText('Ativa', { exact: true })).toBeVisible();
+    await linha.getByRole('button', { name: 'Retirar' }).click();
+    await expect(linha.getByText('Retirada', { exact: true })).toBeVisible();
   });
 });

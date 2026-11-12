@@ -240,6 +240,7 @@ export {
 } from './cadastro/index.js';
 export {
   aprovarEventoDoCalendario,
+  aprovarEventosEmLote,
   cadastrarFeriadoLocal,
   ConsultaDoPeriodo,
   consultarDiasNaoUteis,
@@ -264,6 +265,7 @@ export {
 } from './calendario/index.js';
 export {
   aprovarVersaoDaTabela,
+  aprovarVersoesEmLote,
   cadastrarTipoDeAto,
   importarTabelaDePrazos,
   listarTiposDeAto,
@@ -522,3 +524,8 @@ export function documentoOpenApi(): Record<string, unknown> {
     rotas: ROTAS,
   });
 }
+export {
+  AprovacaoEmLote,
+  MAXIMO_DA_APROVACAO_EM_LOTE,
+  PedidoDeAprovacaoEmLote,
+} from './curadoria.js';

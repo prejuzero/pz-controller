@@ -1,4 +1,4 @@
-import { AggregateRoot, Conflito, err, gerarUuidV7, ok, Proibido, Validacao } from '@pz/kernel';
+import { AggregateRoot, Conflito, err, gerarUuidV7, ok, Validacao } from '@pz/kernel';
 
 import type {
   Clock,
@@ -8,6 +8,7 @@ import type {
   ProblemaValidacao,
   Result,
   Uuid,
+  Proibido,
 } from '@pz/kernel';
 
 /** Níveis do calendário (HU13): do país inteiro à comarca de um tribunal. */
@@ -152,10 +153,10 @@ export interface EstadoDoEventoGlobal extends ConteudoDoEvento {
 }
 
 /**
- * Evento do calendário global (HU13): nasce rascunho e só vale depois de aprovado por outra
- * pessoa (quatro olhos, CLAUDE.md, seção 4.3). Incluir um dia não útil adia prazos, por isso
- * exige a segunda pessoa; revogar só antecipa (na dúvida, a data mais cedo, seção 4.4) e fica a
- * cargo de um curador, com motivo.
+ * Evento do calendário global (HU13): nasce rascunho e só vale depois de aprovado pela curadoria
+ * (CLAUDE.md, seção 4.3), que pode aprovar o que ela mesma propôs (decisão do usuário em
+ * 11/11/2026: uma curadora só). Revogar só antecipa (na dúvida, a data mais cedo, seção 4.4) e
+ * fica a cargo de um curador, com motivo.
  */
 export class EventoGlobal extends AggregateRoot<CalendarioAlterado> {
   #estado: EstadoDoEventoGlobal;
@@ -199,11 +200,6 @@ export class EventoGlobal extends AggregateRoot<CalendarioAlterado> {
   aprovar(aprovador: Autor, relogio: Clock): Result<void, Proibido | Conflito> {
     if (this.#estado.status === 'aprovado') {
       return err(new Conflito('evento-ja-aprovado', 'Este evento já foi aprovado.'));
-    }
-    if (aprovador.usuarioId === this.#estado.propostoPor) {
-      return err(
-        new Proibido('aprovacao-pelo-proponente', 'A aprovação exige outra pessoa (quatro olhos).'),
-      );
     }
     const agora = relogio.agora();
     this.#estado = {

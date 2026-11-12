@@ -16,26 +16,28 @@ import { useState } from 'react';
 
 import {
   useAprovarVersao,
+  useAprovarVersoesEmLote,
   useCadastrarTipoDeAto,
   useImportarTabelaDePrazos,
   useProporVersao,
-  useSessao,
   useTiposDeAto,
   useVersoesDaTabela,
 } from '../../../api/hooks';
 import { agruparVersoes, diferencas, type GrupoDaTabela } from '../../../api/tabela-prazos';
 import { formatarDataCivil, formatarInstante } from '../../../i18n/formatar';
+import { AprovarEmLote } from '../_casca/aprovar-em-lote';
 import { ImportacaoCsvComPrevia } from '../calendario/importacao-csv';
 
 import { FormularioTipoDeAto, FormularioVersao } from './formularios';
 
 import type { VersaoConsultada as VersaoDaTabela } from '@pz/contracts';
 
-/** Curadoria da tabela de prazos (HU15): taxonomia, propostas e aprovação por quatro olhos. */
+/** Curadoria da tabela de prazos (HU15): taxonomia, propostas e aprovação (também em lote). */
 export function TabelaDePrazos() {
   const t = useTranslations('tabelaPrazos');
   const versoes = useVersoesDaTabela();
   const tipos = useTiposDeAto();
+  const aprovarEmLote = useAprovarVersoesEmLote();
   const nomeDoAto = (codigo: string) =>
     tipos.data?.itens.find((tipo) => tipo.codigo === codigo)?.nome ?? codigo;
 
@@ -86,6 +88,10 @@ export function TabelaDePrazos() {
         <p className="max-w-3xl text-texto-suave">{t('descricao')}</p>
       </div>
       <div className="flex flex-wrap justify-end gap-2">
+        <AprovarEmLote
+          ids={(versoes.data?.itens ?? []).filter((v) => v.status === 'rascunho').map((v) => v.id)}
+          aprovar={aprovarEmLote}
+        />
         <ImportarTabela />
         <NovoTipoDeAto />
         <NovaVersao tipos={tipos.data?.itens ?? []} />
@@ -164,11 +170,8 @@ function ItemDoHistorico({
   anterior: VersaoDaTabela | undefined;
 }) {
   const t = useTranslations('tabelaPrazos');
-  const usuarioId = useSessao().data?.usuarioId;
   const aprovar = useAprovarVersao();
   const mudancas = anterior === undefined ? undefined : diferencas(anterior, versao);
-  // Quatro olhos: quem propôs não aprova (a API também recusa).
-  const propria = versao.propostoPor === usuarioId;
   return (
     <li className="space-y-2 rounded-md border border-borda p-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -201,8 +204,6 @@ function ItemDoHistorico({
       {versao.status === 'rascunho' ? (
         <div className="space-y-1">
           <Botao
-            disabled={propria}
-            aria-describedby={propria ? `proprio-${versao.id}` : undefined}
             carregando={aprovar.isPending}
             onClick={() => {
               aprovar.mutate(versao.id, {
@@ -214,11 +215,6 @@ function ItemDoHistorico({
           >
             {t('aprovar')}
           </Botao>
-          {propria ? (
-            <p id={`proprio-${versao.id}`} className="text-sm text-texto-suave">
-              {t('aprovarProprio')}
-            </p>
-          ) : null}
         </div>
       ) : null}
     </li>

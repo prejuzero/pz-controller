@@ -218,12 +218,11 @@ describe('regras rápidas no PostgreSQL (HU20)', () => {
     expect(resto.map((i) => i.conteudoId)).toEqual([b]);
   });
 
-  it('curadoria pelo portal (PZ-313): a aplicação propõe e ativa; o banco barra a mesma pessoa', async () => {
+  it('curadoria pelo portal (PZ-313): a aplicação propõe e a própria proponente ativa', async () => {
     const repo = new CuradoriaDeRegrasPostgres();
     const noTenant = <T>(t: (tx: Transacao) => Promise<T>) =>
       executarNoTenant(TENANT, () => banco.executar(t));
     const ana = '01a10e00-0000-7000-8000-0000000c0a01' as Uuid;
-    const bia = '01a10e00-0000-7000-8000-0000000c0a02' as Uuid;
     const versao = await noTenant((tx) => repo.proximaVersao(tx, 'r-nova'));
     expect(versao).toBe(1);
     await noTenant((tx) =>
@@ -242,13 +241,11 @@ describe('regras rápidas no PostgreSQL (HU20)', () => {
       }),
     );
     expect(await noTenant((tx) => repo.tipoAtoExiste(tx, 'ficticio-citacao'))).toBe(true);
-    await expect(
-      noTenant((tx) => repo.ativar(tx, 'r-nova', 1, ana, Instant.deIso('2026-11-11T12:00:00Z'))),
-    ).rejects.toThrow();
+    // A própria proponente ativa (uma curadora só, decisão de 11/11/2026).
     await noTenant((tx) =>
-      repo.ativar(tx, 'r-nova', 1, bia, Instant.deIso('2026-11-11T12:00:00Z')),
+      repo.ativar(tx, 'r-nova', 1, ana, Instant.deIso('2026-11-11T12:00:00Z')),
     );
-    expect((await noTenant((tx) => repo.versao(tx, 'r-nova', 1)))?.ativadaPor).toBe(bia);
+    expect((await noTenant((tx) => repo.versao(tx, 'r-nova', 1)))?.ativadaPor).toBe(ana);
     expect(
       await noTenant((tx) => repo.retirar(tx, 'r-nova', Instant.deIso('2026-11-11T13:00:00Z'))),
     ).toBe(1);

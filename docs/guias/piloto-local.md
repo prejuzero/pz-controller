@@ -27,7 +27,20 @@ pnpm piloto:up
 
 Sobe banco, filas, API, worker (captura do DJEN, lembretes e e-mails), portal e o proxy HTTPS na porta 443. **Não rode `pnpm db:seed`**: as contas de demonstração têm senha conhecida. Cada advogado se cadastra em `https://<PILOTO_HOST>/cadastro`.
 
-## 3. Certificado nos computadores dos advogados
+## 3. Curadoria: conta e planilha
+
+A tabela de prazos e o calendário forense vêm da planilha da curadora (`docs/curadoria/carga`). Sem eles aprovados, toda intimação capturada fica "a confirmar".
+
+```
+pnpm piloto:curadora --email <e-mail da curadora> --nome "<nome completo>"
+pnpm piloto:carga --email <e-mail da curadora>
+```
+
+1. O primeiro comando cria a conta de curadora (sem senha). Ela abre `https://<PILOTO_HOST>/entrar`, clica em "Esqueci minha senha", define a senha pelo e-mail e ativa o 2FA. O e-mail precisa ser diferente do que ela usar como advogada de escritório.
+2. O segundo carrega a planilha como **rascunhos** propostos por ela: 83 regras de prazo e 686 eventos do calendário. Rodar de novo não duplica nada.
+3. Ela entra, confere e clica em **"Aprovar todos os rascunhos"** em Prazos e em Calendário (o calendário é por ano: aprove em cada ano). A partir daí, o cálculo usa as regras dela. Cada aprovação fica na trilha de auditoria com o nome dela.
+
+## 4. Certificado nos computadores dos advogados
 
 O proxy usa uma CA local. Exporte-a e instale como confiável em cada computador (uma vez):
 
@@ -37,7 +50,7 @@ infra/docker/compose.sh --profile apps --profile piloto cp proxy:/data/caddy/pki
 
 macOS: abra o arquivo no Acesso às Chaves e marque "Sempre confiar". Windows: instale em "Autoridades de Certificação Raiz Confiáveis".
 
-## 4. Backup diário
+## 5. Backup diário
 
 `pnpm backup` grava banco e arquivos em `./backups` (mantém os 7 mais recentes). Agende no `cron` (ou no Agendador de Tarefas) e copie a pasta para outro disco. Restaurar: `infra/backup/restaurar.sh`.
 

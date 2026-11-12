@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { DataCivil, Instante, Uuid } from '../comum.js';
+import { AprovacaoEmLote, PedidoDeAprovacaoEmLote } from '../curadoria.js';
 import { definirRota, nomear } from '../rota.js';
 
 const Abrangencia = z.enum(['nacional', 'uf', 'municipio', 'tribunal', 'comarca']);
@@ -182,11 +183,21 @@ export const aprovarEventoDoCalendario = definirRota({
   id: 'aprovarEventoDoCalendario',
   metodo: 'post',
   caminho: '/v1/admin/calendario/{id}/aprovar',
-  resumo: 'Aprova um evento proposto por outro curador (quatro olhos).',
+  resumo: 'Aprova um evento proposto (a própria curadora pode aprovar; fica na trilha).',
   tag: 'calendario',
   parametrosDeCaminho: comId,
   resposta: { status: 200, corpo: EventoDoCalendario },
   erros: [404, 409],
+});
+
+export const aprovarEventosEmLote = definirRota({
+  id: 'aprovarEventosEmLote',
+  metodo: 'post',
+  caminho: '/v1/admin/calendario/aprovacao-em-lote',
+  resumo: 'Aprova vários rascunhos do calendário de uma vez (carga da planilha), cada um auditado.',
+  tag: 'calendario',
+  corpo: PedidoDeAprovacaoEmLote,
+  resposta: { status: 200, corpo: AprovacaoEmLote },
 });
 
 export const revogarEventoDoCalendario = definirRota({
@@ -269,6 +280,7 @@ export const ROTAS_CALENDARIO = [
   listarCalendarioGlobal,
   proporEventoDoCalendario,
   aprovarEventoDoCalendario,
+  aprovarEventosEmLote,
   revogarEventoDoCalendario,
   importarCalendario,
   listarFeriadosLocais,

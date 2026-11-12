@@ -104,8 +104,6 @@ describe('calendário global (HU13)', () => {
   it('aprovação por outra pessoa: audita antes e depois e publica CalendarioAlterado', async () => {
     const p = await propor.executar(ana, entrada());
     if (!p.ok) throw p.erro;
-    const propria = await aprovar.executar(ana, p.valor.id);
-    expect(!propria.ok && propria.erro.codigo).toBe('aprovacao-pelo-proponente');
     const a = await aprovar.executar(beto, p.valor.id);
     if (!a.ok) throw a.erro;
     expect(a.valor.aprovadoPor).toBe(BETO.usuarioId);

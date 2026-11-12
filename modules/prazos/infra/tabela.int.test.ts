@@ -188,7 +188,7 @@ describe('tabela de prazos no PostgreSQL (HU15)', () => {
       }
     });
 
-    it('quatro olhos também no banco: o proponente não aprova', async () => {
+    it('no banco, aprovada exige quem aprovou e quando (a proponente pode aprovar)', async () => {
       const r = await naPlataforma(() =>
         propor.executar(ana, proposta({ tipoAto: 'outro-ficticio', ramo: 'juizados' })),
       );
@@ -196,11 +196,10 @@ describe('tabela de prazos no PostgreSQL (HU15)', () => {
       const app = await postgres.conectar('pz_app');
       try {
         await expect(
-          app.query(
-            `UPDATE tabela_prazo SET status = 'aprovado', aprovado_por = proposto_por, aprovado_em = now() WHERE id = $1`,
-            [r.valor.id],
-          ),
+          app.query(`UPDATE tabela_prazo SET status = 'aprovado' WHERE id = $1`, [r.valor.id]),
         ).rejects.toThrow(/tabela_prazo_aprovacao/);
+        const aprovada = await naPlataforma(() => aprovar.executar(ana, r.valor.id));
+        expect(aprovada.ok && aprovada.valor.aprovadoPor).toBe(ANA.usuarioId);
       } finally {
         await app.end();
       }

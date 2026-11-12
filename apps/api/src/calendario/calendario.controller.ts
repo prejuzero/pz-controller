@@ -10,7 +10,7 @@ import {
   RevogarEventoDoCalendario,
   RevogarFeriadoLocal,
 } from '@pz/calendario';
-import { ConsultaDoPeriodo } from '@pz/contracts';
+import { ConsultaDoPeriodo, PedidoDeAprovacaoEmLote } from '@pz/contracts';
 import { LocalDate } from '@pz/kernel';
 import { z } from 'zod';
 
@@ -20,6 +20,7 @@ import { RequerPermissao } from '../http/acesso.js';
 import type { RequisicaoAutenticada } from '../http/acesso.js';
 import type { AutorEmAcao, FiltroDoCalendario } from '@pz/calendario';
 import type {
+  AprovacaoEmLote,
   DiasNaoUteis,
   DiasNaoUteisDoProcesso,
   EventoDoCalendario,
@@ -105,6 +106,18 @@ export class CalendarioController {
       linhas: r.valor.linhas.map((l) => ({ linha: l.linha, problemas: [...l.problemas] })),
       propostos: r.valor.propostos.map((e) => e as EventoDoCalendario),
     };
+  }
+
+  @Post('admin/calendario/aprovacao-em-lote')
+  @RequerPermissao('curadoria:calendario')
+  @HttpCode(200)
+  async aprovarGlobaisEmLote(
+    @Req() requisicao: RequisicaoAutenticada,
+    @Body() corpo: unknown,
+  ): Promise<AprovacaoEmLote> {
+    const { ids } = validar(PedidoDeAprovacaoEmLote.esquema, corpo);
+    const r = await this.aprovar.emLote(autorDe(requisicao), ids as Uuid[]);
+    return { aprovados: r.aprovados, falhas: [...r.falhas] };
   }
 
   @Post('admin/calendario/:id/aprovar')

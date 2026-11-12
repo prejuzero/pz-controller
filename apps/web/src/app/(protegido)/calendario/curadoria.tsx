@@ -19,11 +19,12 @@ import { useState } from 'react';
 
 import {
   useAprovarEvento,
+  useAprovarEventosEmLote,
   useCalendarioGlobal,
   useProporEvento,
   useRevogarEvento,
-  useSessao,
 } from '../../../api/hooks';
+import { AprovarEmLote } from '../_casca/aprovar-em-lote';
 
 import { descreverLocal, descreverPeriodo, SeletorAno } from './comum';
 import { FormularioEvento } from './formulario-evento';
@@ -33,13 +34,13 @@ import type { EventoDoCalendario } from '@pz/contracts';
 
 const ABRANGENCIAS = ['nacional', 'uf', 'municipio', 'tribunal', 'comarca'] as const;
 
-/** Curadoria do calendário global (HU13): propor, aprovar (quatro olhos), revogar e importar. */
+/** Curadoria do calendário global (HU13): propor, aprovar (também em lote), revogar e importar. */
 export function Curadoria({ anoAtual }: { anoAtual: number }) {
   const t = useTranslations('calendario');
   const [ano, setAno] = useState(anoAtual);
   const [abrangencia, setAbrangencia] = useState('todas');
   const eventos = useCalendarioGlobal(ano);
-  const usuarioId = useSessao().data?.usuarioId;
+  const aprovarEmLote = useAprovarEventosEmLote();
 
   const itens = (eventos.data?.itens ?? []).filter(
     (evento) => abrangencia === 'todas' || evento.abrangencia === abrangencia,
@@ -88,8 +89,7 @@ export function Curadoria({ anoAtual }: { anoAtual: number }) {
         const evento = row.original;
         if (evento.revogadoEm !== null) return null;
         if (evento.status === 'aprovado') return <RevogarEvento evento={evento} />;
-        // Quatro olhos: quem propôs não aprova (a API também recusa).
-        return evento.propostoPor === usuarioId ? null : <AprovarEvento evento={evento} />;
+        return <AprovarEvento evento={evento} />;
       },
     },
   ];
@@ -113,6 +113,12 @@ export function Curadoria({ anoAtual }: { anoAtual: number }) {
           aoMudar={setAbrangencia}
         />
         <div className="ms-auto flex flex-wrap gap-2">
+          <AprovarEmLote
+            ids={(eventos.data?.itens ?? [])
+              .filter((e) => e.status === 'rascunho' && e.revogadoEm === null)
+              .map((e) => e.id)}
+            aprovar={aprovarEmLote}
+          />
           <ImportacaoCsv
             gatilho={
               <Botao variante="secundaria">
