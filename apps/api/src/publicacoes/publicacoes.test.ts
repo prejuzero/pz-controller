@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
+import { CapturaEmMemoria } from '@pz/captura';
 import { carregarAmbiente } from '@pz/config/env';
 import {
   AcessosEmMemoria,
@@ -29,6 +30,8 @@ const relogio = new FixedClock(Instant.deIso('2026-10-07T12:00:00Z'));
 const sessoes = new SessoesEmMemoria();
 const perfis = new PerfisEmMemoria();
 const auditados: string[] = [];
+const capturaDoEscritorio = new CapturaEmMemoria();
+const pedidosDeBusca = new OutboxEmMemoria();
 let api: NestFastifyApplication;
 const termos = termosEmMemoria();
 const ID = gerarUuidV7();
@@ -93,13 +96,14 @@ beforeAll(async () => {
   api = await criarApi({
     termos: termos.dependencias,
     statusDaCaptura: {
-      unidade: new OutboxEmMemoria(),
+      unidade: pedidosDeBusca,
       leitura: {
         fonte: () =>
           Promise.resolve({
             id: 'djen',
             situacao: 'degradada' as const,
             desde: Instant.deIso('2026-10-07T08:00:00Z'),
+            proximaRodada: Instant.deIso('2026-10-07T14:00:00Z'),
           }),
         oabs: () =>
           Promise.resolve([
@@ -109,9 +113,13 @@ beforeAll(async () => {
               ultimoSucesso: Instant.deIso('2026-10-06T21:00:00Z'),
               proximaExecucao: null,
               falhasConsecutivas: 3,
+              ultimoPedido: Instant.deIso('2026-10-07T11:58:00Z'),
             },
           ]),
       },
+      busca: capturaDoEscritorio,
+      trilha: { registrar: (_tx, e) => Promise.resolve(void auditados.push(e.tipo)) },
+      outbox: pedidosDeBusca,
     },
     publicacoes: {
       unidade: new OutboxEmMemoria(),
@@ -231,7 +239,12 @@ describe('status da captura (HU19)', () => {
     const status = await pedir('caio', 'GET', '/v1/captura/status');
     expect(status.statusCode).toBe(200);
     expect(status.json()).toEqual({
-      fonte: { id: 'djen', situacao: 'degradada', desde: '2026-10-07T08:00:00.000Z' },
+      fonte: {
+        id: 'djen',
+        situacao: 'degradada',
+        desde: '2026-10-07T08:00:00.000Z',
+        proximaRodada: '2026-10-07T14:00:00.000Z',
+      },
       oabs: [
         {
           oabId: ID,
@@ -239,9 +252,33 @@ describe('status da captura (HU19)', () => {
           ultimoSucesso: '2026-10-06T21:00:00.000Z',
           proximaExecucao: null,
           falhasConsecutivas: 3,
+          buscaAgoraLiberadaEm: '2026-10-07T12:03:00.000Z',
         },
       ],
     });
+  });
+
+  it('buscar agora: 202 com o instante do servidor, 409 antes de 5 minutos, 404 sem a OAB', async () => {
+    const oabId = gerarUuidV7();
+    await capturaDoEscritorio.assinar(
+      undefined as never,
+      await capturaDoEscritorio.obterOuCriarAlvo(
+        undefined as never,
+        'oab',
+        '123456/SP',
+        gerarUuidV7(),
+      ),
+      ESCRITORIO,
+      oabId,
+    );
+    const buscar = (id: string) => pedir('caio', 'POST', `/v1/captura/oabs/${id}/buscar-agora`);
+    const r = await buscar(oabId);
+    expect(r.statusCode).toBe(202);
+    expect(r.json()).toEqual({ solicitadaEm: '2026-10-07T12:00:00.000Z' });
+    expect(auditados).toContain('captura.busca-solicitada');
+    expect(pedidosDeBusca.pendentes().map((e) => e.tipo)).toEqual(['BuscaAgoraSolicitada']);
+    expect((await buscar(oabId)).statusCode).toBe(409);
+    expect((await buscar(gerarUuidV7())).statusCode).toBe(404);
   });
 });
 

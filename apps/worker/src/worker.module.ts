@@ -47,7 +47,9 @@ import {
   CapturaPostgres,
   ExecutarCaptura,
   ManterAssinaturas,
+  PlanejarBuscaAgora,
   PlanejarCaptura,
+  RegistrarProximaRodada,
 } from '@pz/captura';
 import {
   CienciaPostgres,
@@ -938,6 +940,23 @@ export class WorkerModule {
               fonte: ambiente.CAPTURA_FONTE,
             },
           ),
+      },
+      {
+        // Plano do "buscar agora" na transação do evento: o alvo é global e legível pelo tenant.
+        provide: PlanejarBuscaAgora,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new PlanejarBuscaAgora(new CapturaPostgres(), relogio, {
+            diasIniciais: ambiente.CAPTURA_DIAS_INICIAIS,
+          }),
+      },
+      {
+        provide: RegistrarProximaRodada,
+        useValue: new RegistrarProximaRodada(
+          sistema.unidade('captura: próxima rodada agendada'),
+          new CapturaPostgres(),
+          ambiente.CAPTURA_FONTE,
+        ),
       },
       {
         provide: ExecutarCaptura,

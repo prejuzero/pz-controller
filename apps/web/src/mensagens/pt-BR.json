@@ -688,9 +688,17 @@
     "colunas": {
       "oab": "OAB",
       "ultima": "Última captura",
-      "situacao": "Situação"
+      "situacao": "Situação",
+      "acoes": "Buscar agora"
     },
     "nunca": "Aguardando a primeira captura",
+    "proximaBusca": "Próxima busca automática",
+    "proximaBuscaEm": "{quando} (cada OAB é consultada nos minutos seguintes)",
+    "semAgenda": "Ainda não agendada",
+    "buscarAgora": "Buscar agora",
+    "buscarAgoraDaOab": "Buscar agora as publicações da OAB {oab}",
+    "buscaSolicitada": "Busca da OAB {oab} pedida. As publicações aparecem em alguns minutos.",
+    "buscaPedida": "Busca pedida; nova busca a partir de {quando}",
     "emDia": "Em dia",
     "comFalhas": "{falhas, plural, one {# falha} other {# falhas}}; nova tentativa {quando}",
     "comFalhasProxima": "{falhas, plural, one {# falha} other {# falhas}}; nova tentativa na próxima rodada",

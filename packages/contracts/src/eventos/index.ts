@@ -327,6 +327,13 @@ export const FonteDegradada = definirEvento(
   z.object({ fonte: z.string().min(1) }),
 );
 
+/** "Buscar agora" pedido por um escritório (HU17): o worker enfileira a captura do alvo. */
+export const BuscaAgoraSolicitadaEvento = definirEvento(
+  'BuscaAgoraSolicitada',
+  1,
+  z.object({ alvoId: z.uuid(), oabId: z.uuid() }),
+);
+
 /** Fonte restabelecida (HU19): os alvos em recuo foram antecipados para a recaptura. */
 export const FonteRestabelecida = definirEvento(
   'FonteRestabelecida',
@@ -521,6 +528,7 @@ export const EVENTOS = catalogoDeEventos(
   PublicacaoRecebida,
   FonteDegradada,
   FonteRestabelecida,
+  BuscaAgoraSolicitadaEvento,
   PrazoSugerido,
   PrazoRecalculado,
   PrazoConfirmado,

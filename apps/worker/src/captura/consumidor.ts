@@ -1,16 +1,38 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { ManterAssinaturas } from '@pz/captura';
+import { ManterAssinaturas, PlanejarBuscaAgora } from '@pz/captura';
+import { criarLogger } from '@pz/observability';
 
 import { Consome } from '../eventos/consome.js';
+import { FILAS_RUNTIME } from '../fichas.js';
 
+import { ESCOPO_DA_CAPTURA, executarCapturaJob } from './jobs.js';
+
+import type { Filas } from '../filas/runtime.js';
 import type { EventoDominio } from '@pz/kernel';
 
-/** Mantém os alvos da captura a partir do cadastro (HU17). Sem regra aqui. */
+const logger = criarLogger('worker.captura');
+
+/** Mantém os alvos da captura a partir do cadastro (HU17) e atende o "buscar agora". Sem regra aqui. */
 @Injectable()
 export class ConsumidorDaCaptura {
   constructor(
     @Inject(ManterAssinaturas) private readonly assinaturas: ManterAssinaturas<unknown>,
+    @Inject(PlanejarBuscaAgora) private readonly buscaAgora: PlanejarBuscaAgora<unknown>,
+    @Inject(FILAS_RUNTIME) private readonly filas: Filas,
   ) {}
+
+  /** Busca pedida pelo escritório: já na fila, sem o jitter da rodada. Repetir não duplica. */
+  @Consome('BuscaAgoraSolicitada', { versao: 1 })
+  async buscaAgoraSolicitada(transacao: unknown, evento: EventoDominio): Promise<void> {
+    const plano = await this.buscaAgora.aoSolicitar(transacao, evento);
+    if (plano === undefined) {
+      logger.info({ eventoId: evento.id }, 'busca pedida para alvo inativo: nada a buscar');
+      return;
+    }
+    const { chave, ...dados } = plano;
+    await this.filas.publicar(executarCapturaJob, dados, ESCOPO_DA_CAPTURA, chave);
+    logger.info({ alvoId: plano.alvoId, eventoId: evento.id }, 'busca agora enfileirada');
+  }
 
   @Consome('OabAdicionada', { versao: 1 })
   oabAdicionada(transacao: unknown, evento: EventoDominio): Promise<void> {

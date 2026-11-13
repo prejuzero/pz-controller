@@ -1,6 +1,8 @@
 import type {
+  AlvoDaBusca,
   AlvoDevido,
   AlvoParaEntrega,
+  RepositorioDaBuscaAgora,
   RepositorioDaCaptura,
   RepositorioDeAssinaturas,
 } from '../application/portas.js';
@@ -18,15 +20,20 @@ interface Alvo {
   ultimoSucesso?: Instant;
   proximaExecucao?: Instant;
   falhasConsecutivas: number;
+  buscaSolicitadaEm?: Instant;
 }
 
 /** Alvos e assinaturas em memória, com a semântica do Postgres. Só para testes. */
 export class CapturaEmMemoria
-  implements RepositorioDeAssinaturas<TransacaoEmMemoria>, RepositorioDaCaptura<TransacaoEmMemoria>
+  implements
+    RepositorioDeAssinaturas<TransacaoEmMemoria>,
+    RepositorioDaCaptura<TransacaoEmMemoria>,
+    RepositorioDaBuscaAgora<TransacaoEmMemoria>
 {
   readonly alvos = new Map<string, Alvo>();
   readonly assinaturas: { alvoId: Uuid; tenantId: Uuid; referencia: Uuid }[] = [];
   readonly fontes = new Map<string, EstadoDaFonte & { desde?: Instant }>();
+  readonly proximasRodadas = new Map<string, Instant | null>();
 
   alvo(tipo: TipoDeAlvo, valor: string): Alvo | undefined {
     return [...this.alvos.values()].find((a) => a.tipo === tipo && a.valor === valor);
@@ -164,5 +171,38 @@ export class CapturaEmMemoria
       }
     }
     return Promise.resolve(n);
+  }
+
+  alvoPorId(_tx: TransacaoEmMemoria, alvoId: Uuid): Promise<AlvoDevido | undefined> {
+    const a = this.alvos.get(alvoId);
+    if (a?.ativo !== true) return Promise.resolve(undefined);
+    return Promise.resolve({
+      id: a.id,
+      tipo: a.tipo,
+      valor: a.valor,
+      ...(a.ultimaJanelaFim === undefined ? {} : { ultimaJanelaFim: a.ultimaJanelaFim }),
+    });
+  }
+
+  gravarProximaRodada(_tx: TransacaoEmMemoria, fonte: string, quando: Instant | null) {
+    this.proximasRodadas.set(fonte, quando);
+    return Promise.resolve();
+  }
+
+  travarAlvoDaOab(_tx: TransacaoEmMemoria, oabId: Uuid): Promise<AlvoDaBusca | undefined> {
+    const assinatura = this.assinaturas.find((s) => s.referencia === oabId);
+    const alvo = assinatura === undefined ? undefined : this.alvos.get(assinatura.alvoId);
+    if (alvo?.ativo !== true || alvo.tipo !== 'oab') return Promise.resolve(undefined);
+    return Promise.resolve({
+      alvoId: alvo.id,
+      oab: alvo.valor,
+      ...(alvo.buscaSolicitadaEm === undefined ? {} : { ultimoPedido: alvo.buscaSolicitadaEm }),
+    });
+  }
+
+  registrarPedido(_tx: TransacaoEmMemoria, alvoId: Uuid, em: Instant) {
+    const alvo = this.alvos.get(alvoId);
+    if (alvo !== undefined) alvo.buscaSolicitadaEm = em;
+    return Promise.resolve();
   }
 }

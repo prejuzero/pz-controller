@@ -945,6 +945,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/captura/oabs/{id}/buscar-agora": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pede a busca imediata das publicações de uma OAB do escritório; as publicações chegam em alguns minutos. Um pedido por OAB a cada 5 minutos (409 antes disso). */
+        post: operations["solicitarBuscaAgora"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/captura/status": {
         parameters: {
             query?: never;
@@ -2629,6 +2646,13 @@ export interface components {
             usuariosDaEquipeComRejeicao: number | null;
             /** @description Envios por e-mail do usuário que falharam ou foram rejeitados nos últimos 7 dias. */
             enviosComProblema: number;
+        };
+        BuscaAgoraSolicitada: {
+            /**
+             * Format: date-time
+             * @description Instante do pedido, pelo relógio do servidor.
+             */
+            solicitadaEm: string;
         };
         CadastroRealizado: {
             /** Format: uuid */
@@ -4520,6 +4544,8 @@ export interface components {
                 situacao: "operacional" | "degradada";
                 /** @description Desde quando está na situação atual. */
                 desde: string | null;
+                /** @description Próxima busca automática agendada (cada OAB entra em até alguns minutos depois); nulo: ainda não agendada. */
+                proximaRodada: string | null;
             };
             oabs: {
                 /** Format: uuid */
@@ -4531,6 +4557,8 @@ export interface components {
                 /** @description Próxima tentativa após falha; nulo: na próxima rodada do agendamento. */
                 proximaExecucao: string | null;
                 falhasConsecutivas: number;
+                /** @description Quando um novo "buscar agora" desta OAB é aceito (intervalo mínimo entre pedidos); nulo: já pode. */
+                buscaAgoraLiberadaEm: string | null;
             }[];
         };
         SugestoesDaBuscaRapida: {
@@ -8598,6 +8626,82 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FeriadoLocal"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    solicitarBuscaAgora: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuscaAgoraSolicitada"];
                 };
             };
             /** @description Entrada inválida. */

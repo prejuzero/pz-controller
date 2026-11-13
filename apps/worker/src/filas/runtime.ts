@@ -165,6 +165,12 @@ export class Filas {
     );
   }
 
+  /** Próxima execução de um job recorrente (do agendador no Redis); sem agendador, null. */
+  async proximaExecucao(fila: NomeFila, agendamentoId: string): Promise<number | null> {
+    const agendador = await this.#fila(fila).getJobScheduler(agendamentoId);
+    return agendador?.next ?? null;
+  }
+
   /** Associa um tipo de job ao tratador (que chama um caso de uso). */
   registrar<Dados>(
     definicao: DefinicaoJob<Dados>,

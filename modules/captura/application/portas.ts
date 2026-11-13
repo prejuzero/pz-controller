@@ -82,6 +82,26 @@ export interface RepositorioDaCaptura<Transacao> {
    * do último sucesso até hoje, então nenhum dia da indisponibilidade fica sem captura.
    */
   anteciparAlvos(transacao: Transacao, agora: Instant): Promise<number>;
+  /** Alvo ativo pelo id, sem travar (busca manual planejada a partir do pedido). */
+  alvoPorId(transacao: Transacao, alvoId: Uuid): Promise<AlvoDevido | undefined>;
+  /** Próxima rodada agendada da captura da fonte (criando a linha da fonte se preciso). */
+  gravarProximaRodada(transacao: Transacao, fonte: string, quando: Instant | null): Promise<void>;
+}
+
+/** Alvo de uma OAB do escritório, travado para o pedido de busca manual. */
+export interface AlvoDaBusca {
+  readonly alvoId: Uuid;
+  readonly oab: string;
+  readonly ultimoPedido?: Instant;
+}
+
+/**
+ * Porta: pedido de "buscar agora" no tenant da transação. A OAB chega pela assinatura (RLS); o
+ * alvo, global, é travado para dois pedidos simultâneos não passarem pelo intervalo mínimo.
+ */
+export interface RepositorioDaBuscaAgora<Transacao> {
+  travarAlvoDaOab(transacao: Transacao, oabId: Uuid): Promise<AlvoDaBusca | undefined>;
+  registrarPedido(transacao: Transacao, alvoId: Uuid, em: Instant): Promise<void>;
 }
 
 /**
@@ -101,12 +121,16 @@ export interface StatusDaOab {
   readonly ultimoSucesso: Instant | null;
   readonly proximaExecucao: Instant | null;
   readonly falhasConsecutivas: number;
+  /** Último pedido de "buscar agora" da OAB (de qualquer escritório: o alvo é um só). */
+  readonly ultimoPedido: Instant | null;
 }
 
 export interface SituacaoPublicaDaFonte {
   readonly id: string;
   readonly situacao: SituacaoDaFonte;
   readonly desde: Instant | null;
+  /** Próxima rodada agendada da captura (o worker grava a cada rodada e no boot). */
+  readonly proximaRodada: Instant | null;
 }
 
 /** Porta: leitura do status no tenant da transação (assinaturas pela RLS; alvo e fonte globais). */

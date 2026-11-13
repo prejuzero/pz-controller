@@ -333,7 +333,13 @@ export {
   ResultadoDeFerramentaDeIa,
   ROTAS_IA,
 } from './ia.js';
-export { consultarStatusDaCaptura, ROTAS_CAPTURA, StatusDaCaptura } from './captura.js';
+export {
+  BuscaAgoraSolicitada,
+  consultarStatusDaCaptura,
+  ROTAS_CAPTURA,
+  solicitarBuscaAgora,
+  StatusDaCaptura,
+} from './captura.js';
 export {
   consultarPublicacao,
   listarPublicacoes,
@@ -386,6 +392,7 @@ export {
   EVENTOS,
   NomeMonitoradoAdicionado,
   NomeMonitoradoRemovido,
+  BuscaAgoraSolicitadaEvento,
   FonteDegradada,
   FonteRestabelecida,
   ProcessoMonitorado,

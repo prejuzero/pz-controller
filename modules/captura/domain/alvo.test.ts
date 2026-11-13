@@ -3,6 +3,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 
 import {
+  buscaAgoraLiberadaEm,
   chaveDaCaptura,
   janelaDaCaptura,
   proximaTentativa,
@@ -71,6 +72,19 @@ describe('alvo de monitoramento (HU17)', () => {
         fim: d('2026-10-07'),
       }),
     ).toBe('01a10e00-0000-7000-8000-000000000001:2026-10-05:2026-10-07');
+  });
+
+  it('chave com a rodada: a mesma janela em outra rodada do dia é outra entrega', () => {
+    const janela = { inicio: d('2026-10-06'), fim: d('2026-10-07') };
+    const id = '01a10e00-0000-7000-8000-000000000001';
+    expect(chaveDaCaptura(id, janela, 'r1')).toBe(`${id}:2026-10-06:2026-10-07:r1`);
+    expect(chaveDaCaptura(id, janela, 'r1')).not.toBe(chaveDaCaptura(id, janela, 'r2'));
+  });
+
+  it('buscar agora: nova busca da mesma OAB só 5 minutos depois do último pedido', () => {
+    const pedido = Instant.deIso('2026-10-07T12:00:00Z');
+    expect(buscaAgoraLiberadaEm(undefined)).toBeUndefined();
+    expect(buscaAgoraLiberadaEm(pedido)?.paraIso()).toBe('2026-10-07T12:05:00.000Z');
   });
 
   it('falhas seguidas afastam a próxima tentativa, até 6 horas', () => {

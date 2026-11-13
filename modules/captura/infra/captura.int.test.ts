@@ -1,3 +1,4 @@
+import { TrilhaPostgres } from '@pz/auditoria';
 import { Banco, BancoSistema, executarNoTenant, OutboxPostgres } from '@pz/db';
 import { subirBancoDeTeste } from '@pz/db/teste';
 import { ErroTransitorio } from '@pz/integracoes';
@@ -9,11 +10,14 @@ import {
   ExecutarCaptura,
   ManterAssinaturas,
   PlanejarCaptura,
+  RegistrarProximaRodada,
+  SolicitarBuscaAgora,
 } from '../application/captura.js';
 import { FALHAS_PARA_DEGRADAR } from '../domain/fonte.js';
 
 import {
   AssinaturasPostgres,
+  BuscaAgoraPostgres,
   CapturaPostgres,
   LeituraDoStatusPostgres,
 } from './captura-postgres.js';
@@ -123,7 +127,7 @@ describe('captura no PostgreSQL (HU17)', () => {
   });
 
   it('executa uma vez, grava um evento por tenant e o checkpoint na mesma transação', async () => {
-    const [plano, ...resto] = await planejar.executar();
+    const [plano, ...resto] = await planejar.executar(gerarUuidV7());
     expect(resto).toEqual([]);
     expect(plano).toMatchObject({ valor: '654321/RJ', inicio: '2026-09-30', fim: '2026-10-07' });
     if (plano === undefined) throw new Error('sem plano');
@@ -137,7 +141,7 @@ describe('captura no PostgreSQL (HU17)', () => {
       tx.eventoDominio.findMany({ where: { tipo: 'CapturaConcluida' } }),
     );
     expect(eventos.map((e) => e.tenantId).sort()).toEqual([ESCRITORIO, OUTRO].sort());
-    expect((await planejar.executar())[0]).toMatchObject({ inicio: '2026-10-06' });
+    expect((await planejar.executar(gerarUuidV7()))[0]).toMatchObject({ inicio: '2026-10-06' });
   });
 
   it('banco recusa alvo com valor fora do formato', async () => {
@@ -149,7 +153,7 @@ describe('captura no PostgreSQL (HU17)', () => {
   });
 
   it('saúde (HU19): degrada com aviso por escritório, status pela RLS e restabelece antecipando', async () => {
-    const [plano] = await planejar.executar();
+    const [plano] = await planejar.executar(gerarUuidV7());
     if (plano === undefined) throw new Error('sem plano');
     foraDoAr = true;
     for (let i = 0; i < FALHAS_PARA_DEGRADAR; i++) {
@@ -166,6 +170,7 @@ describe('captura no PostgreSQL (HU17)', () => {
       { executar: (t) => noTenant(ESCRITORIO, t) },
       new LeituraDoStatusPostgres(),
       'falsa',
+      relogio,
     );
     const visto = await status.executar();
     expect(visto.fonte).toMatchObject({ situacao: 'degradada' });
@@ -187,5 +192,49 @@ describe('captura no PostgreSQL (HU17)', () => {
     }));
     expect(restabelecida.fonte).toMatchObject({ situacao: 'operacional', falhasConsecutivas: 0 });
     expect(restabelecida.avisos).toBe(2);
+  });
+
+  it('buscar agora: OAB pela RLS, um pedido por vez, trilha e evento; próxima rodada no status', async () => {
+    const oabId = gerarUuidV7();
+    await noTenant(ESCRITORIO, (tx) => manter.oabAdicionada(tx, oab(ESCRITORIO, oabId)));
+    const solicitar = (tenant: Uuid) =>
+      new SolicitarBuscaAgora(
+        { executar: (t) => noTenant(tenant, t) },
+        new BuscaAgoraPostgres(),
+        new TrilhaPostgres(),
+        new OutboxPostgres(),
+        relogio,
+      ).executar({ tenantId: tenant, usuarioId: gerarUuidV7(), canal: 'portal' }, { oabId });
+
+    // Outro escritório não enxerga a OAB (RLS na assinatura).
+    const deOutro = await solicitar(OUTRO);
+    expect(!deOutro.ok && deOutro.erro.codigo).toBe('oab-nao-monitorada');
+    // Dois cliques ao mesmo tempo: o alvo travado deixa passar um só.
+    const resultados = await Promise.all([solicitar(ESCRITORIO), solicitar(ESCRITORIO)]);
+    expect(resultados.map((r) => (r.ok ? 'ok' : r.erro.codigo)).sort()).toEqual([
+      'busca-recente',
+      'ok',
+    ]);
+    const gravado = await sistema.executarComoSistema('conferir', async (tx) => ({
+      eventos: await tx.eventoDominio.count({ where: { tipo: 'BuscaAgoraSolicitada' } }),
+      trilha: await tx.eventoAuditoria.count({ where: { tipo: 'captura.busca-solicitada' } }),
+    }));
+    expect(gravado).toEqual({ eventos: 1, trilha: 1 });
+
+    const comoSistema: UnidadeDeTrabalho<Transacao> = {
+      executar: (trabalho) => sistema.executarComoSistema('captura: teste', trabalho),
+    };
+    const quando = Instant.deIso('2026-10-07T14:00:00Z');
+    await new RegistrarProximaRodada(comoSistema, new CapturaPostgres(), 'falsa').executar(quando);
+    const status = await new ConsultarStatusDaCaptura(
+      { executar: (t) => noTenant(ESCRITORIO, t) },
+      new LeituraDoStatusPostgres(),
+      'falsa',
+      relogio,
+    ).executar();
+    expect(status.fonte.proximaRodada?.paraIso()).toBe(quando.paraIso());
+    expect(status.oabs.find((o) => o.oabId === oabId)?.buscaAgoraLiberadaEm?.paraIso()).toBe(
+      '2026-10-07T12:05:00.000Z',
+    );
   });
 });

@@ -1,8 +1,9 @@
 import { ErroIntegracao, Oab } from '@pz/integracoes';
-import { gerarUuidV7, LocalDate } from '@pz/kernel';
+import { Conflito, err, gerarUuidV7, LocalDate, NaoEncontrado, ok } from '@pz/kernel';
 import { z } from 'zod';
 
 import {
+  buscaAgoraLiberadaEm,
   chaveDaCaptura,
   janelaDaCaptura,
   proximaTentativa,
@@ -15,16 +16,26 @@ import { alvoPrecisaDeAlerta, aposFalhaDaFonte, aposSucessoDaFonte } from '../do
 
 import type {
   AlertasDaCaptura,
+  AlvoDevido,
   AlvoParaEntrega,
   LeituraDoStatus,
+  RepositorioDaBuscaAgora,
   RepositorioDaCaptura,
   RepositorioDeAssinaturas,
   SituacaoPublicaDaFonte,
-  StatusDaOab,
 } from './portas.js';
 import type { JanelaDaCaptura, TipoDeAlvo } from '../domain/alvo.js';
+import type { OrigemDaAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
 import type { FontePublicacoes, PublicacaoCapturada } from '@pz/integracoes';
-import type { Clock, EventoDominio, Outbox, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
+import type {
+  Clock,
+  EventoDominio,
+  Instant,
+  Outbox,
+  Result,
+  UnidadeDeTrabalho,
+  Uuid,
+} from '@pz/kernel';
 
 /** Fuso do "hoje" da captura: o dia de disponibilização no DJEN é o de Brasília. */
 const FUSO = 'America/Sao_Paulo';
@@ -120,14 +131,35 @@ export class ManterAssinaturas<Transacao> {
   }
 }
 
-/** Uma execução a enfileirar: alvo, janela e chave de idempotência. */
+/** Uma execução a enfileirar: alvo, janela, rodada e chave de idempotência. */
 export interface CapturaPlanejada {
   readonly alvoId: Uuid;
   readonly tipo: TipoDeAlvo;
   readonly valor: string;
   readonly inicio: string;
   readonly fim: string;
+  /** Rodada que originou a execução (agendada ou pedido manual): entra na chave. */
+  readonly rodada: string;
   readonly chave: string;
+}
+
+/** Plano de um alvo na rodada: a janela desde a última captura até hoje. */
+function planoDoAlvo(
+  alvo: AlvoDevido,
+  hoje: LocalDate,
+  diasIniciais: number,
+  rodada: string,
+): CapturaPlanejada {
+  const janela = janelaDaCaptura(alvo.ultimaJanelaFim, hoje, diasIniciais);
+  return {
+    alvoId: alvo.id,
+    tipo: alvo.tipo,
+    valor: alvo.valor,
+    inicio: janela.inicio.paraIso(),
+    fim: janela.fim.paraIso(),
+    rodada,
+    chave: chaveDaCaptura(alvo.id, janela, rodada),
+  };
 }
 
 export interface OpcoesDaCaptura {
@@ -153,7 +185,8 @@ export class PlanejarCaptura<Transacao> {
     private readonly opcoes: OpcoesDaCaptura,
   ) {}
 
-  async executar(): Promise<CapturaPlanejada[]> {
+  /** `rodada`: identificador estável da execução agendada (a retentativa repete o mesmo). */
+  async executar(rodada: string): Promise<CapturaPlanejada[]> {
     const agora = this.relogio.agora();
     const hoje = LocalDate.doInstante(agora, FUSO);
     const devidos = await this.unidade.executar(async (tx) => {
@@ -165,17 +198,122 @@ export class PlanejarCaptura<Transacao> {
         ? lista
         : [...lista, sonda];
     });
-    return devidos.map((alvo) => {
-      const janela = janelaDaCaptura(alvo.ultimaJanelaFim, hoje, this.opcoes.diasIniciais);
-      return {
-        alvoId: alvo.id,
-        tipo: alvo.tipo,
-        valor: alvo.valor,
-        inicio: janela.inicio.paraIso(),
-        fim: janela.fim.paraIso(),
-        chave: chaveDaCaptura(alvo.id, janela),
-      };
+    return devidos.map((alvo) => planoDoAlvo(alvo, hoje, this.opcoes.diasIniciais, rodada));
+  }
+}
+
+const PedidoDaBusca = z.object({ oabId: z.uuid() }).strict();
+
+/** Autor do pedido no tenant da sessão: vem do contexto da requisição, nunca do corpo. */
+export interface AutorDaBusca {
+  readonly tenantId: Uuid;
+  readonly usuarioId: Uuid;
+  readonly canal: OrigemDaAuditoria['canal'];
+}
+
+/**
+ * "Buscar agora" de uma OAB do escritório: o pedido vira BuscaAgoraSolicitada (outbox) e o worker
+ * enfileira a captura do alvo. Um pedido por alvo a cada 5 minutos, valendo para todos os
+ * escritórios da OAB: a consulta à fonte é uma só e entrega a todos os assinantes.
+ */
+export class SolicitarBuscaAgora<Transacao> {
+  constructor(
+    private readonly unidade: UnidadeDeTrabalho<Transacao>,
+    private readonly busca: RepositorioDaBuscaAgora<Transacao>,
+    private readonly trilha: TrilhaDeAuditoria<Transacao>,
+    private readonly outbox: Outbox<Transacao>,
+    private readonly relogio: Clock,
+  ) {}
+
+  async executar(
+    autor: AutorDaBusca,
+    entrada: unknown,
+  ): Promise<Result<{ solicitadaEm: Instant }, NaoEncontrado | Conflito>> {
+    const pedido = PedidoDaBusca.safeParse(entrada);
+    if (!pedido.success) return err(this.#naoMonitorada());
+    const oabId = pedido.data.oabId as Uuid;
+    return this.unidade.executar(async (tx) => {
+      const alvo = await this.busca.travarAlvoDaOab(tx, oabId);
+      if (alvo === undefined) return err(this.#naoMonitorada());
+      const agora = this.relogio.agora();
+      const liberadaEm = buscaAgoraLiberadaEm(alvo.ultimoPedido);
+      if (liberadaEm?.ehDepoisDe(agora) === true) {
+        return err(
+          new Conflito(
+            'busca-recente',
+            'Esta OAB acabou de ser buscada. Tente de novo em alguns minutos.',
+          ),
+        );
+      }
+      await this.busca.registrarPedido(tx, alvo.alvoId, agora);
+      await this.trilha.registrar(
+        tx,
+        {
+          tipo: 'captura.busca-solicitada',
+          entidade: 'alvo_monitoramento',
+          entidadeId: alvo.alvoId,
+          depois: { oabId, oab: alvo.oab, solicitadaEm: agora.paraIso() },
+        },
+        { canal: autor.canal, usuarioId: autor.usuarioId },
+      );
+      await this.outbox.gravar(tx, [
+        {
+          id: gerarUuidV7(this.relogio),
+          tipo: 'BuscaAgoraSolicitada',
+          versao: 1,
+          tenantId: autor.tenantId,
+          agregadoId: alvo.alvoId,
+          ocorridoEm: agora,
+          payload: { alvoId: alvo.alvoId, oabId },
+        },
+      ]);
+      return ok({ solicitadaEm: agora });
     });
+  }
+
+  #naoMonitorada() {
+    return new NaoEncontrado('oab-nao-monitorada', 'OAB não monitorada por este escritório.');
+  }
+}
+
+const EventoDaBusca = z.object({
+  id: z.uuid(),
+  payload: z.object({ alvoId: z.uuid() }),
+});
+
+/**
+ * Plano da busca pedida (consumidor de BuscaAgoraSolicitada): a janela desde a última captura do
+ * alvo, com o id do evento como rodada (repetir o evento repete a chave). Alvo desativado depois
+ * do pedido: nada a buscar.
+ */
+export class PlanejarBuscaAgora<Transacao> {
+  constructor(
+    private readonly captura: RepositorioDaCaptura<Transacao>,
+    private readonly relogio: Clock,
+    private readonly opcoes: Pick<OpcoesDaCaptura, 'diasIniciais'>,
+  ) {}
+
+  async aoSolicitar(transacao: Transacao, evento: unknown): Promise<CapturaPlanejada | undefined> {
+    const { id, payload } = EventoDaBusca.parse(evento);
+    const alvo = await this.captura.alvoPorId(transacao, payload.alvoId as Uuid);
+    if (alvo === undefined) return undefined;
+    const hoje = LocalDate.doInstante(this.relogio.agora(), FUSO);
+    return planoDoAlvo(alvo, hoje, this.opcoes.diasIniciais, `agora-${id}`);
+  }
+}
+
+/** Grava a próxima rodada agendada da captura, para o escritório ver quando a busca roda. */
+export class RegistrarProximaRodada<Transacao> {
+  constructor(
+    private readonly unidade: UnidadeDeTrabalho<Transacao>,
+    private readonly captura: RepositorioDaCaptura<Transacao>,
+    private readonly idDaFonte: string,
+  ) {}
+
+  executar(quando: Instant | null): Promise<void> {
+    return this.unidade.executar((tx) =>
+      this.captura.gravarProximaRodada(tx, this.idDaFonte, quando),
+    );
   }
 }
 
@@ -200,6 +338,7 @@ export const EntradaDaCaptura = z
     valor: z.string().min(1),
     inicio: Data,
     fim: Data,
+    rodada: z.string().min(1).max(100).optional(),
   })
   // A `chave` do plano vem junto no job e é recalculada aqui: não precisa ser aceita.
   .strip();
@@ -239,7 +378,7 @@ export class ExecutarCaptura<Transacao> {
   ) {}
 
   async executar(entrada: unknown): Promise<ResultadoDaCaptura> {
-    const { alvoId, tipo, valor, inicio, fim } = EntradaDaCaptura.parse(entrada);
+    const { alvoId, tipo, valor, inicio, fim, rodada } = EntradaDaCaptura.parse(entrada);
     const janela: JanelaDaCaptura = { inicio, fim };
     let publicacoes: PublicacaoCapturada[];
     try {
@@ -248,7 +387,7 @@ export class ExecutarCaptura<Transacao> {
       await this.#registrarFalha(alvoId as Uuid, indicaDegradacao(erro));
       throw erro;
     }
-    const chave = chaveDaCaptura(alvoId, janela);
+    const chave = chaveDaCaptura(alvoId, janela, rodada);
     const { resultado, antecipados } = await this.unidade.executar(async (tx) => {
       const antecipados = await this.#registrarSucessoDaFonte(tx);
       const alvo = await this.captura.travar(tx, alvoId as Uuid);
@@ -380,9 +519,20 @@ export class ExecutarCaptura<Transacao> {
   }
 }
 
+/** Status de uma OAB para o escritório: com quando o próximo "buscar agora" é aceito. */
+export interface StatusDaOabNoEscritorio {
+  readonly oabId: Uuid;
+  readonly oab: string;
+  readonly ultimoSucesso: Instant | null;
+  readonly proximaExecucao: Instant | null;
+  readonly falhasConsecutivas: number;
+  /** Fim do intervalo mínimo entre pedidos; null quando já pode buscar. */
+  readonly buscaAgoraLiberadaEm: Instant | null;
+}
+
 export interface StatusDaCaptura {
   readonly fonte: SituacaoPublicaDaFonte;
-  readonly oabs: readonly StatusDaOab[];
+  readonly oabs: readonly StatusDaOabNoEscritorio[];
 }
 
 /** Status da captura do escritório (HU19): por OAB e a situação da fonte. Só leitura. */
@@ -391,12 +541,20 @@ export class ConsultarStatusDaCaptura<Transacao> {
     private readonly unidade: UnidadeDeTrabalho<Transacao>,
     private readonly leitura: LeituraDoStatus<Transacao>,
     private readonly idDaFonte: string,
+    private readonly relogio: Clock,
   ) {}
 
   executar(): Promise<StatusDaCaptura> {
+    const agora = this.relogio.agora();
     return this.unidade.executar(async (tx) => ({
       fonte: await this.leitura.fonte(tx, this.idDaFonte),
-      oabs: await this.leitura.oabs(tx),
+      oabs: (await this.leitura.oabs(tx)).map(({ ultimoPedido, ...oab }) => {
+        const liberadaEm = buscaAgoraLiberadaEm(ultimoPedido ?? undefined);
+        return {
+          ...oab,
+          buscaAgoraLiberadaEm: liberadaEm?.ehDepoisDe(agora) === true ? liberadaEm : null,
+        };
+      }),
     }));
   }
 }
