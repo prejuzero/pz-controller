@@ -57,6 +57,7 @@ export const TIPOS_DE_AUDITORIA = [
   'cadastro.importacao-concluida',
   'cadastro.nome-monitorado-adicionado',
   'cadastro.nome-monitorado-removido',
+  'captura.busca-solicitada',
   'identidade.email-verificado',
   'notificacoes.notificacao-rejeitada',
   'ia.sugestao-corrigida',

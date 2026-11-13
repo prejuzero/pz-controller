@@ -1,15 +1,50 @@
 'use client';
 
-import { EstadoCarregando, EstadoVazio, SeloStatus, TabelaDados, type ColunaTabela } from '@pz/ui';
+import {
+  avisar,
+  Botao,
+  EstadoCarregando,
+  EstadoVazio,
+  SeloStatus,
+  TabelaDados,
+  type ColunaTabela,
+} from '@pz/ui';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
-import { useStatusDaCaptura } from '../../../../api/hooks';
+import { useBuscarAgora, useStatusDaCaptura } from '../../../../api/hooks';
 import { formatarInstante } from '../../../../i18n/formatar';
 
 import type { StatusDaCaptura } from '@pz/contracts';
 
 type StatusDaOab = StatusDaCaptura['oabs'][number];
+
+/** Pede a busca imediata da OAB; depois do pedido, o botão espera o intervalo mínimo da API. */
+function BuscarAgora({ oab }: { oab: StatusDaOab }) {
+  const t = useTranslations('cobertura');
+  const buscar = useBuscarAgora();
+  if (oab.buscaAgoraLiberadaEm !== null) {
+    return (
+      <span className="text-sm text-texto-suave">
+        {t('buscaPedida', { quando: formatarInstante(oab.buscaAgoraLiberadaEm) })}
+      </span>
+    );
+  }
+  return (
+    <Botao
+      variante="secundaria"
+      carregando={buscar.isPending}
+      aria-label={t('buscarAgoraDaOab', { oab: oab.oab })}
+      onClick={() => {
+        buscar.mutate(oab.oabId, {
+          onSuccess: () => avisar.sucesso(t('buscaSolicitada', { oab: oab.oab })),
+        });
+      }}
+    >
+      {t('buscarAgora')}
+    </Botao>
+  );
+}
 
 /**
  * Cobertura (HU19, transparência de cobertura): situação da fonte, última captura de cada OAB e o
@@ -47,6 +82,11 @@ export function Cobertura() {
         );
       },
     },
+    {
+      id: 'acoes',
+      header: t('colunas.acoes'),
+      cell: ({ row }) => <BuscarAgora oab={row.original} />,
+    },
   ];
 
   return (
@@ -71,6 +111,12 @@ export function Cobertura() {
               {t('desde', { desde: formatarInstante(fonte.desde) })}
             </span>
           )}
+        </dd>
+        <dt className="w-full font-medium sm:ml-auto sm:w-auto">{t('proximaBusca')}</dt>
+        <dd className="text-sm">
+          {fonte.proximaRodada === null
+            ? t('semAgenda')
+            : t('proximaBuscaEm', { quando: formatarInstante(fonte.proximaRodada) })}
         </dd>
       </dl>
 

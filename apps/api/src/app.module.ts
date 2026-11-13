@@ -72,7 +72,12 @@ import {
   RevogarEventoDoCalendario,
   RevogarFeriadoLocal,
 } from '@pz/calendario';
-import { ConsultarStatusDaCaptura, LeituraDoStatusPostgres } from '@pz/captura';
+import {
+  BuscaAgoraPostgres,
+  ConsultarStatusDaCaptura,
+  LeituraDoStatusPostgres,
+  SolicitarBuscaAgora,
+} from '@pz/captura';
 import {
   CienciaPostgres,
   ConfirmarCiencia,
@@ -366,7 +371,7 @@ import type {
   RepositorioDeEventosGlobais,
   RepositorioDeFeriadosLocais,
 } from '@pz/calendario';
-import type { LeituraDoStatus } from '@pz/captura';
+import type { LeituraDoStatus, RepositorioDaBuscaAgora } from '@pz/captura';
 import type { ClassificadorIa, ConsultaDaRevisaoManual } from '@pz/classificacao';
 import type { Transacao } from '@pz/db';
 import type {
@@ -491,6 +496,9 @@ export interface OpcoesApi {
   readonly statusDaCaptura?: {
     readonly unidade: UnidadeDeTrabalho<unknown>;
     readonly leitura: LeituraDoStatus<unknown>;
+    readonly busca?: RepositorioDaBuscaAgora<unknown>;
+    readonly trilha?: TrilhaDeAuditoria<unknown>;
+    readonly outbox?: Outbox<unknown>;
   };
   /** Leitura das publicações (HU18); nos testes, repositório em memória. */
   readonly publicacoes?: DependenciasDasPublicacoes;
@@ -1981,11 +1989,26 @@ export class AppModule {
       ...provedoresDoCalendario(calendario),
       {
         provide: ConsultarStatusDaCaptura,
-        useValue: new ConsultarStatusDaCaptura(
-          opcoes.statusDaCaptura?.unidade ?? recursos.banco,
-          opcoes.statusDaCaptura?.leitura ?? new LeituraDoStatusPostgres(),
-          opcoes.ambiente.CAPTURA_FONTE,
-        ),
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new ConsultarStatusDaCaptura(
+            opcoes.statusDaCaptura?.unidade ?? recursos.banco,
+            opcoes.statusDaCaptura?.leitura ?? new LeituraDoStatusPostgres(),
+            opcoes.ambiente.CAPTURA_FONTE,
+            relogio,
+          ),
+      },
+      {
+        provide: SolicitarBuscaAgora,
+        inject: [RELOGIO],
+        useFactory: (relogio: Clock) =>
+          new SolicitarBuscaAgora(
+            opcoes.statusDaCaptura?.unidade ?? recursos.banco,
+            opcoes.statusDaCaptura?.busca ?? new BuscaAgoraPostgres(),
+            opcoes.statusDaCaptura?.trilha ?? new TrilhaPostgres(),
+            opcoes.statusDaCaptura?.outbox ?? new OutboxPostgres(),
+            relogio,
+          ),
       },
       ...provedoresDasPublicacoes(
         opcoes.publicacoes ?? {

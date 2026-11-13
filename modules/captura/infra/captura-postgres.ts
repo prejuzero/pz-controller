@@ -1,9 +1,11 @@
 import { Instant, LocalDate } from '@pz/kernel';
 
 import type {
+  AlvoDaBusca,
   AlvoDevido,
   AlvoParaEntrega,
   LeituraDoStatus,
+  RepositorioDaBuscaAgora,
   RepositorioDaCaptura,
   RepositorioDeAssinaturas,
   SituacaoPublicaDaFonte,
@@ -204,6 +206,57 @@ export class CapturaPostgres implements RepositorioDaCaptura<Transacao> {
     });
     return count;
   }
+
+  async alvoPorId(tx: Transacao, alvoId: Uuid): Promise<AlvoDevido | undefined> {
+    const l = await tx.alvoMonitoramento.findFirst({
+      where: { id: alvoId, ativo: true },
+      select: { id: true, tipo: true, valor: true, ultimaJanelaFim: true },
+    });
+    if (l === null) return undefined;
+    return {
+      id: l.id as Uuid,
+      tipo: l.tipo,
+      valor: l.valor,
+      ...(l.ultimaJanelaFim === null ? {} : { ultimaJanelaFim: deData(l.ultimaJanelaFim) }),
+    };
+  }
+
+  async gravarProximaRodada(tx: Transacao, fonte: string, quando: Instant | null): Promise<void> {
+    const proximaRodada = quando === null ? null : new Date(quando.epochMs);
+    await tx.fonteCaptura.upsert({
+      where: { id: fonte },
+      create: { id: fonte, proximaRodada },
+      update: { proximaRodada },
+    });
+  }
+}
+
+/** Pedido de busca manual no tenant da transação: a OAB pela assinatura (RLS), o alvo travado. */
+export class BuscaAgoraPostgres implements RepositorioDaBuscaAgora<Transacao> {
+  async travarAlvoDaOab(tx: Transacao, oabId: Uuid): Promise<AlvoDaBusca | undefined> {
+    const [linha] = await tx.$queryRaw<
+      { id: string; valor: string; busca_solicitada_em: Date | null }[]
+    >`SELECT a.id, a.valor, a.busca_solicitada_em
+        FROM alvo_assinante s JOIN alvo_monitoramento a ON a.id = s.alvo_id
+       WHERE s.referencia = ${oabId}::uuid AND a.tipo = 'oab' AND a.ativo
+       LIMIT 1
+         FOR UPDATE OF a`;
+    if (linha === undefined) return undefined;
+    return {
+      alvoId: linha.id as Uuid,
+      oab: linha.valor,
+      ...(linha.busca_solicitada_em === null
+        ? {}
+        : { ultimoPedido: Instant.deEpochMs(linha.busca_solicitada_em.getTime()) }),
+    };
+  }
+
+  async registrarPedido(tx: Transacao, alvoId: Uuid, em: Instant): Promise<void> {
+    await tx.alvoMonitoramento.update({
+      where: { id: alvoId },
+      data: { buscaSolicitadaEm: new Date(em.epochMs) },
+    });
+  }
 }
 
 const instante = (data: Date | null) => (data === null ? null : Instant.deEpochMs(data.getTime()));
@@ -221,6 +274,7 @@ export class LeituraDoStatusPostgres implements LeituraDoStatus<Transacao> {
             ultimoSucesso: true,
             proximaExecucao: true,
             falhasConsecutivas: true,
+            buscaSolicitadaEm: true,
           },
         },
       },
@@ -232,18 +286,20 @@ export class LeituraDoStatusPostgres implements LeituraDoStatus<Transacao> {
       ultimoSucesso: instante(alvo.ultimoSucesso),
       proximaExecucao: instante(alvo.proximaExecucao),
       falhasConsecutivas: alvo.falhasConsecutivas,
+      ultimoPedido: instante(alvo.buscaSolicitadaEm),
     }));
   }
 
   async fonte(tx: Transacao, fonte: string): Promise<SituacaoPublicaDaFonte> {
     const linha = await tx.fonteCaptura.findUnique({
       where: { id: fonte },
-      select: { situacao: true, desde: true },
+      select: { situacao: true, desde: true, proximaRodada: true },
     });
     return {
       id: fonte,
       situacao: linha?.situacao ?? 'operacional',
       desde: instante(linha?.desde ?? null),
+      proximaRodada: instante(linha?.proximaRodada ?? null),
     };
   }
 }

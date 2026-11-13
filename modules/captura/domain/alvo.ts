@@ -49,9 +49,27 @@ export function janelaDaCaptura(
   return { inicio: inicio.ehDepoisDe(hoje) ? hoje : inicio, fim: hoje };
 }
 
-/** Chave de idempotência da execução: o mesmo alvo e a mesma janela entregam uma vez só. */
-export function chaveDaCaptura(alvoId: Uuid | string, janela: JanelaDaCaptura): string {
-  return `${alvoId}:${janela.inicio.paraIso()}:${janela.fim.paraIso()}`;
+/**
+ * Chave de idempotência da execução: o mesmo alvo, a mesma janela e a mesma rodada entregam uma
+ * vez só (a retentativa do job não duplica). Com a rodada, a segunda busca do dia com a mesma
+ * janela também entrega; a deduplicação da ingestão torna a repetição inofensiva. Sem rodada,
+ * a chave dos jobs enfileirados antes dela.
+ */
+export function chaveDaCaptura(
+  alvoId: Uuid | string,
+  janela: JanelaDaCaptura,
+  rodada?: string,
+): string {
+  const base = `${alvoId}:${janela.inicio.paraIso()}:${janela.fim.paraIso()}`;
+  return rodada === undefined ? base : `${base}:${rodada}`;
+}
+
+/** Intervalo mínimo entre dois pedidos de "buscar agora" do mesmo alvo (não sobrecarregar a fonte). */
+export const INTERVALO_DA_BUSCA_AGORA_MS = 5 * 60_000;
+
+/** Quando a próxima busca manual do alvo é aceita; sem pedido anterior, já. */
+export function buscaAgoraLiberadaEm(ultimoPedido: Instant | undefined): Instant | undefined {
+  return ultimoPedido?.maisMs(INTERVALO_DA_BUSCA_AGORA_MS);
 }
 
 const MEIA_HORA_MS = 30 * 60_000;

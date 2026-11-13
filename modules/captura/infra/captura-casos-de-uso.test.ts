@@ -6,8 +6,11 @@ import {
   ConsultarStatusDaCaptura,
   ExecutarCaptura,
   ManterAssinaturas,
+  PlanejarBuscaAgora,
   PlanejarCaptura,
   PUBLICACOES_POR_EVENTO,
+  RegistrarProximaRodada,
+  SolicitarBuscaAgora,
 } from '../application/captura.js';
 import { FALHAS_PARA_ALERTAR_ALVO, FALHAS_PARA_DEGRADAR } from '../domain/fonte.js';
 
@@ -91,6 +94,9 @@ beforeEach(() => {
   executar = new ExecutarCaptura(outbox, repo, fonte, outbox, relogio, 'falsa', alertasFalsos());
 });
 
+let rodadas = 0;
+const rodada = () => `r${String(++rodadas)}`;
+
 const emTx = <T>(trabalho: (tx: never) => Promise<T>) =>
   outbox.executar((tx) => trabalho(tx as never));
 const eventos = () => outbox.executar((tx) => outbox.reservarPendentes(tx, 100));
@@ -145,7 +151,7 @@ describe('nomes monitorados (HU42)', () => {
     await emTx((tx) => manter.nomeRemovido(tx, daA));
     expect(repo.assinaturas.map((a) => a.tenantId)).toEqual([TENANT_B]);
 
-    const [plano] = await planejar.executar();
+    const [plano] = await planejar.executar(rodada());
     await executar.executar(plano);
     expect(fonte.chamadas).toEqual(['nome SOCIEDADE FICTÍCIA DE ADVOGADOS']);
     expect(outbox.pendentes().at(-1)).toMatchObject({
@@ -160,7 +166,7 @@ describe('planejamento e execução (HU17)', () => {
   it('muitas publicações viram lotes de CapturaConcluida (transação curta na ingestão, PZ-309)', async () => {
     await emTx((tx) => manter.oabAdicionada(tx, oab(TENANT_A)));
     fonte.quantidade = PUBLICACOES_POR_EVENTO * 2 + 1;
-    const [plano] = await planejar.executar();
+    const [plano] = await planejar.executar(rodada());
     if (plano === undefined) throw new Error('sem plano');
     expect(await executar.executar(plano)).toMatchObject({
       situacao: 'entregue',
@@ -179,7 +185,7 @@ describe('planejamento e execução (HU17)', () => {
     await emTx((tx) => manter.oabAdicionada(tx, oab(TENANT_A)));
     await emTx((tx) => manter.oabAdicionada(tx, oab(TENANT_B)));
 
-    const [plano, ...resto] = await planejar.executar();
+    const [plano, ...resto] = await planejar.executar(rodada());
     expect(resto).toEqual([]);
     expect(plano).toMatchObject({
       tipo: 'oab',
@@ -211,11 +217,14 @@ describe('planejamento e execução (HU17)', () => {
       ],
     });
 
-    // Repetir o mesmo job (retentativa) não entrega de novo.
+    // Repetir o mesmo job (retentativa) não entrega de novo; a chave leva a rodada.
+    expect(plano?.chave).toBe(
+      `${String(plano?.alvoId)}:2026-09-30:2026-10-07:${String(plano?.rodada)}`,
+    );
     expect(await executar.executar(plano)).toEqual({ situacao: 'ja-entregue' });
     expect(await eventos()).toHaveLength(2);
     // A próxima janela começa um dia antes do último fim.
-    expect((await planejar.executar())[0]).toMatchObject({
+    expect((await planejar.executar(rodada()))[0]).toMatchObject({
       inicio: '2026-10-06',
       fim: '2026-10-07',
     });
@@ -233,18 +242,18 @@ describe('planejamento e execução (HU17)', () => {
         },
       }),
     );
-    const [plano] = await planejar.executar();
+    const [plano] = await planejar.executar(rodada());
     await executar.executar(plano);
     expect(fonte.chamadas).toEqual(['processo 1000004-06.2026.8.26.0100']);
   });
 
   it('falha da fonte: registra o recuo, relança e o alvo sai do planejamento até a hora', async () => {
     await emTx((tx) => manter.oabAdicionada(tx, oab(TENANT_A)));
-    const [plano] = await planejar.executar();
+    const [plano] = await planejar.executar(rodada());
     fonte.falhar = true;
     await expect(executar.executar(plano)).rejects.toBeInstanceOf(ErroTransitorio);
     expect(repo.alvo('oab', '123456/SP')?.falhasConsecutivas).toBe(1);
-    expect(await planejar.executar()).toEqual([]);
+    expect(await planejar.executar(rodada())).toEqual([]);
     expect(await eventos()).toHaveLength(0);
   });
 
@@ -252,7 +261,7 @@ describe('planejamento e execução (HU17)', () => {
     const evento = oab(TENANT_A);
     await emTx((tx) => manter.oabAdicionada(tx, evento));
     await emTx((tx) => manter.oabRemovida(tx, evento));
-    expect(await planejar.executar()).toEqual([]);
+    expect(await planejar.executar(rodada())).toEqual([]);
     expect(
       await executar.executar({
         alvoId: gerarUuidV7(),
@@ -270,7 +279,7 @@ describe('saúde da fonte e recaptura (HU19)', () => {
   it('falhas seguidas degradam a fonte uma vez: alerta à equipe e aviso a cada escritório', async () => {
     await emTx((tx) => manter.oabAdicionada(tx, oab(TENANT_A)));
     await emTx((tx) => manter.oabAdicionada(tx, oab(TENANT_B)));
-    const [plano] = await planejar.executar();
+    const [plano] = await planejar.executar(rodada());
     fonte.falhar = 'fora-do-ar';
     for (let i = 0; i < FALHAS_PARA_DEGRADAR + 1; i++) {
       await expect(executar.executar(plano)).rejects.toBeInstanceOf(ErroTransitorio);
@@ -285,7 +294,7 @@ describe('saúde da fonte e recaptura (HU19)', () => {
 
   it('cota excedida não degrada a fonte; alvo com falhas seguidas gera o alerta específico uma vez', async () => {
     await emTx((tx) => manter.oabAdicionada(tx, oab(TENANT_A)));
-    const [plano] = await planejar.executar();
+    const [plano] = await planejar.executar(rodada());
     fonte.falhar = 'cota';
     for (let i = 0; i < FALHAS_PARA_ALERTAR_ALVO + 1; i++) {
       await expect(executar.executar(plano)).rejects.toBeInstanceOf(ErroLimiteExcedido);
@@ -316,7 +325,7 @@ describe('saúde da fonte e recaptura (HU19)', () => {
         payload: { processoId: gerarUuidV7(), numeroCnj: '1000004-06.2026.8.26.0100' },
       }),
     );
-    const planos = await planejar2.executar();
+    const planos = await planejar2.executar(rodada());
     for (const p of planos) await executar2.executar(p);
     await eventos();
     const oabPlano = planos.find((p) => p.tipo === 'oab');
@@ -329,14 +338,14 @@ describe('saúde da fonte e recaptura (HU19)', () => {
       ).rejects.toThrow();
     }
     await eventos();
-    expect(await planejar2.executar()).toHaveLength(1); // só o processo, sem recuo
+    expect(await planejar2.executar(rodada())).toHaveLength(1); // só o processo, sem recuo
     // A fonte volta: o primeiro sucesso (processo) restabelece e antecipa a OAB.
     fonte.falhar = false;
-    const [processo] = await planejar2.executar();
+    const [processo] = await planejar2.executar(rodada());
     await executar2.executar(processo);
     expect(alertas.at(-1)).toBe('restabelecida falsa 1');
     expect((await eventos()).map((e) => e.tipo)).toContain('FonteRestabelecida');
-    const [recaptura] = await planejar2.executar();
+    const [recaptura] = await planejar2.executar(rodada());
     // Janela desde o último sucesso (01/10, com um dia de sobreposição) até hoje.
     expect(recaptura).toMatchObject({ tipo: 'oab', inicio: '2026-09-30', fim: '2026-10-04' });
     expect(repo.fontes.get('falsa')).toMatchObject({
@@ -349,14 +358,204 @@ describe('saúde da fonte e recaptura (HU19)', () => {
     const status = await new ConsultarStatusDaCaptura(
       outbox,
       {
-        fonte: () => Promise.resolve({ id: 'falsa', situacao: 'degradada' as const, desde: null }),
+        fonte: () =>
+          Promise.resolve({
+            id: 'falsa',
+            situacao: 'degradada' as const,
+            desde: null,
+            proximaRodada: null,
+          }),
         oabs: () => Promise.resolve([]),
       },
       'falsa',
+      relogio,
     ).executar();
     expect(status).toEqual({
-      fonte: { id: 'falsa', situacao: 'degradada', desde: null },
+      fonte: { id: 'falsa', situacao: 'degradada', desde: null, proximaRodada: null },
       oabs: [],
     });
+  });
+
+  it('a mesma janela em outra rodada do dia entrega de novo (a 3ª busca do dia trazia nada)', async () => {
+    await emTx((tx) => manter.oabAdicionada(tx, oab(TENANT_A)));
+    await executar.executar((await planejar.executar(rodada()))[0]);
+    const [segunda] = await planejar.executar(rodada());
+    const [terceira] = await planejar.executar(rodada());
+    expect(segunda).toMatchObject({ inicio: terceira?.inicio, fim: terceira?.fim });
+    expect(await executar.executar(segunda)).toMatchObject({ situacao: 'entregue' });
+    expect(await executar.executar(terceira)).toMatchObject({ situacao: 'entregue' });
+  });
+
+  it('job enfileirado antes da rodada (sem ela) continua aceito', async () => {
+    await emTx((tx) => manter.oabAdicionada(tx, oab(TENANT_A)));
+    const [plano] = await planejar.executar(rodada());
+    if (plano === undefined) throw new Error('sem plano');
+    const { alvoId, tipo, valor, inicio, fim } = plano;
+    expect(await executar.executar({ alvoId, tipo, valor, inicio, fim })).toMatchObject({
+      situacao: 'entregue',
+    });
+    expect(repo.alvos.get(plano.alvoId)?.ultimaChave).toBe(
+      `${plano.alvoId}:${plano.inicio}:${plano.fim}`,
+    );
+  });
+
+  it('próxima rodada: gravada pela fonte e mostrada no status', async () => {
+    const quando = Instant.deIso('2026-10-07T14:00:00Z');
+    await new RegistrarProximaRodada(outbox, repo, 'falsa').executar(quando);
+    expect(repo.proximasRodadas.get('falsa')).toEqual(quando);
+  });
+});
+
+describe('buscar agora', () => {
+  const AUTOR = { tenantId: TENANT_A, usuarioId: gerarUuidV7(), canal: 'portal' as const };
+  let auditoria: { tipo: string; entidadeId: string; usuarioId?: string }[];
+  let solicitar: SolicitarBuscaAgora<unknown>;
+  let relogioDaBusca: FixedClock;
+  beforeEach(() => {
+    auditoria = [];
+    relogioDaBusca = new FixedClock(Instant.deIso('2026-10-07T12:00:00Z'));
+    const trilha = {
+      registrar: (
+        _tx: unknown,
+        e: { tipo: string; entidadeId: string },
+        o: { usuarioId?: string },
+      ) => {
+        auditoria.push({ tipo: e.tipo, entidadeId: e.entidadeId, ...o });
+        return Promise.resolve();
+      },
+    };
+    solicitar = new SolicitarBuscaAgora(outbox, repo, trilha, outbox, relogioDaBusca);
+  });
+
+  it('o pedido grava a trilha e BuscaAgoraSolicitada; o plano usa o evento como rodada', async () => {
+    const oabId = gerarUuidV7();
+    await emTx((tx) => manter.oabAdicionada(tx, oab(TENANT_A, oabId)));
+    await eventos();
+    const r = await solicitar.executar(AUTOR, { oabId });
+    expect(r.ok).toBe(true);
+    const [pedido] = await eventos();
+    const alvoId = repo.alvo('oab', '123456/SP')?.id;
+    expect(pedido).toMatchObject({
+      tipo: 'BuscaAgoraSolicitada',
+      tenantId: TENANT_A,
+      payload: { alvoId, oabId },
+    });
+    expect(auditoria).toEqual([
+      {
+        tipo: 'captura.busca-solicitada',
+        entidadeId: alvoId,
+        canal: 'portal',
+        usuarioId: AUTOR.usuarioId,
+      },
+    ]);
+
+    const plano = await new PlanejarBuscaAgora(repo, relogioDaBusca, {
+      diasIniciais: 7,
+    }).aoSolicitar(undefined as never, pedido);
+    expect(plano).toMatchObject({
+      alvoId,
+      inicio: '2026-09-30',
+      fim: '2026-10-07',
+      rodada: `agora-${String(pedido?.id)}`,
+    });
+    expect(await executar.executar(plano)).toMatchObject({ situacao: 'entregue' });
+  });
+
+  it('um pedido por OAB a cada 5 minutos, para todos os escritórios dela', async () => {
+    const daA = gerarUuidV7();
+    const daB = gerarUuidV7();
+    await emTx((tx) => manter.oabAdicionada(tx, oab(TENANT_A, daA)));
+    await emTx((tx) => manter.oabAdicionada(tx, oab(TENANT_B, daB)));
+    expect((await solicitar.executar(AUTOR, { oabId: daA })).ok).toBe(true);
+    relogioDaBusca.avancarMs(4 * 60_000);
+    const repetido = await solicitar.executar({ ...AUTOR, tenantId: TENANT_B }, { oabId: daB });
+    expect(!repetido.ok && repetido.erro.codigo).toBe('busca-recente');
+
+    const status = await new ConsultarStatusDaCaptura(
+      outbox,
+      {
+        fonte: () =>
+          Promise.resolve({
+            id: 'falsa',
+            situacao: 'operacional' as const,
+            desde: null,
+            proximaRodada: null,
+          }),
+        oabs: () =>
+          Promise.resolve([
+            {
+              oabId: daA,
+              oab: '123456/SP',
+              ultimoSucesso: null,
+              proximaExecucao: null,
+              falhasConsecutivas: 0,
+              ultimoPedido: repo.alvo('oab', '123456/SP')?.buscaSolicitadaEm ?? null,
+            },
+          ]),
+      },
+      'falsa',
+      relogioDaBusca,
+    ).executar();
+    expect(status.oabs[0]?.buscaAgoraLiberadaEm?.paraIso()).toBe('2026-10-07T12:05:00.000Z');
+
+    relogioDaBusca.avancarMs(60_000);
+    expect((await solicitar.executar(AUTOR, { oabId: daA })).ok).toBe(true);
+  });
+
+  it('OAB que não é do escritório (ou id inválido) não é encontrada', async () => {
+    const r = await solicitar.executar(AUTOR, { oabId: gerarUuidV7() });
+    expect(!r.ok && r.erro.codigo).toBe('oab-nao-monitorada');
+    const invalido = await solicitar.executar(AUTOR, { oabId: 'x' });
+    expect(!invalido.ok && invalido.erro.codigo).toBe('oab-nao-monitorada');
+  });
+
+  it('alvo desativado depois do pedido: nada a buscar', async () => {
+    const plano = await new PlanejarBuscaAgora(repo, relogio, { diasIniciais: 7 }).aoSolicitar(
+      undefined as never,
+      { id: gerarUuidV7(), payload: { alvoId: gerarUuidV7() } },
+    );
+    expect(plano).toBeUndefined();
+  });
+
+  it('pedido antigo não trava o botão; OAB de processo ou alvo inativo não é buscada', async () => {
+    const oabId = gerarUuidV7();
+    await emTx((tx) => manter.oabAdicionada(tx, oab(TENANT_A, oabId)));
+    const alvo = repo.alvo('oab', '123456/SP');
+    if (alvo === undefined) throw new Error('sem alvo');
+    const status = (ultimoPedido: Instant | null) =>
+      new ConsultarStatusDaCaptura(
+        outbox,
+        {
+          fonte: () =>
+            Promise.resolve({
+              id: 'falsa',
+              situacao: 'operacional' as const,
+              desde: null,
+              proximaRodada: null,
+            }),
+          oabs: () =>
+            Promise.resolve([
+              {
+                oabId,
+                oab: '123456/SP',
+                ultimoSucesso: null,
+                proximaExecucao: null,
+                falhasConsecutivas: 0,
+                ultimoPedido,
+              },
+            ]),
+        },
+        'falsa',
+        relogioDaBusca,
+      ).executar();
+    const antigo = Instant.deIso('2026-10-07T11:00:00Z');
+    expect((await status(antigo)).oabs[0]?.buscaAgoraLiberadaEm).toBeNull();
+    expect((await status(null)).oabs[0]?.buscaAgoraLiberadaEm).toBeNull();
+
+    alvo.ativo = false;
+    const inativo = await solicitar.executar(AUTOR, { oabId });
+    expect(!inativo.ok && inativo.erro.codigo).toBe('oab-nao-monitorada');
+    expect(await repo.alvoPorId(undefined as never, alvo.id)).toBeUndefined();
+    await repo.registrarPedido(undefined as never, gerarUuidV7(), relogio.agora());
   });
 });

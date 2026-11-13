@@ -72,7 +72,7 @@ const noTenant = <T>(tenant: Uuid, trabalho: (tx: Transacao) => Promise<T>) =>
 
 /** Um ciclo do agendador: planeja e executa cada alvo devido (como os jobs do worker). */
 async function ciclo(): Promise<{ planos: CapturaPlanejada[]; falhas: number }> {
-  const planos = await planejar.executar();
+  const planos = await planejar.executar(gerarUuidV7());
   let falhas = 0;
   for (const plano of planos) await executar.executar(plano).catch(() => falhas++);
   return { planos, falhas };
@@ -135,6 +135,7 @@ beforeAll(async () => {
       { executar: (t) => noTenant(tenant, t) },
       leitura,
       'falsa',
+      relogio,
     ).executar();
 }, 300_000);
 
@@ -170,6 +171,7 @@ describe('QA: indisponibilidade simulada da fonte (HU19, PZ-153)', () => {
     const volta = await ciclo();
     expect(volta).toMatchObject({ falhas: 0, planos: [expect.anything()] });
     expect(alertas.at(-1)).toMatch(/^fonte-restabelecida falsa/);
+    const aposAVolta = await contarEventos('CapturaConcluida');
     // A rodada seguinte já pega os antecipados, sem esperar o fim do recuo.
     const seguinte = await ciclo();
     expect(seguinte.falhas).toBe(0);
@@ -184,11 +186,15 @@ describe('QA: indisponibilidade simulada da fonte (HU19, PZ-153)', () => {
       expect((await status(tenant)).fonte).toMatchObject({ situacao: 'operacional' });
     }
 
-    // Repetir os mesmos jobs não entrega de novo (idempotência por alvo + janela).
-    for (const plano of [...volta.planos, ...seguinte.planos]) {
+    // Repetir os mesmos jobs (retentativa) não entrega de novo: idempotência por alvo, janela e
+    // rodada. Rodadas diferentes entregam de novo; a ingestão deduplica as publicações.
+    for (const plano of seguinte.planos) {
       expect(await executar.executar(plano)).toEqual({ situacao: 'ja-entregue' });
     }
-    expect(await contarEventos('CapturaConcluida')).toBe(entreguesAntes + 3);
+    // A rodada seguinte entrega as duas OABs aos três assinantes (antes da rodada na chave, a
+    // segunda rodada do dia com a mesma janela não entregava).
+    expect(aposAVolta).toBeGreaterThan(entreguesAntes);
+    expect(await contarEventos('CapturaConcluida')).toBe(aposAVolta + 3);
   });
 
   it('falha só de uma OAB: alerta específico uma vez e a fonte segue operacional', async () => {
@@ -206,7 +212,7 @@ describe('QA: indisponibilidade simulada da fonte (HU19, PZ-153)', () => {
       }),
     );
     alertas.length = 0;
-    const [ruim] = (await planejar.executar()).filter((p) => p.valor === OAB_RUIM);
+    const [ruim] = (await planejar.executar(gerarUuidV7())).filter((p) => p.valor === OAB_RUIM);
     if (ruim === undefined) throw new Error('sem plano da OAB');
     for (let i = 0; i < FALHAS_PARA_ALERTAR_ALVO + 1; i++) {
       await expect(executar.executar(ruim)).rejects.toBeInstanceOf(ErroPermanente);

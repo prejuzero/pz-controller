@@ -9,7 +9,7 @@ import { consultasAdmin, mutacoesAdmin } from './admin';
 import { consultasBusca, type FiltrosDaTela } from './busca';
 import { consultasCadastro, mutacoesCadastro } from './cadastro';
 import { consultasCalendario, mutacoesCalendario } from './calendario';
-import { consultasCaptura } from './captura';
+import { consultasCaptura, mutacoesCaptura } from './captura';
 import { mutacoesCiencia } from './ciencia';
 import {
   consultasCuradoriaClassificacao,
@@ -207,6 +207,9 @@ export const useConferirPublicacao = () =>
   useMutation(mutacoesPublicacoes(useApi(), useQueryClient()).conferir);
 
 /** Status da captura (HU19): faixa do topo e página de cobertura; só com `publicacoes:ler`. */
+export const useBuscarAgora = () =>
+  useMutation(mutacoesCaptura(useApi(), useQueryClient()).buscarAgora);
+
 export function useStatusDaCaptura() {
   const habilitado = usePermissao('publicacoes:ler') === true;
   return useQuery({ ...consultasCaptura(useApi()).status(), enabled: habilitado });

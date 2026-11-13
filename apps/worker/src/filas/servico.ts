@@ -1,9 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { VerificarIntegridade } from '@pz/auditoria';
 import { RecifrarCamposSensiveis } from '@pz/cadastro';
-import { ExecutarCaptura, PlanejarCaptura } from '@pz/captura';
+import { ExecutarCaptura, PlanejarCaptura, RegistrarProximaRodada } from '@pz/captura';
 import { RecifrarSegredosDoSegundoFator } from '@pz/identidade';
-import { limparOutbox } from '@pz/kernel';
+import { Instant, limparOutbox } from '@pz/kernel';
 import {
   DispararLembretes,
   EnviarResumosDiarios,
@@ -33,6 +33,7 @@ import {
   agendamentoDaCaptura,
   ESCOPO_DA_CAPTURA,
   executarCapturaJob,
+  ID_DO_AGENDAMENTO_DA_CAPTURA,
   planejarCapturaJob,
 } from '../captura/jobs.js';
 import { DespachanteDeEventos } from '../eventos/consome.js';
@@ -112,6 +113,8 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     @Inject(AMBIENTE) private readonly ambiente: AmbienteWorker,
     @Inject(PlanejarCaptura) private readonly planejarCaptura: PlanejarCaptura<unknown>,
     @Inject(ExecutarCaptura) private readonly executarCaptura: ExecutarCaptura<unknown>,
+    @Inject(RegistrarProximaRodada)
+    private readonly proximaRodada: RegistrarProximaRodada<unknown>,
     @Inject(EfetivarEncerramentos)
     private readonly efetivarEncerramentos: EfetivarEncerramentos<unknown>,
     @Inject(AplicarRetencao) private readonly retencao: AplicarRetencao<unknown>,
@@ -171,8 +174,9 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
       tratarWebhook(this.unidadeDosWebhooks, this.processadores, this.relogio, id),
     );
     // Captura (HU17): o planejamento enfileira um job por alvo, espalhados pelo jitter.
-    this.filas.registrar(planejarCapturaJob, async () => {
-      const planos = await this.planejarCaptura.executar();
+    this.filas.registrar(planejarCapturaJob, async (_dados, { jobId }) => {
+      // O ID do job da rodada é estável na retentativa: vira a rodada da chave.
+      const planos = await this.planejarCaptura.executar(jobId);
       for (const { chave, ...dados } of planos) {
         const atrasoMs = Math.floor(Math.random() * this.ambiente.CAPTURA_JITTER_MS);
         await this.filas.publicar(executarCapturaJob, dados, ESCOPO_DA_CAPTURA, chave, {
@@ -180,6 +184,7 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
         });
       }
       logger.info({ alvos: planos.length }, 'captura planejada');
+      await this.#gravarProximaRodada();
     });
     this.filas.registrar(executarCapturaJob, async (dados) => {
       const resultado = await this.executarCaptura.executar(dados);
@@ -297,10 +302,23 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     this.filas.iniciar();
     // Sem esperar o Redis: com ele fora, o worker sobe e a prontidão mostra a falha; os
     // agendadores são gravados quando a conexão voltar. Falha aqui vira log, métrica e alerta.
-    void this.filas.agendar(agendamentos).catch((erro: unknown) => {
-      registrarErro(logger, erro, 'falha ao registrar os jobs recorrentes', 'worker.agendador');
-    });
+    void this.filas
+      .agendar(agendamentos)
+      .then(() => this.#gravarProximaRodada())
+      .catch((erro: unknown) => {
+        registrarErro(logger, erro, 'falha ao registrar os jobs recorrentes', 'worker.agendador');
+      });
     this.#cancelarMetricas = registrarSituacaoDasFilas(() => this.filas.situacao());
+  }
+
+  /** Próxima rodada da captura para o portal; falha só deixa o horário desatualizado (com alerta). */
+  async #gravarProximaRodada(): Promise<void> {
+    try {
+      const proxima = await this.filas.proximaExecucao('captura', ID_DO_AGENDAMENTO_DA_CAPTURA);
+      await this.proximaRodada.executar(proxima === null ? null : Instant.deEpochMs(proxima));
+    } catch (erro) {
+      registrarErro(logger, erro, 'falha ao gravar a próxima rodada da captura', 'captura.agenda');
+    }
   }
 
   async onApplicationShutdown(): Promise<void> {

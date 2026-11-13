@@ -1005,6 +1005,7 @@ model AlvoMonitoramento {
   ultimaChave        String?   @map("ultima_chave")
   proximaExecucao    DateTime? @map("proxima_execucao") @db.Timestamptz(6)
   falhasConsecutivas Int       @default(0) @map("falhas_consecutivas")
+  buscaSolicitadaEm  DateTime? @map("busca_solicitada_em") @db.Timestamptz(6)
   criadoEm           DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm       DateTime  @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
@@ -1027,6 +1028,8 @@ model FonteCaptura {
   situacao           SituacaoFonte @default(operacional)
   desde              DateTime      @default(now()) @db.Timestamptz(6)
   falhasConsecutivas Int           @default(0) @map("falhas_consecutivas")
+  /// Próxima rodada agendada da captura (o worker grava a cada rodada e no boot).
+  proximaRodada      DateTime?     @map("proxima_rodada") @db.Timestamptz(6)
   criadoEm           DateTime      @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm       DateTime      @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 

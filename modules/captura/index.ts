@@ -4,27 +4,36 @@ export {
   EntradaDaCaptura,
   ExecutarCaptura,
   ManterAssinaturas,
+  PlanejarBuscaAgora,
   PlanejarCaptura,
   PUBLICACOES_POR_EVENTO,
+  RegistrarProximaRodada,
+  SolicitarBuscaAgora,
 } from './application/captura.js';
 export type {
+  AutorDaBusca,
   CapturaPlanejada,
   OpcoesDaCaptura,
   ResultadoDaCaptura,
   StatusDaCaptura,
+  StatusDaOabNoEscritorio,
 } from './application/captura.js';
 export type {
   AlertasDaCaptura,
+  AlvoDaBusca,
   AlvoDevido,
   LeituraDoStatus,
   SituacaoPublicaDaFonte,
   StatusDaOab,
   AlvoParaEntrega,
+  RepositorioDaBuscaAgora,
   RepositorioDaCaptura,
   RepositorioDeAssinaturas,
 } from './application/portas.js';
 export {
+  buscaAgoraLiberadaEm,
   chaveDaCaptura,
+  INTERVALO_DA_BUSCA_AGORA_MS,
   janelaDaCaptura,
   TIPOS_DE_ALVO,
   valorDaOab,
@@ -34,6 +43,7 @@ export type { JanelaDaCaptura, TipoDeAlvo } from './domain/alvo.js';
 export { CapturaEmMemoria } from './infra/em-memoria.js';
 export {
   AssinaturasPostgres,
+  BuscaAgoraPostgres,
   CapturaPostgres,
   LeituraDoStatusPostgres,
 } from './infra/captura-postgres.js';

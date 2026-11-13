@@ -55,7 +55,7 @@ describe('avisosDeEntrega (HU30)', () => {
 
 describe('avisosDaCaptura (HU19)', () => {
   const status = (situacao: 'operacional' | 'degradada') => ({
-    fonte: { id: 'djen', situacao, desde: '2026-10-08T17:00:00Z' },
+    fonte: { id: 'djen', situacao, desde: '2026-10-08T17:00:00Z', proximaRodada: null },
     oabs: [],
   });
 

@@ -160,6 +160,7 @@ describe('@Consome e o despachante', () => {
         ['FonteDegradada@1', ['ConsumidorDeNotificacoes.fonteDegradada']],
         ['FonteRestabelecida@1', ['ConsumidorDeNotificacoes.fonteRestabelecida']],
         ['NotificacaoRejeitada@1', ['ConsumidorDeAuditoria.notificacaoRejeitada']],
+        ['BuscaAgoraSolicitada@1', ['ConsumidorDaCaptura.buscaAgoraSolicitada']],
         ['OabAdicionada@1', ['ConsumidorDaCaptura.oabAdicionada']],
         ['OabRemovida@1', ['ConsumidorDaCaptura.oabRemovida']],
         ['ProcessoMonitorado@1', ['ConsumidorDaCaptura.processoMonitorado']],

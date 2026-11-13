@@ -11,6 +11,9 @@ export const StatusDaCaptura = nomear(
       id: z.string().describe('Fonte de publicações (ex.: djen).'),
       situacao: z.enum(['operacional', 'degradada']),
       desde: Instante.nullable().describe('Desde quando está na situação atual.'),
+      proximaRodada: Instante.nullable().describe(
+        'Próxima busca automática agendada (cada OAB entra em até alguns minutos depois); nulo: ainda não agendada.',
+      ),
     }),
     oabs: z.array(
       z.object({
@@ -21,6 +24,9 @@ export const StatusDaCaptura = nomear(
           'Próxima tentativa após falha; nulo: na próxima rodada do agendamento.',
         ),
         falhasConsecutivas: z.number().int().nonnegative(),
+        buscaAgoraLiberadaEm: Instante.nullable().describe(
+          'Quando um novo "buscar agora" desta OAB é aceito (intervalo mínimo entre pedidos); nulo: já pode.',
+        ),
       }),
     ),
   }),
@@ -36,4 +42,24 @@ export const consultarStatusDaCaptura = definirRota({
   resposta: { status: 200, corpo: StatusDaCaptura },
 });
 
-export const ROTAS_CAPTURA = [consultarStatusDaCaptura] as const;
+export const BuscaAgoraSolicitada = nomear(
+  'BuscaAgoraSolicitada',
+  z.object({
+    solicitadaEm: Instante.describe('Instante do pedido, pelo relógio do servidor.'),
+  }),
+);
+export type BuscaAgoraSolicitada = z.infer<typeof BuscaAgoraSolicitada.esquema>;
+
+export const solicitarBuscaAgora = definirRota({
+  id: 'solicitarBuscaAgora',
+  metodo: 'post',
+  caminho: '/v1/captura/oabs/{id}/buscar-agora',
+  resumo:
+    'Pede a busca imediata das publicações de uma OAB do escritório; as publicações chegam em alguns minutos. Um pedido por OAB a cada 5 minutos (409 antes disso).',
+  tag: 'captura',
+  parametrosDeCaminho: z.object({ id: Uuid }),
+  resposta: { status: 202, corpo: BuscaAgoraSolicitada },
+  erros: [404, 409],
+});
+
+export const ROTAS_CAPTURA = [consultarStatusDaCaptura, solicitarBuscaAgora] as const;
