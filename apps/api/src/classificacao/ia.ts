@@ -1,11 +1,12 @@
 import { DESCRITOR_ANTHROPIC, ProvedorIaAnthropic } from '@pz/adapter-anthropic';
-import { DESCRITOR_GEMINI, ProvedorIaGemini } from '@pz/adapter-gemini';
+import { DESCRITOR_GEMINI, DESCRITOR_GEMINI_PAGO, ProvedorIaGemini } from '@pz/adapter-gemini';
+import { DESCRITOR_OPENAI, ProvedorIaOpenAi } from '@pz/adapter-openai';
 import { ContadorDeUsoDeIaRedis, UsoDeIaPostgres } from '@pz/administracao';
 import { ClassificadorIaPlataforma } from '@pz/classificacao';
 import {
-  comProvedorAlternativo,
+  configuracaoDosProvedores,
   configuracaoPadrao,
-  escolherProvedorIa,
+  escolherProvedoresIa,
   PlataformaIa,
   promptsPadrao,
   RegistroComOrcamentoDiario,
@@ -21,26 +22,25 @@ import type { Redis } from 'ioredis';
 
 const logger = criarLogger('api.ia');
 
-/** Adaptador e configuração das tarefas do provedor escolhido (ADR-022 no caso do Gemini). */
-export function planoDeIa(escolhido: ProvedorIaEscolhido, relogio: Clock) {
-  if (escolhido.tipo === 'anthropic') {
-    return {
-      descritor: DESCRITOR_ANTHROPIC,
-      criar: () => new ProvedorIaAnthropic({ chave: escolhido.chave }, relogio),
-      configuracao: configuracaoPadrao(),
-    };
+/** Adaptador de cada provedor escolhido (ADR-005): o registro aplica limites e telemetria. */
+export function adaptadorDeIa(escolhido: ProvedorIaEscolhido, relogio: Clock) {
+  switch (escolhido.tipo) {
+    case 'anthropic':
+      return {
+        descritor: DESCRITOR_ANTHROPIC,
+        criar: () => new ProvedorIaAnthropic({ chave: escolhido.chave }, relogio),
+      };
+    case 'openai':
+      return {
+        descritor: DESCRITOR_OPENAI,
+        criar: () => new ProvedorIaOpenAi({ chave: escolhido.chave }, relogio),
+      };
+    case 'gemini':
+      return {
+        descritor: escolhido.plano === 'pago' ? DESCRITOR_GEMINI_PAGO : DESCRITOR_GEMINI,
+        criar: () => new ProvedorIaGemini({ chave: escolhido.chave }, relogio),
+      };
   }
-  return {
-    descritor: DESCRITOR_GEMINI,
-    criar: () => new ProvedorIaGemini({ chave: escolhido.chave }, relogio),
-    configuracao: comProvedorAlternativo(configuracaoPadrao(), {
-      provedor: DESCRITOR_GEMINI.id,
-      modelo: escolhido.modelo,
-      // Chave gratuita e limitada: sem custo; o orçamento de tokens continua valendo.
-      preco: { entrada: 0, saida: 0, cacheLido: 0 },
-      fonteDoPreco: 'Gemini: chave gratuita da validação local (ADR-022)',
-    }),
-  };
 }
 
 /**
@@ -55,19 +55,25 @@ export function classificadorIaDoAmbiente(
   relogio: Clock,
   registros: RegistroDeAdaptadores[],
 ): ClassificadorIa | undefined {
-  const escolhido = escolherProvedorIa(ambiente, logger);
-  if (escolhido === undefined) return undefined;
-  const { descritor, criar, configuracao } = planoDeIa(escolhido, relogio);
-  const registro = new RegistroDeAdaptadores(
-    { padrao: { 'provedor-ia': descritor.id } },
-    { relogio },
+  const escolhidos = escolherProvedoresIa(ambiente, logger);
+  if (escolhidos.length === 0) return undefined;
+  // Um registro por provedor; a plataforma tenta na ordem de IA_PROVEDORES (fallback, ADR-024).
+  const provedores = new Map(
+    escolhidos.map((escolhido) => {
+      const { descritor, criar } = adaptadorDeIa(escolhido, relogio);
+      const registro = new RegistroDeAdaptadores(
+        { padrao: { 'provedor-ia': descritor.id } },
+        { relogio },
+      );
+      registro.registrar(descritor, criar);
+      registro.validar();
+      registros.push(registro);
+      return [descritor.id, registro.obter('provedor-ia')] as const;
+    }),
   );
-  registro.registrar(descritor, criar);
-  registro.validar();
-  registros.push(registro);
   const plataforma = new PlataformaIa(
-    configuracao,
-    new Map([[descritor.id, registro.obter('provedor-ia')]]),
+    configuracaoDosProvedores(configuracaoPadrao(), escolhidos),
+    provedores,
     {
       contador: new ContadorDeUsoDeIaRedis(redis),
       relogio,

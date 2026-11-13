@@ -117,9 +117,13 @@ services:
       SMTP_SENHA: ${SMTP_SENHA:-}
       EMAIL_REMETENTE: ${EMAIL_REMETENTE:-PrejuZero <nao-responda@prejuzero.local>}
       # IA (worker e cadastro assistido na api): vazio = só regras rápidas. Gemini só com dados fictícios.
+      IA_PROVEDORES: ${IA_PROVEDORES:-anthropic,openai,gemini}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODELO: ${OPENAI_MODELO:-gpt-5-mini}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODELO: ${GEMINI_MODELO:-gemini-3.5-flash}
+      GEMINI_PLANO: ${GEMINI_PLANO:-gratuito}
       IA_DADOS_FICTICIOS: ${IA_DADOS_FICTICIOS:-nao}
       IA_ORCAMENTO_DIARIO_USD: ${IA_ORCAMENTO_DIARIO_USD:-20}
       PORTAL_URL: ${PORTAL_URL:-http://localhost:3001}

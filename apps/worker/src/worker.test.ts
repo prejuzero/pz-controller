@@ -12,7 +12,7 @@ import { PROCESSADORES_DE_WEBHOOK } from './fichas.js';
 import { ConsumidorDeNotificacoes } from './notificacoes/consumidor.js';
 import { criarServidorDeSaude } from './saude/servidor.js';
 import { criarWorker } from './worker.js';
-import { planoDeIa, provedorIaDoAmbiente } from './worker.module.js';
+import { adaptadorDeIa } from './worker.module.js';
 
 import type { INestApplicationContext } from '@nestjs/common';
 import type { AlteracaoDoCalendario, CacheDeDiasNaoUteis } from '@pz/calendario';
@@ -472,8 +472,6 @@ describe('notificações (HU30)', () => {
 });
 
 describe('provedor de IA do ambiente (ADR-022)', () => {
-  const sem = { GEMINI_MODELO: 'gemini-3.5-flash', IA_DADOS_FICTICIOS: 'nao' as const };
-
   it('SMTP do piloto: usuário e senha vazios (compose) valem como sem autenticação', () => {
     const piloto = carregarAmbiente(esquemaWorker, {
       ...AMBIENTE_BRUTO,
@@ -484,23 +482,24 @@ describe('provedor de IA do ambiente (ADR-022)', () => {
     expect(piloto.SMTP_SENHA).toBe('senha-ficticia');
   });
 
-  it('liga a escolha do @pz/ia ao ambiente do worker', () => {
-    expect(provedorIaDoAmbiente({ ...sem, ANTHROPIC_API_KEY: 'a' })).toEqual({
-      tipo: 'anthropic',
-      chave: 'a',
-    });
-  });
-
-  it('plano de cada provedor: Anthropic com a configuração padrão; Gemini em todas as tarefas', () => {
-    const relogio = new FixedClock(Instant.deIso('2026-11-06T12:00:00.000Z'));
-    const anthropic = planoDeIa({ tipo: 'anthropic', chave: 'a' }, relogio);
-    expect(anthropic.descritor.id).toBe('anthropic');
-    expect(anthropic.criar()).toBeDefined();
-    const gemini = planoDeIa({ tipo: 'gemini', chave: 'g', modelo: 'modelo-ficticio' }, relogio);
-    expect(gemini.descritor.id).toBe('gemini');
-    expect(gemini.criar()).toBeDefined();
-    for (const tarefa of Object.values(gemini.configuracao.tarefas)) {
-      expect(tarefa.modelos).toEqual([{ provedor: 'gemini', modelo: 'modelo-ficticio' }]);
+  it('adaptador de cada provedor escolhido; Gemini pago com limites maiores (ADR-024)', () => {
+    const relogio = new FixedClock(Instant.deIso('2026-11-13T12:00:00.000Z'));
+    for (const [escolhido, id] of [
+      [{ tipo: 'anthropic', chave: 'a' }, 'anthropic'],
+      [{ tipo: 'openai', chave: 'o', modelo: 'm' }, 'openai'],
+      [{ tipo: 'gemini', chave: 'g', modelo: 'm', plano: 'gratuito' }, 'gemini'],
+    ] as const) {
+      const adaptador = adaptadorDeIa(escolhido, relogio);
+      expect(adaptador.descritor.id).toBe(id);
+      expect(adaptador.criar()).toBeDefined();
     }
+    const pago = adaptadorDeIa({ tipo: 'gemini', chave: 'g', modelo: 'm', plano: 'pago' }, relogio);
+    const gratuito = adaptadorDeIa(
+      { tipo: 'gemini', chave: 'g', modelo: 'm', plano: 'gratuito' },
+      relogio,
+    );
+    expect(pago.descritor.limites.requisicoesPorMinuto).toBeGreaterThan(
+      gratuito.descritor.limites.requisicoesPorMinuto ?? 0,
+    );
   });
 });

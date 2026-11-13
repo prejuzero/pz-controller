@@ -30,6 +30,15 @@ export const DESCRITOR_GEMINI = definirDescritor({
   requerCredenciais: true,
 });
 
+/**
+ * Plano pago (ADR-024): faturamento ativo no projeto da chave, sem uso dos dados para treino;
+ * limites maiores que os da chave gratuita (que o registro continua aplicando).
+ */
+export const DESCRITOR_GEMINI_PAGO = definirDescritor({
+  ...DESCRITOR_GEMINI,
+  limites: { requisicoesPorMinuto: 300, concorrencia: 8, timeoutMs: 60_000 },
+});
+
 export interface ConfiguracaoGemini {
   /** Só por variável de ambiente (nunca em código, fixture ou log). */
   readonly chave: string;

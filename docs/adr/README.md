@@ -27,3 +27,4 @@ Formato MADR simplificado. ADR aceito não é editado: para mudar uma decisão, 
 | [ADR-021](0021-chaves-de-dados-e-indice-cego.md)            | Chaves de dados identificadas e índice cego para campos sensíveis                 | Proposto |
 | [ADR-022](0022-gemini-provedor-alternativo-local.md)        | Gemini como provedor alternativo de IA, só na validação local com dados fictícios | Aceito   |
 | [ADR-023](0023-webhooks-de-saida.md)                        | Webhooks de saída: porta EntregadorWebhook, eventos públicos finos e HMAC         | Proposto |
+| [ADR-024](0024-varios-provedores-de-ia-e-gemini-pago.md)    | Vários provedores de IA em ordem de preferência e Gemini no plano pago            | Aceito   |

@@ -22,7 +22,8 @@ export type { AlertaDeOrcamentoDiario, ChamadaDeIa, RegistroDeUsoDeIa } from './
 export { ArquivoDePrompt, hashDoPrompt, problemasDeVersao, RegistroDePrompts } from './prompts.js';
 export type { PromptMontado } from './prompts.js';
 export { configuracaoPadrao, promptsPadrao } from './padrao.js';
-export { comProvedorAlternativo } from './configuracao.js';
+export { comProvedorAlternativo, comProvedores } from './configuracao.js';
+export type { ProvedorDaLista } from './configuracao.js';
 export { CatalogoDeFerramentas } from './ferramentas.js';
 export type {
   AuditarFerramenta,
@@ -30,5 +31,10 @@ export type {
   ExecucaoDeFerramenta,
   Ferramenta,
 } from './ferramentas.js';
-export { escolherProvedorIa } from './provedor-do-ambiente.js';
-export type { AmbienteDaIa, ProvedorIaEscolhido } from './provedor-do-ambiente.js';
+export {
+  configuracaoDosProvedores,
+  escolherProvedoresIa,
+  escolherProvedorIa,
+  PROVEDORES_DE_IA,
+} from './provedor-do-ambiente.js';
+export type { AmbienteDaIa, ProvedorDeIa, ProvedorIaEscolhido } from './provedor-do-ambiente.js';

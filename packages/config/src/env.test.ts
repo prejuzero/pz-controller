@@ -147,10 +147,26 @@ describe('carregarAmbiente', () => {
   });
 
   it('IA: chave vazia do compose vale como ausente; padrões sem custo', () => {
-    expect(carregarAmbiente(esquemaIa, { ANTHROPIC_API_KEY: '', GEMINI_API_KEY: '' })).toEqual({
+    expect(
+      carregarAmbiente(esquemaIa, {
+        ANTHROPIC_API_KEY: '',
+        OPENAI_API_KEY: '',
+        GEMINI_API_KEY: '',
+      }),
+    ).toEqual({
+      IA_PROVEDORES: ['anthropic', 'openai', 'gemini'],
+      OPENAI_MODELO: 'gpt-5-mini',
       GEMINI_MODELO: 'gemini-3.5-flash',
+      GEMINI_PLANO: 'gratuito',
       IA_DADOS_FICTICIOS: 'nao',
       IA_ORCAMENTO_DIARIO_USD: 20,
     });
+    // Ordem de preferência em lista; provedor desconhecido derruba o boot.
+    expect(
+      carregarAmbiente(esquemaIa, { IA_PROVEDORES: ' gemini , anthropic ' }).IA_PROVEDORES,
+    ).toEqual(['gemini', 'anthropic']);
+    expect(() => carregarAmbiente(esquemaIa, { IA_PROVEDORES: 'gemini,outro' })).toThrow(
+      ErroConfiguracao,
+    );
   });
 });
