@@ -88,6 +88,41 @@ export class ProvedorIaAnthropic implements ProvedorIA {
   }
 }
 
+/**
+ * Restrições de JSON Schema que a saída estruturada da API recusa com 400 ("For 'number' type,
+ * properties maximum, minimum are not supported"; "property 'maxItems' is not supported"). Saem
+ * do schema enviado; a resposta continua validada pelo Zod completo em `converterResposta`.
+ */
+export const NAO_SUPORTADOS = [
+  'minimum',
+  'maximum',
+  'exclusiveMinimum',
+  'exclusiveMaximum',
+  'multipleOf',
+  'minItems',
+  'maxItems',
+] as const;
+
+function semNaoSuportados(no: unknown): unknown {
+  if (Array.isArray(no)) return no.map(semNaoSuportados);
+  if (no === null || typeof no !== 'object') return no;
+  const limpo: Record<string, unknown> = {};
+  for (const [chave, valor] of Object.entries(no)) {
+    if ((NAO_SUPORTADOS as readonly string[]).includes(chave)) continue;
+    limpo[chave] =
+      // Em `properties`, as chaves são nomes de campo (podem se chamar "minimum"): só os valores.
+      chave === 'properties' && valor !== null && typeof valor === 'object'
+        ? Object.fromEntries(
+            Object.entries(valor as Record<string, unknown>).map(([campo, sub]) => [
+              campo,
+              semNaoSuportados(sub),
+            ]),
+          )
+        : semNaoSuportados(valor);
+  }
+  return limpo;
+}
+
 /** Monta a requisição: sistema (com cache opcional), mensagens, ferramentas e formato da saída. */
 export function paraRequisicao(
   prompt: PromptIA,
@@ -121,7 +156,13 @@ export function paraRequisicao(
           })),
         }),
     output_config: {
-      format: { type: 'json_schema', schema: z.toJSONSchema(schema, { io: 'input' }) },
+      format: {
+        type: 'json_schema',
+        schema: semNaoSuportados(z.toJSONSchema(schema, { io: 'input' })) as Record<
+          string,
+          unknown
+        >,
+      },
     },
   };
 }
