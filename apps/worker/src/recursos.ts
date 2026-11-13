@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Banco, BancoSistema } from '@pz/db';
 
-import { BANCO, BANCO_SISTEMA } from './fichas.js';
+import { BANCO, BANCO_DAS_CONSULTAS, BANCO_SISTEMA } from './fichas.js';
 
 import type { OnApplicationShutdown } from '@nestjs/common';
 
@@ -11,9 +11,10 @@ export class RecursosDoBanco implements OnApplicationShutdown {
   constructor(
     @Inject(BANCO) private readonly banco: Banco,
     @Inject(BANCO_SISTEMA) private readonly sistema: BancoSistema,
+    @Inject(BANCO_DAS_CONSULTAS) private readonly consultas: Banco,
   ) {}
 
   async onApplicationShutdown(): Promise<void> {
-    await Promise.all([this.banco.encerrar(), this.sistema.encerrar()]);
+    await Promise.all([this.banco.encerrar(), this.sistema.encerrar(), this.consultas.encerrar()]);
   }
 }

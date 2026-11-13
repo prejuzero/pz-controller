@@ -14,7 +14,14 @@ export interface OpcoesBanco {
   readonly url: string;
   /** Conexões no pool deste processo. */
   readonly maxConexoes?: number;
+  /**
+   * Quanto uma transação espera por uma conexão livre do pool. O padrão do Prisma (2 s) derrubava
+   * jobs num pico de carga (primeira captura de uma OAB movimentada) só por esperar a vez.
+   */
+  readonly maxEsperaMs?: number;
 }
+
+const ESPERA_PADRAO_MS = 10_000;
 
 const logger = criarLogger('db');
 
@@ -32,9 +39,11 @@ function criarCliente(opcoes: OpcoesBanco): PrismaClient {
  */
 export class Banco implements UnidadeDeTrabalho<Transacao> {
   readonly #prisma: PrismaClient;
+  readonly #transacao: { maxWait: number };
 
   constructor(opcoes: OpcoesBanco) {
     this.#prisma = criarCliente(opcoes);
+    this.#transacao = { maxWait: opcoes.maxEsperaMs ?? ESPERA_PADRAO_MS };
   }
 
   executar<Resultado>(trabalho: (transacao: Transacao) => Promise<Resultado>): Promise<Resultado> {
@@ -43,7 +52,7 @@ export class Banco implements UnidadeDeTrabalho<Transacao> {
     return this.#prisma.$transaction(async (transacao) => {
       await transacao.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
       return trabalho(transacao);
-    });
+    }, this.#transacao);
   }
 
   /**
@@ -61,7 +70,7 @@ export class Banco implements UnidadeDeTrabalho<Transacao> {
       // Garante tenant vazio nesta transação, mesmo que o contexto tenha um.
       await transacao.$executeRaw`SELECT set_config('app.tenant_id', '', true)`;
       return trabalho(transacao);
-    });
+    }, this.#transacao);
   }
 
   /** Confere a conexão no protocolo do PostgreSQL (prontidão). */
@@ -81,9 +90,11 @@ export class Banco implements UnidadeDeTrabalho<Transacao> {
  */
 export class BancoSistema {
   readonly #prisma: PrismaClient;
+  readonly #transacao: { maxWait: number };
 
   constructor(opcoes: OpcoesBanco) {
     this.#prisma = criarCliente(opcoes);
+    this.#transacao = { maxWait: opcoes.maxEsperaMs ?? ESPERA_PADRAO_MS };
   }
 
   executarComoSistema<Resultado>(
@@ -94,7 +105,7 @@ export class BancoSistema {
       return Promise.reject(new Error('Operação do sistema (BYPASSRLS) exige um motivo.'));
     }
     logger.info({ motivo, acessoGlobal: true }, 'operação do sistema no banco');
-    return this.#prisma.$transaction(trabalho);
+    return this.#prisma.$transaction(trabalho, this.#transacao);
   }
 
   /**
@@ -109,7 +120,7 @@ export class BancoSistema {
     return {
       executar: (trabalho) => {
         logger.debug({ motivo, acessoGlobal: true }, 'operação do sistema no banco');
-        return this.#prisma.$transaction(trabalho);
+        return this.#prisma.$transaction(trabalho, this.#transacao);
       },
     };
   }

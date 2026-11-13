@@ -11,6 +11,8 @@ export const FILAS_RUNTIME = Symbol('FILAS_RUNTIME');
 /** Banco (pz_app), banco do sistema (pz_sistema) e outbox no PostgreSQL (HU05). */
 export const BANCO = Symbol('BANCO');
 export const BANCO_SISTEMA = Symbol('BANCO_SISTEMA');
+/** Pool das leituras chamadas dentro da transação de um job (ver worker.module). */
+export const BANCO_DAS_CONSULTAS = Symbol('BANCO_DAS_CONSULTAS');
 /** Relay: unidade de trabalho como sistema e origem dos eventos pendentes com contexto. */
 export const UNIDADE_DO_RELAY = Symbol('UNIDADE_DO_RELAY');
 export const FONTE_DO_RELAY = Symbol('FONTE_DO_RELAY');
