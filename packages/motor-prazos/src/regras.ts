@@ -515,11 +515,14 @@ export function calcularPrazo(entrada: EntradaDoCalculo): ResultadoDoCalculo {
   const alternativas: Alternativa[] = [];
   for (const variacao of VARIACOES) {
     if (!emAberto[variacao.chave]) continue;
-    // Cada decisão em aberto só alonga o prazo: a alternativa é sempre mais tardia que a sugerida.
+    // Cada decisão em aberto só alonga o prazo: a alternativa nunca é mais cedo que a sugerida.
     const outro = calcular(entrada, prazo, variacao.opcoes);
     // Sem calcular a alternativa, o advogado não vê todas as datas: nada de sugestão parcial.
     if (!outro.ok)
       return { situacao: 'a-confirmar', ...outro.erro, fundamentos: [prazo.fundamento] };
+    // A decisão em aberto que não muda o vencimento não é alternativa: as duas leituras dão a
+    // mesma data (ex.: a prorrogação do domingo alcança o dia seguinte à suspensão).
+    if (!outro.valor.vencimento.ehDepoisDe(calculo.vencimento)) continue;
     alternativas.push({
       vencimento: outro.valor.vencimento,
       descricao: variacao.descricao,
