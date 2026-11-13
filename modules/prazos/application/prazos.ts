@@ -27,6 +27,7 @@ import type {
 import type { ResolverPrazoAplicavel } from './tabela-de-prazos.js';
 import type {
   CalculoDoPrazo,
+  EfeitoDoRecalculo,
   EstadoDoPrazo,
   JurisdicaoDoPrazo,
   Json,
@@ -531,6 +532,66 @@ export class CriarPrazo<Transacao> {
       }
       await this.outbox.gravar(transacao, prazo.retirarEventos());
       return ok(depois);
+    });
+  }
+}
+
+/**
+ * Refaz a sugestão do prazo de uma publicação quando a classificação dela é refeita (ex.: a IA
+ * falhou na primeira vez e o ato ficou desconhecido). Só vale para o prazo do DJEN ainda sem data
+ * e que ninguém tocou (`Prazo.ressugerir`). Trilha e evento na mesma transação (ADR-004, ADR-006).
+ */
+export class RessugerirPrazo<Transacao> {
+  constructor(
+    private readonly unidade: UnidadeDeTrabalho<Transacao>,
+    private readonly prazos: RepositorioDePrazos<Transacao>,
+    private readonly trilha: TrilhaDeAuditoria<Transacao>,
+    private readonly outbox: Outbox<Transacao>,
+    private readonly relogio: Clock,
+  ) {}
+
+  async executar(
+    prazoId: Uuid,
+    sugestao: SugestaoDePrazo,
+    classificacaoIncerta: boolean,
+  ): Promise<EfeitoDoRecalculo> {
+    if (!SugestaoDePrazo.ehValida(sugestao)) throw new Error('Sugestão não veio do motor.');
+    return this.unidade.executar(async (transacao) => {
+      const prazo = await this.prazos.buscar(transacao, prazoId);
+      if (prazo === undefined) return 'sem-mudanca';
+      const antes = prazoListado(prazo.estado);
+      const versaoLida = prazo.estado.versaoOtimista;
+      const efeito = prazo.ressugerir(
+        {
+          tipoAto: sugestao.tipoAto,
+          ramo: sugestao.ramo,
+          calculo: sugestao.calculo,
+          entrada: sugestao.entrada,
+          jurisdicao: sugestao.jurisdicao,
+          parametros: sugestao.parametros,
+          classificacaoIncerta,
+        },
+        { motivo: 'classificacao-refeita' },
+        this.relogio,
+      );
+      if (efeito === 'sem-mudanca') return efeito;
+      if (!(await this.prazos.atualizar(transacao, prazo, versaoLida))) {
+        // Alterado por outra pessoa no meio: o job tenta de novo e relê o prazo.
+        throw new Error(`prazo ${prazoId} alterado durante a nova sugestão`);
+      }
+      await this.trilha.registrar(
+        transacao,
+        {
+          tipo: 'prazos.prazo-recalculado',
+          entidade: 'prazo',
+          entidadeId: prazoId,
+          antes,
+          depois: { ...prazoListado(prazo.estado), motivo: 'classificacao-refeita' },
+        },
+        { canal: 'evento' },
+      );
+      await this.outbox.gravar(transacao, prazo.retirarEventos());
+      return efeito;
     });
   }
 }

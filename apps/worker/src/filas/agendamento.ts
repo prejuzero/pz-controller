@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { recifrarCamposJob } from '../cadastro/jobs.js';
+import { reprocessarFalhasDaIaJob } from '../classificacao/jobs.js';
 import {
   dispararLembretesJob,
   enviarResumosJob,
@@ -82,6 +83,14 @@ export const AGENDAMENTOS: readonly Agendamento<unknown>[] = [
     cron: '0 2 * * *', // diário às 2h: verifica a cadeia e exporta para o WORM (HU08)
     dados: {},
     motivo: 'verificação diária da trilha de auditoria e cópia WORM',
+  }),
+  definirAgendamento({
+    id: 'classificacao.reprocessar-falhas',
+    job: reprocessarFalhasDaIaJob,
+    // De hora em hora; cada falha só volta a ser tentada 6 h depois (custo da IA).
+    cron: '17 * * * *',
+    dados: {},
+    motivo: 'nova classificação das publicações em que a IA falhou',
   }),
   definirAgendamento({
     id: 'prazos.marcar-vencidos',

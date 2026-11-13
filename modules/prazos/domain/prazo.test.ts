@@ -291,3 +291,96 @@ describe('delegação do prazo (HU41)', () => {
     expect(prazo.estado.responsavelId).toBe(ANA);
   });
 });
+
+describe('ressugerir (classificação refeita, 13/11/2026)', () => {
+  const RESSUGESTAO = { motivo: 'classificacao-refeita' } as const;
+  const semData = () => {
+    const prazo = Prazo.sugerir(
+      novo({ tipoAto: 'desconhecido', ramo: null, calculo: calculo(null, 'sem'), entrada: null }),
+      TENANT,
+      relogio,
+    );
+    prazo.retirarEventos();
+    return prazo;
+  };
+  const nova = {
+    tipoAto: 'contrarrazoes',
+    ramo: 'civel' as const,
+    calculo: calculo('23', 'nova'),
+    entrada: { dataDeReferencia: '2027-03-01' },
+    jurisdicao: { lacunas: [] },
+    parametros: { tipoAto: 'contrarrazoes' },
+    classificacaoIncerta: false,
+  };
+
+  it('prazo sem data que ninguém tocou recebe a nova sugestão e emite PrazoRecalculado', () => {
+    const prazo = semData();
+    expect(prazo.ressugerir(nova, RESSUGESTAO, relogio)).toBe('vencimento');
+    expect(prazo.estado).toMatchObject({
+      tipoAto: 'contrarrazoes',
+      ramo: 'civel',
+      status: 'a-confirmar',
+      classificacaoIncerta: false,
+      entrada: { dataDeReferencia: '2027-03-01' },
+      versaoOtimista: 2,
+    });
+    expect(prazo.estado.calculo.vencimento?.paraIso()).toBe('2027-03-23');
+    expect(prazo.retirarEventos().map((e) => [e.tipo, e.payload])).toEqual([
+      [
+        'PrazoRecalculado',
+        {
+          prazoId: prazo.id,
+          processoId: novo().processoId,
+          vencimentoAnterior: null,
+          vencimentoNovo: '2027-03-23',
+          statusAnterior: 'a-confirmar',
+          motivo: 'classificacao-refeita',
+        },
+      ],
+    ]);
+  });
+
+  it('nova sugestão ainda sem data: só a memória, sem evento', () => {
+    const prazo = semData();
+    const aindaSemData = { ...nova, calculo: calculo(null, 'outra') };
+    expect(prazo.ressugerir(aindaSemData, RESSUGESTAO, relogio)).toBe('memoria');
+    expect(prazo.estado.tipoAto).toBe('contrarrazoes');
+    expect(prazo.retirarEventos()).toEqual([]);
+    // A mesma sugestão de novo não muda nada.
+    expect(prazo.ressugerir(aindaSemData, RESSUGESTAO, relogio)).toBe('sem-mudanca');
+  });
+
+  it('nunca mexe no que o advogado viu com data, confirmou, ajustou ou cadastrou', () => {
+    const comData = Prazo.sugerir(novo(), TENANT, relogio);
+    expect(comData.ressugerir(nova, RESSUGESTAO, relogio)).toBe('sem-mudanca');
+
+    const ajustado = semData();
+    ajustado.ajustar(
+      {
+        calculo: calculo(null, 'ajuste'),
+        tipoAto: 'outro-ato',
+        ramo: null,
+        vencimentoManual: false,
+        entrada: null,
+        parametros: {},
+      },
+      'o advogado corrigiu o ato',
+      '01a10e00-0000-7000-8000-00000000u001' as Uuid,
+      relogio,
+    );
+    expect(ajustado.ressugerir(nova, RESSUGESTAO, relogio)).toBe('sem-mudanca');
+    expect(ajustado.estado.tipoAto).toBe('outro-ato');
+
+    const manual = Prazo.sugerir(
+      novo({ origem: 'manual', calculo: calculo(null, 'm'), entrada: null }),
+      TENANT,
+      relogio,
+    );
+    expect(manual.ressugerir(nova, RESSUGESTAO, relogio)).toBe('sem-mudanca');
+
+    const cancelado = semData();
+    cancelado.cancelar('motivo', '01a10e00-0000-7000-8000-00000000u001' as Uuid, relogio);
+    expect(cancelado.ressugerir(nova, RESSUGESTAO, relogio)).toBe('sem-mudanca');
+    expect(cancelado.estado.tipoAto).toBe('desconhecido');
+  });
+});
