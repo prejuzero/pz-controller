@@ -103,6 +103,20 @@ describe('classificador pela plataforma de IA (HU21)', () => {
     expect(enviado).toContain('JULGO PROCEDENTE');
   });
 
+  it('erro permanente do provedor é avisado com o motivo (nada falha em silêncio)', async () => {
+    const avisos: string[] = [];
+    const r = await new ClassificadorIaPlataforma(
+      plataforma(() =>
+        Promise.reject(new ErroSaidaInvalida('temperature: não permitido', 'falso')),
+      ),
+      prompts,
+      undefined,
+      (falha) => avisos.push(`${falha.tarefa} ${falha.tenantId} ${falha.motivo}`),
+    ).classificar(ENTRADA, TENANT);
+    expect(r).toEqual({ tipo: 'invalida' });
+    expect(avisos).toEqual([`${TAREFA} ${TENANT} temperature: não permitido`]);
+  });
+
   it('saída inválida, data na saída e orçamento esgotado viram respostas; falha passageira sobe', async () => {
     const classificar = (gerar: ProvedorIA['gerarEstruturado'], orcamento?: number) =>
       new ClassificadorIaPlataforma(plataforma(gerar, orcamento), prompts).classificar(

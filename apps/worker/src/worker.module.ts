@@ -233,7 +233,7 @@ import type { ArmazemDoPainel } from '@pz/administracao';
 import type { DestinoWorm } from '@pz/auditoria';
 import type { ProtecaoDeCampos } from '@pz/cadastro';
 import type { CacheDeDiasNaoUteis } from '@pz/calendario';
-import type { ClassificadorIa, InstrucaoEmbutida, Resumidor } from '@pz/classificacao';
+import type { ClassificadorIa, FalhaDaIa, InstrucaoEmbutida, Resumidor } from '@pz/classificacao';
 import type { Transacao } from '@pz/db';
 import type { ProvedorIaEscolhido } from '@pz/ia';
 import type {
@@ -514,8 +514,17 @@ function iaDoAmbiente(
   const aoDetectar = (deteccao: InstrucaoEmbutida) => {
     logger.warn(deteccao, 'instrução embutida no teor da publicação (tratada como dado)');
   };
+  // Erro permanente da IA (pedido recusado, saída fora do schema): log, métrica e alerta.
+  const aoFalhar = (falha: FalhaDaIa) => {
+    registrarErro(
+      logger,
+      new Error(`IA: ${falha.motivo}`),
+      `tarefa ${falha.tarefa} sem resposta válida da IA (vai para revisão manual)`,
+      'ia.saida-invalida',
+    );
+  };
   return {
-    classificador: new ClassificadorIaPlataforma(plataforma, promptsPadrao(), aoDetectar),
+    classificador: new ClassificadorIaPlataforma(plataforma, promptsPadrao(), aoDetectar, aoFalhar),
     // Resumo (HU62): a mesma plataforma, com orçamento e métricas por tarefa.
     resumidor: new ResumidorIaPlataforma(plataforma, promptsPadrao(), aoDetectar),
   };

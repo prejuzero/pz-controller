@@ -53,7 +53,6 @@ describe('requisição enviada à Anthropic (HU21)', () => {
     expect(servidor.requisicoes[antes]).toMatchObject({
       model: 'claude-haiku-4-5',
       max_tokens: 256,
-      temperature: 0,
       system: [{ type: 'text', cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: 'Teor FICTÍCIO.' }],
       output_config: { format: { type: 'json_schema', schema: { type: 'object' } } },

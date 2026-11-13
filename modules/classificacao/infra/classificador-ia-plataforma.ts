@@ -16,6 +16,14 @@ export interface InstrucaoEmbutida {
   readonly alertas: readonly { readonly variavel: string; readonly padroes: readonly string[] }[];
 }
 
+/** Erro permanente da IA (saída fora do schema, recusa, pedido recusado pelo provedor). */
+export interface FalhaDaIa {
+  readonly tenantId: Uuid;
+  readonly tarefa: string;
+  /** Mensagem do erro (do provedor ou da validação); nunca o teor da publicação. */
+  readonly motivo: string;
+}
+
 /**
  * Saída pedida à IA: o código do ato (ou "desconhecido"), a confiança e o trecho literal que a
  * justifica. Sem data e sem fundamento legal (ADR-008); o prazo citado vem do extrator
@@ -44,6 +52,9 @@ export class ClassificadorIaPlataforma implements ClassificadorIa {
     private readonly plataforma: PlataformaIa,
     private readonly prompts: RegistroDePrompts,
     private readonly aoDetectarInstrucao: (deteccao: InstrucaoEmbutida) => void = () => undefined,
+    // Sem aviso, um defeito no pedido (13/11/2026: a API recusava o schema e a temperatura) só
+    // aparecia como "revisão manual" em todas as publicações.
+    private readonly aoFalhar: (falha: FalhaDaIa) => void = () => undefined,
   ) {}
 
   async classificar(
@@ -63,7 +74,10 @@ export class ClassificadorIaPlataforma implements ClassificadorIa {
     } catch (erro) {
       if (erro instanceof OrcamentoDeIaEsgotado) return { tipo: 'sem-orcamento' };
       // Erro permanente na tarefa = saída inválida (schema, data proibida ou recusa do modelo).
-      if (erro instanceof ErroPermanente) return { tipo: 'invalida' };
+      if (erro instanceof ErroPermanente) {
+        this.aoFalhar({ tenantId, tarefa: TAREFA, motivo: erro.message });
+        return { tipo: 'invalida' };
+      }
       throw erro;
     }
   }

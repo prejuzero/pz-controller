@@ -132,8 +132,8 @@ export function paraRequisicao(
   return {
     model: opcoes.modelo,
     max_tokens: opcoes.maxTokensSaida,
-    // Só quando pedida (a classificação usa Haiku 4.5, que aceita); modelos mais novos a recusam.
-    ...(opcoes.temperatura === undefined ? {} : { temperature: opcoes.temperatura }),
+    // Sem `temperature`: na versão da API que o SDK usa (2026-10-21) o parâmetro não existe mais
+    // e o pedido volta 400 ("Extra inputs are not permitted"), em qualquer modelo (13/11/2026).
     // O bloco estável (instruções e taxonomia) vai no sistema: é o que se repete e vale cachear.
     system: [
       {

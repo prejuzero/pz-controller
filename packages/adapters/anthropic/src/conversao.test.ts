@@ -86,7 +86,10 @@ describe('requisição (HU21)', () => {
     expect(r.uso).toEqual({ tokensEntrada: 3, tokensSaida: 1, tokensCacheLidos: 0 });
   });
 
-  it('sem cache nem temperatura; com ferramentas; papéis e formato', () => {
+  it('nunca envia temperatura (a API recusa); com ferramentas; papéis e formato', () => {
+    expect(
+      paraRequisicao(PROMPT, Saida, { modelo: 'm', maxTokensSaida: 1, temperatura: 0 }),
+    ).not.toHaveProperty('temperature');
     const req = paraRequisicao(PROMPT, Saida, {
       modelo: 'claude-haiku-4-5',
       maxTokensSaida: 128,

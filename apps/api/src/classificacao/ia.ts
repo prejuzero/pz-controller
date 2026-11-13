@@ -12,9 +12,9 @@ import {
   RegistroComOrcamentoDiario,
 } from '@pz/ia';
 import { RegistroDeAdaptadores } from '@pz/integracoes';
-import { criarLogger, registrarOrcamentoDiarioIaExcedido } from '@pz/observability';
+import { criarLogger, registrarErro, registrarOrcamentoDiarioIaExcedido } from '@pz/observability';
 
-import type { ClassificadorIa, InstrucaoEmbutida } from '@pz/classificacao';
+import type { ClassificadorIa, FalhaDaIa, InstrucaoEmbutida } from '@pz/classificacao';
 import type { Banco } from '@pz/db';
 import type { AmbienteDaIa, ProvedorIaEscolhido } from '@pz/ia';
 import type { Clock } from '@pz/kernel';
@@ -102,5 +102,14 @@ export function classificadorIaDoAmbiente(
   const aoDetectar = (deteccao: InstrucaoEmbutida) => {
     logger.warn(deteccao, 'instrução embutida no texto do cadastro assistido (tratada como dado)');
   };
-  return new ClassificadorIaPlataforma(plataforma, promptsPadrao(), aoDetectar);
+  // Erro permanente da IA (pedido recusado, saída fora do schema): log, métrica e alerta.
+  const aoFalhar = (falha: FalhaDaIa) => {
+    registrarErro(
+      logger,
+      new Error(`IA: ${falha.motivo}`),
+      `tarefa ${falha.tarefa} sem resposta válida da IA no cadastro assistido`,
+      'ia.saida-invalida',
+    );
+  };
+  return new ClassificadorIaPlataforma(plataforma, promptsPadrao(), aoDetectar, aoFalhar);
 }

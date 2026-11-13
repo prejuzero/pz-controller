@@ -38,7 +38,10 @@ function rotear(
   if (rota === '/v1/messages' && metodo === 'POST') {
     const pedido = JSON.parse(corpo.toString('utf8')) as Record<string, unknown>;
     requisicoes.push(pedido);
-    // Como a API real (13/11/2026): restrição de número ou de itens no schema da saída é 400.
+    // Como a API real (13/11/2026): `temperature` e restrição de número ou de itens no schema da
+    // saída são 400.
+    if ('temperature' in pedido)
+      return [400, erro('invalid_request_error', 'temperature: Extra inputs are not permitted')];
     const formato = JSON.stringify(
       (pedido.output_config as { format?: unknown } | undefined)?.format ?? {},
     );
