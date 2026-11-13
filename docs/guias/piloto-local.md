@@ -40,7 +40,19 @@ pnpm piloto:carga --email <e-mail da curadora>
 2. O segundo carrega a planilha como **rascunhos** propostos por ela: 83 regras de prazo e 3.327 eventos do calendário (feriados nacionais, de tribunal, estaduais e municipais). Rodar de novo não duplica nada: só entra o que ainda não está cadastrado.
 3. Ela entra, confere e clica em **"Aprovar todos os rascunhos"** em Prazos e em Calendário (o calendário é por ano: aprove em cada ano). A partir daí, o cálculo usa as regras dela. Cada aprovação fica na trilha de auditoria com o nome dela.
 
-## 4. Certificado nos computadores dos advogados
+## 4. IA (classificação das intimações)
+
+Sem IA, cada intimação vira um prazo "a confirmar" sem data, e o advogado escolhe o ato para o sistema calcular pela tabela da curadora. Com IA, o sistema sugere o ato, e o advogado confirma do mesmo jeito. No `.env` (ADR-024):
+
+```
+IA_PROVEDORES=gemini,anthropic,openai   # ordem; o primeiro com chave atende
+GEMINI_API_KEY=<chave>
+GEMINI_PLANO=pago                       # só com o faturamento ativo no projeto da chave
+```
+
+**Só marque `GEMINI_PLANO=pago` depois de ativar o faturamento no Google AI Studio.** No plano gratuito, o Google pode usar o teor das intimações para treino, o que é proibido com dados de clientes. Também servem `OPENAI_API_KEY` ou `ANTHROPIC_API_KEY`. Depois de mudar o `.env`, rode `pnpm piloto:up` de novo.
+
+## 5. Certificado nos computadores dos advogados
 
 O proxy usa uma CA local. Exporte-a e instale como confiável em cada computador (uma vez):
 
@@ -50,7 +62,7 @@ infra/docker/compose.sh --profile apps --profile piloto cp proxy:/data/caddy/pki
 
 macOS: abra o arquivo no Acesso às Chaves e marque "Sempre confiar". Windows: instale em "Autoridades de Certificação Raiz Confiáveis".
 
-## 5. Backup diário
+## 6. Backup diário
 
 `pnpm backup` grava banco e arquivos em `./backups` (mantém os 7 mais recentes). Agende no `cron` (ou no Agendador de Tarefas) e copie a pasta para outro disco. Restaurar: `infra/backup/restaurar.sh`.
 

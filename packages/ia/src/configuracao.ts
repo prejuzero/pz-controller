@@ -96,3 +96,45 @@ export function comProvedorAlternativo(
     ),
   });
 }
+
+/** Provedor numa lista de fallback: Anthropic com os modelos padrão de cada tarefa, ou um modelo único. */
+export type ProvedorDaLista =
+  | { readonly provedor: 'anthropic' }
+  | {
+      readonly provedor: string;
+      readonly modelo: string;
+      readonly preco: PrecoDoModelo;
+      readonly fonteDoPreco: string;
+    };
+
+/**
+ * Mesma configuração com os provedores em ordem de preferência (ADR-024): cada tarefa tenta o
+ * primeiro e cai para o seguinte se ele falhar. Anthropic mantém os modelos da configuração de
+ * cada tarefa; os outros usam um modelo único, com o preço incluído na tabela.
+ */
+export function comProvedores(
+  base: ConfiguracaoDasTarefas,
+  lista: readonly ProvedorDaLista[],
+): ConfiguracaoDasTarefas {
+  const outros = lista.filter(
+    (p): p is Exclude<ProvedorDaLista, { provedor: 'anthropic' }> => 'modelo' in p,
+  );
+  return lerConfiguracaoDasTarefas({
+    ...base,
+    fonteDosPrecos: [base.fonteDosPrecos, ...outros.map((p) => p.fonteDoPreco)].join('; '),
+    precos: { ...base.precos, ...Object.fromEntries(outros.map((p) => [p.modelo, p.preco])) },
+    tarefas: Object.fromEntries(
+      Object.entries(base.tarefas).map(([nome, tarefa]) => [
+        nome,
+        {
+          ...tarefa,
+          modelos: lista.flatMap((p) =>
+            'modelo' in p
+              ? [{ provedor: p.provedor, modelo: p.modelo }]
+              : tarefa.modelos.filter((m) => m.provedor === 'anthropic'),
+          ),
+        },
+      ]),
+    ),
+  });
+}

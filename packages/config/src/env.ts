@@ -38,20 +38,34 @@ export const esquemaRedis = z.object({
 /** Provedor de IA (HU21, ADR-022), o mesmo na API (cadastro assistido) e no worker. */
 export const esquemaIa = z.object({
   /**
-   * Chave da API da Anthropic (HU21). Ausente: a IA fica desligada e as publicações que as
-   * regras rápidas não classificam ficam "a confirmar" (decisão de 08/10/2026: sem custo até
-   * validar o produto).
+   * Ordem dos provedores de IA (ADR-024), separados por vírgula: o primeiro com chave atende e os
+   * seguintes são o fallback. Sem chave nenhuma, a IA fica desligada e o que as regras rápidas
+   * não classificam fica "a confirmar".
    */
+  IA_PROVEDORES: z
+    .string()
+    .default('anthropic,openai,gemini')
+    .transform((valor) =>
+      valor
+        .split(',')
+        .map((p) => p.trim())
+        .filter((p) => p !== ''),
+    )
+    .pipe(z.array(z.enum(['anthropic', 'openai', 'gemini'])).min(1)),
+  /** Chave da API da Anthropic (HU21): a API não usa os dados para treino. */
   ANTHROPIC_API_KEY: opcional(z.string().min(1)),
-  /**
-   * Provedor alternativo da validação local (ADR-022): Google Gemini por chave gratuita e
-   * limitada. Só liga com IA_DADOS_FICTICIOS=sim, porque o plano gratuito pode usar o conteúdo
-   * para treino e dados de clientes nunca podem ir para lá (CLAUDE.md, seção 11). A Anthropic,
-   * se configurada, tem preferência.
-   */
+  /** Chave da API da OpenAI (ADR-024): a API não usa os dados para treino por padrão. */
+  OPENAI_API_KEY: opcional(z.string().min(1)),
+  OPENAI_MODELO: z.string().min(1).default('gpt-5-mini'),
+  /** Chave do Google Gemini (ADR-022, ADR-024). */
   GEMINI_API_KEY: opcional(z.string().min(1)),
   GEMINI_MODELO: z.string().min(1).default('gemini-3.5-flash'),
-  /** Declaração de quem liga o Gemini: o banco local só tem dados fictícios. */
+  /**
+   * "pago" só com o faturamento ativo no projeto da chave (no plano pago o Google não usa os dados
+   * para treino); aí o Gemini recebe dados reais. "gratuito": só com IA_DADOS_FICTICIOS=sim.
+   */
+  GEMINI_PLANO: z.enum(['gratuito', 'pago']).default('gratuito'),
+  /** Declaração de quem liga o Gemini gratuito: o banco local só tem dados fictícios. */
   IA_DADOS_FICTICIOS: z.enum(['sim', 'nao']).default('nao'),
   /**
    * Orçamento diário de IA da plataforma em US$ (HU21), pelo custo estimado de tabela. Acima

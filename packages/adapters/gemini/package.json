@@ -2,7 +2,7 @@
   "name": "@pz/adapter-gemini",
   "version": "0.0.0",
   "private": true,
-  "description": "Adaptador ProvedorIA do Google Gemini (opcional, só validação local com dados fictícios), ADR-005/016/022.",
+  "description": "Adaptador ProvedorIA do Google Gemini: plano pago com dados reais ou gratuito só com dados fictícios, ADR-005/016/022/024.",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"

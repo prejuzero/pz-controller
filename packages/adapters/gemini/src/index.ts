@@ -2,6 +2,7 @@ export { classificarFalhaDeRede, classificarStatusGemini } from './erros.js';
 export {
   converterRespostaGemini,
   DESCRITOR_GEMINI,
+  DESCRITOR_GEMINI_PAGO,
   MODELO_PADRAO_GEMINI,
   paraRequisicaoGemini,
   ProvedorIaGemini,
