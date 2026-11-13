@@ -1,5 +1,6 @@
 'use client';
 
+import { MAXIMO_DA_APROVACAO_EM_LOTE } from '@pz/contracts';
 import { avisar, Botao, Dialogo, FecharDialogo } from '@pz/ui';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
@@ -40,12 +41,22 @@ export function AprovarEmLote({
           <Botao
             carregando={aprovar.isPending}
             onClick={() => {
-              aprovar.mutate([...ids], {
-                onSuccess: (r) => {
-                  setAberto(false);
-                  if (r.falhas.length === 0) avisar.sucesso(t('aprovados', { total: r.aprovados }));
-                  else avisar.erro(t('comFalhas', { total: r.aprovados, falhas: r.falhas.length }));
-                },
+              void (async () => {
+                // A API aceita até 1.000 por pedido (a carga da planilha tem milhares): em blocos.
+                let aprovados = 0;
+                let falhas = 0;
+                for (let i = 0; i < ids.length; i += MAXIMO_DA_APROVACAO_EM_LOTE) {
+                  const r = await aprovar.mutateAsync(
+                    ids.slice(i, i + MAXIMO_DA_APROVACAO_EM_LOTE),
+                  );
+                  aprovados += r.aprovados;
+                  falhas += r.falhas.length;
+                }
+                setAberto(false);
+                if (falhas === 0) avisar.sucesso(t('aprovados', { total: aprovados }));
+                else avisar.erro(t('comFalhas', { total: aprovados, falhas }));
+              })().catch(() => {
+                // O erro do pedido já vira aviso pelo tratamento global das mutações.
               });
             }}
           >
