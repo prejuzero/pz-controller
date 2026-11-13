@@ -317,3 +317,20 @@ describe('limpeza do outbox (HU10) com PostgreSQL real', () => {
     });
   });
 });
+
+describe('pool de conexões (piloto, 13/11/2026)', () => {
+  it('transação espera uma conexão livre do pool em vez de desistir em 2 s', async () => {
+    // Pool de 1: a segunda transação espera a primeira (3 s) terminar. Com a espera padrão do
+    // Prisma (2 s), falhava com "Unable to start a transaction in the given time".
+    const pequeno = new Banco({ url: teste.url('pz_app'), maxConexoes: 1 });
+    try {
+      const segurar = () =>
+        executarNoTenant(TENANT_A, () =>
+          pequeno.executar((tx) => tx.$executeRaw`SELECT pg_sleep(3)`),
+        );
+      await expect(Promise.all([segurar(), segurar()])).resolves.toHaveLength(2);
+    } finally {
+      await pequeno.encerrar();
+    }
+  }, 20_000);
+});

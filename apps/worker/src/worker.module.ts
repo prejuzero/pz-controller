@@ -188,6 +188,7 @@ import { RelayDoOutbox } from './eventos/relay.js';
 import {
   AMBIENTE,
   BANCO,
+  BANCO_DAS_CONSULTAS,
   BANCO_SISTEMA,
   FILAS_RUNTIME,
   FONTE_DO_RELAY,
@@ -626,7 +627,13 @@ export class WorkerModule {
       ultimoErroRedis = performance.now();
       registrarErro(logger, erro, 'conexão com o Redis indisponível', 'worker.redis');
     });
-    const banco = new Banco({ url: ambiente.DATABASE_URL });
+    // Pool dimensionado pela concorrência das filas (a de eventos sozinha roda 20 jobs).
+    const banco = new Banco({ url: ambiente.DATABASE_URL, maxConexoes: 30 });
+    // Leituras de outros módulos chamadas DENTRO da transação de um consumidor (agenda do prazo,
+    // número do processo, calendário, tabela): cada uma abre a própria transação. No mesmo pool,
+    // N jobs simultâneos seguravam todas as conexões esperando uma a mais, e ninguém andava
+    // (piloto, 13/11/2026: PrazoSugerido na DLQ). Pool próprio: a espera sempre termina.
+    const bancoDasConsultas = new Banco({ url: ambiente.DATABASE_URL, maxConexoes: 10 });
     // Chaves de dados (HU37, ADR-021): CPF, documento do cliente e segredos cifrados.
     const chaves = new ProvedorChavesLocal(ambiente.CHAVE_CIFRAGEM, ambiente.CHAVES_DE_DADOS);
     const protecao = protecaoDeCampos(chaves, ambiente.CHAVE_CIFRAGEM);
@@ -648,12 +655,17 @@ export class WorkerModule {
       criptografia: new CriptografiaNode(),
       relogio: relogioPadrao,
     };
-    const localizadorDosPrazos = (relogio: Clock) => localizadorDosPrazosNoBanco(banco, relogio);
+    const localizadorDosPrazos = (relogio: Clock) =>
+      localizadorDosPrazosNoBanco(bancoDasConsultas, relogio);
     const tokensDaCiencia = new TokensHmac(Buffer.from(ambiente.CHAVE_CIFRAGEM, 'base64'));
     const agendaDosLembretes = (relogio: Clock) =>
-      new AgendaDosLembretes(banco, new PrazosPostgres(), localizadorDosPrazos(relogio));
+      new AgendaDosLembretes(
+        bancoDasConsultas,
+        new PrazosPostgres(),
+        localizadorDosPrazos(relogio),
+      );
     const numeroDoProcesso = (relogio: Clock) => {
-      const processos = new ConsultarProcesso(banco, new ProcessosPostgres(relogio));
+      const processos = new ConsultarProcesso(bancoDasConsultas, new ProcessosPostgres(relogio));
       return async (processoId: Uuid) => {
         const r = await processos.executar(processoId);
         return r.ok ? r.valor.numeroCnj : undefined;
@@ -662,7 +674,7 @@ export class WorkerModule {
     const calculoDosPrazos = (relogio: Clock) =>
       new CalcularPrazoParaProcesso(
         localizadorDosPrazos(relogio),
-        new ResolverPrazoAplicavel(banco, new TabelaPostgres()),
+        new ResolverPrazoAplicavel(bancoDasConsultas, new TabelaPostgres()),
       );
     const emMemoria = opcoes.outbox;
     // Registros de adaptadores criados nesta instância: a saúde deles vai para o painel (HU39).
@@ -676,6 +688,7 @@ export class WorkerModule {
       { provide: REDIS, useValue: redis },
       { provide: BANCO, useValue: banco },
       { provide: BANCO_SISTEMA, useValue: sistema },
+      { provide: BANCO_DAS_CONSULTAS, useValue: bancoDasConsultas },
       { provide: AMBIENTE, useValue: ambiente },
       { provide: RELOGIO, useValue: relogioPadrao },
       {
