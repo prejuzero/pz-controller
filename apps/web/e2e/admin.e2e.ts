@@ -22,10 +22,22 @@ test.describe('painel do administrador (HU39)', () => {
       await expect(
         page.getByRole('heading', { level: 1, name: 'Administração da plataforma' }),
       ).toBeVisible();
+      // O banco local acumula escritórios de execuções anteriores e a lista carrega por páginas
+      // ("Carregar mais", cursor): carrega até achar o da demonstração.
+      const linha = page.getByRole('row').filter({ hasText: 'Escritório Demonstração' });
+      await expect(page.getByRole('table').first()).toBeVisible();
+      for (let i = 0; i < 20 && (await linha.count()) === 0; i++) {
+        const mais = page.getByRole('button', { name: 'Carregar mais' });
+        if ((await mais.count()) === 0) break;
+        const antes = await page.getByRole('row').count();
+        await mais.click();
+        await expect(async () => {
+          expect(await page.getByRole('row').count()).toBeGreaterThan(antes);
+        }).toPass();
+      }
       await expect(page.getByRole('cell', { name: 'Escritório Demonstração' })).toBeVisible();
       await semViolacoes(page);
 
-      const linha = page.getByRole('row').filter({ hasText: 'Escritório Demonstração' });
       await linha.getByRole('button', { name: 'Gerenciar' }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
       await semViolacoes(page);

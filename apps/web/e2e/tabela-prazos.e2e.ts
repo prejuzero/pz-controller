@@ -66,11 +66,16 @@ test.describe('curadoria da tabela de prazos (HU15)', () => {
     const linha = await linhaDoAto(page);
     await linha.getByRole('button', { name: 'Histórico' }).click();
     const historico = page.getByRole('dialog');
+    await expect(historico.getByText('Rascunho', { exact: true })).toBeVisible();
     await historico.getByRole('button', { name: 'Aprovar' }).click();
-    await expect(page.getByText('Versão aprovada.')).toBeVisible();
 
-    // A coluna "Vigente hoje" é marcada pela API na data do servidor (PZ-298).
-    await page.reload();
-    await expect((await linhaDoAto(page)).getByText('FICTÍCIO: Lei de Teste')).toBeVisible();
+    // Prova da aprovação: a coluna "Vigente hoje" (marcada pela API na data do servidor, PZ-298)
+    // só mostra versão aprovada. O histórico fecha quando a lista atualiza e o aviso é passageiro.
+    await expect(async () => {
+      await page.reload();
+      await expect((await linhaDoAto(page)).getByText('FICTÍCIO: Lei de Teste')).toBeVisible({
+        timeout: 2_000,
+      });
+    }).toPass({ timeout: 20_000 });
   });
 });
