@@ -36,7 +36,18 @@ function rotear(
   const rota = caminho.replace(/^\/invalida/, '');
   if (rota === '/v1/models' && metodo === 'GET') return [200, fixture('modelos.json')];
   if (rota === '/v1/messages' && metodo === 'POST') {
-    requisicoes.push(JSON.parse(corpo.toString('utf8')) as Record<string, unknown>);
+    const pedido = JSON.parse(corpo.toString('utf8')) as Record<string, unknown>;
+    requisicoes.push(pedido);
+    // Como a API real (13/11/2026): restrição de número ou de itens no schema da saída é 400.
+    const formato = JSON.stringify(
+      (pedido.output_config as { format?: unknown } | undefined)?.format ?? {},
+    );
+    if (
+      /"(minimum|maximum|exclusiveMinimum|exclusiveMaximum|multipleOf|minItems|maxItems)":/.test(
+        formato,
+      )
+    )
+      return [400, erro('invalid_request_error', 'output_config.format.schema: not supported')];
     const invalida = caminho.startsWith('/invalida/');
     return [200, fixture(invalida ? 'mensagem-fora-do-schema.json' : 'mensagem-valida.json')];
   }

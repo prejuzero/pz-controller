@@ -2,7 +2,7 @@ import { ErroSaidaInvalida } from '@pz/integracoes';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { converterResposta, paraRequisicao } from './provedor-ia-anthropic.js';
+import { converterResposta, NAO_SUPORTADOS, paraRequisicao } from './provedor-ia-anthropic.js';
 
 import type Anthropic from '@anthropic-ai/sdk';
 
@@ -108,5 +108,34 @@ describe('requisição (HU21)', () => {
     expect(
       paraRequisicao(PROMPT, Saida, { modelo: 'm', maxTokensSaida: 1, ferramentas: [] }),
     ).not.toHaveProperty('tools');
+  });
+});
+
+describe('schema da saída aceito pela API (piloto, 13/11/2026)', () => {
+  it('sem minimum, maximum nem limites de itens: a API recusava toda classificação (400)', () => {
+    const Classificacao = z
+      .object({
+        tipoAto: z.string().min(1).max(80),
+        confianca: z.number().min(0).max(1),
+        trechos: z
+          .array(z.object({ peso: z.number().gt(0).lt(10) }))
+          .min(1)
+          .max(3),
+        maximum: z.string(),
+      })
+      .strict();
+    const req = paraRequisicao(PROMPT, Classificacao, { modelo: 'm', maxTokensSaida: 1 });
+    const schema = (req.output_config?.format?.schema ?? {}) as {
+      properties: Record<string, unknown>;
+    };
+    // Campo que se chama como uma palavra do schema não some.
+    expect(schema.properties.maximum).toEqual({ type: 'string' });
+    const outros = { ...schema.properties };
+    delete outros.maximum;
+    const restricoes = JSON.stringify({ ...schema, properties: outros, required: [] });
+    for (const chave of NAO_SUPORTADOS) expect(restricoes).not.toContain(`"${chave}"`);
+    // O que a API aceita continua (e a resposta é validada pelo Zod completo).
+    expect(restricoes).toContain('"maxLength":80');
+    expect(restricoes).toContain('"additionalProperties":false');
   });
 });

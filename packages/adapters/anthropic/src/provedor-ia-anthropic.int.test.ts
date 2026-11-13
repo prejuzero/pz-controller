@@ -46,7 +46,7 @@ describe('requisição enviada à Anthropic (HU21)', () => {
         sistema: 'Instruções e taxonomia (estáveis).',
         mensagens: [{ papel: 'usuario', conteudo: 'Teor FICTÍCIO.' }],
       },
-      z.object({ tipoAto: z.string(), confianca: z.number() }),
+      z.object({ tipoAto: z.string(), confianca: z.number().min(0).max(1) }),
       { modelo: MODELO_PADRAO, maxTokensSaida: 256, cachePrompt: true, temperatura: 0 },
     );
     expect(r.uso).toEqual({ tokensEntrada: 412, tokensSaida: 18, tokensCacheLidos: 2048 });
