@@ -356,6 +356,25 @@ describe('RN02 · suspensão de 20/12 a 20/01 por ramo', () => {
     expect(juizado.fundamentos).toContain('CPC, art. 220');
   });
 
+  it('decisão em aberto que não muda o vencimento não vira alternativa (achado do fast-check)', () => {
+    // Juizado criminal, Defensoria em dobro (48 dias corridos), disponibilização na sexta 16/01/2026:
+    // sem a suspensão, o prazo começa em 20/01 e termina no domingo 08/03, prorrogado para 09/03
+    // (CPP, art. 798, §3º); com a suspensão até 20/01, começa em 21/01 e termina em 09/03 também.
+    const r = calculado(
+      penal({
+        ramo: 'juizado-criminal',
+        dataDeReferencia: d('2026-01-16'),
+        prazo: prazo({ quantidade: 24, contagem: 'corridos', dobro: 'so-defensoria' }),
+        condicoes: { ente: 'defensoria' },
+      }),
+    );
+    expect(iso(r.vencimento)).toBe('2026-03-09');
+    expect(r.alternativas).toEqual([]);
+    expect(r.avisos).not.toContain(
+      'Há outras datas possíveis: confira as alternativas e o fundamento de cada uma antes de confirmar.',
+    );
+  });
+
   it('penal sem a informação das exceções: sugere sem suspensão e mostra a data com suspensão (V2, C03)', () => {
     const e = penal({
       dataDeReferencia: d('2027-12-14'),
