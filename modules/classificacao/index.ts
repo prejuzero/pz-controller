@@ -27,6 +27,16 @@ export type {
 export { ATO_DESCONHECIDO, CONFIANCA_MINIMA, decidir } from './domain/decisao.js';
 export type { Classificacao, RespostaDaIa } from './domain/decisao.js';
 export { ClassificacoesPostgres } from './infra/classificacoes-postgres.js';
+export {
+  INTERVALO_ENTRE_TENTATIVAS_MS,
+  LOTE_DAS_FALHAS,
+  ReprocessarFalhasDaIa,
+} from './application/reprocessar-falhas.js';
+export type {
+  DependenciasDoReprocessamento,
+  RepositorioDeFalhasDaIa,
+  ResultadoDoReprocessamento,
+} from './application/reprocessar-falhas.js';
 export type { ClassificacaoLida } from './infra/classificacoes-postgres.js';
 export {
   ClassificadorIaPlataforma,

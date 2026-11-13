@@ -179,6 +179,8 @@ export class PrazosPostgres implements RepositorioDePrazos<Transacao> {
         vencimentoManual: e.vencimentoManual,
         ...(e.entrada === null ? {} : { entradaCalculo: paraJson(e.entrada) }),
         parametros: paraJson(e.parametros),
+        // Muda quando a sugestão é refeita (classificação refeita).
+        classificacaoIncerta: e.classificacaoIncerta,
         motivoAjuste: e.motivoAjuste,
         // Muda quando a comarca do processo é corrigida (PZ-332).
         jurisdicao: paraJson(e.jurisdicao),
@@ -292,6 +294,11 @@ export class PrazosPostgres implements RepositorioDePrazos<Transacao> {
 
   async existeDaPublicacao(transacao: Transacao, conteudoId: Uuid): Promise<boolean> {
     return (await transacao.prazo.count({ where: { publicacaoConteudoId: conteudoId } })) > 0;
+  }
+
+  async daPublicacao(transacao: Transacao, conteudoId: Uuid): Promise<Prazo | undefined> {
+    const linha = await transacao.prazo.findFirst({ where: { publicacaoConteudoId: conteudoId } });
+    return linha === null ? undefined : restaurar(linha);
   }
 
   async vencidos(transacao: Transacao, hoje: LocalDate, limite: number): Promise<Prazo[]> {

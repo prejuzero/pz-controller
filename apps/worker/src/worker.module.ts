@@ -64,6 +64,7 @@ import {
   ClassificarPublicacao,
   RegistrarCandidatoDeCuradoria,
   RegrasPostgres,
+  ReprocessarFalhasDaIa,
   ResumidorIaPlataforma,
   ResumirPublicacao,
   ResumosPostgres,
@@ -124,6 +125,7 @@ import {
   BuscarPrazos,
   CalcularPrazoParaProcesso,
   CriarPrazo,
+  RessugerirPrazo,
   GerarPrazoDaPublicacao,
   MarcarPrazosVencidos,
   PrazosPostgres,
@@ -1044,7 +1046,42 @@ export class WorkerModule {
               outboxPostgres,
               relogio,
             ),
+            new RessugerirPrazo(
+              banco,
+              new PrazosPostgres(),
+              new TrilhaPostgres(),
+              outboxPostgres,
+              relogio,
+            ),
           );
+        },
+      },
+      {
+        // Classificações em que a IA falhou: refeitas no tenant de um destinatário; a troca e o
+        // PublicacaoClassificada, como sistema (a classificação é global, uma por conteúdo).
+        provide: ReprocessarFalhasDaIa,
+        inject: [RELOGIO, BANCO, REDIS],
+        useFactory: (relogio: Clock, bancoDoTenant: Banco, redis: Redis) => {
+          const ia =
+            opcoes.classificadorIa ?? iaUnica(relogio, bancoDoTenant, redis)?.classificador;
+          return new ReprocessarFalhasDaIa({
+            sistema: sistema.unidade('classificacao: falhas da IA reprocessadas'),
+            noTenant: (tenantId, trabalho) =>
+              executarNoTenant(tenantId, () => bancoDoTenant.executar(trabalho)),
+            classificacao: {
+              teores: new TeoresPostgres(),
+              regras: new RegrasPostgres(),
+              taxonomia: new TaxonomiaPostgres(),
+              ...(ia === undefined ? {} : { ia }),
+            },
+            falhas: new ClassificacoesPostgres(),
+            tenantsDoConteudo: tenantsDaPublicacao(
+              sistema.unidade('classificacao: tenants da publicação reprocessada'),
+              new DestinatariosPostgres(),
+            ),
+            outbox: outboxPostgres,
+            relogio,
+          });
         },
       },
       // Lembretes, nova intimação e resumo diário (HU31): datas pelo motor (prazos), número do

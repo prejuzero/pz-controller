@@ -35,12 +35,17 @@ export class ConsumidorDosPrazos {
     private readonly tenantsDaPublicacao: (conteudoId: Uuid) => Promise<Uuid[]>,
   ) {}
 
-  /** Classificada (uma vez por conteúdo): um job por tenant que recebeu a publicação (HU24). */
+  /**
+   * Classificada: um job por tenant que recebeu a publicação (HU24). A chave leva o id do evento:
+   * a classificação refeita (a IA tinha falhado) chega por um PublicacaoClassificada novo e o
+   * job refaz a sugestão do prazo sem data; repetir o mesmo evento não duplica.
+   */
   @Consome('PublicacaoClassificada', { versao: 1 })
   async publicacaoClassificada(_transacao: unknown, evento: EventoDominio): Promise<void> {
     const conteudoId = EventoDoConteudo.parse(evento.payload).conteudoId as Uuid;
     const tenants = await this.tenantsDaPublicacao(conteudoId);
-    for (const tenantId of tenants) await this.#gerar(conteudoId, tenantId);
+    for (const tenantId of tenants)
+      await this.#gerar(conteudoId, tenantId, `${conteudoId}-${tenantId}-${evento.id}`);
     logger.info({ conteudoId, tenants: tenants.length }, 'geração de prazos planejada');
   }
 

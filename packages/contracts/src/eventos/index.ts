@@ -417,7 +417,8 @@ export const PrazoRecalculado = definirEvento(
     vencimentoAnterior: DataIso.nullable(),
     vencimentoNovo: DataIso.nullable(),
     statusAnterior: z.enum(['a-confirmar', 'pendente']),
-    motivo: z.enum(['calendario-alterado', 'comarca-alterada']).optional(),
+    /** classificacao-refeita: o prazo sem data ganhou o ato quando a classificação foi refeita. */
+    motivo: z.enum(['calendario-alterado', 'comarca-alterada', 'classificacao-refeita']).optional(),
     /** Presente quando o motivo é o calendário. */
     eventoCalendarioId: z.uuid().optional(),
   }),
