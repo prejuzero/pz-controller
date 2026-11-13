@@ -3,7 +3,8 @@
 // curadora, pelos mesmos casos de uso da tela de importação (validação, tudo ou nada, auditoria).
 // Nada passa a valer aqui: a curadora confere e aprova no portal ("Aprovar todos os rascunhos").
 // Uso: pnpm piloto:carga --email <e-mail da curadora>. Rodar de novo não duplica: a tabela só é
-// carregada se ainda não houver versão nenhuma; no calendário, cada evento já cadastrado é pulado.
+// carregada se ainda não houver versão dos atos da planilha; no calendário, cada evento já
+// cadastrado é pulado.
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -29,8 +30,8 @@ const pasta = resolve(
 );
 const TENANT_PLATAFORMA = (process.env.TENANT_PLATAFORMA_ID ??
   '01a10e00-0000-7000-8000-00000000c001') as Uuid;
-const url = process.env.DATABASE_URL;
-if (url === undefined) throw new Error('DATABASE_URL ausente (.env).');
+// Mesmo padrão local do seed: a pilha do compose usa o papel pz_app nesse endereço.
+const url = process.env.DATABASE_URL ?? 'postgresql://pz_app:pz_app_local@127.0.0.1:5432/prejuzero';
 
 const banco = new Banco({ url });
 const relogio = new SystemClock();
@@ -54,12 +55,27 @@ try {
       usuarioId: curadora.id as Uuid,
       canal: 'sistema' as const,
     };
-    const versoes = await banco.executar((tx) => tx.tabelaPrazo.count());
+    // Só as versões dos atos da planilha contam: o banco local pode ter atos fictícios de testes.
+    const csvDaTabela = readFileSync(join(pasta, 'tabela-de-prazos.csv'), 'utf8');
+    const atosDaPlanilha = [
+      ...new Set(
+        csvDaTabela
+          .split(/\r?\n/)
+          .slice(1)
+          .map((linha) => linha.split(/[;,]/)[0]?.trim() ?? '')
+          .filter((codigo) => codigo !== ''),
+      ),
+    ];
+    const versoes = await banco.executar((tx) =>
+      tx.tabelaPrazo.count({ where: { tipoAto: { in: atosDaPlanilha } } }),
+    );
 
     if (versoes > 0) {
-      process.stdout.write(`Tabela de prazos: já há ${String(versoes)} versões; nada importado.\n`);
+      process.stdout.write(
+        `Tabela de prazos: já há ${String(versoes)} versões dos atos da planilha; nada importado.\n`,
+      );
     } else {
-      const csv = readFileSync(join(pasta, 'tabela-de-prazos.csv'), 'utf8');
+      const csv = csvDaTabela;
       const r = await new ImportarTabelaDePrazos(
         banco,
         new TiposDeAtoPostgres(),
