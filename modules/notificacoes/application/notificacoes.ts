@@ -7,6 +7,7 @@ import { Notificacao, TIPOS_DE_NOTIFICACAO } from '../domain/notificacao.js';
 
 import { renderizar, TEMPLATES } from './templates.js';
 
+import type { Canal, MotivoDeRejeicao, TipoDeNotificacao } from '../domain/notificacao.js';
 import type {
   RepositorioDeEnvios,
   DestinosDoUsuario,
@@ -16,7 +17,6 @@ import type {
   RepositorioDeConsentimentos,
   RepositorioDeNotificacoes,
 } from './portas.js';
-import type { Canal, MotivoDeRejeicao, TipoDeNotificacao } from '../domain/notificacao.js';
 import type { ArmazenamentoArquivos, EventoEntrega } from '@pz/integracoes';
 import type { Clock, Outbox, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 

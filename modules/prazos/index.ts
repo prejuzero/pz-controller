@@ -96,6 +96,7 @@ export {
   prazoListado,
   RecalcularPrazosDoProcesso,
   RecalcularPrazosPorCalendario,
+  RessugerirPrazo,
   SugestaoDePrazo,
   TenantsAfetadosPeloCalendario,
 } from './application/prazos.js';

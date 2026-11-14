@@ -2,6 +2,7 @@ import { err, gerarUuidV7, NaoAutenticado, ok } from '@pz/kernel';
 
 import { normalizarEmail, validarNovaSenha } from '../domain/credenciais.js';
 
+import type { Email } from '../domain/credenciais.js';
 import type {
   Cifra,
   ControleDeTentativas,
@@ -10,7 +11,6 @@ import type {
   RepositorioDeCredenciais,
 } from './portas.js';
 import type { RegistrarCredencial } from './sessoes.js';
-import type { Email } from '../domain/credenciais.js';
 import type { Clock, Instant, Result, Uuid, Validacao } from '@pz/kernel';
 
 /** Token de redefinição: uso único, 30 min (HU06). */

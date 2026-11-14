@@ -5,13 +5,6 @@ import { diasNaoUteis } from '../domain/dias-nao-uteis.js';
 import { ABRANGENCIAS, EventoGlobal, FeriadoLocal, TIPOS_DE_EVENTO } from '../domain/evento.js';
 import { jurisdicaoDoProcesso } from '../domain/jurisdicao-do-processo.js';
 
-import type {
-  CacheDeDiasNaoUteis,
-  FiltroDoCalendario,
-  LocalizadorDeProcesso,
-  RepositorioDeEventosGlobais,
-  RepositorioDeFeriadosLocais,
-} from './portas.js';
 import type { DiaNaoUtil, Jurisdicao } from '../domain/dias-nao-uteis.js';
 import type {
   Autor,
@@ -20,6 +13,13 @@ import type {
   EstadoDoFeriadoLocal,
 } from '../domain/evento.js';
 import type { JurisdicaoResolvida } from '../domain/jurisdicao-do-processo.js';
+import type {
+  CacheDeDiasNaoUteis,
+  FiltroDoCalendario,
+  LocalizadorDeProcesso,
+  RepositorioDeEventosGlobais,
+  RepositorioDeFeriadosLocais,
+} from './portas.js';
 import type { OrigemDaAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
 import type { Clock, Outbox, Proibido, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 

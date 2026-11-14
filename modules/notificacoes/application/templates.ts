@@ -4,8 +4,8 @@ import { z } from 'zod';
 
 import { destaque, Email, link, lista, paragrafo } from './emails/layout.js';
 
-import type { Acao } from './emails/layout.js';
 import type { Canal, TipoDeNotificacao } from '../domain/notificacao.js';
+import type { Acao } from './emails/layout.js';
 import type { CapacidadesCanal } from '@pz/integracoes';
 import type { ReactNode } from 'react';
 

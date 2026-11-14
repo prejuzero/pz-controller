@@ -9,6 +9,8 @@ import {
   ValidarSessao,
 } from './sessoes.js';
 
+import type { Email } from '../domain/credenciais.js';
+import type { Sessao } from '../domain/sessao.js';
 import type {
   Acesso,
   ControleDeTentativas,
@@ -18,8 +20,6 @@ import type {
   HasherDeSenha,
   RepositorioDeCredenciais,
 } from './portas.js';
-import type { Email } from '../domain/credenciais.js';
-import type { Sessao } from '../domain/sessao.js';
 import type { Uuid } from '@pz/kernel';
 
 const H = 3600 * 1000;

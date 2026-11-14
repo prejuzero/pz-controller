@@ -4,14 +4,14 @@ import { z } from 'zod';
 import { Advogado, MAXIMO_DE_EMAILS_ADICIONAIS, MAXIMO_DE_OABS } from '../domain/advogado.js';
 import { Celular, Cpf, lerUf, mascararCpf, NumeroOab } from '../domain/valores.js';
 
+import type { EstadoDoAdvogado, Oab } from '../domain/advogado.js';
+import type { Uf } from '../domain/valores.js';
 import type {
   CriadorDeConta,
   PreparadorDeVerificacao,
   RepositorioDeAdvogados,
   UnidadeNoTenant,
 } from './portas.js';
-import type { EstadoDoAdvogado, Oab } from '../domain/advogado.js';
-import type { Uf } from '../domain/valores.js';
 import type { OrigemDaAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
 import type { Clock, Outbox, RegraDeNegocio, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 

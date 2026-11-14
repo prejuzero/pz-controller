@@ -13,12 +13,6 @@ import {
   VersaoDaTabela,
 } from '../domain/tabela.js';
 
-import type {
-  FiltroDeVersoes,
-  RepositorioDaTabela,
-  RepositorioDeTiposDeAto,
-  TipoDeAto,
-} from './portas.js';
 import type { PrazoResolvido } from '../domain/resolucao.js';
 import type {
   ConteudoDaVersao,
@@ -27,6 +21,12 @@ import type {
   EstadoDaVersao,
   Ramo,
 } from '../domain/tabela.js';
+import type {
+  FiltroDeVersoes,
+  RepositorioDaTabela,
+  RepositorioDeTiposDeAto,
+  TipoDeAto,
+} from './portas.js';
 import type { OrigemDaAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
 import type { Clock, Outbox, Proibido, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 

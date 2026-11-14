@@ -1,12 +1,15 @@
 import type { RepositorioDeClassificacoes } from '../application/classificar-publicacao.js';
+import type { RepositorioDeFalhasDaIa } from '../application/reprocessar-falhas.js';
 import type { Classificacao } from '../domain/decisao.js';
 import type { Transacao } from '@pz/db';
-import type { Uuid } from '@pz/kernel';
+import type { Instant, Uuid } from '@pz/kernel';
 
 const json = (valor: unknown) => (valor === null ? null : JSON.stringify(valor));
 
 /** Classificações no PostgreSQL (tabela global `classificacao`, uma por conteúdo). */
-export class ClassificacoesPostgres implements RepositorioDeClassificacoes<Transacao> {
+export class ClassificacoesPostgres
+  implements RepositorioDeClassificacoes<Transacao>, RepositorioDeFalhasDaIa<Transacao>
+{
   async existe(tx: Transacao, conteudoId: Uuid): Promise<boolean> {
     return (await tx.classificacao.count({ where: { conteudoId } })) === 1;
   }
@@ -22,6 +25,36 @@ export class ClassificacoesPostgres implements RepositorioDeClassificacoes<Trans
         ${c.modelo ?? null}, ${c.motivo ?? null})
       ON CONFLICT (conteudo_id) DO NOTHING`;
     return gravadas === 1;
+  }
+
+  async pendentes(tx: Transacao, tentadaAntesDe: Instant, limite: number): Promise<Uuid[]> {
+    // Nunca tentada de novo (atualizado_em = criado_em) entra já; tentada, só depois do intervalo.
+    const linhas = await tx.$queryRaw<{ conteudo_id: string }[]>`
+      SELECT conteudo_id FROM classificacao
+       WHERE situacao = 'revisao_manual' AND motivo = 'saida-invalida'
+         AND (atualizado_em = criado_em OR atualizado_em < ${new Date(tentadaAntesDe.epochMs)})
+       ORDER BY conteudo_id
+       LIMIT ${limite}`;
+    return linhas.map((l) => l.conteudo_id as Uuid);
+  }
+
+  async substituir(tx: Transacao, conteudoId: Uuid, c: Classificacao): Promise<boolean> {
+    const trocadas = await tx.$executeRaw`
+      UPDATE classificacao SET origem = ${c.origem}, situacao = ${c.situacao},
+        tipo_ato = ${c.tipoAto}, confianca = ${c.confianca},
+        prazo_citado = ${json(c.prazoCitado)}::jsonb, evidencias = ${JSON.stringify(c.evidencias)}::jsonb,
+        regra_codigo = ${c.regra?.codigo ?? null}, regra_versao = ${c.regra?.versao ?? null},
+        versao_prompt = ${c.versaoPrompt ?? null}, modelo = ${c.modelo ?? null},
+        motivo = ${c.motivo ?? null}, atualizado_em = now()
+       WHERE conteudo_id = ${conteudoId}::uuid
+         AND situacao = 'revisao_manual' AND motivo = 'saida-invalida'`;
+    return trocadas === 1;
+  }
+
+  async registrarTentativa(tx: Transacao, conteudoId: Uuid, em: Instant): Promise<void> {
+    await tx.$executeRaw`
+      UPDATE classificacao SET atualizado_em = ${new Date(em.epochMs)}
+       WHERE conteudo_id = ${conteudoId}::uuid`;
   }
 
   /** O que a classificação disse do conteúdo (lido pelo módulo prazos, HU24); nunca uma data. */

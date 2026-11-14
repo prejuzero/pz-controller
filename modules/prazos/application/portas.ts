@@ -105,6 +105,8 @@ export interface RepositorioDePrazos<Transacao> {
   listar(transacao: Transacao, filtro: FiltroDePrazos): Promise<Prazo[]>;
   /** Já há prazo da publicação no tenant (geração idempotente). */
   existeDaPublicacao(transacao: Transacao, conteudoId: Uuid): Promise<boolean>;
+  /** O prazo da publicação no tenant (um por publicação), para refazer a sugestão. */
+  daPublicacao(transacao: Transacao, conteudoId: Uuid): Promise<Prazo | undefined>;
   /** Abertos com vencimento antes de `hoje`, por id. */
   vencidos(transacao: Transacao, hoje: LocalDate, limite: number): Promise<Prazo[]>;
   /** Como sistema (sem RLS): tenants com prazo aberto vencido antes de `hoje`. */

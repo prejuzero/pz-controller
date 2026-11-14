@@ -122,10 +122,11 @@ describe('ConsumidorDosPrazos: publicações (HU24)', () => {
       }) as unknown as EventoDominio;
     await consumidor.publicacaoClassificada('tx', evento('PublicacaoClassificada', PLATAFORMA));
     await consumidor.publicacaoRecebida('tx', evento('PublicacaoRecebida', TENANT_A));
-    // A recebida leva o id do evento: a confirmada na conferência pelo nome (HU42) gera de novo.
+    // As duas levam o id do evento: a confirmada na conferência pelo nome (HU42) gera de novo, e
+    // a classificação refeita (a IA tinha falhado) refaz a sugestão do prazo sem data.
     expect(chaves).toEqual([
-      `${conteudoId}-${TENANT_A}`,
-      `${conteudoId}-${TENANT_B}`,
+      `${conteudoId}-${TENANT_A}-${EVENTO}`,
+      `${conteudoId}-${TENANT_B}-${EVENTO}`,
       `${conteudoId}-${TENANT_A}-${EVENTO}`,
     ]);
   });

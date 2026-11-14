@@ -6,9 +6,9 @@ import { Documento, mascararDocumento } from '../domain/valores.js';
 
 import { ConsultaPaginada, lerCursor, origemDe, paginar, validacao } from './paginacao.js';
 
+import type { Cliente } from '../domain/cliente.js';
 import type { AutorNoTenant, Pagina } from './paginacao.js';
 import type { RepositorioDeClientes } from './portas.js';
-import type { Cliente } from '../domain/cliente.js';
 import type { TrilhaDeAuditoria } from '@pz/auditoria';
 import type { Clock, Result, UnidadeDeTrabalho, Uuid, Validacao } from '@pz/kernel';
 

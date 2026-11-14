@@ -7,8 +7,8 @@ import { calcularHash, HASH_GENESE } from '../domain/cadeia.js';
 
 import { ConsultarTrecho, VerificarCadeiaCompleta, VerificarIntegridade } from './integridade.js';
 
-import type { Checkpoint, RepositorioDaCadeia } from './integridade.js';
 import type { RegistroEncadeado } from '../domain/cadeia.js';
+import type { Checkpoint, RepositorioDaCadeia } from './integridade.js';
 
 const sha256 = (texto: string) => createHash('sha256').update(texto).digest('hex');
 const relogio = new FixedClock(Instant.deIso('2026-10-07T05:00:00Z'));
