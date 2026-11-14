@@ -316,8 +316,8 @@ importers:
         specifier: 6.5.2
         version: 6.5.2(bullmq-otel@2.0.1)(ioredis@6.0.0(supports-color@10.2.2))(pg@8.23.1)
       fastify:
-        specifier: 5.12.7
-        version: 5.12.7
+        specifier: 5.12.8
+        version: 5.12.8
       ioredis:
         specifier: 6.0.0
         version: 6.0.0(supports-color@10.2.2)
