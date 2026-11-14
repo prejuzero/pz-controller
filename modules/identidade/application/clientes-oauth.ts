@@ -5,6 +5,8 @@ import { expiracao } from '../domain/sessao.js';
 
 import { VALIDADE_DO_ACESSO_MS } from './dispositivos.js';
 
+import type { TipoDeClienteOAuth } from '../domain/cliente-oauth.js';
+import type { Sessao } from '../domain/sessao.js';
 import type { ConsultarPermissoes } from './autorizacao.js';
 import type {
   ArmazemDeRenovacoes,
@@ -14,8 +16,6 @@ import type {
   RepositorioDeDispositivos,
 } from './portas.js';
 import type { NoTenant } from './redefinicao.js';
-import type { TipoDeClienteOAuth } from '../domain/cliente-oauth.js';
-import type { Sessao } from '../domain/sessao.js';
 import type { Clock, Instant, Result, Uuid } from '@pz/kernel';
 
 /**

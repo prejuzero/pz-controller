@@ -6,8 +6,8 @@ import { classificarPorRegras } from '../domain/regras.js';
 
 import { regrasValidas } from './classificar.js';
 
-import type { RepositorioDeRegras } from './classificar.js';
 import type { Classificacao, RespostaDaIa } from '../domain/decisao.js';
+import type { RepositorioDeRegras } from './classificar.js';
 import type { ArmazenamentoArquivos, ExtratorDeTexto, TextoExtraido } from '@pz/integracoes';
 import type { Clock, EventoDominio, Outbox, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 

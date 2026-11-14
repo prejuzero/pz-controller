@@ -14,6 +14,7 @@ import {
 } from '../domain/alvo.js';
 import { alvoPrecisaDeAlerta, aposFalhaDaFonte, aposSucessoDaFonte } from '../domain/fonte.js';
 
+import type { JanelaDaCaptura, TipoDeAlvo } from '../domain/alvo.js';
 import type {
   AlertasDaCaptura,
   AlvoDevido,
@@ -24,7 +25,6 @@ import type {
   RepositorioDeAssinaturas,
   SituacaoPublicaDaFonte,
 } from './portas.js';
-import type { JanelaDaCaptura, TipoDeAlvo } from '../domain/alvo.js';
 import type { OrigemDaAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
 import type { FontePublicacoes, PublicacaoCapturada } from '@pz/integracoes';
 import type {

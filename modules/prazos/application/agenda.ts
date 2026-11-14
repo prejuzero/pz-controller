@@ -4,8 +4,8 @@ import { STATUS_RECALCULAVEIS } from '../domain/prazo.js';
 
 import { EFEITO_DO_DIA } from './prazos.js';
 
-import type { LocalizadorDoProcesso, RepositorioDePrazos } from './portas.js';
 import type { StatusDaCiencia, StatusDoPrazo } from '../domain/prazo.js';
+import type { LocalizadorDoProcesso, RepositorioDePrazos } from './portas.js';
 import type { LocalDate, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 
 export interface SituacaoDoPrazo {

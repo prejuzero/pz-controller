@@ -1,5 +1,5 @@
-import type { formatos, IDIOMA_PADRAO } from './configuracao';
 import type mensagens from '../mensagens/pt-BR.json';
+import type { formatos, IDIOMA_PADRAO } from './configuracao';
 
 // Chaves do catálogo e formatos tipados: chave inexistente é erro de compilação.
 declare module 'next-intl' {

@@ -5,9 +5,9 @@ import { validarConteudo, VersaoDaTabela } from '../domain/tabela.js';
 
 import { EntradaProposta, listada, montarConteudo } from './tabela-de-prazos.js';
 
+import type { ConteudoDaVersao } from '../domain/tabela.js';
 import type { RepositorioDaTabela, RepositorioDeTiposDeAto, TipoDeAto } from './portas.js';
 import type { CuradorEmAcao, VersaoListada } from './tabela-de-prazos.js';
-import type { ConteudoDaVersao } from '../domain/tabela.js';
 import type { TrilhaDeAuditoria } from '@pz/auditoria';
 import type { Clock, ProblemaValidacao, Result, UnidadeDeTrabalho } from '@pz/kernel';
 

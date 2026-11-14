@@ -1,7 +1,7 @@
 import { classificarConteudo, eventoDaClassificacao } from './classificar-publicacao.js';
 
-import type { DependenciasDaClassificacao } from './classificar-publicacao.js';
 import type { Classificacao } from '../domain/decisao.js';
+import type { DependenciasDaClassificacao } from './classificar-publicacao.js';
 import type { Clock, Instant, Outbox, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 
 /** Classificações por conteúdo de uma vez: cada uma pode chamar a IA duas vezes. */

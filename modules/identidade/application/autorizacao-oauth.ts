@@ -10,6 +10,8 @@ import { CATALOGO_DE_PERMISSOES } from '../domain/permissoes.js';
 
 import { EmissorDeTokens, VALIDADE_DO_ACESSO_MS } from './dispositivos.js';
 
+import type { Permissao } from '../domain/permissoes.js';
+import type { Sessao } from '../domain/sessao.js';
 import type { ConsultarPermissoes } from './autorizacao.js';
 import type {
   ClienteOAuth,
@@ -26,8 +28,6 @@ import type {
   RepositorioDeDispositivos,
 } from './portas.js';
 import type { NoTenant } from './redefinicao.js';
-import type { Permissao } from '../domain/permissoes.js';
-import type { Sessao } from '../domain/sessao.js';
 import type { Clock, Instant, Result, Uuid } from '@pz/kernel';
 
 /** O código vale uma vez e por pouco tempo (OAuth 2.1, seção 4.1.2: no máximo 10 min). */

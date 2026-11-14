@@ -3,8 +3,8 @@ import { z } from 'zod';
 
 import { ESCOPOS_DE_EXPORTACAO, paraCsv, paraJson } from '../domain/exportacao.js';
 
-import type { Exportacao, FonteDeExportacao, RepositorioDeExportacoes } from './portas.js';
 import type { EscopoDeExportacao } from '../domain/exportacao.js';
+import type { Exportacao, FonteDeExportacao, RepositorioDeExportacoes } from './portas.js';
 import type { OrigemDaAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
 import type { ArmazenamentoArquivos } from '@pz/integracoes';
 import type { Clock, Outbox, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';

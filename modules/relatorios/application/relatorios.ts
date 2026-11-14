@@ -12,6 +12,7 @@ import {
   TITULOS,
 } from '../domain/relatorio.js';
 
+import type { Documento, Formato } from '../domain/relatorio.js';
 import type {
   FonteDosRelatorios,
   Pagina,
@@ -19,7 +20,6 @@ import type {
   Renderizador,
   RepositorioDeRelatorios,
 } from './portas.js';
-import type { Documento, Formato } from '../domain/relatorio.js';
 import type { OrigemDaAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
 import type { ArmazenamentoArquivos } from '@pz/integracoes';
 import type { Clock, Instant, Outbox, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';

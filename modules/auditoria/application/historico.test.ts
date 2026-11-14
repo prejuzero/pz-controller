@@ -12,8 +12,8 @@ import {
   VerificarHistorico,
 } from './historico.js';
 
-import type { RepositorioDoHistorico, Verificacao } from './historico.js';
 import type { RegistroEncadeado } from '../domain/cadeia.js';
+import type { RepositorioDoHistorico, Verificacao } from './historico.js';
 
 // Trilha FICTÍCIA de um prazo (HU35).
 const sha256 = (t: string) => createHash('sha256').update(t).digest('hex');

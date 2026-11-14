@@ -1,7 +1,7 @@
 import { VerificacaoDeSituacao } from '../domain/situacao.js';
 
-import type { ConsultarSituacao } from './consultar-situacao.js';
 import type { Situacao, SituacaoVerificada } from '../domain/situacao.js';
+import type { ConsultarSituacao } from './consultar-situacao.js';
 import type { Clock, Instant, Outbox, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 
 /**

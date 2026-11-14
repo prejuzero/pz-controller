@@ -2,12 +2,12 @@ import { Conflito, err, NaoEncontrado, ok, Proibido } from '@pz/kernel';
 
 import { novoEncerramento, situacaoDoEncerramento } from '../domain/encerramento.js';
 
+import type { SituacaoDoEncerramento } from '../domain/encerramento.js';
 import type {
   EncerradorDeSessoes,
   OperacoesDeEncerramento,
   RepositorioDeEncerramentos,
 } from './portas.js';
-import type { SituacaoDoEncerramento } from '../domain/encerramento.js';
 import type { OrigemDaAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
 import type { ArmazenamentoArquivos } from '@pz/integracoes';
 import type { Clock, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';

@@ -4,6 +4,7 @@ import { duracaoDoBloqueio } from '../domain/bloqueio.js';
 import { normalizarEmail, validarNovaSenha } from '../domain/credenciais.js';
 import { estaAtiva, expiracao, registrarUso } from '../domain/sessao.js';
 
+import type { Sessao } from '../domain/sessao.js';
 import type {
   Acesso,
   ArmazemDeSessoes,
@@ -15,7 +16,6 @@ import type {
   RepositorioDeCredenciais,
   PublicadorDeEventos,
 } from './portas.js';
-import type { Sessao } from '../domain/sessao.js';
 import type { Clock, Result, Uuid, Validacao } from '@pz/kernel';
 
 /** Mensagem única para qualquer falha de login: não revela se o e-mail existe. */
