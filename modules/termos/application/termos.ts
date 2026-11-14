@@ -2,8 +2,8 @@ import { err, gerarUuidV7, NaoEncontrado, ok, Validacao } from '@pz/kernel';
 
 import { pendentes, problemasDaNovaVersao } from '../domain/documento.js';
 
-import type { RepositorioDeAceites, RepositorioDeDocumentos, UnidadeNoTenant } from './portas.js';
 import type { Aceite, DocumentoLegal, NovaVersao } from '../domain/documento.js';
+import type { RepositorioDeAceites, RepositorioDeDocumentos, UnidadeNoTenant } from './portas.js';
 import type { OrigemDaAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
 import type { Clock, Instant, Result, Uuid } from '@pz/kernel';
 

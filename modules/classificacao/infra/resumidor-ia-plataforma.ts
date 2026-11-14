@@ -2,9 +2,9 @@ import { OrcamentoDeIaEsgotado } from '@pz/ia';
 import { ErroPermanente } from '@pz/integracoes';
 import { z } from 'zod';
 
-import type { InstrucaoEmbutida } from './classificador-ia-plataforma.js';
 import type { Resumidor } from '../application/resumir-publicacao.js';
 import type { RespostaDoResumo } from '../domain/resumo.js';
+import type { InstrucaoEmbutida } from './classificador-ia-plataforma.js';
 import type { PlataformaIa, RegistroDePrompts } from '@pz/ia';
 import type { Uuid } from '@pz/kernel';
 

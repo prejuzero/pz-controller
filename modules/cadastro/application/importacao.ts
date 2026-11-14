@@ -7,13 +7,13 @@ import { Processo } from '../domain/processo.js';
 import { origemDe } from './paginacao.js';
 import { processoListado } from './processos.js';
 
+import type { LinhaDaPlanilha } from '../domain/importacao.js';
 import type { AutorNoTenant } from './paginacao.js';
 import type {
   ImportacaoDeProcessos,
   RepositorioDeImportacoes,
   RepositorioDeProcessos,
 } from './portas.js';
-import type { LinhaDaPlanilha } from '../domain/importacao.js';
 import type { TrilhaDeAuditoria } from '@pz/auditoria';
 import type { Clock, Outbox, ProblemaValidacao, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 

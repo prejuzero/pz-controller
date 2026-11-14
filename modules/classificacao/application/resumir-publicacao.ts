@@ -1,7 +1,7 @@
 import { decidirResumo } from '../domain/resumo.js';
 
-import type { LeitorDeTeor } from './classificar-publicacao.js';
 import type { RespostaDoResumo, Resumo } from '../domain/resumo.js';
+import type { LeitorDeTeor } from './classificar-publicacao.js';
 import type { Uuid } from '@pz/kernel';
 
 /** Porta: quem pede o resumo à IA (plataforma de IA, na composição). */

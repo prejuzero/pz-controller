@@ -2,8 +2,8 @@ import { calendarioDeOcorrencias, diasUteisRestantes } from '@pz/motor-prazos';
 
 import { EFEITO_DO_DIA } from './prazos.js';
 
-import type { LocalizadorDoProcesso, ProcessoNoCalendario } from './portas.js';
 import type { Prazo } from '../domain/prazo.js';
+import type { LocalizadorDoProcesso, ProcessoNoCalendario } from './portas.js';
 import type { LocalDate, Uuid } from '@pz/kernel';
 
 /** Só faz sentido contar o que ainda corre. */

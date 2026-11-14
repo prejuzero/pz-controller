@@ -3,8 +3,8 @@ import { z } from 'zod';
 
 import { ConsentimentoCanal } from '../domain/consentimento.js';
 
-import type { RepositorioDeConsentimentos, RepositorioDeDestinosPush } from './portas.js';
 import type { CanalComConsentimento, OrigemDoConsentimento } from '../domain/consentimento.js';
+import type { RepositorioDeConsentimentos, RepositorioDeDestinosPush } from './portas.js';
 import type { TrilhaDeAuditoria } from '@pz/auditoria';
 import type { Clock, Outbox, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 

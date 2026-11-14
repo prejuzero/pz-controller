@@ -9,6 +9,7 @@ import { processosDoFiltro, PROXIMOS_DIAS } from './painel.js';
 import { RECORTES_DA_LISTA } from './portas.js';
 import { prazoDetalhado, prazoListado, SugestaoDePrazo } from './prazos.js';
 
+import type { Json } from '../domain/prazo.js';
 import type {
   FiltroDePrazos,
   FontesDaGeracao,
@@ -23,7 +24,6 @@ import type {
   PrazoListado,
   RessugerirPrazo,
 } from './prazos.js';
-import type { Json } from '../domain/prazo.js';
 import type { OrigemDaAuditoria, TipoDeAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
 import type { ArmazenamentoArquivos } from '@pz/integracoes';
 import type { Clock, Outbox, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';

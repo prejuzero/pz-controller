@@ -3,9 +3,9 @@ import { err, NaoEncontrado, ok } from '@pz/kernel';
 import { iniciarImpersonacao } from '../domain/impersonacao.js';
 import { expiracao } from '../domain/sessao.js';
 
+import type { Impersonacao, Sessao } from '../domain/sessao.js';
 import type { ArmazemDeSessoes, ContextoDeAcesso } from './portas.js';
 import type { NoTenant } from './redefinicao.js';
-import type { Impersonacao, Sessao } from '../domain/sessao.js';
 import type { OrigemDaAuditoria, TipoDeAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
 import type {
   Clock,

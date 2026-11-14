@@ -1,12 +1,12 @@
 import { paraRegistro } from './trilha-postgres.js';
 
-import type { LinhaDaTrilha } from './trilha-postgres.js';
 import type {
   AlvoDoHistorico,
   RepositorioDoHistorico,
   Verificacao,
 } from '../application/historico.js';
 import type { RegistroEncadeado } from '../domain/cadeia.js';
+import type { LinhaDaTrilha } from './trilha-postgres.js';
 import type { Transacao } from '@pz/db';
 
 /** Histórico e emissões verificáveis (HU35) no PostgreSQL, no tenant da transação (RLS). */

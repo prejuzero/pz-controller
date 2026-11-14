@@ -13,8 +13,8 @@ import {
   recalcularPrazosJob,
 } from './jobs.js';
 
-import type { DadosDoRecalculo } from './jobs.js';
 import type { Filas } from '../filas/runtime.js';
+import type { DadosDoRecalculo } from './jobs.js';
 import type { EventoDominio, Uuid } from '@pz/kernel';
 
 const logger = criarLogger('worker.prazos');

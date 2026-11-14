@@ -17,15 +17,6 @@ import { Prazo } from '../domain/prazo.js';
 import { CONTAGENS, RAMOS, UNIDADES } from '../domain/tabela.js';
 
 import type {
-  AlcanceDaAlteracao,
-  DiaDoCalendario,
-  LocalizadorDoProcesso,
-  ProcessoNoCalendario,
-  RepositorioDePrazos,
-  TipoDeDia,
-} from './portas.js';
-import type { ResolverPrazoAplicavel } from './tabela-de-prazos.js';
-import type {
   CalculoDoPrazo,
   EfeitoDoRecalculo,
   EstadoDoPrazo,
@@ -35,6 +26,15 @@ import type {
 } from '../domain/prazo.js';
 import type { PrazoResolvido } from '../domain/resolucao.js';
 import type { Ramo } from '../domain/tabela.js';
+import type {
+  AlcanceDaAlteracao,
+  DiaDoCalendario,
+  LocalizadorDoProcesso,
+  ProcessoNoCalendario,
+  RepositorioDePrazos,
+  TipoDeDia,
+} from './portas.js';
+import type { ResolverPrazoAplicavel } from './tabela-de-prazos.js';
 import type { OrigemDaAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
 import type { Clock, Outbox, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 import type { Efeito, EntradaDoCalculo, ResultadoDoCalculo } from '@pz/motor-prazos';

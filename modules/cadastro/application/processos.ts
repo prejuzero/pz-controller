@@ -14,9 +14,9 @@ import { COBERTURAS, Processo } from '../domain/processo.js';
 
 import { ConsultaPaginada, lerCursor, origemDe, paginar, validacao } from './paginacao.js';
 
+import type { Cobertura, EstadoDoProcesso } from '../domain/processo.js';
 import type { AutorNoTenant, Pagina } from './paginacao.js';
 import type { RepositorioDeClientes, RepositorioDeProcessos, UnidadeNoTenant } from './portas.js';
-import type { Cobertura, EstadoDoProcesso } from '../domain/processo.js';
 import type { TrilhaDeAuditoria } from '@pz/auditoria';
 import type {
   Clock,

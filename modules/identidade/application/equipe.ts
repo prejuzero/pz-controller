@@ -11,6 +11,7 @@ import { z } from 'zod';
 
 import { normalizarEmail, validarNovaSenha } from '../domain/credenciais.js';
 
+import type { Email } from '../domain/credenciais.js';
 import type {
   ArmazemDeRenovacoes,
   ArmazemDeSessoes,
@@ -21,7 +22,6 @@ import type {
   RepositorioDeDispositivos,
 } from './portas.js';
 import type { NoTenant } from './redefinicao.js';
-import type { Email } from '../domain/credenciais.js';
 import type { TrilhaDeAuditoria } from '@pz/auditoria';
 import type { ProvedorEmail } from '@pz/integracoes';
 import type {

@@ -1,9 +1,9 @@
 import { PedidoDeEnvio } from '@pz/contracts';
 import { err, gerarUuidV7, NaoEncontrado, ok, RegraDeNegocio, Validacao } from '@pz/kernel';
 
+import type { EnvioRecente } from '../domain/envio.js';
 import type { Notificar } from './notificacoes.js';
 import type { RepositorioDeEnvios } from './portas.js';
-import type { EnvioRecente } from '../domain/envio.js';
 import type { OrigemDaAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
 import type { ArmazenamentoArquivos } from '@pz/integracoes';
 import type { Clock, ErroDominio, Outbox, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';

@@ -1,5 +1,6 @@
 import { Conflito, err, NaoAutenticado, ok } from '@pz/kernel';
 
+import type { Sessao } from '../domain/sessao.js';
 import type {
   Cifra,
   ContextoDeAcesso,
@@ -7,7 +8,6 @@ import type {
   SegredosDoSegundoFator,
 } from './portas.js';
 import type { ProtecaoDeAcesso } from './sessoes.js';
-import type { Sessao } from '../domain/sessao.js';
 import type { Clock, Result } from '@pz/kernel';
 
 /** RFC 6238: passo de 30 s; aceita o passo anterior e o seguinte (relógio do celular). */

@@ -2,9 +2,9 @@ import { err, NaoEncontrado, ok } from '@pz/kernel';
 
 import { alterarAssinatura, reativar, suspender } from '../domain/tenant-administrado.js';
 
+import type { AlteracaoDeAssinatura, TenantAdministrado } from '../domain/tenant-administrado.js';
 import type { ArmazemDeSessoes, ContextoDeAcesso } from './portas.js';
 import type { NoTenant } from './redefinicao.js';
-import type { AlteracaoDeAssinatura, TenantAdministrado } from '../domain/tenant-administrado.js';
 import type { OrigemDaAuditoria, TipoDeAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
 import type { Clock, Conflito, Result, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 

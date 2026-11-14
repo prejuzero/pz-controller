@@ -19,9 +19,9 @@ import {
 
 import { origemDe, validacao } from './paginacao.js';
 
-import type { AutorNoTenant } from './paginacao.js';
 import type { ResultadoDaConferencia, SituacaoDaConferencia } from '../domain/conferencia.js';
 import type { Cobertura } from '../domain/processo.js';
+import type { AutorNoTenant } from './paginacao.js';
 import type { TrilhaDeAuditoria } from '@pz/auditoria';
 import type { Clock, Instant, Result, UnidadeDeTrabalho, Uuid, Validacao } from '@pz/kernel';
 

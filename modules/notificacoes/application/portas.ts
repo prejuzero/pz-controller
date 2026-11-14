@@ -1,7 +1,7 @@
-import type { MensagemRenderizada } from './templates.js';
 import type { CanalComConsentimento, ConsentimentoCanal } from '../domain/consentimento.js';
 import type { EnvioRecente, RecursoDoEnvio } from '../domain/envio.js';
 import type { Canal, Notificacao, TipoDeNotificacao } from '../domain/notificacao.js';
+import type { MensagemRenderizada } from './templates.js';
 import type { AnexoDeEmail, CapacidadesCanal, ResultadoEnvio } from '@pz/integracoes';
 import type { Instant, Uuid } from '@pz/kernel';
 

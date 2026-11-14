@@ -2,6 +2,7 @@ import { err, gerarUuidV7, NaoAutenticado, NaoEncontrado, ok } from '@pz/kernel'
 
 import { expiracao } from '../domain/sessao.js';
 
+import type { Sessao } from '../domain/sessao.js';
 import type {
   ArmazemDeRenovacoes,
   ArmazemDeSessoes,
@@ -13,7 +14,6 @@ import type {
   TipoCliente,
 } from './portas.js';
 import type { NoTenant } from './redefinicao.js';
-import type { Sessao } from '../domain/sessao.js';
 import type { Clock, Instant, Result, Uuid } from '@pz/kernel';
 
 /** Acesso curto limita o estrago de um token vazado; a renovação rotativa mantém o app logado. */

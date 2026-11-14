@@ -7,9 +7,9 @@ import {
   planejarLembretes,
 } from '../domain/lembrete.js';
 
+import type { LembretePlanejado, TipoDeLembrete } from '../domain/lembrete.js';
 import type { Notificar } from './notificacoes.js';
 import type { PreferenciasDeNotificacao } from './portas.js';
-import type { LembretePlanejado, TipoDeLembrete } from '../domain/lembrete.js';
 import type { Clock, Instant, LocalDate, UnidadeDeTrabalho, Uuid } from '@pz/kernel';
 
 /** O prazo visto pelos lembretes (módulo prazos, pela API pública dele). */
