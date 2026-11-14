@@ -316,8 +316,8 @@ importers:
         specifier: 6.5.2
         version: 6.5.2(bullmq-otel@2.0.1)(ioredis@6.0.0(supports-color@10.2.2))(pg@8.23.1)
       fastify:
-        specifier: 5.12.7
-        version: 5.12.7
+        specifier: 5.12.8
+        version: 5.12.8
       ioredis:
         specifier: 6.0.0
         version: 6.0.0(supports-color@10.2.2)
@@ -8536,6 +8536,9 @@ packages:
   fastify@5.12.7:
     resolution: {integrity: sha512-v4pEPsTRPuqlDIYiQFB+BHjVN4SdHX9u0ABk0ZDUKbbdY1vsNryUd1j4Z+jQEZajvYIVk047Kimva9/AJ79GYw==}
 
+  fastify@5.12.8:
+    resolution: {integrity: sha512-moP8exb2sCHLUbJkwp+I6C0padhy4D8lp0SdmzY7HhSdZuqm7O/u3o2aq7u8okaQ//33QDzj3G/u+FsSdB8Qzw==}
+
   fastq@1.20.3:
     resolution: {integrity: sha512-XKv5nnLs6nLF71NgiKJLIZFLkPyIEuOselLG7ujZnGrRfQK8HpvY+WqKhAJUAdLomwVHErVS4LfxFlPq0/FTAw==}
 
@@ -12122,7 +12125,7 @@ snapshots:
 
   '@babel/helper-annotate-as-pure@7.29.7':
     dependencies:
-      '@babel/types': 7.29.8
+      '@babel/types': 7.29.11
 
   '@babel/helper-annotate-as-pure@8.0.0':
     dependencies:
@@ -12192,8 +12195,8 @@ snapshots:
 
   '@babel/helper-member-expression-to-functions@7.29.7(supports-color@10.2.2)':
     dependencies:
-      '@babel/traverse': 7.29.8(supports-color@10.2.2)
-      '@babel/types': 7.29.8
+      '@babel/traverse': 7.29.13(supports-color@10.2.2)
+      '@babel/types': 7.29.11
     transitivePeerDependencies:
       - supports-color
 
@@ -12204,8 +12207,8 @@ snapshots:
 
   '@babel/helper-module-imports@7.29.7(supports-color@10.2.2)':
     dependencies:
-      '@babel/traverse': 7.29.8(supports-color@10.2.2)
-      '@babel/types': 7.29.8
+      '@babel/traverse': 7.29.13(supports-color@10.2.2)
+      '@babel/types': 7.29.11
     transitivePeerDependencies:
       - supports-color
 
@@ -12232,7 +12235,7 @@ snapshots:
 
   '@babel/helper-optimise-call-expression@7.29.7':
     dependencies:
-      '@babel/types': 7.29.8
+      '@babel/types': 7.29.11
 
   '@babel/helper-optimise-call-expression@8.0.0':
     dependencies:
@@ -12258,7 +12261,7 @@ snapshots:
       '@babel/core': 7.29.7(supports-color@10.2.2)
       '@babel/helper-member-expression-to-functions': 7.29.7(supports-color@10.2.2)
       '@babel/helper-optimise-call-expression': 7.29.7
-      '@babel/traverse': 7.29.8(supports-color@10.2.2)
+      '@babel/traverse': 7.29.13(supports-color@10.2.2)
     transitivePeerDependencies:
       - supports-color
 
@@ -12722,8 +12725,8 @@ snapshots:
   '@babel/template@7.29.7':
     dependencies:
       '@babel/code-frame': 7.29.7
-      '@babel/parser': 7.29.9
-      '@babel/types': 7.29.8
+      '@babel/parser': 7.29.13
+      '@babel/types': 7.29.11
 
   '@babel/template@8.0.0':
     dependencies:
@@ -17265,7 +17268,7 @@ snapshots:
 
   babel-plugin-react-compiler@1.0.0:
     dependencies:
-      '@babel/types': 7.29.8
+      '@babel/types': 7.29.11
 
   babel-plugin-react-native-web@0.21.4: {}
 
@@ -18795,6 +18798,24 @@ snapshots:
       semver: 7.8.5
       toad-cache: 3.7.4
 
+  fastify@5.12.8:
+    dependencies:
+      '@fastify/ajv-compiler': 4.0.6
+      '@fastify/error': 4.2.0
+      '@fastify/fast-json-stringify-compiler': 5.1.0
+      '@fastify/proxy-addr': 5.1.1
+      abstract-logging: 2.0.1
+      avvio: 9.3.0
+      fast-json-stringify: 7.0.1
+      find-my-way: 9.10.0
+      light-my-request: 6.8.0
+      pino: 10.4.0
+      process-warning: 5.1.0
+      rfdc: 1.4.1
+      secure-json-parse: 4.1.0
+      semver: 7.8.5
+      toad-cache: 3.7.4
+
   fastq@1.20.3:
     dependencies:
       reusify: 1.1.0
@@ -19745,8 +19766,8 @@ snapshots:
 
   magicast@0.5.5:
     dependencies:
-      '@babel/parser': 7.29.9
-      '@babel/types': 7.29.8
+      '@babel/parser': 7.29.13
+      '@babel/types': 7.29.11
       source-map-js: 1.2.2
 
   makeerror@1.0.12:
