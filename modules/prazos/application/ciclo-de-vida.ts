@@ -17,7 +17,12 @@ import type {
   RecorteDaLista,
   RepositorioDePrazos,
 } from './portas.js';
-import type { CalcularPrazoParaProcesso, CriarPrazo, PrazoListado } from './prazos.js';
+import type {
+  CalcularPrazoParaProcesso,
+  CriarPrazo,
+  PrazoListado,
+  RessugerirPrazo,
+} from './prazos.js';
 import type { Json } from '../domain/prazo.js';
 import type { OrigemDaAuditoria, TipoDeAuditoria, TrilhaDeAuditoria } from '@pz/auditoria';
 import type { ArmazenamentoArquivos } from '@pz/integracoes';
@@ -466,13 +471,21 @@ const ATO_DESCONHECIDO = 'desconhecido';
 const CONFIANCA_MINIMA = 0.85;
 
 export type ResultadoDaGeracao =
-  'criado' | 'ja-existe' | 'sem-classificacao' | 'sem-processo' | 'sem-prazo-aplicavel';
+  | 'criado'
+  | 'ressugerido'
+  | 'ja-existe'
+  | 'sem-classificacao'
+  | 'sem-processo'
+  | 'sem-prazo-aplicavel';
 
 /**
  * Gera o prazo "a confirmar" de uma publicação recebida pelo tenant (HU24, PZ-168), uma vez por
  * publicação. Ato desconhecido ou classificação incerta também geram (com destaque): na dúvida,
  * o advogado vê. Só não gera quando o ato é conhecido, a classificação é segura e não há prazo
  * no texto nem na tabela (ex.: mero expediente); a publicação continua em Publicações.
+ *
+ * Já há prazo da publicação: com a classificação refeita (ex.: a IA tinha falhado), refaz a
+ * sugestão se o prazo ainda não tem data e ninguém o tocou; senão, nada muda.
  */
 export class GerarPrazoDaPublicacao<Transacao> {
   constructor(
@@ -481,12 +494,12 @@ export class GerarPrazoDaPublicacao<Transacao> {
     private readonly fontes: FontesDaGeracao,
     private readonly calcular: CalcularPrazoParaProcesso<Transacao>,
     private readonly criar: CriarPrazo<Transacao>,
+    private readonly ressugerir: RessugerirPrazo<Transacao>,
   ) {}
 
   async executar(tenantId: Uuid, conteudoId: Uuid): Promise<ResultadoDaGeracao> {
-    if (await this.unidade.executar((tx) => this.prazos.existeDaPublicacao(tx, conteudoId))) {
-      return 'ja-existe';
-    }
+    const existente = await this.unidade.executar((tx) => this.prazos.daPublicacao(tx, conteudoId));
+    if (existente !== undefined && !existente.ressugerivel) return 'ja-existe';
     const classificacao = await this.fontes.classificacao(conteudoId);
     // Ainda não classificada: o PublicacaoClassificada gera depois.
     if (classificacao === undefined) return 'sem-classificacao';
@@ -516,6 +529,10 @@ export class GerarPrazoDaPublicacao<Transacao> {
       ...(prazoNoTexto === undefined ? {} : { prazoNoTexto }),
     });
     if (!sugestao.ok) throw sugestao.erro;
+    if (existente !== undefined) {
+      const efeito = await this.ressugerir.executar(existente.id, sugestao.valor, incerta);
+      return efeito === 'sem-mudanca' ? 'ja-existe' : 'ressugerido';
+    }
     const semPrazo =
       !incerta &&
       prazoNoTexto === undefined &&

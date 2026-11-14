@@ -190,6 +190,11 @@ export class PrazosEmMemoria implements RepositorioDePrazos<TransacaoEmMemoria> 
     );
   }
 
+  daPublicacao(_transacao: TransacaoEmMemoria, conteudoId: Uuid): Promise<Prazo | undefined> {
+    const estado = [...this.#prazos.values()].find((e) => e.publicacaoConteudoId === conteudoId);
+    return Promise.resolve(estado === undefined ? undefined : Prazo.restaurar(estado));
+  }
+
   vencidos(_transacao: TransacaoEmMemoria, hoje: LocalDate, limite: number): Promise<Prazo[]> {
     return Promise.resolve(
       this.#vencidos(hoje)

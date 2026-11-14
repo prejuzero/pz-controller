@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { VerificarIntegridade } from '@pz/auditoria';
 import { RecifrarCamposSensiveis } from '@pz/cadastro';
 import { ExecutarCaptura, PlanejarCaptura, RegistrarProximaRodada } from '@pz/captura';
+import { ReprocessarFalhasDaIa } from '@pz/classificacao';
 import { RecifrarSegredosDoSegundoFator } from '@pz/identidade';
 import { Instant, limparOutbox } from '@pz/kernel';
 import {
@@ -36,6 +37,7 @@ import {
   ID_DO_AGENDAMENTO_DA_CAPTURA,
   planejarCapturaJob,
 } from '../captura/jobs.js';
+import { reprocessarFalhasDaIaJob } from '../classificacao/jobs.js';
 import { DespachanteDeEventos } from '../eventos/consome.js';
 import { consumirEvento, desserializarEvento } from '../eventos/job-evento.js';
 import {
@@ -124,6 +126,8 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     private readonly recalcularDoProcesso: RecalcularPrazosDoProcesso<unknown>,
     @Inject(GerarPrazoDaPublicacao) private readonly gerarPrazo: GerarPrazoDaPublicacao<unknown>,
     @Inject(MarcarPrazosVencidos) private readonly vencidos: MarcarPrazosVencidos<unknown>,
+    @Inject(ReprocessarFalhasDaIa)
+    private readonly falhasDaIa: ReprocessarFalhasDaIa<unknown>,
     @Inject(DispararLembretes) private readonly lembretes: DispararLembretes<unknown>,
     @Inject(EnviarResumosDiarios) private readonly resumos: EnviarResumosDiarios<unknown>,
     @Inject(GerarRelatorio) private readonly gerarRelatorio: GerarRelatorio<unknown>,
@@ -216,6 +220,14 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     this.filas.registrar(gerarPrazoJob, async ({ conteudoId, tenantId }) => {
       const resultado = await this.gerarPrazo.executar(tenantId as Uuid, conteudoId as Uuid);
       logger.info({ conteudoId, tenantId, resultado }, 'geração de prazo da publicação');
+    });
+    // Classificações em que a IA falhou: um lote por vez, até acabar (cada uma tem o seu intervalo).
+    this.filas.registrar(reprocessarFalhasDaIaJob, async () => {
+      for (let lote = 0; lote < 50; lote++) {
+        const r = await this.falhasDaIa.executar();
+        logger.info(r, 'falhas da IA reprocessadas');
+        if (!r.haMais) return;
+      }
     });
     this.filas.registrar(marcarVencidosJob, async () => {
       logger.info(await this.vencidos.executar(), 'prazos vencidos marcados');

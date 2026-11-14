@@ -20,6 +20,7 @@ import {
   lerAlteracaoDoCalendario,
   RecalcularPrazosDoProcesso,
   RecalcularPrazosPorCalendario,
+  RessugerirPrazo,
   SugestaoDePrazo,
   TenantsAfetadosPeloCalendario,
 } from '../application/prazos.js';
@@ -82,6 +83,7 @@ let prazos: PrazosEmMemoria;
 let trilha: TrilhaFalsa;
 let calcular: CalcularPrazoParaProcesso<TransacaoEmMemoria>;
 let criar: CriarPrazo<TransacaoEmMemoria>;
+let ressugerir: RessugerirPrazo<TransacaoEmMemoria>;
 let recalcular: RecalcularPrazosPorCalendario<TransacaoEmMemoria>;
 
 let anosSemCalendario: number[] = [];
@@ -203,6 +205,7 @@ beforeEach(async () => {
   const r = relogio();
   calcular = new CalcularPrazoParaProcesso(localizar, new ResolverPrazoAplicavel(outbox, tabela));
   criar = new CriarPrazo(outbox, prazos, trilha, outbox, r);
+  ressugerir = new RessugerirPrazo(outbox, prazos, trilha, outbox, r);
   recalcular = new RecalcularPrazosPorCalendario(outbox, prazos, localizar, trilha, outbox, r);
   // FICTÍCIO: 15 dias úteis, cível.
   await aprovar({ dias: 15 });
@@ -740,10 +743,49 @@ describe('geração automática a partir da publicação (HU24, PZ-168)', () => 
       },
       calcular,
       criar,
+      ressugerir,
     );
   beforeEach(() => {
     classificacao = { tipoAto: 'ato-ficticio', situacao: 'ok', confianca: 0.97, prazoCitado: null };
     destinatario = { processoId: PROCESSO, oabId: OAB, dataDisponibilizacao: d('2027-03-01') };
+  });
+
+  it('classificação refeita (a IA tinha falhado): o prazo sem data ganha o ato e a data', async () => {
+    await aprovar({ ramo: 'trabalhista', dias: 8 });
+    destinatario = { processoId: PROCESSO_TRT, oabId: null, dataDisponibilizacao: d('2027-03-01') };
+    classificacao = {
+      tipoAto: null,
+      situacao: 'revisao_manual',
+      confianca: null,
+      prazoCitado: null,
+    };
+    expect(await gerar().executar(TENANT, CONTEUDO)).toBe('criado');
+    const [semData] = await outbox.executar((tx) => prazos.listar(tx, { limite: 10 }));
+    expect(semData?.estado).toMatchObject({ tipoAto: 'desconhecido', classificacaoIncerta: true });
+    expect(semData?.estado.calculo.vencimento).toBeNull();
+    // Mesma classificação: nada muda.
+    expect(await gerar().executar(TENANT, CONTEUDO)).toBe('ja-existe');
+
+    classificacao = { tipoAto: 'ato-ficticio', situacao: 'ok', confianca: 0.97, prazoCitado: null };
+    expect(await gerar().executar(TENANT, CONTEUDO)).toBe('ressugerido');
+    const [refeito] = await outbox.executar((tx) => prazos.listar(tx, { limite: 10 }));
+    expect(refeito?.id).toBe(semData?.id);
+    expect(refeito?.estado).toMatchObject({
+      tipoAto: 'ato-ficticio',
+      status: 'a-confirmar',
+      classificacaoIncerta: false,
+    });
+    expect(refeito?.estado.calculo.vencimento).not.toBeNull();
+    expect(trilha.registros.at(-1)).toMatchObject({
+      tipo: 'prazos.prazo-recalculado',
+      depois: { motivo: 'classificacao-refeita' },
+    });
+    expect(outbox.pendentes().at(-1)).toMatchObject({
+      tipo: 'PrazoRecalculado',
+      payload: { motivo: 'classificacao-refeita', vencimentoAnterior: null },
+    });
+    // Com data sugerida, não muda mais por aqui.
+    expect(await gerar().executar(TENANT, CONTEUDO)).toBe('ja-existe');
   });
 
   it('gera "a confirmar" pelo DJEN, com o responsável da OAB, uma vez só', async () => {
@@ -906,6 +948,7 @@ describe('ciclo de vida: entradas e filtros (HU24)', () => {
         },
         calcular,
         criar,
+        ressugerir,
       );
     const conteudo = '01a10e00-0000-7000-8000-0000000c0bbb' as Uuid;
     const base = { oabId: OUTRO_TENANT, dataDisponibilizacao: d('2027-03-01') };

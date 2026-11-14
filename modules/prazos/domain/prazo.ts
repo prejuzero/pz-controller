@@ -102,6 +102,18 @@ export type CausaDoRecalculo =
   /** O advogado corrigiu a comarca do processo (PZ-332): muda o calendário aplicável. */
   | { readonly motivo: 'comarca-alterada'; readonly jurisdicao: JurisdicaoDoPrazo };
 
+/** Por que a sugestão do prazo foi refeita: vai no evento e na trilha. */
+export interface CausaDaRessugestao {
+  /** A classificação da publicação foi refeita (ex.: a IA falhou na primeira vez). */
+  readonly motivo: 'classificacao-refeita';
+}
+
+/** Nova sugestão para a mesma publicação: ato, ramo e cálculo vindos do motor. */
+export type NovaSugestao = Pick<
+  NovoPrazo,
+  'tipoAto' | 'ramo' | 'calculo' | 'entrada' | 'jurisdicao' | 'parametros' | 'classificacaoIncerta'
+>;
+
 /** JSON com as chaves em ordem: o jsonb do banco não preserva a ordem de montagem. */
 function mesmaJurisdicao(a: JurisdicaoDoPrazo, b: JurisdicaoDoPrazo): boolean {
   return (
@@ -174,6 +186,18 @@ export class Prazo extends AggregateRoot {
     return this.#estado;
   }
 
+  /** Do DJEN, "a confirmar", sem data e que ninguém tocou (ajuste ou data informada). */
+  get ressugerivel(): boolean {
+    const e = this.#estado;
+    return (
+      e.origem === 'djen' &&
+      e.status === 'a-confirmar' &&
+      !e.vencimentoManual &&
+      e.motivoAjuste === null &&
+      e.calculo.vencimento === null
+    );
+  }
+
   /** Acompanha o calendário: aberto, calculado pelo motor e com a entrada guardada. */
   get recalculavel(): boolean {
     const e = this.#estado;
@@ -221,6 +245,41 @@ export class Prazo extends AggregateRoot {
         ...(causa.motivo === 'calendario-alterado'
           ? { eventoCalendarioId: causa.eventoCalendarioId }
           : {}),
+      },
+    } satisfies EventoDominio);
+    return 'vencimento';
+  }
+
+  /**
+   * Refaz a sugestão de um prazo do DJEN que ainda não tem data e que ninguém tocou: aberto como
+   * "a confirmar", sem ajuste e sem data informada. É o caso do prazo que nasceu sem o ato (a IA
+   * falhou) ou sem o ramo. Prazo com data sugerida, confirmado, ajustado, cancelado ou manual fica
+   * como está: a data que o advogado já viu nunca muda por aqui (CLAUDE.md, seção 2).
+   */
+  ressugerir(nova: NovaSugestao, causa: CausaDaRessugestao, relogio: Clock): EfeitoDoRecalculo {
+    const antes = this.#estado;
+    if (!this.ressugerivel) return 'sem-mudanca';
+    const igual =
+      nova.tipoAto === antes.tipoAto &&
+      nova.ramo === antes.ramo &&
+      canonico(nova.calculo.memoria) === canonico(antes.calculo.memoria);
+    if (igual) return 'sem-mudanca';
+    this.#estado = { ...antes, ...nova, versaoOtimista: antes.versaoOtimista + 1 };
+    if (nova.calculo.vencimento === null) return 'memoria';
+    this.registrarEvento({
+      id: gerarUuidV7(relogio),
+      tipo: 'PrazoRecalculado',
+      versao: 1,
+      tenantId: antes.tenantId,
+      agregadoId: this.id,
+      ocorridoEm: relogio.agora(),
+      payload: {
+        prazoId: this.id,
+        processoId: antes.processoId,
+        vencimentoAnterior: null,
+        vencimentoNovo: iso(nova.calculo.vencimento),
+        statusAnterior: antes.status,
+        motivo: causa.motivo,
       },
     } satisfies EventoDominio);
     return 'vencimento';

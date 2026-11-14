@@ -71,50 +71,66 @@ export class ClassificarPublicacao<Transacao> {
     const conteudoId = evento.payload.conteudoId as Uuid;
     const { deps } = this;
     if (await deps.classificacoes.existe(transacao, conteudoId)) return undefined;
-    const teor = await deps.teores.teor(transacao, conteudoId);
-    // Nada falha em silêncio: conteúdo sumido é defeito (o evento vai para a DLQ com o motivo).
-    if (teor === undefined)
-      throw new Error(`Conteúdo ${conteudoId} não encontrado para classificar`);
-    const regras = classificarPorRegras(teor, regrasValidas(await deps.regras.vigentes(transacao)));
-    const tipos = await deps.taxonomia.listar(transacao);
-    const entrada = { teor, taxonomia: tipos.map((t) => t.codigo), regras };
-    const classificacao =
-      decidir(entrada) ??
-      decidir({ ...entrada, ia: await consultarIa(deps.ia, teor, tipos, evento.tenantId) });
+    const classificacao = await classificarConteudo(deps, transacao, conteudoId, evento.tenantId);
     if (await deps.classificacoes.gravar(transacao, conteudoId, classificacao)) {
       await deps.outbox.gravar(transacao, [
-        this.#evento(evento.tenantId, conteudoId, classificacao),
+        eventoDaClassificacao(deps.relogio, evento.tenantId, conteudoId, classificacao),
       ]);
     }
     return classificacao;
   }
+}
 
-  #evento(tenantId: Uuid, conteudoId: Uuid, c: Classificacao): EventoDominio {
-    return {
-      id: gerarUuidV7(this.deps.relogio),
-      tipo: 'PublicacaoClassificada',
-      versao: 1,
-      tenantId,
-      agregadoId: conteudoId,
-      ocorridoEm: this.deps.relogio.agora(),
-      payload: {
-        conteudoId,
-        origem: c.origem,
-        situacao: c.situacao,
-        tipoAto: c.tipoAto,
-        confianca: c.confianca,
-        prazoCitado:
-          c.prazoCitado === null
-            ? null
-            : {
-                quantidade: c.prazoCitado.quantidade,
-                unidade: c.prazoCitado.unidade,
-                unidadeImplicita: c.prazoCitado.unidadeImplicita,
-                divergente: c.prazoCitado.divergente,
-              },
-      },
-    };
-  }
+/** Regras rápidas e, se elas não decidem, a IA, sobre o teor visível na transação. */
+export async function classificarConteudo<Transacao>(
+  deps: Pick<DependenciasDaClassificacao<Transacao>, 'teores' | 'regras' | 'taxonomia' | 'ia'>,
+  transacao: Transacao,
+  conteudoId: Uuid,
+  tenantId: Uuid,
+): Promise<Classificacao> {
+  const teor = await deps.teores.teor(transacao, conteudoId);
+  // Nada falha em silêncio: conteúdo sumido é defeito (o evento vai para a DLQ com o motivo).
+  if (teor === undefined) throw new Error(`Conteúdo ${conteudoId} não encontrado para classificar`);
+  const regras = classificarPorRegras(teor, regrasValidas(await deps.regras.vigentes(transacao)));
+  const tipos = await deps.taxonomia.listar(transacao);
+  const entrada = { teor, taxonomia: tipos.map((t) => t.codigo), regras };
+  return (
+    decidir(entrada) ??
+    decidir({ ...entrada, ia: await consultarIa(deps.ia, teor, tipos, tenantId) })
+  );
+}
+
+/** PublicacaoClassificada: o módulo prazos gera (ou refaz) o prazo da publicação a partir dele. */
+export function eventoDaClassificacao(
+  relogio: Clock,
+  tenantId: Uuid,
+  conteudoId: Uuid,
+  c: Classificacao,
+): EventoDominio {
+  return {
+    id: gerarUuidV7(relogio),
+    tipo: 'PublicacaoClassificada',
+    versao: 1,
+    tenantId,
+    agregadoId: conteudoId,
+    ocorridoEm: relogio.agora(),
+    payload: {
+      conteudoId,
+      origem: c.origem,
+      situacao: c.situacao,
+      tipoAto: c.tipoAto,
+      confianca: c.confianca,
+      prazoCitado:
+        c.prazoCitado === null
+          ? null
+          : {
+              quantidade: c.prazoCitado.quantidade,
+              unidade: c.prazoCitado.unidade,
+              unidadeImplicita: c.prazoCitado.unidadeImplicita,
+              divergente: c.prazoCitado.divergente,
+            },
+    },
+  };
 }
 
 /** IA com uma nova tentativa se a saída vier fora do schema (HU21). Sem IA: "desligada". */
