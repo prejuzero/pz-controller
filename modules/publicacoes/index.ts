@@ -25,6 +25,7 @@ export type {
   RepositorioDeLeitura,
   RepositorioDePublicacoes,
 } from './application/portas.js';
+export { ClassesVistasPostgres } from './infra/classes-vistas-postgres.js';
 export { DestinatariosPostgres } from './infra/destinatarios-postgres.js';
 export type { DestinatarioLido } from './infra/destinatarios-postgres.js';
 export { ExportacaoDasPublicacoesPostgres } from './infra/exportacao-postgres.js';

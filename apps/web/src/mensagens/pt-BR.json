@@ -1668,5 +1668,37 @@
     "confirmar": "Aprovar todos",
     "aprovados": "{total, plural, one {# rascunho aprovado} other {# rascunhos aprovados}}.",
     "comFalhas": "{total} aprovados; {falhas} não puderam ser aprovados (já aprovados ou removidos)."
+  },
+  "ramosDasClasses": {
+    "titulo": "Ramo pela classe processual",
+    "descricao": "O DJEN informa a classe processual, não o rito. Indique o ramo de cada classe, com o fundamento, e aprove: só então os prazos do DJEN dessa classe que ainda estão sem data são calculados. Sem ramo aprovado, o prazo continua a confirmar.",
+    "colunas": {
+      "classe": "Classe (DJEN)",
+      "ocorrencias": "Publicações",
+      "aprovada": "Ramo aprovado",
+      "acoes": "Ações"
+    },
+    "semRamo": "Sem ramo",
+    "indicar": "Indicar ramo",
+    "indicarDaClasse": "Indicar o ramo da classe {classe}",
+    "aprovar": "Aprovar: {ramo}",
+    "aprovarDaClasse": "Aprovar o ramo {ramo} para a classe {classe}",
+    "aprovado": "Ramo aprovado. Os prazos sem data desta classe serão refeitos em instantes.",
+    "vazio": "Nenhuma classe processual recebida ainda.",
+    "novo": "Indicar o ramo de uma classe",
+    "classe": "Classe processual",
+    "ramo": "Ramo",
+    "fundamento": "Fundamento",
+    "fundamentoAjuda": "Dispositivo ou ato oficial que fundamenta (ex.: lei e artigo).",
+    "fonteUrl": "Link oficial (https)",
+    "propor": "Propor",
+    "proposto": "Proposta registrada. Aprove para valer.",
+    "ramos": {
+      "civel": "Cível",
+      "juizados": "Juizado especial cível",
+      "trabalhista": "Trabalhista",
+      "penal": "Penal",
+      "juizado-criminal": "Juizado especial criminal"
+    }
   }
 }

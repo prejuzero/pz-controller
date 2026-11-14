@@ -25,3 +25,7 @@ export const PROCESSADORES_DE_WEBHOOK = Symbol('PROCESSADORES_DE_WEBHOOK');
 
 /** Tenants que receberam um conteúdo (publicacoes, como sistema): geração de prazos (HU24). */
 export const TENANTS_DA_PUBLICACAO = Symbol('TENANTS_DA_PUBLICACAO');
+/** Tenants com prazo do DJEN ainda sem data (lidos como sistema). */
+export const TENANTS_COM_PRAZO_SEM_DATA = Symbol('TENANTS_COM_PRAZO_SEM_DATA');
+/** Recalcula as classes processuais vistas nas publicações (como sistema). */
+export const RECALCULAR_CLASSES_VISTAS = Symbol('RECALCULAR_CLASSES_VISTAS');

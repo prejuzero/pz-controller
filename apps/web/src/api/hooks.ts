@@ -35,7 +35,12 @@ import { consultasProcessos, mutacoesProcessos, type FiltrosProcessos } from './
 import { consultasPublicacoes, mutacoesPublicacoes, type FiltrosPublicacoes } from './publicacoes';
 import { consultasRelatorios, mutacoesRelatorios } from './relatorios';
 import { consultasSessao, mutacoesSessao } from './sessao';
-import { consultasTabelaPrazos, mutacoesRegras, mutacoesTabelaPrazos } from './tabela-prazos';
+import {
+  consultasTabelaPrazos,
+  mutacoesRamosDasClasses,
+  mutacoesRegras,
+  mutacoesTabelaPrazos,
+} from './tabela-prazos';
 
 import type { ClienteApi } from './cliente';
 
@@ -122,6 +127,12 @@ function useMutacoesRegras() {
 export const useProporRegra = () => useMutation(useMutacoesRegras().propor);
 export const useAtivarRegra = () => useMutation(useMutacoesRegras().ativar);
 export const useRetirarRegra = () => useMutation(useMutacoesRegras().retirar);
+export const useRamosDasClasses = () => useQuery(consultasTabelaPrazos(useApi()).ramosDasClasses());
+function useMutacoesRamos() {
+  return mutacoesRamosDasClasses(useApi(), useQueryClient());
+}
+export const useProporRamoDaClasse = () => useMutation(useMutacoesRamos().propor);
+export const useAprovarRamoDaClasse = () => useMutation(useMutacoesRamos().aprovar);
 export const useVersoesDaTabela = () => useQuery(consultasTabelaPrazos(useApi()).versoes());
 export const useCadastrarTipoDeAto = () => useMutation(useMutacoesTabelaPrazos().cadastrarTipo);
 export const useProporVersao = () => useMutation(useMutacoesTabelaPrazos().propor);

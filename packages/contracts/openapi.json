@@ -1604,6 +1604,231 @@
         }
       }
     },
+    "/v1/admin/ramos-das-classes": {
+      "get": {
+        "operationId": "listarRamosDasClasses",
+        "summary": "Classes processuais vistas nas publicações e o ramo proposto ou aprovado de cada uma.",
+        "tags": [
+          "tabela-prazos"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RamosDasClasses"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "proporRamoDaClasse",
+        "summary": "Propõe o ramo de uma classe processual; só vale depois de aprovado.",
+        "tags": [
+          "tabela-prazos"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeRamoDaClasse"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersaoDoRamoDaClasse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/ramos-das-classes/{id}/aprovar": {
+      "post": {
+        "operationId": "aprovarRamoDaClasse",
+        "summary": "Aprova o ramo de uma classe; os prazos do DJEN ainda sem data dessa classe são refeitos.",
+        "tags": [
+          "tabela-prazos"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersaoDoRamoDaClasse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/admin/rejeicoes-email": {
       "get": {
         "operationId": "listarRejeicoesDeEmail",
@@ -19301,6 +19526,45 @@
         ],
         "additionalProperties": false
       },
+      "PedidoDeRamoDaClasse": {
+        "type": "object",
+        "properties": {
+          "classe": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 300
+          },
+          "ramo": {
+            "type": "string",
+            "enum": [
+              "civel",
+              "juizados",
+              "trabalhista",
+              "penal",
+              "juizado-criminal"
+            ]
+          },
+          "fundamento": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500,
+            "description": "Dispositivo ou ato que fundamenta."
+          },
+          "fonteUrl": {
+            "type": "string",
+            "maxLength": 500,
+            "format": "uri",
+            "description": "Link oficial (https)."
+          }
+        },
+        "required": [
+          "classe",
+          "ramo",
+          "fundamento",
+          "fonteUrl"
+        ],
+        "additionalProperties": false
+      },
       "PedidoDeRedefinicaoDeSenha": {
         "type": "object",
         "properties": {
@@ -20873,6 +21137,61 @@
           "capturadoEm",
           "lidaEm",
           "conferencia"
+        ],
+        "additionalProperties": false
+      },
+      "RamosDasClasses": {
+        "type": "object",
+        "properties": {
+          "itens": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "classe": {
+                  "type": "string"
+                },
+                "ocorrencias": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991,
+                  "description": "Publicações recebidas com a classe (recalculado a cada meia hora)."
+                },
+                "aprovada": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/VersaoDoRamoDaClasse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "A que vale."
+                },
+                "rascunho": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/VersaoDoRamoDaClasse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Proposta mais nova que a aprovada, à espera da curadoria."
+                }
+              },
+              "required": [
+                "classe",
+                "ocorrencias",
+                "aprovada",
+                "rascunho"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "itens"
         ],
         "additionalProperties": false
       },
@@ -22753,6 +23072,97 @@
           "marcoInicial",
           "localDoAto",
           "alerta",
+          "status",
+          "propostoPor",
+          "propostoEm",
+          "aprovadoPor",
+          "aprovadoEm"
+        ],
+        "additionalProperties": false
+      },
+      "VersaoDoRamoDaClasse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "classe": {
+            "type": "string",
+            "description": "Classe processual na forma canônica (sem acento, maiúsculas)."
+          },
+          "ramo": {
+            "type": "string",
+            "enum": [
+              "civel",
+              "juizados",
+              "trabalhista",
+              "penal",
+              "juizado-criminal"
+            ]
+          },
+          "versao": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "fundamento": {
+            "type": "string"
+          },
+          "fonteUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "rascunho",
+              "aprovado"
+            ]
+          },
+          "propostoPor": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "propostoEm": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "aprovadoPor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "aprovadoEm": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "classe",
+          "ramo",
+          "versao",
+          "fundamento",
+          "fonteUrl",
           "status",
           "propostoPor",
           "propostoEm",

@@ -198,7 +198,11 @@ import { criarLogger, registrarErro } from '@pz/observability';
 import {
   AgendarCompromisso,
   AjustarPrazo,
+  AprovarRamoDaClasse,
   AprovarVersaoDaTabela,
+  ListarRamosDasClasses,
+  ProporRamoDaClasse,
+  RamosDasClassesPostgres,
   CancelarCompromisso,
   CompromissosPostgres,
   ListarCompromissos,
@@ -233,6 +237,7 @@ import {
   SolicitarExportacao,
 } from '@pz/privacidade';
 import {
+  ClassesVistasPostgres,
   ConferirPublicacao,
   ConsultarPublicacao,
   LeituraPostgres,
@@ -331,6 +336,7 @@ import { DashboardController } from './prazos/dashboard.controller.js';
 import { historicoDoPrazo } from './prazos/historico.js';
 import { AtosDaTaxonomiaController, PrazosController } from './prazos/prazos.controller.js';
 import { processoNoCalendario, processosDoCliente } from './prazos/processo.js';
+import { RamosDasClassesController } from './prazos/ramos-das-classes.controller.js';
 import { TabelaPrazosController } from './prazos/tabela-prazos.controller.js';
 import { PrivacidadeController } from './privacidade/privacidade.controller.js';
 import { PublicacoesController } from './publicacoes/publicacoes.controller.js';
@@ -407,7 +413,12 @@ import type {
   RepositorioDeEnvios,
   RepositorioDeNotificacoes,
 } from '@pz/notificacoes';
-import type { RepositorioDaTabela, RepositorioDeTiposDeAto } from '@pz/prazos';
+import type {
+  ClassesVistas,
+  RepositorioDaTabela,
+  RepositorioDeTiposDeAto,
+  RepositorioDosRamosDasClasses,
+} from '@pz/prazos';
 import type { RepositorioDeEncerramentos, RepositorioDeExportacoes } from '@pz/privacidade';
 import type {
   ObterOuCriarProcessoNoTenant,
@@ -609,6 +620,9 @@ interface DependenciasDaTabelaDePrazos {
   readonly tabela: RepositorioDaTabela<unknown>;
   readonly trilha: TrilhaDeAuditoria<unknown>;
   readonly outbox: Outbox<unknown>;
+  /** Ramo pela classe processual; nos testes, em memória. */
+  readonly ramos?: RepositorioDosRamosDasClasses<unknown>;
+  readonly classesVistas?: ClassesVistas<unknown>;
 }
 
 interface DependenciasDasPublicacoes {
@@ -894,6 +908,7 @@ function provedoresDosTermos(d: DependenciasDosTermos): Provider[] {
 
 /** Casos de uso da tabela de prazos (HU15). */
 function provedoresDaTabelaDePrazos(d: DependenciasDaTabelaDePrazos): Provider[] {
+  const ramos = d.ramos ?? new RamosDasClassesPostgres();
   return [
     {
       provide: CadastrarTipoDeAto,
@@ -920,6 +935,24 @@ function provedoresDaTabelaDePrazos(d: DependenciasDaTabelaDePrazos): Provider[]
       provide: ConsultarTabelaDePrazos,
       inject: [RELOGIO],
       useFactory: (r: Clock) => new ConsultarTabelaDePrazos(d.unidade, d.tipos, d.tabela, r),
+    },
+    {
+      provide: ListarRamosDasClasses,
+      useValue: new ListarRamosDasClasses(
+        d.unidade,
+        ramos,
+        d.classesVistas ?? new ClassesVistasPostgres(),
+      ),
+    },
+    {
+      provide: ProporRamoDaClasse,
+      inject: [RELOGIO],
+      useFactory: (r: Clock) => new ProporRamoDaClasse(d.unidade, ramos, d.trilha, r),
+    },
+    {
+      provide: AprovarRamoDaClasse,
+      inject: [RELOGIO],
+      useFactory: (r: Clock) => new AprovarRamoDaClasse(d.unidade, ramos, d.trilha, d.outbox, r),
     },
   ];
 }
@@ -2245,6 +2278,7 @@ export class AppModule {
         AdminController,
         CalendarioController,
         TabelaPrazosController,
+        RamosDasClassesController,
         PrazosController,
         AtosDaTaxonomiaController,
         CompromissosController,

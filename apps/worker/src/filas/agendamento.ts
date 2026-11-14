@@ -9,6 +9,7 @@ import {
   removerAnexosAntigosJob,
 } from '../notificacoes/jobs.js';
 import { marcarVencidosJob } from '../prazos/jobs.js';
+import { recalcularClassesVistasJob } from '../publicacoes/jobs.js';
 import { removerArquivosExpiradosJob } from '../relatorios/jobs.js';
 
 import { definirJob } from './job.js';
@@ -91,6 +92,13 @@ export const AGENDAMENTOS: readonly Agendamento<unknown>[] = [
     cron: '17 * * * *',
     dados: {},
     motivo: 'nova classificação das publicações em que a IA falhou',
+  }),
+  definirAgendamento({
+    id: 'publicacoes.recalcular-classes',
+    job: recalcularClassesVistasJob,
+    cron: '*/30 * * * *', // a curadoria vê as classes novas em até meia hora
+    dados: {},
+    motivo: 'classes processuais vistas nas publicações, para a curadoria indicar o ramo',
   }),
   definirAgendamento({
     id: 'prazos.marcar-vencidos',

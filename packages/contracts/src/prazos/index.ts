@@ -230,7 +230,94 @@ export const aprovarVersoesEmLote = definirRota({
   resposta: { status: 200, corpo: AprovacaoEmLote },
 });
 
+/** Ramo pela classe processual do DJEN (14/11/2026): proposta e aprovada pela curadoria. */
+export const VersaoDoRamoDaClasse = nomear(
+  'VersaoDoRamoDaClasse',
+  z.object({
+    id: Uuid,
+    classe: z.string().describe('Classe processual na forma canônica (sem acento, maiúsculas).'),
+    ramo: RamoDaTabela,
+    versao: z.number().int().positive(),
+    fundamento: z.string(),
+    fonteUrl: z.url(),
+    status: z.enum(['rascunho', 'aprovado']),
+    propostoPor: Uuid,
+    propostoEm: Instante,
+    aprovadoPor: Uuid.nullable(),
+    aprovadoEm: Instante.nullable(),
+  }),
+);
+export type VersaoDoRamoDaClasse = z.infer<typeof VersaoDoRamoDaClasse.esquema>;
+
+export const RamosDasClasses = nomear(
+  'RamosDasClasses',
+  z.object({
+    itens: z.array(
+      z.object({
+        classe: z.string(),
+        ocorrencias: z
+          .number()
+          .int()
+          .nonnegative()
+          .describe('Publicações recebidas com a classe (recalculado a cada meia hora).'),
+        aprovada: VersaoDoRamoDaClasse.esquema.nullable().describe('A que vale.'),
+        rascunho: VersaoDoRamoDaClasse.esquema
+          .nullable()
+          .describe('Proposta mais nova que a aprovada, à espera da curadoria.'),
+      }),
+    ),
+  }),
+);
+export type RamosDasClasses = z.infer<typeof RamosDasClasses.esquema>;
+
+export const PedidoDeRamoDaClasse = nomear(
+  'PedidoDeRamoDaClasse',
+  z
+    .object({
+      classe: z.string().min(3).max(300),
+      ramo: RamoDaTabela,
+      fundamento: z.string().min(3).max(500).describe('Dispositivo ou ato que fundamenta.'),
+      fonteUrl: z.url().max(500).describe('Link oficial (https).'),
+    })
+    .strict(),
+);
+
+export const listarRamosDasClasses = definirRota({
+  id: 'listarRamosDasClasses',
+  metodo: 'get',
+  caminho: '/v1/admin/ramos-das-classes',
+  resumo: 'Classes processuais vistas nas publicações e o ramo proposto ou aprovado de cada uma.',
+  tag: 'tabela-prazos',
+  resposta: { status: 200, corpo: RamosDasClasses },
+});
+
+export const proporRamoDaClasse = definirRota({
+  id: 'proporRamoDaClasse',
+  metodo: 'post',
+  caminho: '/v1/admin/ramos-das-classes',
+  resumo: 'Propõe o ramo de uma classe processual; só vale depois de aprovado.',
+  tag: 'tabela-prazos',
+  corpo: PedidoDeRamoDaClasse,
+  resposta: { status: 201, corpo: VersaoDoRamoDaClasse },
+  erros: [409],
+});
+
+export const aprovarRamoDaClasse = definirRota({
+  id: 'aprovarRamoDaClasse',
+  metodo: 'post',
+  caminho: '/v1/admin/ramos-das-classes/{id}/aprovar',
+  resumo:
+    'Aprova o ramo de uma classe; os prazos do DJEN ainda sem data dessa classe são refeitos.',
+  tag: 'tabela-prazos',
+  parametrosDeCaminho: z.object({ id: Uuid }),
+  resposta: { status: 200, corpo: VersaoDoRamoDaClasse },
+  erros: [404, 409],
+});
+
 export const ROTAS_TABELA_PRAZOS = [
+  listarRamosDasClasses,
+  proporRamoDaClasse,
+  aprovarRamoDaClasse,
   listarTiposDeAto,
   cadastrarTipoDeAto,
   listarVersoesDaTabela,

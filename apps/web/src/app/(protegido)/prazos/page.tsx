@@ -7,6 +7,7 @@ import { SePermitido } from '../_casca/se-permitido';
 
 import { CuradoriaDaClassificacao } from './curadoria-da-classificacao';
 import { ListaDePrazos } from './lista-de-prazos';
+import { RamosDasClasses } from './ramos-das-classes';
 import { RegrasDeClassificacao } from './regras-de-classificacao';
 import { TabelaDePrazos } from './tabela-de-prazos';
 
@@ -41,6 +42,7 @@ export default async function PaginaPrazos({
     <SePermitido permissao="curadoria:tabela-prazos" alternativa={escritorio}>
       <div className="space-y-10">
         <TabelaDePrazos />
+        <RamosDasClasses />
         <SePermitido permissao="curadoria:classificacao">
           <RegrasDeClassificacao />
           <CuradoriaDaClassificacao />

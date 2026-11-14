@@ -105,6 +105,10 @@ export interface RepositorioDePrazos<Transacao> {
   listar(transacao: Transacao, filtro: FiltroDePrazos): Promise<Prazo[]>;
   /** Já há prazo da publicação no tenant (geração idempotente). */
   existeDaPublicacao(transacao: Transacao, conteudoId: Uuid): Promise<boolean>;
+  /** Publicações do tenant com prazo do DJEN ainda sem data e intocado (`Prazo.ressugerivel`). */
+  publicacoesSemData(transacao: Transacao, limite: number): Promise<Uuid[]>;
+  /** Como sistema (sem RLS): tenants com algum prazo assim. */
+  tenantsComPublicacoesSemData(transacao: Transacao): Promise<Uuid[]>;
   /** O prazo da publicação no tenant (um por publicação), para refazer a sugestão. */
   daPublicacao(transacao: Transacao, conteudoId: Uuid): Promise<Prazo | undefined>;
   /** Abertos com vencimento antes de `hoje`, por id. */
@@ -231,6 +235,8 @@ export interface DestinatarioDaPublicacao {
   readonly processoId: Uuid | null;
   readonly oabId: Uuid | null;
   readonly dataDisponibilizacao: LocalDate;
+  /** Classe processual informada pela fonte (forma canônica). */
+  readonly classe?: string | null;
 }
 
 /** Portas da geração automática (HU24), compostas nas apps pelas APIs dos outros módulos. */
@@ -239,4 +245,6 @@ export interface FontesDaGeracao {
   destinatario(conteudoId: Uuid): Promise<DestinatarioDaPublicacao | undefined>;
   /** Usuário do advogado dono da OAB no tenant corrente. */
   responsavelDaOab(oabId: Uuid): Promise<Uuid | undefined>;
+  /** Ramo aprovado pela curadoria para a classe processual; sem aprovação, nenhum. */
+  ramoDaClasse(classe: string): Promise<Ramo | undefined>;
 }

@@ -293,6 +293,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/ramos-das-classes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Classes processuais vistas nas publicações e o ramo proposto ou aprovado de cada uma. */
+        get: operations["listarRamosDasClasses"];
+        put?: never;
+        /** Propõe o ramo de uma classe processual; só vale depois de aprovado. */
+        post: operations["proporRamoDaClasse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/ramos-das-classes/{id}/aprovar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Aprova o ramo de uma classe; os prazos do DJEN ainda sem data dessa classe são refeitos. */
+        post: operations["aprovarRamoDaClasse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/rejeicoes-email": {
         parameters: {
             query?: never;
@@ -3910,6 +3945,18 @@ export interface components {
             /** @description O que mudou, mostrado na tela de novo aceite. */
             resumoAlteracoes?: string;
         };
+        PedidoDeRamoDaClasse: {
+            classe: string;
+            /** @enum {string} */
+            ramo: "civel" | "juizados" | "trabalhista" | "penal" | "juizado-criminal";
+            /** @description Dispositivo ou ato que fundamenta. */
+            fundamento: string;
+            /**
+             * Format: uri
+             * @description Link oficial (https).
+             */
+            fonteUrl: string;
+        };
         PedidoDeRedefinicaoDeSenha: {
             email: string;
         };
@@ -4284,6 +4331,17 @@ export interface components {
             lidaEm: string | null;
             /** @description Só nas capturadas pelo nome do escritório (HU42): pendente até o advogado confirmar que é do escritório (pode ser homônimo); sem processo nem prazo enquanto pendente. */
             conferencia: ("pendente" | "confirmada") | null;
+        };
+        RamosDasClasses: {
+            itens: {
+                classe: string;
+                /** @description Publicações recebidas com a classe (recalculado a cada meia hora). */
+                ocorrencias: number;
+                /** @description A que vale. */
+                aprovada: components["schemas"]["VersaoDoRamoDaClasse"] | null;
+                /** @description Proposta mais nova que a aprovada, à espera da curadoria. */
+                rascunho: components["schemas"]["VersaoDoRamoDaClasse"] | null;
+            }[];
         };
         RedefinicaoDeSenha: {
             /** @description Token do link enviado por e-mail. */
@@ -4692,6 +4750,26 @@ export interface components {
              * @description Só a aprovada entra no cálculo.
              * @enum {string}
              */
+            status: "rascunho" | "aprovado";
+            /** Format: uuid */
+            propostoPor: string;
+            /** Format: date-time */
+            propostoEm: string;
+            aprovadoPor: string | null;
+            aprovadoEm: string | null;
+        };
+        VersaoDoRamoDaClasse: {
+            /** Format: uuid */
+            id: string;
+            /** @description Classe processual na forma canônica (sem acento, maiúsculas). */
+            classe: string;
+            /** @enum {string} */
+            ramo: "civel" | "juizados" | "trabalhista" | "penal" | "juizado-criminal";
+            versao: number;
+            fundamento: string;
+            /** Format: uri */
+            fonteUrl: string;
+            /** @enum {string} */
             status: "rascunho" | "aprovado";
             /** Format: uuid */
             propostoPor: string;
@@ -6041,6 +6119,198 @@ export interface operations {
             };
             /** @description Sem permissão. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    listarRamosDasClasses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RamosDasClasses"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    proporRamoDaClasse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeRamoDaClasse"];
+            };
+        };
+        responses: {
+            /** @description Sucesso. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersaoDoRamoDaClasse"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Erro inesperado. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+        };
+    };
+    aprovarRamoDaClasse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sucesso. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersaoDoRamoDaClasse"];
+                };
+            };
+            /** @description Entrada inválida. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não autenticado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Sem permissão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Não encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problema"];
+                };
+            };
+            /** @description Conflito com o estado atual. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

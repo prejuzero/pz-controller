@@ -14,6 +14,7 @@ import {
   MarcarComoLida,
 } from '../application/leitura.js';
 
+import { ClassesVistasPostgres } from './classes-vistas-postgres.js';
 import { DestinatariosPostgres } from './destinatarios-postgres.js';
 import { ExportacaoDasPublicacoesPostgres } from './exportacao-postgres.js';
 import { LeituraPostgres } from './leitura-postgres.js';
@@ -53,7 +54,7 @@ const evento = (tenantId: Uuid) => ({
         teor: 'FICTÍCIO: intimação para manifestação.',
         numeroCnj: '1000004-06.2026.8.26.0100',
         urlFonte: 'https://exemplo.invalid/certidao',
-        metadados: { siglaTribunal: 'TJSP' },
+        metadados: { siglaTribunal: 'TJSP', nomeClasse: 'PROCEDIMENTO COMUM CíVEL' },
       },
     ],
   },
@@ -186,7 +187,19 @@ describe('ingestão no PostgreSQL (HU18)', () => {
     const doA = await destinatario(A);
     expect(doA?.processoId).not.toBeNull();
     expect(doA?.dataDisponibilizacao.paraIso()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // Classe processual da fonte, na forma canônica (ramo pela classe, 14/11/2026).
+    expect(doA?.classe).toBe('PROCEDIMENTO COMUM CIVEL');
     expect(await destinatario(gerarUuidV7())).toBeUndefined();
+
+    // Classes vistas: o sistema recalcula a partir das publicações; a aplicação só lê.
+    const classes = new ClassesVistasPostgres();
+    expect(await sistema.executarComoSistema('classes', (tx) => classes.recalcular(tx))).toBe(1);
+    expect(await executarNoTenant(A, () => banco.executar((tx) => classes.listar(tx)))).toEqual([
+      { classe: 'PROCEDIMENTO COMUM CIVEL', ocorrencias: 1 },
+    ]);
+    await expect(
+      executarNoTenant(A, () => banco.executar((tx) => classes.recalcular(tx))),
+    ).rejects.toThrow();
   });
 
   it('leitura: lista pela view com filtros e cursor; marcar lida audita uma vez; outro tenant não vê', async () => {

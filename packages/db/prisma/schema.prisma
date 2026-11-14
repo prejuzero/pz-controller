@@ -1537,3 +1537,32 @@ model EnvioManual {
   @@index([tenantId, usuarioId, criadoEm])
   @@map("envio_manual")
 }
+
+/// Classes processuais vistas nas publicações (forma canônica): global, recalculada pelo worker.
+model ClasseProcessualVista {
+  classe       String   @id
+  ocorrencias  Int
+  atualizadoEm DateTime @default(now()) @map("atualizado_em") @db.Timestamptz(6)
+
+  @@map("classe_processual_vista")
+}
+
+/// Correspondência classe processual → ramo (curadoria): global, só de inserção; vale aprovada.
+model RamoDaClasse {
+  id           String            @id @db.Uuid
+  classe       String
+  ramo         RamoProcessual
+  versao       Int
+  fundamento   String
+  fonteUrl     String            @map("fonte_url")
+  status       StatusTabelaPrazo
+  propostoPor  String            @map("proposto_por") @db.Uuid
+  propostoEm   DateTime          @map("proposto_em") @db.Timestamptz(6)
+  aprovadoPor  String?           @map("aprovado_por") @db.Uuid
+  aprovadoEm   DateTime?         @map("aprovado_em") @db.Timestamptz(6)
+  criadoEm     DateTime          @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime          @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  @@unique([classe, versao])
+  @@map("ramo_da_classe")
+}

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { chaves } from './chaves';
 import { criarCliente } from './cliente';
 import {
+  mutacoesRamosDasClasses,
   mutacoesRegras,
   agruparVersoes,
   consultasTabelaPrazos,
@@ -145,5 +146,47 @@ describe('tabela de prazos no portal (HU15)', () => {
       'POST /v1/admin/classificacoes/regras/r-1/1/ativar',
       'POST /v1/admin/classificacoes/regras/r-1/retirar',
     ]);
+  });
+});
+
+describe('ramo pela classe processual (14/11/2026)', () => {
+  it('lista, propõe e aprova pelas rotas da curadoria e recarrega a lista', async () => {
+    const rotas: string[] = [];
+    const api = criarCliente({
+      baseUrl: 'http://localhost',
+      lerCookies: () => '',
+      fetch: (requisicao) => {
+        rotas.push(`${requisicao.method} ${new URL(requisicao.url).pathname}`);
+        return Promise.resolve(
+          new Response('{"itens":[]}', {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+        );
+      },
+    });
+    const cache = new QueryClient();
+    const invalidadas: unknown[] = [];
+    cache.invalidateQueries = (filtro) => {
+      invalidadas.push(filtro?.queryKey);
+      return Promise.resolve();
+    };
+    const consulta = consultasTabelaPrazos(api).ramosDasClasses();
+    await consulta.queryFn?.({ signal: new AbortController().signal } as never);
+    const { propor, aprovar } = mutacoesRamosDasClasses(api, cache);
+    await propor.mutationFn({
+      classe: 'CLASSE FICTÍCIA',
+      ramo: 'civel',
+      fundamento: 'FICTÍCIO',
+      fonteUrl: 'https://exemplo.invalid',
+    });
+    await aprovar.mutationFn('0199a000-0000-7000-8000-000000000009');
+    await aprovar.onSuccess();
+    expect(rotas).toEqual([
+      'GET /v1/admin/ramos-das-classes',
+      'POST /v1/admin/ramos-das-classes',
+      'POST /v1/admin/ramos-das-classes/0199a000-0000-7000-8000-000000000009/aprovar',
+    ]);
+    expect(invalidadas).toEqual([chaves.ramosDasClasses]);
   });
 });

@@ -128,6 +128,8 @@ import {
   RessugerirPrazo,
   GerarPrazoDaPublicacao,
   MarcarPrazosVencidos,
+  RamosDasClassesPostgres,
+  RessugerirPrazosSemData,
   PrazosPostgres,
   RecalcularPrazosDoProcesso,
   RecalcularPrazosPorCalendario,
@@ -145,6 +147,7 @@ import {
   OperacoesDeRetencaoPostgres,
 } from '@pz/privacidade';
 import {
+  ClassesVistasPostgres,
   DestinatariosPostgres,
   ExportacaoDasPublicacoesPostgres,
   IngerirCaptura,
@@ -192,6 +195,8 @@ import {
   BANCO,
   BANCO_DAS_CONSULTAS,
   BANCO_SISTEMA,
+  RECALCULAR_CLASSES_VISTAS,
+  TENANTS_COM_PRAZO_SEM_DATA,
   FILAS_RUNTIME,
   FONTE_DO_RELAY,
   LIMPEZA_DO_OUTBOX,
@@ -217,7 +222,13 @@ import { ConsumidorDosEnvios, enviadorDeEmail, linkDoEnvio } from './notificacoe
 import { ConsumidorDosLembretes, REPOSITORIO_DE_LEMBRETES } from './notificacoes/lembretes.js';
 import { fontesDoResumo } from './notificacoes/resumo.js';
 import { ConsumidorDosPrazos } from './prazos/consumidor.js';
-import { fontesDaGeracao, processoNoCalendario, tenantsDaPublicacao } from './prazos/processo.js';
+import {
+  fontesDaGeracao,
+  processoNoCalendario,
+  recalcularClassesVistas,
+  tenantsComPrazoSemData,
+  tenantsDaPublicacao,
+} from './prazos/processo.js';
 import { ConsumidorDaPrivacidade } from './privacidade/consumidor.js';
 import { ConsumidorDasPublicacoes } from './publicacoes/consumidor.js';
 import { noTenantDoBanco, processoPeloCadastro } from './publicacoes/processos.js';
@@ -1037,7 +1048,13 @@ export class WorkerModule {
           return new GerarPrazoDaPublicacao(
             banco,
             new PrazosPostgres(),
-            fontesDaGeracao(banco, classificacoes, destinatarios, advogados),
+            fontesDaGeracao(
+              banco,
+              classificacoes,
+              destinatarios,
+              advogados,
+              new RamosDasClassesPostgres(),
+            ),
             calculoDosPrazos(relogio),
             new CriarPrazo(
               banco,
@@ -1204,6 +1221,26 @@ export class WorkerModule {
             ambiente.PORTAL_URL,
             relogio,
           ),
+      },
+      {
+        provide: RessugerirPrazosSemData,
+        inject: [GerarPrazoDaPublicacao],
+        useFactory: (gerar: GerarPrazoDaPublicacao<Transacao>) =>
+          new RessugerirPrazosSemData(banco, new PrazosPostgres(), gerar),
+      },
+      {
+        provide: TENANTS_COM_PRAZO_SEM_DATA,
+        useValue: tenantsComPrazoSemData(
+          sistema.unidade('prazos: tenants com prazo do DJEN sem data'),
+          new PrazosPostgres(),
+        ),
+      },
+      {
+        provide: RECALCULAR_CLASSES_VISTAS,
+        useValue: recalcularClassesVistas(
+          sistema.unidade('publicacoes: classes processuais vistas'),
+          new ClassesVistasPostgres(),
+        ),
       },
       {
         provide: MarcarPrazosVencidos,

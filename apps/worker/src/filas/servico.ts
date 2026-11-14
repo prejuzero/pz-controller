@@ -22,6 +22,7 @@ import {
   GerarPrazoDaPublicacao,
   lerAlteracaoDoCalendario,
   MarcarPrazosVencidos,
+  RessugerirPrazosSemData,
   RecalcularPrazosDoProcesso,
   RecalcularPrazosPorCalendario,
 } from '@pz/prazos';
@@ -45,6 +46,7 @@ import {
   FILAS_RUNTIME,
   LIMPEZA_DO_OUTBOX,
   PROCESSADORES_DE_WEBHOOK,
+  RECALCULAR_CLASSES_VISTAS,
   REDIS,
   RELOGIO,
   UNIDADE_DA_LIMPEZA,
@@ -64,6 +66,7 @@ import {
   marcarVencidosJob,
   recalcularPrazosDoProcessoJob,
   recalcularPrazosJob,
+  ressugerirSemDataJob,
 } from '../prazos/jobs.js';
 import {
   AGENDAMENTO_DA_RETENCAO,
@@ -71,6 +74,7 @@ import {
   aplicarRetencaoJob,
   efetivarEncerramentosJob,
 } from '../privacidade/jobs.js';
+import { recalcularClassesVistasJob } from '../publicacoes/jobs.js';
 import { gerarRelatorioJob, removerArquivosExpiradosJob } from '../relatorios/jobs.js';
 import { entregarWebhookJob } from '../webhooks/jobs.js';
 
@@ -126,6 +130,10 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     private readonly recalcularDoProcesso: RecalcularPrazosDoProcesso<unknown>,
     @Inject(GerarPrazoDaPublicacao) private readonly gerarPrazo: GerarPrazoDaPublicacao<unknown>,
     @Inject(MarcarPrazosVencidos) private readonly vencidos: MarcarPrazosVencidos<unknown>,
+    @Inject(RessugerirPrazosSemData)
+    private readonly semData: RessugerirPrazosSemData<unknown>,
+    @Inject(RECALCULAR_CLASSES_VISTAS)
+    private readonly recalcularClasses: () => Promise<number>,
     @Inject(ReprocessarFalhasDaIa)
     private readonly falhasDaIa: ReprocessarFalhasDaIa<unknown>,
     @Inject(DispararLembretes) private readonly lembretes: DispararLembretes<unknown>,
@@ -220,6 +228,14 @@ export class ServicoDeFilas implements OnApplicationBootstrap, OnApplicationShut
     this.filas.registrar(gerarPrazoJob, async ({ conteudoId, tenantId }) => {
       const resultado = await this.gerarPrazo.executar(tenantId as Uuid, conteudoId as Uuid);
       logger.info({ conteudoId, tenantId, resultado }, 'geração de prazo da publicação');
+    });
+    // Ramo de classe aprovado: refaz a sugestão dos prazos sem data do tenant (no tenant do job).
+    this.filas.registrar(ressugerirSemDataJob, async ({ tenantId, eventoId }) => {
+      const r = await this.semData.executar(tenantId as Uuid);
+      logger.info({ tenantId, eventoId, ...r }, 'prazos sem data refeitos');
+    });
+    this.filas.registrar(recalcularClassesVistasJob, async () => {
+      logger.info({ classes: await this.recalcularClasses() }, 'classes processuais vistas');
     });
     // Classificações em que a IA falhou: um lote por vez, até acabar (cada uma tem o seu intervalo).
     this.filas.registrar(reprocessarFalhasDaIaJob, async () => {

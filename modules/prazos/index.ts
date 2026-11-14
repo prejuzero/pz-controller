@@ -74,6 +74,8 @@ export {
   EntradaDeCancelamento,
   EntradaDeVersao,
   GerarPrazoDaPublicacao,
+  LOTE_SEM_DATA,
+  RessugerirPrazosSemData,
   LinkDoDocumento,
   ListarPrazos,
   MarcarPrazosVencidos,
@@ -107,6 +109,20 @@ export type {
   PrazoListado,
   ResultadoDoLote,
 } from './application/prazos.js';
+export {
+  AprovarRamoDaClasse,
+  ListarRamosDasClasses,
+  ProporRamoDaClasse,
+} from './application/ramos-das-classes.js';
+export type {
+  ClasseNaCuradoria,
+  ClassesVistas,
+  RepositorioDosRamosDasClasses,
+  VersaoDoRamoDaClasse,
+  VersaoDoRamoListada,
+} from './application/ramos-das-classes.js';
+export { RamosDasClassesPostgres } from './infra/ramos-das-classes-postgres.js';
+export { RamosDasClassesEmMemoria } from './infra/em-memoria.js';
 export { AgendaDosLembretes } from './application/agenda.js';
 export type { DataDoLembrete, SituacaoDoPrazo } from './application/agenda.js';
 export { BuscarPrazos, TETO_DA_CONTAGEM } from './application/busca.js';

@@ -3,7 +3,13 @@ import { describe, expect, it } from 'vitest';
 
 import { ConsumidorDosPrazos } from './consumidor.js';
 import { chaveDoLote } from './jobs.js';
-import { fontesDaGeracao, processoNoCalendario, tenantsDaPublicacao } from './processo.js';
+import {
+  fontesDaGeracao,
+  processoNoCalendario,
+  recalcularClassesVistas,
+  tenantsComPrazoSemData,
+  tenantsDaPublicacao,
+} from './processo.js';
 
 import type { Filas } from '../filas/runtime.js';
 import type { ConsultarProcesso, ProcessoListado } from '@pz/cadastro';
@@ -39,7 +45,12 @@ describe('ConsumidorDosPrazos (HU16)', () => {
     const tenants = {
       executar: () => Promise.resolve(TENANTS),
     } as unknown as TenantsAfetadosPeloCalendario<unknown>;
-    const consumidor = new ConsumidorDosPrazos(tenants, filas, () => Promise.resolve(TENANTS));
+    const consumidor = new ConsumidorDosPrazos(
+      tenants,
+      filas,
+      () => Promise.resolve(TENANTS),
+      () => Promise.resolve(TENANTS),
+    );
     await consumidor.calendarioAlterado('tx', {
       id: EVENTO,
       tipo: 'CalendarioAlterado',
@@ -78,6 +89,7 @@ describe('ConsumidorDosPrazos: comarca corrigida (PZ-332)', () => {
       {} as TenantsAfetadosPeloCalendario<unknown>,
       filas,
       () => Promise.resolve([]),
+      () => Promise.resolve([]),
     );
     const processoId = '01a10e00-0000-7000-8000-0000000c0bbb';
     await consumidor.comarcaAlterada('tx', {
@@ -110,7 +122,17 @@ describe('ConsumidorDosPrazos: publicações (HU24)', () => {
       {} as TenantsAfetadosPeloCalendario<unknown>,
       filas,
       () => Promise.resolve(TENANTS),
+      () => Promise.resolve([TENANT_B]),
     );
+    // Ramo de classe aprovado: um job por tenant com prazo sem data, chave do evento e tenant.
+    await consumidor.ramoDaClasseAprovado('tx', {
+      id: EVENTO,
+      tipo: 'RamoDaClasseAprovado',
+      versao: 1,
+      tenantId: PLATAFORMA,
+      payload: {},
+    } as unknown as EventoDominio);
+    expect(chaves.splice(0)).toEqual([`${EVENTO}-${TENANT_B}`]);
     const conteudoId = '01a10e00-0000-7000-8000-0000000c0aaa';
     const evento = (tipo: string, tenantId: Uuid) =>
       ({
@@ -199,7 +221,13 @@ describe('fontes da geração de prazos (HU24)', () => {
       { buscar: (_tx, id) => Promise.resolve({ id } as never) },
       { doConteudo: (_tx, id) => Promise.resolve({ id } as never) },
       { usuarioDaOab: (_tx, id) => Promise.resolve(id) },
+      {
+        ramoAprovado: (_tx, classe) =>
+          Promise.resolve(classe === 'APELACAO CIVEL' ? 'civel' : undefined),
+      },
     );
+    expect(await fontes.ramoDaClasse('APELACAO CIVEL')).toBe('civel');
+    expect(await fontes.ramoDaClasse('OUTRA')).toBeUndefined();
     expect(await fontes.classificacao(EVENTO)).toEqual({ id: EVENTO });
     expect(await fontes.destinatario(EVENTO)).toEqual({ id: EVENTO });
     expect(await fontes.responsavelDaOab(TENANT_A)).toBe(TENANT_A);
@@ -207,5 +235,11 @@ describe('fontes da geração de prazos (HU24)', () => {
       tenantsDoConteudo: () => Promise.resolve(TENANTS),
     });
     expect(await tenants(EVENTO)).toEqual(TENANTS);
+    const semData = tenantsComPrazoSemData(unidade, {
+      tenantsComPublicacoesSemData: () => Promise.resolve([TENANT_A]),
+    });
+    expect(await semData()).toEqual([TENANT_A]);
+    const classes = recalcularClassesVistas(unidade, { recalcular: () => Promise.resolve(3) });
+    expect(await classes()).toBe(3);
   });
 });
