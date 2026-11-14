@@ -44,6 +44,16 @@ export const gerarPrazoJob = definirJob({
   dados: z.object({ conteudoId: z.uuid(), tenantId: z.uuid() }).strict(),
 });
 
+/**
+ * Refaz a sugestão dos prazos sem data de um tenant depois que a curadoria aprova o ramo de uma
+ * classe processual; chave: o evento da aprovação e o tenant.
+ */
+export const ressugerirSemDataJob = definirJob({
+  fila: 'prazos',
+  tipo: 'prazos.ressugerir-sem-data',
+  dados: z.object({ tenantId: z.uuid(), eventoId: z.uuid() }).strict(),
+});
+
 /** Marca os vencidos de todos os tenants (HU24): lista como sistema, grava em cada tenant. */
 export const marcarVencidosJob = definirJob({
   fila: 'prazos',

@@ -521,9 +521,16 @@ export class GerarPrazoDaPublicacao<Transacao> {
       classificacao.situacao !== 'ok' ||
       classificacao.tipoAto === null ||
       (classificacao.confianca !== null && classificacao.confianca < CONFIANCA_MINIMA);
+    // O DJEN não informa o rito, só a classe: o ramo vem da correspondência aprovada pela
+    // curadoria (sem ela, o ramo é o do tribunal ou fica "a confirmar", CLAUDE.md, seção 4.4).
+    const ramo =
+      destinatario.classe === undefined || destinatario.classe === null
+        ? undefined
+        : await this.fontes.ramoDaClasse(destinatario.classe);
     const sugestao = await this.calcular.executar({
       processoId: destinatario.processoId,
       tipoAto: classificacao.tipoAto ?? ATO_DESCONHECIDO,
+      ...(ramo === undefined ? {} : { ramo }),
       meio: 'djen',
       dataDeReferencia: destinatario.dataDisponibilizacao.paraIso(),
       ...(prazoNoTexto === undefined ? {} : { prazoNoTexto }),
@@ -555,6 +562,35 @@ export class GerarPrazoDaPublicacao<Transacao> {
     );
     if (!r.ok) throw r.erro;
     return 'criado';
+  }
+}
+
+/** Prazos sem data de um tenant reprocessados por vez (cada um consulta tabela e calendário). */
+export const LOTE_SEM_DATA = 500;
+
+/**
+ * Refaz a sugestão dos prazos do DJEN que ainda estão sem data no tenant, pela mesma geração
+ * (HU24): depois que a curadoria aprova o ramo de uma classe processual, o prazo que ficou "a
+ * confirmar" por falta do rito ganha a data. Só toca o prazo intocado (`Prazo.ressugerivel`).
+ */
+export class RessugerirPrazosSemData<Transacao> {
+  constructor(
+    private readonly unidade: UnidadeDeTrabalho<Transacao>,
+    private readonly prazos: RepositorioDePrazos<Transacao>,
+    private readonly gerar: GerarPrazoDaPublicacao<Transacao>,
+  ) {}
+
+  async executar(
+    tenantId: Uuid,
+  ): Promise<{ readonly ressugeridos: number; readonly lidos: number }> {
+    const conteudos = await this.unidade.executar((tx) =>
+      this.prazos.publicacoesSemData(tx, LOTE_SEM_DATA),
+    );
+    let ressugeridos = 0;
+    for (const conteudoId of conteudos) {
+      if ((await this.gerar.executar(tenantId, conteudoId)) === 'ressugerido') ressugeridos++;
+    }
+    return { ressugeridos, lidos: conteudos.length };
   }
 }
 

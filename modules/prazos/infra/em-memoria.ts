@@ -14,6 +14,10 @@ import type {
   RepositorioDeTiposDeAto,
   TipoDeAto,
 } from '../application/portas.js';
+import type {
+  RepositorioDosRamosDasClasses,
+  VersaoDoRamoDaClasse,
+} from '../application/ramos-das-classes.js';
 import type { EstadoDoPrazo } from '../domain/prazo.js';
 import type { EstadoDaVersao, Ramo } from '../domain/tabela.js';
 import type { Instant, LocalDate, TransacaoEmMemoria, Uuid } from '@pz/kernel';
@@ -187,6 +191,28 @@ export class PrazosEmMemoria implements RepositorioDePrazos<TransacaoEmMemoria> 
   existeDaPublicacao(_transacao: TransacaoEmMemoria, conteudoId: Uuid): Promise<boolean> {
     return Promise.resolve(
       [...this.#prazos.values()].some((e) => e.publicacaoConteudoId === conteudoId),
+    );
+  }
+
+  publicacoesSemData(_transacao: TransacaoEmMemoria, limite: number): Promise<Uuid[]> {
+    return Promise.resolve(
+      [...this.#prazos.values()]
+        .filter((e) => Prazo.restaurar(e).ressugerivel)
+        .sort((a, b) => a.id.localeCompare(b.id))
+        .flatMap((e) => (e.publicacaoConteudoId === null ? [] : [e.publicacaoConteudoId]))
+        .slice(0, limite),
+    );
+  }
+
+  tenantsComPublicacoesSemData(): Promise<Uuid[]> {
+    return Promise.resolve(
+      [
+        ...new Set(
+          [...this.#prazos.values()]
+            .filter((e) => Prazo.restaurar(e).ressugerivel && e.publicacaoConteudoId !== null)
+            .map((e) => e.tenantId),
+        ),
+      ].sort(),
     );
   }
 
@@ -396,5 +422,38 @@ export class CompromissosEmMemoria implements RepositorioDeCompromissos<Transaca
         .sort((a, b) => a.dataHora.comparar(b.dataHora) || a.id.localeCompare(b.id))
         .slice(0, limite),
     );
+  }
+}
+
+/** Correspondência classe → ramo em memória, com a semântica do Postgres. Só para testes. */
+export class RamosDasClassesEmMemoria implements RepositorioDosRamosDasClasses<TransacaoEmMemoria> {
+  readonly versoes: VersaoDoRamoDaClasse[] = [];
+  listar() {
+    return Promise.resolve([...this.versoes]);
+  }
+  buscar(_tx: TransacaoEmMemoria, id: Uuid) {
+    return Promise.resolve(this.versoes.find((v) => v.id === id));
+  }
+  proximaVersao(_tx: TransacaoEmMemoria, classe: string) {
+    return Promise.resolve(this.versoes.filter((v) => v.classe === classe).length + 1);
+  }
+  inserir(_tx: TransacaoEmMemoria, v: VersaoDoRamoDaClasse) {
+    if (this.versoes.some((x) => x.classe === v.classe && x.versao === v.versao))
+      return Promise.resolve(false);
+    this.versoes.push(v);
+    return Promise.resolve(true);
+  }
+  aprovar(_tx: TransacaoEmMemoria, id: Uuid, por: Uuid, em: Instant) {
+    const i = this.versoes.findIndex((v) => v.id === id && v.status === 'rascunho');
+    const atual = this.versoes[i];
+    if (atual === undefined) return Promise.resolve(false);
+    this.versoes[i] = { ...atual, status: 'aprovado', aprovadoPor: por, aprovadoEm: em };
+    return Promise.resolve(true);
+  }
+  ramoAprovado(_tx: TransacaoEmMemoria, classe: string): Promise<Ramo | undefined> {
+    const aprovadas = this.versoes
+      .filter((v) => v.classe === classe && v.status === 'aprovado')
+      .sort((a, b) => b.versao - a.versao);
+    return Promise.resolve(aprovadas[0]?.ramo);
   }
 }

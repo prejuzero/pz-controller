@@ -25,6 +25,16 @@ type Kebab<T extends string> = T extends `${infer A}_${infer B}` ? `${A}-${Kebab
 const paraBanco = <T extends string>(valor: T) => valor.replaceAll('-', '_') as Snake<T>;
 const doBanco = <T extends string>(valor: T) => valor.replaceAll('_', '-') as Kebab<T>;
 
+/** O mesmo filtro de `Prazo.ressugerivel`: do DJEN, "a confirmar", sem data e intocado. */
+const SEM_DATA = {
+  origem: 'djen',
+  status: 'a_confirmar',
+  vencimentoManual: false,
+  motivoAjuste: null,
+  vencimento: null,
+  publicacaoConteudoId: { not: null },
+} as const;
+
 /** Objeto do domínio para o tipo JSON do Prisma (que exige assinatura de índice). */
 const paraJson = (valor: unknown) => JSON.parse(JSON.stringify(valor)) as object;
 
@@ -294,6 +304,28 @@ export class PrazosPostgres implements RepositorioDePrazos<Transacao> {
 
   async existeDaPublicacao(transacao: Transacao, conteudoId: Uuid): Promise<boolean> {
     return (await transacao.prazo.count({ where: { publicacaoConteudoId: conteudoId } })) > 0;
+  }
+
+  async publicacoesSemData(transacao: Transacao, limite: number): Promise<Uuid[]> {
+    const linhas = await transacao.prazo.findMany({
+      where: SEM_DATA,
+      select: { publicacaoConteudoId: true },
+      orderBy: { id: 'asc' },
+      take: limite,
+    });
+    return linhas.flatMap((l) =>
+      l.publicacaoConteudoId === null ? [] : [l.publicacaoConteudoId as Uuid],
+    );
+  }
+
+  async tenantsComPublicacoesSemData(transacao: Transacao): Promise<Uuid[]> {
+    const linhas = await transacao.prazo.findMany({
+      where: SEM_DATA,
+      distinct: ['tenantId'],
+      select: { tenantId: true },
+      orderBy: { tenantId: 'asc' },
+    });
+    return linhas.map((l) => l.tenantId as Uuid);
   }
 
   async daPublicacao(transacao: Transacao, conteudoId: Uuid): Promise<Prazo | undefined> {

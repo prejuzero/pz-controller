@@ -28,6 +28,7 @@ export type {
 export { OutboxEmMemoria, TransacaoEmMemoria } from './outbox-em-memoria.js';
 export { lerCsv } from './csv.js';
 export { nomeMonitoradoCanonico, TAMANHO_DO_NOME_MONITORADO } from './nome-monitorado.js';
+export { classeProcessualCanonica, TAMANHO_DA_CLASSE_PROCESSUAL } from './classe-processual.js';
 export { DiaDaSemana, LocalDate } from './local-date.js';
 export { err, ok } from './result.js';
 export type { Err, Ok, Result } from './result.js';

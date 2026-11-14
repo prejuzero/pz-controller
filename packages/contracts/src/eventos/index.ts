@@ -327,6 +327,17 @@ export const FonteDegradada = definirEvento(
   z.object({ fonte: z.string().min(1) }),
 );
 
+/** Ramo de uma classe processual aprovado pela curadoria: os prazos sem data são refeitos. */
+export const RamoDaClasseAprovado = definirEvento(
+  'RamoDaClasseAprovado',
+  1,
+  z.object({
+    versaoId: z.uuid(),
+    classe: z.string().min(3).max(200),
+    ramo: z.enum(['civel', 'juizados', 'trabalhista', 'penal', 'juizado-criminal']),
+  }),
+);
+
 /** "Buscar agora" pedido por um escritório (HU17): o worker enfileira a captura do alvo. */
 export const BuscaAgoraSolicitadaEvento = definirEvento(
   'BuscaAgoraSolicitada',
@@ -530,6 +541,7 @@ export const EVENTOS = catalogoDeEventos(
   FonteDegradada,
   FonteRestabelecida,
   BuscaAgoraSolicitadaEvento,
+  RamoDaClasseAprovado,
   PrazoSugerido,
   PrazoRecalculado,
   PrazoConfirmado,

@@ -5,8 +5,13 @@ import type { ConsultarAnosSemCalendario, ConsultarDiasNaoUteis } from '@pz/cale
 import type { ClassificacoesPostgres } from '@pz/classificacao';
 import type { Transacao } from '@pz/db';
 import type { UnidadeDeTrabalho, Uuid } from '@pz/kernel';
-import type { FontesDaGeracao, LocalizadorDoProcesso } from '@pz/prazos';
-import type { DestinatariosPostgres } from '@pz/publicacoes';
+import type {
+  FontesDaGeracao,
+  LocalizadorDoProcesso,
+  PrazosPostgres,
+  RamosDasClassesPostgres,
+} from '@pz/prazos';
+import type { ClassesVistasPostgres, DestinatariosPostgres } from '@pz/publicacoes';
 
 /**
  * O processo visto pelo cálculo de prazos, montado pelas APIs públicas do cadastro e do
@@ -49,11 +54,13 @@ export function fontesDaGeracao(
   classificacoes: Pick<ClassificacoesPostgres, 'buscar'>,
   destinatarios: Pick<DestinatariosPostgres, 'doConteudo'>,
   advogados: Pick<AdvogadosPostgres, 'usuarioDaOab'>,
+  ramos: Pick<RamosDasClassesPostgres, 'ramoAprovado'>,
 ): FontesDaGeracao {
   return {
     classificacao: (id) => unidade.executar((tx) => classificacoes.buscar(tx, id)),
     destinatario: (id) => unidade.executar((tx) => destinatarios.doConteudo(tx, id)),
     responsavelDaOab: (id) => unidade.executar((tx) => advogados.usuarioDaOab(tx, id)),
+    ramoDaClasse: (classe) => unidade.executar((tx) => ramos.ramoAprovado(tx, classe)),
   };
 }
 
@@ -63,4 +70,20 @@ export function tenantsDaPublicacao(
   destinatarios: Pick<DestinatariosPostgres, 'tenantsDoConteudo'>,
 ): (conteudoId: Uuid) => Promise<Uuid[]> {
   return (conteudoId) => sistema.executar((tx) => destinatarios.tenantsDoConteudo(tx, conteudoId));
+}
+
+/** Tenants com prazo do DJEN ainda sem data, lidos como sistema (ramo pela classe, 14/11/2026). */
+export function tenantsComPrazoSemData(
+  sistema: Unidade,
+  prazos: Pick<PrazosPostgres, 'tenantsComPublicacoesSemData'>,
+): () => Promise<Uuid[]> {
+  return () => sistema.executar((tx) => prazos.tenantsComPublicacoesSemData(tx));
+}
+
+/** Recalcula as classes processuais vistas nas publicações, como sistema. */
+export function recalcularClassesVistas(
+  sistema: Unidade,
+  classes: Pick<ClassesVistasPostgres, 'recalcular'>,
+): () => Promise<number> {
+  return () => sistema.executar((tx) => classes.recalcular(tx));
 }

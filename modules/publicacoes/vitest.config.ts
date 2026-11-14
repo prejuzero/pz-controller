@@ -8,5 +8,6 @@ export default criarConfigVitest({
     'infra/exportacao-postgres.ts',
     'infra/leitura-postgres.ts',
     'infra/destinatarios-postgres.ts',
+    'infra/classes-vistas-postgres.ts',
   ],
 });

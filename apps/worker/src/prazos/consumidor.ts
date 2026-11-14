@@ -4,13 +4,14 @@ import { lerAlteracaoDoCalendario, TenantsAfetadosPeloCalendario } from '@pz/pra
 import { z } from 'zod';
 
 import { Consome } from '../eventos/consome.js';
-import { FILAS_RUNTIME, TENANTS_DA_PUBLICACAO } from '../fichas.js';
+import { FILAS_RUNTIME, TENANTS_COM_PRAZO_SEM_DATA, TENANTS_DA_PUBLICACAO } from '../fichas.js';
 
 import {
   chaveDoLote,
   gerarPrazoJob,
   recalcularPrazosDoProcessoJob,
   recalcularPrazosJob,
+  ressugerirSemDataJob,
 } from './jobs.js';
 
 import type { Filas } from '../filas/runtime.js';
@@ -33,7 +34,27 @@ export class ConsumidorDosPrazos {
     @Inject(FILAS_RUNTIME) private readonly filas: Filas,
     @Inject(TENANTS_DA_PUBLICACAO)
     private readonly tenantsDaPublicacao: (conteudoId: Uuid) => Promise<Uuid[]>,
+    @Inject(TENANTS_COM_PRAZO_SEM_DATA)
+    private readonly tenantsComPrazoSemData: () => Promise<Uuid[]>,
   ) {}
+
+  /**
+   * A curadoria aprovou o ramo de uma classe processual: um job por tenant com prazo do DJEN ainda
+   * sem data refaz a sugestão (quem tem a classe ganha o rito). Repetir o evento não duplica.
+   */
+  @Consome('RamoDaClasseAprovado', { versao: 1 })
+  async ramoDaClasseAprovado(_transacao: unknown, evento: EventoDominio): Promise<void> {
+    const tenants = await this.tenantsComPrazoSemData();
+    for (const tenantId of tenants) {
+      await this.filas.publicar(
+        ressugerirSemDataJob,
+        { tenantId, eventoId: evento.id },
+        { tenantId },
+        `${evento.id}-${tenantId}`,
+      );
+    }
+    logger.info({ eventoId: evento.id, tenants: tenants.length }, 'prazos sem data a refazer');
+  }
 
   /**
    * Classificada: um job por tenant que recebeu a publicação (HU24). A chave leva o id do evento:

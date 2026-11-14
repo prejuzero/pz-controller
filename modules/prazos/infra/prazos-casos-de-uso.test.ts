@@ -11,6 +11,7 @@ import {
   CumprirPrazo,
   GerarPrazoDaPublicacao,
   LinkDoDocumento,
+  RessugerirPrazosSemData,
   ListarPrazos,
   MarcarPrazosVencidos,
 } from '../application/ciclo-de-vida.js';
@@ -732,6 +733,7 @@ describe('geração automática a partir da publicação (HU24, PZ-168)', () => 
   const ADVOGADO = '01a10e00-0000-7000-8000-00000000ad01' as Uuid;
   let classificacao: ClassificacaoDoConteudo | undefined;
   let destinatario: DestinatarioDaPublicacao | undefined;
+  const ramosDasClasses = new Map<string, 'civel' | 'juizados'>();
   const gerar = () =>
     new GerarPrazoDaPublicacao(
       outbox,
@@ -740,6 +742,7 @@ describe('geração automática a partir da publicação (HU24, PZ-168)', () => 
         classificacao: () => Promise.resolve(classificacao),
         destinatario: () => Promise.resolve(destinatario),
         responsavelDaOab: (id) => Promise.resolve(id === OAB ? ADVOGADO : undefined),
+        ramoDaClasse: (classe) => Promise.resolve(ramosDasClasses.get(classe)),
       },
       calcular,
       criar,
@@ -748,6 +751,32 @@ describe('geração automática a partir da publicação (HU24, PZ-168)', () => 
   beforeEach(() => {
     classificacao = { tipoAto: 'ato-ficticio', situacao: 'ok', confianca: 0.97, prazoCitado: null };
     destinatario = { processoId: PROCESSO, oabId: OAB, dataDisponibilizacao: d('2027-03-01') };
+  });
+
+  it('ramo pela classe aprovada pela curadoria: o processo estadual ganha o rito e a data', async () => {
+    await aprovar({ ramo: 'civel', dias: 15 });
+    const classe = 'PROCEDIMENTO COMUM CIVEL';
+    destinatario = {
+      processoId: PROCESSO,
+      oabId: OAB,
+      dataDisponibilizacao: d('2027-03-01'),
+      classe,
+    };
+    // Sem correspondência aprovada: sem rito, "a confirmar" sem data.
+    expect(await gerar().executar(TENANT, CONTEUDO)).toBe('criado');
+    const [semRamo] = await outbox.executar((tx) => prazos.listar(tx, { limite: 10 }));
+    expect(semRamo?.estado.ramo).toBeNull();
+    expect(semRamo?.estado.calculo.vencimento).toBeNull();
+    // A curadoria aprova a classe: a nova geração refaz a sugestão com o ramo dela.
+    ramosDasClasses.set(classe, 'civel');
+    expect(await prazos.tenantsComPublicacoesSemData()).toEqual([TENANT]);
+    const semData = new RessugerirPrazosSemData(outbox, prazos, gerar());
+    expect(await semData.executar(TENANT)).toEqual({ ressugeridos: 1, lidos: 1 });
+    expect(await semData.executar(TENANT)).toEqual({ ressugeridos: 0, lidos: 0 });
+    const [comRamo] = await outbox.executar((tx) => prazos.listar(tx, { limite: 10 }));
+    expect(comRamo?.estado.ramo).toBe('civel');
+    expect(comRamo?.estado.calculo.vencimento).not.toBeNull();
+    ramosDasClasses.clear();
   });
 
   it('classificação refeita (a IA tinha falhado): o prazo sem data ganha o ato e a data', async () => {
@@ -945,6 +974,7 @@ describe('ciclo de vida: entradas e filtros (HU24)', () => {
             }),
           destinatario: () => Promise.resolve(destinatario),
           responsavelDaOab: () => Promise.resolve(undefined),
+          ramoDaClasse: () => Promise.resolve(undefined),
         },
         calcular,
         criar,

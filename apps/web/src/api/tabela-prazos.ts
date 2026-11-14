@@ -96,6 +96,12 @@ export const consultasTabelaPrazos = (api: ClienteApi) => ({
       queryKey: chaves.regrasDeClassificacao,
       queryFn: ({ signal }) => exigir(api.GET('/v1/admin/classificacoes/regras', { signal })),
     }),
+  /** Ramo pela classe processual do DJEN (14/11/2026). */
+  ramosDasClasses: () =>
+    queryOptions({
+      queryKey: chaves.ramosDasClasses,
+      queryFn: ({ signal }) => exigir(api.GET('/v1/admin/ramos-das-classes', { signal })),
+    }),
   versoes: () =>
     queryOptions({
       queryKey: chaves.tabelaPrazos.versoes(),
@@ -130,6 +136,25 @@ export const mutacoesRegras = (api: ClienteApi, cache: QueryClient) => {
             params: { path: { codigo } },
           }),
         ),
+      onSuccess: invalidar,
+    },
+  };
+};
+
+export type PedidoDeRamoDaClasse = components['schemas']['PedidoDeRamoDaClasse'];
+
+/** Ramo da classe: propor e aprovar (a aprovação refaz os prazos sem data na API). */
+export const mutacoesRamosDasClasses = (api: ClienteApi, cache: QueryClient) => {
+  const invalidar = () => cache.invalidateQueries({ queryKey: chaves.ramosDasClasses });
+  return {
+    propor: {
+      mutationFn: (pedido: PedidoDeRamoDaClasse) =>
+        exigir(api.POST('/v1/admin/ramos-das-classes', { body: pedido })),
+      onSuccess: invalidar,
+    },
+    aprovar: {
+      mutationFn: (id: string) =>
+        exigir(api.POST('/v1/admin/ramos-das-classes/{id}/aprovar', { params: { path: { id } } })),
       onSuccess: invalidar,
     },
   };

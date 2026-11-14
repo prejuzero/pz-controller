@@ -1,4 +1,4 @@
-import { LocalDate } from '@pz/kernel';
+import { classeProcessualCanonica, LocalDate } from '@pz/kernel';
 
 import type { Transacao } from '@pz/db';
 import type { Uuid } from '@pz/kernel';
@@ -8,6 +8,8 @@ export interface DestinatarioLido {
   readonly processoId: Uuid | null;
   readonly oabId: Uuid | null;
   readonly dataDisponibilizacao: LocalDate;
+  /** Classe processual informada pela fonte (forma canônica); null se não veio. */
+  readonly classe: string | null;
 }
 
 /** Destinatários de um conteúdo (ADR-014): um por tenant. */
@@ -18,9 +20,14 @@ export class DestinatariosPostgres {
    */
   async doConteudo(tx: Transacao, conteudoId: Uuid): Promise<DestinatarioLido | undefined> {
     const [l] = await tx.$queryRaw<
-      { processo_id: string | null; oab_id: string | null; data_disponibilizacao: Date }[]
+      {
+        processo_id: string | null;
+        oab_id: string | null;
+        data_disponibilizacao: Date;
+        classe: string | null;
+      }[]
     >`
-      SELECT processo_id, oab_id, data_disponibilizacao
+      SELECT processo_id, oab_id, data_disponibilizacao, metadados->>'nomeClasse' AS classe
         FROM publicacao_do_tenant
        WHERE conteudo_id = ${conteudoId}::uuid
        LIMIT 1`;
@@ -31,6 +38,7 @@ export class DestinatariosPostgres {
       oabId: l.oab_id as Uuid | null,
       // Coluna DATE chega como meia-noite UTC.
       dataDisponibilizacao: LocalDate.de(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate()),
+      classe: l.classe === null ? null : (classeProcessualCanonica(l.classe) ?? null),
     };
   }
 

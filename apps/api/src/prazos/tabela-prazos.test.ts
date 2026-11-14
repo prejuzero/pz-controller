@@ -10,7 +10,7 @@ import {
   TentativasEmMemoria,
 } from '@pz/identidade';
 import { FixedClock, gerarUuidV7, Instant, OutboxEmMemoria } from '@pz/kernel';
-import { TabelaEmMemoria } from '@pz/prazos';
+import { RamosDasClassesEmMemoria, TabelaEmMemoria } from '@pz/prazos';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { esquemaApi } from '../ambiente.js';
@@ -28,6 +28,7 @@ const sessoes = new SessoesEmMemoria();
 const perfis = new PerfisEmMemoria();
 const auditados: string[] = [];
 const tiposAuditados = () => [...auditados];
+const ramos = new RamosDasClassesEmMemoria();
 let api: NestFastifyApplication;
 
 const tokens = new Map<string, string>();
@@ -92,6 +93,10 @@ beforeAll(async () => {
           },
         },
         outbox: new OutboxEmMemoria(),
+        ramos,
+        classesVistas: {
+          listar: () => Promise.resolve([{ classe: 'APELACAO CIVEL', ocorrencias: 4 }]),
+        },
       };
     })(),
   });
@@ -184,5 +189,46 @@ describe('tabela de prazos (HU15)', () => {
     ).toBe(400);
     expect((await pedir('ana', 'GET', '/v1/admin/tabela-prazos?ramo=outro')).statusCode).toBe(400);
     expect((await pedir('ana', 'POST', '/v1/admin/tabela-prazos/x/aprovar')).statusCode).toBe(400);
+  });
+});
+
+describe('ramo pela classe processual (14/11/2026)', () => {
+  it('curadora vê as classes, propõe e aprova; advogado não acessa; 404 e 409', async () => {
+    const lista = async () =>
+      (await pedir('ana', 'GET', '/v1/admin/ramos-das-classes')).json<{
+        itens: { classe: string; ocorrencias: number; aprovada: unknown; rascunho: unknown }[];
+      }>().itens;
+    expect(await lista()).toEqual([
+      { classe: 'APELACAO CIVEL', ocorrencias: 4, aprovada: null, rascunho: null },
+    ]);
+    const proposta = await pedir('ana', 'POST', '/v1/admin/ramos-das-classes', {
+      classe: 'Apelação Cível',
+      ramo: 'civel',
+      fundamento: 'FICTÍCIO: Lei de Teste, art. 1º',
+      fonteUrl: 'https://exemplo.invalid/ficticio',
+    });
+    expect(proposta.statusCode).toBe(201);
+    const { id } = proposta.json<{ id: string }>();
+    expect((await lista())[0]?.rascunho).toMatchObject({ id, ramo: 'civel', status: 'rascunho' });
+    const aprovada = await pedir('ana', 'POST', `/v1/admin/ramos-das-classes/${id}/aprovar`);
+    expect(aprovada.statusCode).toBe(200);
+    expect(aprovada.json()).toMatchObject({ status: 'aprovado' });
+    expect(auditados).toContain('prazos.ramo-da-classe-aprovado');
+    expect(
+      (await pedir('ana', 'POST', `/v1/admin/ramos-das-classes/${id}/aprovar`)).statusCode,
+    ).toBe(409);
+    expect(
+      (
+        await pedir(
+          'ana',
+          'POST',
+          '/v1/admin/ramos-das-classes/01a10e00-0000-7000-8000-0000000c0c99/aprovar',
+        )
+      ).statusCode,
+    ).toBe(404);
+    expect(
+      (await pedir('ana', 'POST', '/v1/admin/ramos-das-classes', { classe: 'x' })).statusCode,
+    ).toBe(400);
+    expect((await pedir('caio', 'GET', '/v1/admin/ramos-das-classes')).statusCode).toBe(403);
   });
 });
