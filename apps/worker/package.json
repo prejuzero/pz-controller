@@ -48,7 +48,7 @@
     "@pz/saude": "workspace:*",
     "@pz/termos": "workspace:*",
     "@pz/webhooks": "workspace:*",
-    "bullmq": "6.5.2",
+    "bullmq": "6.7.1",
     "ioredis": "6.0.0",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
