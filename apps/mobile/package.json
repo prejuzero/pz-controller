@@ -13,7 +13,7 @@
   "dependencies": {
     "@pz/contracts": "workspace:*",
     "@pz/design-tokens": "workspace:*",
-    "@tanstack/react-query": "5.105.0",
+    "@tanstack/react-query": "5.107.1",
     "expo": "58.0.23",
     "expo-constants": "58.0.15",
     "expo-linking": "58.0.16",
