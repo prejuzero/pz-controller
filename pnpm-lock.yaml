@@ -205,8 +205,8 @@ importers:
   apps/api:
     dependencies:
       '@bull-board/api':
-        specifier: 9.10.5
-        version: 9.10.5(@bull-board/ui@9.10.5(bullmq@6.5.2)(typescript@6.0.3))(bullmq@6.5.2)(typescript@6.0.3)
+        specifier: 9.11.0
+        version: 9.11.0(@bull-board/ui@9.11.0(bullmq@6.5.2)(typescript@6.0.3))(bullmq@6.5.2)(typescript@6.0.3)
       '@bull-board/fastify':
         specifier: 9.10.5
         version: 9.10.5(bullmq@6.5.2)(typescript@6.0.3)
@@ -3093,11 +3093,26 @@ packages:
       bullmq:
         optional: true
 
+  '@bull-board/api@9.11.0':
+    resolution: {integrity: sha512-qmFGI87uahtILEduzQTFSWbFiqixuvAm06ZA3O53QO7WhvJQmh4smKSXuW04tpM7aHHp1nCFsuRy2YnXdSW1tw==}
+    peerDependencies:
+      '@bull-board/ui': 9.11.0
+      bull: ^4.16.5
+      bullmq: ^5.56.0 || ^6.0.0
+    peerDependenciesMeta:
+      bull:
+        optional: true
+      bullmq:
+        optional: true
+
   '@bull-board/fastify@9.10.5':
     resolution: {integrity: sha512-STCkO4ELj/bSGUuFQH41Xth0HZGkV2pABx9toeP21O8YXizQPRYhnLIiylxc79WrGFvxaMJ+AzXHcuzINa73NQ==}
 
   '@bull-board/ui@9.10.5':
     resolution: {integrity: sha512-CW97tdUiD0e7VMvezb0+cjDUdwfBU2Vo1ChLRvqNgn4qoUuqX/q9PnX+y9sF7bkXnc4Kor2u+rj/wRge9pqeVg==}
+
+  '@bull-board/ui@9.11.0':
+    resolution: {integrity: sha512-E7Gvnq6WUKhrJ4/hxbeifQu7DIb2kvEL0LPbdQAJifCsFHFYO4nh+iHTqGC3h8vTlgx7uxDXU/F6HRVa2ZZfuQ==}
 
   '@cacheable/memory@2.2.0':
     resolution: {integrity: sha512-CTLKqLItRCEixEAewD3/j9DB3/o96gpTPD4eJ1v+DGOlxZRZncRQkGYqqnAGCscYd6RNeXfGeiuCphsPtqyIfQ==}
@@ -12865,6 +12880,16 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
+  '@bull-board/api@9.11.0(@bull-board/ui@9.11.0(bullmq@6.5.2)(typescript@6.0.3))(bullmq@6.5.2)(typescript@6.0.3)':
+    dependencies:
+      '@bull-board/ui': 9.11.0(bullmq@6.5.2)(typescript@6.0.3)
+      redis-info: 3.1.0
+      valibot: 1.5.0(typescript@6.0.3)
+    optionalDependencies:
+      bullmq: 6.5.2(bullmq-otel@2.0.1)(ioredis@6.0.0(supports-color@10.2.2))(pg@8.23.1)
+    transitivePeerDependencies:
+      - typescript
+
   '@bull-board/fastify@9.10.5(bullmq@6.5.2)(typescript@6.0.3)':
     dependencies:
       '@bull-board/api': 9.10.5(@bull-board/ui@9.10.5(bullmq@6.5.2)(typescript@6.0.3))(bullmq@6.5.2)(typescript@6.0.3)
@@ -12880,6 +12905,14 @@ snapshots:
   '@bull-board/ui@9.10.5(bullmq@6.5.2)(typescript@6.0.3)':
     dependencies:
       '@bull-board/api': 9.10.5(@bull-board/ui@9.10.5(bullmq@6.5.2)(typescript@6.0.3))(bullmq@6.5.2)(typescript@6.0.3)
+    transitivePeerDependencies:
+      - bull
+      - bullmq
+      - typescript
+
+  '@bull-board/ui@9.11.0(bullmq@6.5.2)(typescript@6.0.3)':
+    dependencies:
+      '@bull-board/api': 9.11.0(@bull-board/ui@9.11.0(bullmq@6.5.2)(typescript@6.0.3))(bullmq@6.5.2)(typescript@6.0.3)
     transitivePeerDependencies:
       - bull
       - bullmq
