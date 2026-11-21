@@ -206,10 +206,10 @@ importers:
     dependencies:
       '@bull-board/api':
         specifier: 9.11.0
-        version: 9.11.0(@bull-board/ui@9.11.0(bullmq@6.7.2)(typescript@6.0.3))(bullmq@6.7.2)(typescript@6.0.3)
+        version: 9.11.0(@bull-board/ui@9.11.0(bullmq@6.7.6)(typescript@6.0.3))(bullmq@6.7.6)(typescript@6.0.3)
       '@bull-board/fastify':
         specifier: 9.11.0
-        version: 9.11.0(bullmq@6.7.2)(typescript@6.0.3)
+        version: 9.11.0(bullmq@6.7.6)(typescript@6.0.3)
       '@nestjs/common':
         specifier: 12.4.0
         version: 12.4.0(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@10.2.2)
@@ -313,8 +313,8 @@ importers:
         specifier: workspace:*
         version: link:../../modules/webhooks
       bullmq:
-        specifier: 6.7.2
-        version: 6.7.2(bullmq-otel@2.0.1)(ioredis@6.0.0(supports-color@10.2.2))(pg@8.23.1)
+        specifier: 6.7.6
+        version: 6.7.6(bullmq-otel@2.0.1)(ioredis@6.0.0(supports-color@10.2.2))(pg@8.23.1)
       fastify:
         specifier: 5.12.8
         version: 5.12.8
@@ -659,8 +659,8 @@ importers:
         specifier: workspace:*
         version: link:../../modules/webhooks
       bullmq:
-        specifier: 6.7.2
-        version: 6.7.2(bullmq-otel@2.0.1)(ioredis@6.0.0(supports-color@10.2.2))(pg@8.23.1)
+        specifier: 6.7.6
+        version: 6.7.6(bullmq-otel@2.0.1)(ioredis@6.0.0(supports-color@10.2.2))(pg@8.23.1)
       ioredis:
         specifier: 6.0.0
         version: 6.0.0(supports-color@10.2.2)
@@ -778,8 +778,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/kernel
       bullmq:
-        specifier: 6.7.2
-        version: 6.7.2(bullmq-otel@2.0.1)(ioredis@6.0.0(supports-color@10.2.2))(pg@8.23.1)
+        specifier: 6.7.6
+        version: 6.7.6(bullmq-otel@2.0.1)(ioredis@6.0.0(supports-color@10.2.2))(pg@8.23.1)
       zod:
         specifier: 4.6.7
         version: 4.6.7
@@ -7515,8 +7515,8 @@ packages:
     peerDependencies:
       bullmq: '>=6.0.0'
 
-  bullmq@6.7.2:
-    resolution: {integrity: sha512-JCoMvkTD9FAX8TY3qQXIkB+ybZYDpTqV09EshxwYjzn2oTdqagKUIF/GWjtYl9bahPO2DHm3sWjijFGHeIf6XQ==}
+  bullmq@6.7.6:
+    resolution: {integrity: sha512-ykp2HGMkOz8BtuE/FBFRMetpI6RHDyFvAkUawqKJv7sDWIaZPz1cPtpzIad879iwW2oMJY4CFMPvfBKnWdB3Rw==}
     engines: {node: '>=14.18.0'}
     peerDependencies:
       bullmq-otel: '>=2.0.0'
@@ -7838,8 +7838,8 @@ packages:
     resolution: {integrity: sha512-piICUB6ei4IlTv1+653yq5+KoqfBYmj9bw6LqXoOneTMDXk5nM1qt12mFW1caG3LlJXEKW1Bp0WggEmIfQB34g==}
     engines: {node: '>= 14'}
 
-  cron-parser@5.10.3:
-    resolution: {integrity: sha512-Fwlmlgiyoj5e7XDCy5T3ueFd3imgt714k7xjAzhkOBUrUgQxWtsjS7kWSEN3efDX34bebxBJAmPoCSisHvjlpw==}
+  cron-parser@5.10.4:
+    resolution: {integrity: sha512-TagNqYzoV/C7Ty7VAQjrQg+57WsEOuQEUh0tWT5Dc+l/GOuoAdWVIzFU0CqYdQswqdjUalrdmOvaMtQhErYZTA==}
     engines: {node: '>=18'}
 
   cross-spawn@7.0.6:
@@ -12783,20 +12783,20 @@ snapshots:
 
   '@borewit/text-codec@0.2.2': {}
 
-  '@bull-board/api@9.11.0(@bull-board/ui@9.11.0(bullmq@6.7.2)(typescript@6.0.3))(bullmq@6.7.2)(typescript@6.0.3)':
+  '@bull-board/api@9.11.0(@bull-board/ui@9.11.0(bullmq@6.7.6)(typescript@6.0.3))(bullmq@6.7.6)(typescript@6.0.3)':
     dependencies:
-      '@bull-board/ui': 9.11.0(bullmq@6.7.2)(typescript@6.0.3)
+      '@bull-board/ui': 9.11.0(bullmq@6.7.6)(typescript@6.0.3)
       redis-info: 3.1.0
       valibot: 1.5.0(typescript@6.0.3)
     optionalDependencies:
-      bullmq: 6.7.2(bullmq-otel@2.0.1)(ioredis@6.0.0(supports-color@10.2.2))(pg@8.23.1)
+      bullmq: 6.7.6(bullmq-otel@2.0.1)(ioredis@6.0.0(supports-color@10.2.2))(pg@8.23.1)
     transitivePeerDependencies:
       - typescript
 
-  '@bull-board/fastify@9.11.0(bullmq@6.7.2)(typescript@6.0.3)':
+  '@bull-board/fastify@9.11.0(bullmq@6.7.6)(typescript@6.0.3)':
     dependencies:
-      '@bull-board/api': 9.11.0(@bull-board/ui@9.11.0(bullmq@6.7.2)(typescript@6.0.3))(bullmq@6.7.2)(typescript@6.0.3)
-      '@bull-board/ui': 9.11.0(bullmq@6.7.2)(typescript@6.0.3)
+      '@bull-board/api': 9.11.0(@bull-board/ui@9.11.0(bullmq@6.7.6)(typescript@6.0.3))(bullmq@6.7.6)(typescript@6.0.3)
+      '@bull-board/ui': 9.11.0(bullmq@6.7.6)(typescript@6.0.3)
       '@fastify/static': 10.1.11
       '@fastify/view': 12.0.1
       ejs: 6.0.1
@@ -12805,9 +12805,9 @@ snapshots:
       - bullmq
       - typescript
 
-  '@bull-board/ui@9.11.0(bullmq@6.7.2)(typescript@6.0.3)':
+  '@bull-board/ui@9.11.0(bullmq@6.7.6)(typescript@6.0.3)':
     dependencies:
-      '@bull-board/api': 9.11.0(@bull-board/ui@9.11.0(bullmq@6.7.2)(typescript@6.0.3))(bullmq@6.7.2)(typescript@6.0.3)
+      '@bull-board/api': 9.11.0(@bull-board/ui@9.11.0(bullmq@6.7.6)(typescript@6.0.3))(bullmq@6.7.6)(typescript@6.0.3)
     transitivePeerDependencies:
       - bull
       - bullmq
@@ -17514,22 +17514,22 @@ snapshots:
   buildcheck@0.0.7:
     optional: true
 
-  bullmq-otel@2.0.1(bullmq@6.7.2):
+  bullmq-otel@2.0.1(bullmq@6.7.6):
     dependencies:
       '@opentelemetry/api': 1.10.0
-      bullmq: 6.7.2(bullmq-otel@2.0.1)(ioredis@6.0.0(supports-color@10.2.2))(pg@8.23.1)
+      bullmq: 6.7.6(bullmq-otel@2.0.1)(ioredis@6.0.0(supports-color@10.2.2))(pg@8.23.1)
       tslib: 2.9.1
     optional: true
 
-  bullmq@6.7.2(bullmq-otel@2.0.1)(ioredis@6.0.0(supports-color@10.2.2))(pg@8.23.1):
+  bullmq@6.7.6(bullmq-otel@2.0.1)(ioredis@6.0.0(supports-color@10.2.2))(pg@8.23.1):
     dependencies:
-      cron-parser: 5.10.3
+      cron-parser: 5.10.4
       msgpackr: 2.1.4
       node-abort-controller: 3.1.1
       semver: 7.8.6
       tslib: 2.9.1
     optionalDependencies:
-      bullmq-otel: 2.0.1(bullmq@6.7.2)
+      bullmq-otel: 2.0.1(bullmq@6.7.6)
       ioredis: 6.0.0(supports-color@10.2.2)
       pg: 8.23.1
 
@@ -17828,7 +17828,7 @@ snapshots:
       crc-32: 1.2.2
       readable-stream: 4.7.0
 
-  cron-parser@5.10.3:
+  cron-parser@5.10.4:
     dependencies:
       luxon: 3.7.2
 
